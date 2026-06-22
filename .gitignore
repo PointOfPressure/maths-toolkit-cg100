@@ -1,0 +1,11 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Test artifacts
+stress_log.txt
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
