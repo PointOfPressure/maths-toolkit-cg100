@@ -1,118 +1,20 @@
 import math
-import casui
-import caslex
-import caseng
+import casutil
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
+_asknum = casutil.asknum
+_getlist = casutil.asklist
+_show = casutil.show
+_pages = casutil.show      # result_screen pages by itself now
+_fact = casutil.fact
+_ncr = casutil.ncr
+_bpmf = casutil.binom_pmf
+_bcdf = casutil.binom_cdf
+_erf = casutil.erf
+_phi = casutil.phi
+_inv_phi = casutil.invphi
 
 def _fn(x):
-    try:
-        r = round(x, 5)
-    except:
-        return str(x)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-def _getlist(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    out = []
-    for p in s.replace(',', ' ').split():
-        try:
-            out.append(float(p))
-        except:
-            return None
-    return out
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-def _pages(title, lines):
-    per = 7
-    i = 0
-    n = len(lines)
-    if n == 0:
-        _show(title, ['(no data)'])
-        return
-    while i < n:
-        _show(title, lines[i:i + per])
-        i += per
-
-def _fact(n):
-    if n < 0:
-        return None
-    r = 1
-    i = 2
-    while i <= n:
-        r = r * i
-        i += 1
-    return r
-
-def _ncr(n, k):
-    if k < 0 or k > n or n < 0:
-        return 0
-    if k > n - k:
-        k = n - k
-    num = 1
-    den = 1
-    i = 0
-    while i < k:
-        num = num * (n - i)
-        den = den * (i + 1)
-        i += 1
-    return num // den
-
-def _bpmf(n, p, k):
-    return _ncr(n, k) * (p ** k) * ((1.0 - p) ** (n - k))
-
-def _bcdf(n, p, k):
-    c = 0.0
-    j = 0
-    while j <= k and j <= n:
-        c += _bpmf(n, p, j)
-        j += 1
-    return c
-
-def _erf(x):
-    sign = 1.0
-    if x < 0:
-        sign = -1.0
-        x = -x
-    t = 1.0 / (1.0 + 0.3275911 * x)
-    y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * math.exp(-x * x)
-    return sign * y
-
-def _phi(z):
-    return 0.5 * (1.0 + _erf(z / math.sqrt(2.0)))
-
-def _inv_phi(p):
-    if p <= 0.0:
-        return -1e9
-    if p >= 1.0:
-        return 1e9
-    lo = -10.0
-    hi = 10.0
-    i = 0
-    while i < 200:
-        mid = 0.5 * (lo + hi)
-        if _phi(mid) < p:
-            lo = mid
-        else:
-            hi = mid
-        i += 1
-    return 0.5 * (lo + hi)
+    return casutil.fmt(x, 5)
 
 def _sorted(a):
     b = list(a)
@@ -270,6 +172,10 @@ def t_binom():
     ki = int(round(k))
     if ni < 0 or p < 0 or p > 1:
         _show('Binomial', ['Bad n or p.'])
+        return
+    if ni > 5000:
+        # the cdf sum is O(k^2) - anything this size would stall the handheld
+        _show('Binomial', ['n too large (max 5000).'])
         return
     pk = _bpmf(ni, p, ki)
     cum = _bcdf(ni, p, ki)
@@ -524,7 +430,12 @@ def t_ncrfact():
     lines = []
     f = _fact(ni)
     if f is None:
-        lines.append('n! undefined')
+        # an uncapped n! locked the calculator up on a mistyped entry
+        if ni < 0:
+            lines.append('n! undefined for n < 0')
+        else:
+            lines.append('n too large for n!')
+            lines.append('(max ' + str(casutil.FACT_MAX) + ')')
     else:
         lines.append(str(ni) + '! = ' + str(f))
     if r is not None:
@@ -551,9 +462,4 @@ TOOLS = [
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('STATISTICS', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('STATISTICS', TOOLS)

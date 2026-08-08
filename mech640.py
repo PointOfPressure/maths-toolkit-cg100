@@ -1,91 +1,15 @@
 import math
 import casui
-import caslex
-import caseng
+import casutil
 
-
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-
-def _askopt(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    s = s.strip()
-    if s == '':
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-
-def _askg():
-    v = casui.input_expr('g [9.8]')
-    if v is None:
-        return 9.8
-    v = v.strip()
-    if v == '':
-        return 9.8
-    t = caslex.parse(v)
-    if t is None:
-        return 9.8
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return 9.8
-
-
-def _fn(x):
-    try:
-        r = round(x, 4)
-    except:
-        return str(x)
-    try:
-        if r == int(r):
-            return str(int(r))
-    except:
-        return str(r)
-    return str(r)
-
-
-def _atan2(y, x):
-    if x > 0:
-        return math.atan(y / x)
-    if x < 0:
-        if y >= 0:
-            return math.atan(y / x) + math.pi
-        return math.atan(y / x) - math.pi
-    if y > 0:
-        return math.pi / 2.0
-    if y < 0:
-        return -math.pi / 2.0
-    return 0.0
-
-
-def _deg(r):
-    return r * 180.0 / math.pi
-
-
-def _rad(d):
-    return d * math.pi / 180.0
-
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
+_asknum = casutil.asknum
+_askopt = casutil.asknum      # blank / cancel both come back as None
+_askg = casutil.askg
+_fn = casutil.fmt
+_atan2 = casutil.atan2
+_deg = casutil.deg
+_rad = casutil.rad
+_show = casutil.show
 
 
 def suvat():
@@ -102,6 +26,7 @@ def suvat():
     if known < 3:
         _show('SUVAT', ['Need at least 3 knowns.', 'Got ' + str(known) + '.'])
         return
+    rooted = [False]
     for _it in range(6):
         prog = False
         if v is None and u is not None and a is not None and t is not None:
@@ -129,11 +54,13 @@ def suvat():
             d = u * u + 2.0 * a * s
             if d >= 0:
                 v = math.sqrt(d)
+                rooted[0] = True
                 prog = True
         if u is None and v is not None and a is not None and s is not None:
             d = v * v - 2.0 * a * s
             if d >= 0:
                 u = math.sqrt(d)
+                rooted[0] = True
                 prog = True
         if a is None and v is not None and u is not None and s is not None and s != 0:
             a = (v * v - u * u) / (2.0 * s)
@@ -158,6 +85,10 @@ def suvat():
     lines.append('a = ' + (_fn(a) if a is not None else '?'))
     lines.append('s = ' + (_fn(s) if s is not None else '?'))
     lines.append('t = ' + (_fn(t) if t is not None else '?'))
+    if rooted[0]:
+        # v^2 = u^2 + 2as gives +/- the root; only the positive one is shown
+        lines.append('(sqrt step: positive root')
+        lines.append(' taken - check direction)')
     _show('SUVAT result', lines)
 
 
@@ -420,9 +351,4 @@ TOOLS = [
 
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('MECHANICS', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('MECHANICS', TOOLS)

@@ -4,83 +4,25 @@
 # Stock CASIO MicroPython 1.9.4: ASCII only, no f-strings, iterative only.
 import math
 import casui
-import caslex
 import caseng
+import casutil
 
 def _finite(v):
     # True if v is a real finite float (no math.isfinite in this build)
     return v == v and v not in (float('inf'), float('-inf'))
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _askint(prompt):
-    v = _asknum(prompt)
-    if v is None:
-        return None
-    try:
-        return int(round(v))
-    except:
-        return None
-
-def _askexpr(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    return caslex.parse(s)
-
-def _fn(x):
-    # safe numeric format; guard non-finite so int() never crashes
-    if not _finite(x):
-        return '?'
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
+_asknum = casutil.asknum
+_askint = casutil.askint
+_askexpr = casutil.askexpr
+_fn = casutil.fmt
+_show = casutil.show
+_pages = casutil.show      # result_screen pages by itself now
+_atan2 = casutil.atan2
+_gcd = casutil.gcd
+_powmod = casutil.powmod
 
 def _fc(z):
-    a = _fn(z.real)
-    b = z.imag
-    if b >= 0:
-        return a + '+' + _fn(b) + 'i'
-    return a + '-' + _fn(-b) + 'i'
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-def _pages(title, lines):
-    # show many lines a screenful at a time
-    per = 6
-    i = 0
-    n = len(lines)
-    if n == 0:
-        _show(title, [])
-        return
-    while i < n:
-        _show(title, lines[i:i + per])
-        i += per
-
-def _atan2(y, x):
-    if x > 0:
-        return math.atan(y / x)
-    if x < 0:
-        if y >= 0:
-            return math.atan(y / x) + math.pi
-        return math.atan(y / x) - math.pi
-    if y > 0:
-        return math.pi / 2
-    if y < 0:
-        return -math.pi / 2
-    return 0.0
+    return casutil.fmtc(z.real, z.imag)
 
 # ---- 1. CURVE-FAMILY PLOTTER ---------------------------------------------
 def _line(x0, y0, x1, y1):
@@ -247,8 +189,7 @@ def t_roots():
 
 # ---- 4. EULER NUMERIC EXPLORATION dy/dx=f(x) -----------------------------
 def t_euler():
-    # single-variable form: dy/dx depends on x only (engine has one var 'x').
-    tree = _askexpr('dy/dx = f(x)')
+    tree = _askexpr('dy/dx = f(x,y)')
     if tree is None:
         _show('Euler', ['Could not read f(x).'])
         return
@@ -266,14 +207,14 @@ def t_euler():
         return
     if n > 12:
         n = 12
-    lines = ['dy/dx = f(x) only', 'y_n+1 = y_n + h.f(x_n)', '------------------', 'x      y']
+    lines = ['y_n+1 = y_n + h.f(x_n,y_n)', '------------------', 'x      y']
     x = x0
     y = y0
     lines.append(_fn(x) + '   ' + _fn(y))
     i = 0
     while i < n:
         try:
-            slope = caseng.evalf(tree, x)
+            slope = caseng.evalf(tree, x, False, {'y': y})
         except:
             slope = 0.0
         if not _finite(slope):
@@ -285,13 +226,6 @@ def t_euler():
     _pages('Euler method', lines)
 
 # ---- 5. NUMBER THEORY PACK -----------------------------------------------
-def _gcd(a, b):
-    a = abs(a)
-    b = abs(b)
-    while b != 0:
-        a, b = b, a % b
-    return a
-
 def t_gcdlcm():
     a = _askint('a (integer)')
     if a is None:
@@ -300,12 +234,12 @@ def t_gcdlcm():
     if b is None:
         return
     g = _gcd(a, b)
-    if g == 0:
-        l = 0
-    else:
-        l = abs(a // g * b)
+    l = casutil.lcm(a, b)
     _show('gcd & lcm', ['a = ' + str(a), 'b = ' + str(b),
                         'gcd(a,b) = ' + str(g), 'lcm(a,b) = ' + str(l)])
+
+# trial division is O(sqrt n); past this the handheld would appear to hang
+NT_MAX = 100000000
 
 def _isprime(n):
     if n < 2:
@@ -324,6 +258,9 @@ def _isprime(n):
 def t_prime():
     n = _askint('n (integer)')
     if n is None:
+        return
+    if n > NT_MAX:
+        _show('Prime test', ['n too large for trial', 'division (max ' + str(NT_MAX) + ').'])
         return
     if _isprime(n):
         msg = str(n) + ' is PRIME.'
@@ -348,6 +285,9 @@ def t_factor():
     if n < 2:
         _show('Factorise', ['Need n >= 2.'])
         return
+    if n > NT_MAX:
+        _show('Factorise', ['n too large for trial', 'division (max ' + str(NT_MAX) + ').'])
+        return
     m = n
     facs = []
     d = 2
@@ -371,18 +311,6 @@ def t_factor():
     s = ' * '.join(parts)
     lines.append(s)
     _pages('Prime factors', lines)
-
-def _powmod(a, b, m):
-    if m == 1:
-        return 0
-    a = a % m
-    result = 1
-    while b > 0:
-        if b & 1:
-            result = (result * a) % m
-        a = (a * a) % m
-        b >>= 1
-    return result
 
 def t_powmod():
     a = _askint('base a')
@@ -471,9 +399,4 @@ TOOLS = [
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('Further Pure w/ Tech', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('Further Pure w/ Tech', TOOLS)

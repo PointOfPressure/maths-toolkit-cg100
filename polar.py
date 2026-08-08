@@ -2,35 +2,17 @@ import math
 import casui
 import caslex
 import caseng
+import casutil
 
 PI = math.pi
 TWO_PI = 2.0 * math.pi
 
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return _realf(caseng.evalf(t, 0.0))
-    except:
-        return None
-
-
-def _fn(x):
-    if x != x:
-        return 'nan'
-    if x > 1e308 or x < -1e308:
-        if x > 0:
-            return 'inf'
-        return '-inf'
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
+_asknum = casutil.asknum
+_fn = casutil.fmt
+_atan2 = casutil.atan2
+_show = casutil.show
+_askexpr = casutil.askexpr
 
 
 def _realf(v):
@@ -39,31 +21,6 @@ def _realf(v):
             return None
         return v.real
     return v
-
-
-def _atan2(y, x):
-    if x > 0:
-        return math.atan(y / x)
-    if x < 0:
-        if y >= 0:
-            return math.atan(y / x) + PI
-        return math.atan(y / x) - PI
-    if y > 0:
-        return PI / 2.0
-    if y < 0:
-        return -PI / 2.0
-    return 0.0
-
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-
-def _askexpr(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    return caslex.parse(s)
 
 
 def _line(x0, y0, x1, y1, col):
@@ -280,9 +237,4 @@ TOOLS = [('(r,theta) -> (x,y)', t_topolar_xy), ('(x,y) -> (r,theta)', t_topolar_
 
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('POLAR COORDINATES', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('POLAR COORDINATES', TOOLS)

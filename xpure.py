@@ -2,58 +2,16 @@ import math
 import casui
 import caslex
 import caseng
+import casutil
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _askint(prompt):
-    v = _asknum(prompt)
-    if v is None:
-        return None
-    return int(round(v))
-
-def _fn(x):
-    if isinstance(x, complex):
-        return _cstr(x)
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
+_asknum = casutil.asknum
+_askint = casutil.askint
+_fn = casutil.fmt
+_show = casutil.show
+_pages = casutil.show      # result_screen pages by itself now
 
 def _cstr(z):
-    a = round(z.real, 4)
-    b = round(z.imag, 4)
-    if a == int(a):
-        a = int(a)
-    if b == int(b):
-        b = int(b)
-    if b == 0:
-        return str(a)
-    sg = '+' if b >= 0 else '-'
-    return str(a) + sg + str(abs(b)) + 'i'
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-def _pages(title, lines):
-    i = 0
-    n = len(lines)
-    per = 6
-    if n == 0:
-        _show(title, [''])
-        return
-    while i < n:
-        _show(title, lines[i:i + per])
-        i += per
+    return casutil.fmtc(z.real, z.imag)
 
 # ---------- recurrence relation a_n = p a(n-1) + q a(n-2) ----------
 def t_recur():
@@ -288,39 +246,9 @@ def t_eigen():
     _pages('2x2 Eigen', out)
 
 # ---------- modular arithmetic ----------
-def _gcd(a, b):
-    a = abs(a)
-    b = abs(b)
-    while b:
-        a, b = b, a % b
-    return a
-
-def _powmod(a, e, m):
-    if m == 1:
-        return 0
-    r = 1
-    a = a % m
-    while e > 0:
-        if e & 1:
-            r = (r * a) % m
-        a = (a * a) % m
-        e = e >> 1
-    return r
-
-def _modinv(a, m):
-    # extended Euclid, iterative
-    a0 = a % m
-    if a0 < 0:
-        a0 += m
-    old_r, r = a0, m
-    old_s, s = 1, 0
-    while r != 0:
-        qd = old_r // r
-        old_r, r = r, old_r - qd * r
-        old_s, s = s, old_s - qd * s
-    if old_r != 1:
-        return None
-    return old_s % m
+_gcd = casutil.gcd
+_powmod = casutil.powmod
+_modinv = casutil.modinv
 
 def t_mod():
     labels = ['a mod m', 'a^b mod m', 'gcd(a,b)', 'modular inverse']
@@ -393,9 +321,4 @@ TOOLS = [
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('Extra Pure', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('Extra Pure', TOOLS)

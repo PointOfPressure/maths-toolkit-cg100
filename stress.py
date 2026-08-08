@@ -1,8 +1,11 @@
-# stress.py - non-interactive stress test for the Maths Toolkit.
+# stress.py - non-interactive smoke test for the Maths Toolkit.
 # Stubs the UI (canned input, no-op drawing, auto-exit menus) then imports every
-# section and calls EVERY tool function, plus hammers the engine. Each call is
-# wrapped so errors are logged, never fatal. Progress is flushed to a log file
-# when possible (PC), else printed (device). Report the log back.
+# section and calls EVERY tool in its TOOLS registry, plus hammers the engine.
+# Each call is wrapped so errors are logged, never fatal. Progress is flushed to
+# a log file when possible (PC), else printed (device).
+#
+# This proves nothing crashes. It does NOT check that any answer is right -
+# tests.py does that. Run both.
 
 import casui
 
@@ -24,6 +27,9 @@ def _noop(*a, **k):
 def _stub_menu(*a, **k):
     return -1
 
+def _stub_hold_page(*a, **k):
+    return True  # "EXIT" - stop paging immediately
+
 casui.input_expr = _stub_input
 casui.menu = _stub_menu
 casui.wait_release = _noop
@@ -40,6 +46,7 @@ casui.show_text = _noop
 casui.show_math = _noop
 casui.result_screen = _noop
 casui.hold = _noop
+casui.hold_page = _stub_hold_page
 
 import caslex
 import caseng
@@ -78,7 +85,8 @@ EXPRS = ["x^2+3x", "sin(x)", "1/(x+1)", "exp(x)", "sqrt(x)", "ln(x)",
          "x^3-x", "(x+1)(x-1)", "cos(x^2)", "tan(x)", "2x^2-4x+1",
          "x/(x-2)", "3", "sin(x)+cos(x)", "x^4-5x^2+4",
          "atan(x)", "abs(x-3)", "sinh(x)", "tanh(x)", "5!+x",
-         "nCr(6,2)+x", "nPr(5,2)-x", "logb(2,x+4)", "atan(x)*180/pi"]
+         "nCr(6,2)+x", "nPr(5,2)-x", "logb(2,x+4)", "atan(x)*180/pi",
+         "2^-x", "x^-1", "1e3*x", "sqrt(2x+1)", "1/(2x+1)", "x^(2/3)"]
 
 def _engine():
     for ex in EXPRS:
@@ -97,12 +105,20 @@ def _engine():
         _try("simplify " + ex, lambda tr=tr: caseng.tostr(caseng.simplify(tr)))
         _try("integ " + ex, lambda tr=tr: cascalc.integ(tr))
         _try("solve " + ex, lambda tr=tr: cascalc.solve(tr))
+        _try("render " + ex, lambda tr=tr: _render(tr))
+
+def _render(tr):
+    import casrender
+    casrender.render(tr, 0, 0, 384, 120, (0, 0, 0))
 
 MODNAMES = ["vcplx", "matrix", "vectors", "polyroots", "series", "hyper",
             "polar", "diffeq", "fmmech", "fmstat", "numeric", "algos",
             "xpure", "fpt", "pure640", "stat640", "mech640"]
 
 def _sections():
+    # Drive the TOOLS registry, not a "t_" name prefix. The old prefix scan
+    # silently tested 0 of mech640's 11 tools and 0 of algos' 8, because those
+    # two modules never used the prefix.
     for mn in MODNAMES:
         prog("import: " + mn)
         mod = None
@@ -111,13 +127,19 @@ def _sections():
         except Exception as e:
             ERRORS.append("IMPORT " + mn + " -> " + repr(e))
             continue
-        for nm in dir(mod):
-            if nm[:2] == "t_":
-                fn = getattr(mod, nm)
-                if callable(fn):
-                    prog("  tool: " + mn + "." + nm)
-                    _ic[0] = 0
-                    _try(mn + "." + nm, fn)
+        tools = getattr(mod, "TOOLS", None)
+        if not tools:
+            ERRORS.append("NO TOOLS REGISTRY: " + mn)
+            continue
+        for entry in tools:
+            label = entry[0]
+            fn = entry[1]
+            if not callable(fn):
+                ERRORS.append("not callable: " + mn + "." + str(label))
+                continue
+            prog("  tool: " + mn + " / " + label)
+            _ic[0] = 0
+            _try(mn + " / " + label, fn)
 
 out("STRESS TEST START")
 _ic[0] = 0
@@ -134,3 +156,4 @@ out("--------------------")
 out("STRESS TEST DONE")
 if LOGF is not None:
     LOGF.close()
+print("stress: " + str(COUNT[0]) + " checks, " + str(len(ERRORS)) + " errors")

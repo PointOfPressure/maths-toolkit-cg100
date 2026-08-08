@@ -5,84 +5,16 @@
 # ASCII only, no f-strings, iterative only, hand-built atan2.
 import math
 import casui
-import caslex
-import caseng
+import casutil
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _askint(prompt):
-    v = _asknum(prompt)
-    if v is None:
-        return None
-    try:
-        return int(round(v))
-    except:
-        return None
-
-def _fn(x):
-    try:
-        r = round(x, 4)
-    except:
-        return str(x)
-    if r == 0:
-        r = 0.0
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-def _fc(re, im):
-    if im >= 0:
-        return _fn(re) + ' + ' + _fn(im) + 'i'
-    return _fn(re) + ' - ' + _fn(-im) + 'i'
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-def _pages(title, lines):
-    per = 6
-    i = 0
-    n = len(lines)
-    if n == 0:
-        _show(title, [])
-        return
-    while i < n:
-        _show(title, lines[i:i + per])
-        i += per
-
-def _atan2(y, x):
-    if x > 0:
-        return math.atan(y / x)
-    if x < 0:
-        if y >= 0:
-            return math.atan(y / x) + math.pi
-        return math.atan(y / x) - math.pi
-    if y > 0:
-        return math.pi / 2.0
-    if y < 0:
-        return -math.pi / 2.0
-    return 0.0
-
-def _nCr(n, r):
-    if r < 0 or r > n:
-        return 0
-    if r > n - r:
-        r = n - r
-    c = 1
-    i = 1
-    while i <= r:
-        c = c * (n - r + i) // i
-        i += 1
-    return c
+_asknum = casutil.asknum
+_askint = casutil.askint
+_fn = casutil.fmt
+_fc = casutil.fmtc
+_show = casutil.show
+_pages = casutil.show      # result_screen pages by itself now
+_atan2 = casutil.atan2
+_nCr = casutil.ncr
 
 # 1. QUADRATIC SOLVER -------------------------------------------------------
 def t_quadratic():
@@ -358,7 +290,12 @@ def t_coord():
     else:
         m = dy / dx
         b = y1 - m * x1
-        lines += ['gradient m = ' + _fn(m), 'line y = ' + _fn(m) + 'x + ' + _fn(b)]
+        eqn = 'line y = ' + _fn(m) + 'x'
+        if b < 0:
+            eqn += ' - ' + _fn(-b)      # not "x + -3"
+        elif b > 0:
+            eqn += ' + ' + _fn(b)
+        lines += ['gradient m = ' + _fn(m), eqn]
         if m != 0:
             lines.append('perp grad = ' + _fn(-1.0 / m))
         else:
@@ -426,13 +363,13 @@ def _trig_solve():
         return
     try:
         if f == 0:
-            base = math.degrees(math.asin(k))
+            base = casutil.deg(math.asin(k))
             cand = [base, 180 - base]
         elif f == 1:
-            base = math.degrees(math.acos(k))
+            base = casutil.deg(math.acos(k))
             cand = [base, -base]
         else:
-            base = math.degrees(math.atan(k))
+            base = casutil.deg(math.atan(k))
             cand = [base, base + 180, base - 180]
     except:
         _show('Solve trig', ['no solution:', '|k| > 1 for sin/cos.'])
@@ -468,10 +405,10 @@ def _trig_rform():
         return
     R = math.sqrt(a * a + b * b)
     # R sin(x+alpha)=R sin x cos al + R cos x sin al; match a=R cos al, b=R sin al
-    alpha = math.degrees(_atan2(b, a))
+    alpha = casutil.deg(_atan2(b, a))
     _pages('R-form', ['a=' + _fn(a) + '  b=' + _fn(b), 'R = sqrt(a^2+b^2)', 'R = ' + _fn(R),
                       '= R sin(x + alpha)', 'tan alpha = b/a', 'alpha = ' + _fn(alpha) + ' deg',
-                      '(rad = ' + _fn(math.radians(alpha)) + ')'])
+                      '(rad = ' + _fn(casutil.rad(alpha)) + ')'])
 
 def _trig_exact():
     _pages('Exact values', ['deg | sin   cos   tan', '0   | 0     1     0', '30  |1/2   r3/2  1/r3',
@@ -500,9 +437,4 @@ TOOLS = [
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('Pure (Maths) H640', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('Pure (Maths) H640', TOOLS)

@@ -1,41 +1,11 @@
 import math
-import casui
-import caslex
-import caseng
+import casutil
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _fn(x):
-    try:
-        r = round(x, 4)
-    except:
-        return str(x)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-def _myacos(c):
-    if c > 1.0:
-        c = 1.0
-    if c < -1.0:
-        c = -1.0
-    return math.acos(c)
-
-def _deg(r):
-    return r * 180.0 / math.pi
+_asknum = casutil.asknum
+_fn = casutil.fmt
+_show = casutil.show
+_myacos = casutil.acos_safe
+_deg = casutil.deg
 
 def _vec(name):
     x = _asknum(name + ' x:')
@@ -206,7 +176,30 @@ def t_skew():
         _show('SKEW LINES', ['d1 x d2 ~ 0:', 'lines parallel,', 'not skew'])
         return
     dist = abs(_dot(diff, cr)) / mc
-    _show('SKEW LINE DIST', ['|d1 x d2| = ' + _fn(mc), 'shortest dist =', _fn(dist)])
+    _show('SKEW LINE DIST', ['|d1 x d2| = ' + _fn(mc), 'shortest dist = ' + _fn(dist)])
+
+def t_ptline():
+    # distance from a point to the line r = a + t d, i.e. |(p - a) x d| / |d|
+    a = _vec('line point a')
+    if a is None:
+        return
+    d = _vec('line direction d')
+    if d is None:
+        return
+    p = _vec('point p')
+    if p is None:
+        return
+    md = _mag(d)
+    if md == 0:
+        _show('PT TO LINE', ['Direction is zero:', 'not a line.'])
+        return
+    w = [p[0] - a[0], p[1] - a[1], p[2] - a[2]]
+    cr = _cross(w, d)
+    dist = _mag(cr) / md
+    t = _dot(w, d) / (md * md)
+    foot = [a[0] + t * d[0], a[1] + t * d[1], a[2] + t * d[2]]
+    _show('PT TO LINE', ['|(p-a) x d| = ' + _fn(_mag(cr)), '|d| = ' + _fn(md),
+                         'dist = ' + _fn(dist), 'nearest point on line:', _vstr(foot)])
 
 TOOLS = [
     ('Magnitude |a|', t_mag),
@@ -216,15 +209,11 @@ TOOLS = [
     ('Unit vector', t_unit),
     ('Scalar projection', t_proj),
     ('Parallel / perp test', t_paraperp),
+    ('Point to line dist', t_ptline),
     ('Point to plane dist', t_ptplane),
     ('Angle between planes', t_planeangle),
     ('Skew lines distance', t_skew),
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('VECTORS & 3-D', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('VECTORS & 3-D', TOOLS)

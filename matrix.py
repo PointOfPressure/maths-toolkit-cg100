@@ -1,48 +1,14 @@
 import math
 import casui
-import caslex
-import caseng
+import casutil
 
 A = [[0.0]]
 B = [[0.0]]
 
-
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-
-def _askint(prompt, lo, hi):
-    v = _asknum(prompt)
-    if v is None:
-        return None
-    n = int(round(v))
-    if n < lo:
-        n = lo
-    if n > hi:
-        n = hi
-    return n
-
-
-def _fn(x):
-    r = round(x, 4)
-    if r == 0:
-        r = 0.0
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
+_asknum = casutil.asknum
+_askint = casutil.askint
+_fn = casutil.fmt
+_show = casutil.show
 
 
 def _rowstr(row):
@@ -386,9 +352,4 @@ TOOLS = [
 
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('MATRICES', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('MATRICES', TOOLS)
