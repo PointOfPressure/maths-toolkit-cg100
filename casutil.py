@@ -124,6 +124,168 @@ def run_tools(title, tools):
             return
         tools[c][1]()
 
+# --------------------------------------------------------------- charts ----
+# Shared drawing frame for every diagram in the toolkit. Before this, each
+# plotting tool carried its own copy of "work out the scale, draw the axes,
+# clip the line", and the copies disagreed about the margins.
+#
+# A frame is (x0, y0, x1, y1, xlo, xhi, ylo, yhi): the pixel box on the 384x192
+# screen and the data range mapped onto it. The screen's y axis points down and
+# a graph's points up, so fy inverts.
+SCREEN_W = 384
+SCREEN_H = 192
+
+def frame(xlo, xhi, ylo, yhi, x0=26, y0=16, x1=378, y1=170):
+    # a zero-width range would divide by zero; widen it around its own value
+    if xhi - xlo < 1e-12:
+        xlo -= 1.0
+        xhi += 1.0
+    if yhi - ylo < 1e-12:
+        ylo -= 1.0
+        yhi += 1.0
+    return (x0, y0, x1, y1, xlo, xhi, ylo, yhi)
+
+def fx(fr, x):
+    return int(fr[0] + (x - fr[4]) * (fr[2] - fr[0]) / (fr[5] - fr[4]))
+
+def fy(fr, y):
+    return int(fr[3] - (y - fr[6]) * (fr[3] - fr[1]) / (fr[7] - fr[6]))
+
+def _clip(fr, x, y):
+    return fr[0] <= x <= fr[2] and fr[1] <= y <= fr[3]
+
+def dot(fr, x, y, c=None):
+    px = fx(fr, x)
+    py = fy(fr, y)
+    if _clip(fr, px, py):
+        casui.set_pixel(px, py, casui.BLACK if c is None else c)
+
+def marker(fr, x, y, c=None, r=2):
+    # a filled blob, so a scatter point is visible at all
+    px = fx(fr, x)
+    py = fy(fr, y)
+    c = casui.BLACK if c is None else c
+    dy = -r
+    while dy <= r:
+        dx = -r
+        while dx <= r:
+            if dx * dx + dy * dy <= r * r + 1 and _clip(fr, px + dx, py + dy):
+                casui.set_pixel(px + dx, py + dy, c)
+            dx += 1
+        dy += 1
+
+def seg(fr, xa, ya, xb, yb, c=None):
+    # data-space line segment, Bresenham in pixel space, clipped to the frame
+    c = casui.BLACK if c is None else c
+    x0 = fx(fr, xa)
+    y0 = fy(fr, ya)
+    x1 = fx(fr, xb)
+    y1 = fy(fr, yb)
+    dx = x1 - x0 if x1 >= x0 else x0 - x1
+    dy = y1 - y0 if y1 >= y0 else y0 - y1
+    sx = 1 if x0 < x1 else -1
+    sy = 1 if y0 < y1 else -1
+    err = dx - dy
+    n = 0
+    while n <= dx + dy + 2:
+        if _clip(fr, x0, y0):
+            casui.set_pixel(x0, y0, c)
+        if x0 == x1 and y0 == y1:
+            return
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x0 += sx
+        if e2 < dx:
+            err += dx
+            y0 += sy
+        n += 1
+
+def box(fr, xa, ya, xb, yb, c=None, fill=False):
+    c = casui.BLACK if c is None else c
+    if fill:
+        pa = fx(fr, xa)
+        pb = fx(fr, xb)
+        qa = fy(fr, yb)
+        qb = fy(fr, ya)
+        if pa > pb:
+            pa, pb = pb, pa
+        if qa > qb:
+            qa, qb = qb, qa
+        y = qa
+        while y <= qb:
+            x = pa
+            while x <= pb:
+                if _clip(fr, x, y):
+                    casui.set_pixel(x, y, c)
+                x += 1
+            y += 1
+        return
+    seg(fr, xa, ya, xb, ya, c)
+    seg(fr, xb, ya, xb, yb, c)
+    seg(fr, xb, yb, xa, yb, c)
+    seg(fr, xa, yb, xa, ya, c)
+
+def axes(fr, title=None, xlab=None, ylab=None, ticks=True):
+    # draw the frame's axes with the data range printed along the edges
+    casui.clear_screen()
+    if title is not None:
+        casui.draw_string(4, 2, title, casui.ACC, 'small')
+    x0, y0, x1, y1, xlo, xhi, ylo, yhi = fr
+    casui.hline(x0, x1, y1, casui.GREY)
+    yy = y0
+    while yy <= y1:
+        casui.set_pixel(x0, yy, casui.GREY)
+        yy += 1
+    # an axis line through zero as well, when zero is inside the range
+    if ylo < 0.0 < yhi:
+        casui.hline(x0, x1, fy(fr, 0.0), casui.GREY)
+    if xlo < 0.0 < xhi:
+        zx = fx(fr, 0.0)
+        yy = y0
+        while yy <= y1:
+            casui.set_pixel(zx, yy, casui.GREY)
+            yy += 1
+    if ticks:
+        casui.draw_string(x0 - 22, y1 - 6, fmt(ylo, 1), casui.GREY, 'small')
+        casui.draw_string(x0 - 22, y0 - 2, fmt(yhi, 1), casui.GREY, 'small')
+        casui.draw_string(x0, y1 + 3, fmt(xlo, 1), casui.GREY, 'small')
+        s = fmt(xhi, 1)
+        casui.draw_string(x1 - 6 * len(s), y1 + 3, s, casui.GREY, 'small')
+    if xlab is not None:
+        casui.draw_string(x0 + (x1 - x0) // 2 - 12, y1 + 3, xlab, casui.GREY, 'small')
+    if ylab is not None:
+        casui.draw_string(2, y0 - 12, ylab, casui.GREY, 'small')
+
+def chart_hold(note=None):
+    if note is not None:
+        casui.draw_string(4, SCREEN_H - 12, note, casui.GREY, 'small')
+    casui.show_screen()
+    casui.hold()
+
+def nice_range(vals, pad=0.08, zero=False):
+    # data range widened a little so points do not sit on the frame edge
+    lo = None
+    hi = None
+    for v in vals:
+        if v is None or v != v:
+            continue
+        if lo is None or v < lo:
+            lo = v
+        if hi is None or v > hi:
+            hi = v
+    if lo is None:
+        return (0.0, 1.0)
+    if zero:
+        if lo > 0.0:
+            lo = 0.0
+        if hi < 0.0:
+            hi = 0.0
+    span = hi - lo
+    if span < 1e-12:
+        span = abs(hi) if abs(hi) > 1e-12 else 1.0
+    return (lo - span * pad, hi + span * pad)
+
 # ------------------------------------------------------------ geometry ----
 def atan2(y, x):
     # math.atan2 is missing from this build
