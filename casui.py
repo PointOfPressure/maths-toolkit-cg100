@@ -1,7 +1,12 @@
-# cas.py - visual Computer Algebra System for Casio fx-CG100 (stock MicroPython).
-# Type on the real keys; see a live 2D preview (Desmos-style). Then
-# Differentiate / Integrate / Simplify / Solve / Evaluate / Graph.
-# Imports caslex, caseng, casrender, cascalc. AC quits.
+# casui.py - front end for the visual Maths Toolkit (Casio fx-CG100, stock
+# MicroPython). Type on the real keys; see a live 2D preview (Desmos-style).
+# Then Differentiate / Integrate / Simplify / Solve / Evaluate / Graph.
+# Imports caslex, caseng, casrender, cascalc. EXIT at the top menu quits.
+#
+# Key codes are row*10+col, which is Casio's documented scheme. The map below
+# was decoded by hand on real hardware; keyprobe.py re-checks it on a device.
+# Note that [ON] and [AC] are assigned no key code at all, so getkey cannot see
+# them - quitting has to be on EXIT.
 from casioplot import *
 import caslex
 import caseng
