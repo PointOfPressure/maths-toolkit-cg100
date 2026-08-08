@@ -1,6 +1,8 @@
 import casui
 import caslex
 import caseng
+import caspoly
+import cascalc
 import casutil
 
 _fact = casutil.fact
@@ -173,12 +175,168 @@ def t_reference():
         ' n(n-1)x^2/2!+... |x|<1'])
 
 
+def t_differences():
+    # Method of differences. If f(r) = g(r) - g(r+1) then the sum from r=1 to n
+    # telescopes to g(1) - g(n+1). For a term like 1/(r(r+k)) the partial
+    # fractions give A/(r+a) - A/(r+b) directly, and g follows from them.
+    _show('Method of differences', ['Enter the term f(r), typed in r,',
+                                    'for example 1/(r(r+1)).',
+                                    'If it splits as g(r) - g(r+1) the',
+                                    'sum telescopes to g(1) - g(n+1).'])
+    s = casui.input_expr('f(r) =')
+    if s is None:
+        return
+    f = caslex.parse(s)
+    if f is None:
+        _show('Differences', ['Could not read that.'])
+        return
+    if f[0] != '/':
+        _show('Differences', ['Type f(r) as a single fraction,',
+                              'for example 1/(r(r+2)) or',
+                              '2/((2r-1)(2r+1)).'])
+        return
+    res = None
+    try:
+        res = caspoly.partial(f[1], f[2], 'r')
+    except:
+        res = None
+    if res is None or res[0] is not None or len(res[1]) != 2:
+        _show('Differences', ['This does not split into two',
+                              'simple fractions in r, so the',
+                              'sum does not telescope this way.'])
+        return
+    terms = res[1]
+    coefs = []
+    shifts = []
+    ok = True
+    for top, fac, power in terms:
+        if power != 1:
+            ok = False
+            break
+        p = caspoly.poly(fac, 'r')
+        c = caspoly.ratof(top)
+        if p is None or len(p) != 2 or c is None:
+            ok = False
+            break
+        coefs.append(c)
+        shifts.append(p)              # [const, coeff of r]
+    if not ok:
+        _show('Differences', ['The two pieces are not both',
+                              'simple linear fractions.'])
+        return
+    if caspoly.radd(coefs[0], coefs[1]) != caspoly.R0:
+        _show('Differences', ['The two numerators are not equal',
+                              'and opposite, so the terms do not',
+                              'cancel in pairs.'])
+        return
+    # write both as A/(k r + c); they telescope only if k matches
+    if shifts[0][1] != shifts[1][1]:
+        _show('Differences', ['The two denominators have',
+                              'different coefficients of r,',
+                              'so nothing cancels.'])
+        return
+    k = shifts[0][1]
+    # order so the positive numerator comes first
+    if coefs[0][0] < 0:
+        coefs = [coefs[1], coefs[0]]
+        shifts = [shifts[1], shifts[0]]
+    A = coefs[0]
+    ca = caspoly.rdiv(shifts[0][0], k)
+    cb = caspoly.rdiv(shifts[1][0], k)
+    gap = caspoly.rsub(cb, ca)
+    d = caspoly.rint(gap)
+    if d is None or d < 1 or d > 6:
+        _show('Differences', ['The gap between the two',
+                              'denominators is not a small whole',
+                              'number of steps, so the sum does',
+                              'not telescope.'])
+        return
+    # g(r) = A/k * sum over j of 1/(r + ca + j), j = 0 .. d-1
+    Ak = caspoly.rdiv(A, k)
+    pieces = []
+    j = 0
+    while j < d:
+        off = caspoly.radd(ca, (j, 1))
+        if caspoly.rzero(off):
+            den = ('v', 'r')
+        elif off[0] < 0:
+            den = ('-', ('v', 'r'), caspoly.ratnode(caspoly.rneg(off)))
+        else:
+            den = ('+', ('v', 'r'), caspoly.ratnode(off))
+        pieces.append(('/', caspoly.ratnode(Ak), den))
+        j += 1
+    g = pieces[0]
+    i = 1
+    while i < len(pieces):
+        g = ('+', g, pieces[i])
+        i += 1
+    g = cascalc.tidy(g)
+    lines = ['f(r) = ' + caseng.tostr(caseng.simplify(f)), '',
+             'partial fractions:']
+    for top, fac, power in terms:
+        lines.append('  ' + caseng.tostr(top) + ' / (' + caseng.tostr(fac) + ')')
+    lines.append('')
+    lines.append('take g(r) = ' + caseng.tostr(g))
+    lines.append('then f(r) = g(r) - g(r+1)')
+    # verify that claim numerically before printing a sum built on it
+    bad = False
+    for rv in (1.0, 2.0, 3.5, 7.0):
+        try:
+            lhs = caseng.evalf(f, 0.0, False, {'r': rv})
+            g1 = caseng.evalf(g, 0.0, False, {'r': rv})
+            g2 = caseng.evalf(g, 0.0, False, {'r': rv + 1.0})
+        except:
+            continue
+        if abs(lhs - (g1 - g2)) > 1e-9 * (1.0 + abs(lhs)):
+            bad = True
+    if bad:
+        lines.append('')
+        lines.append('CHECK FAILED: g(r) - g(r+1) does not')
+        lines.append('reproduce f(r). Do not use this.')
+        _show('Differences', lines)
+        return
+    lines.append('(checked numerically)')
+    lines.append('')
+    lines.append('sum from r=1 to n telescopes:')
+    lines.append('  S(n) = g(1) - g(n+1)')
+    gn = caseng.subst(g, 'r', ('+', ('v', 'n'), ('n', 1)))
+    try:
+        g1v = caseng.evalf(g, 0.0, False, {'r': 1.0})
+        lines.append('  g(1) = ' + _fn(g1v))
+    except:
+        pass
+    lines.append('  S(n) = g(1) - [' + caseng.tostr(cascalc.tidy(gn)) + ']')
+    n = _askint('evaluate at n = (or cancel)', 1, 100000)
+    if n is not None:
+        try:
+            tot = caseng.evalf(g, 0.0, False, {'r': 1.0}) - \
+                  caseng.evalf(g, 0.0, False, {'r': float(n) + 1.0})
+            lines.append('')
+            lines.append('S(' + str(n) + ') = ' + _fn(tot))
+            # brute-force the same sum as an independent check
+            if n <= 2000:
+                acc = 0.0
+                i = 1
+                while i <= n:
+                    acc += caseng.evalf(f, 0.0, False, {'r': float(i)})
+                    i += 1
+                lines.append('direct sum  = ' + _fn(acc))
+        except:
+            lines.append('')
+            lines.append('Could not evaluate at that n.')
+    lines.append('')
+    lines.append('As n grows, S(n) tends to g(1) when')
+    lines.append('g(n+1) tends to 0.')
+    _show('Method of differences', lines)
+
+
 TOOLS = [
     ('Sum of r', t_sum_r),
     ('Sum of r^2', t_sum_r2),
     ('Sum of r^3', t_sum_r3),
     ('Maclaurin of f(x)', t_maclaurin),
     ('Approx + error', t_approx),
+    ('Method of differences', t_differences),
     ('Reference card', t_reference),
 ]
 

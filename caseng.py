@@ -195,12 +195,18 @@ def _s(node):
         if an and a[1] == 0: return b
         if bn and b[1] == 0: return a
         if a == b: return _s(('*', ('n', 2), a))
+        # x + (-1) is x - 1: adding a negative reads badly on a result screen
+        if bn and b[1] < 0: return ('-', a, ('n', -b[1]))
+        if a[0] == 'neg': return ('-', b, a[1])
+        if b[0] == 'neg': return ('-', a, b[1])
         return ('+', a, b)
     if t == '-':
         if an and bn: return ('n', a[1] - b[1])
         if bn and b[1] == 0: return a
         if an and a[1] == 0: return ('neg', b)
         if a == b: return ('n', 0)
+        if bn and b[1] < 0: return ('+', a, ('n', -b[1]))
+        if b[0] == 'neg': return ('+', a, b[1])
         return ('-', a, b)
     if t == '*':
         if an and bn: return ('n', a[1] * b[1])

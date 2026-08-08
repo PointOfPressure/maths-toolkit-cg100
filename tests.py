@@ -440,6 +440,262 @@ def test_cas_algebra_ui():
     has("partial fractions needs a fraction", out, "one fraction")
 
 
+# =========================================================== purecalc tests =
+def test_engine_substitution():
+    # subst / subst_tree / count_var / invert - the pieces composite functions,
+    # implicit differentiation and integration by substitution are built on
+    t = caslex.parse("x^2+1")
+    check("subst x -> 2t", caseng.tostr(caseng.subst(t, 'x', caslex.parse("2t"))),
+          "(2*t)^2+1")
+    check("subst leaves other letters", caseng.tostr(caseng.subst(t, 'y', ('n', 9))),
+          "x^2+1")
+    check("subst_tree replaces a whole subtree",
+          caseng.tostr(caseng.subst_tree(caslex.parse("(x^2+1)^5"),
+                                         caslex.parse("x^2+1"), ('v', 'u'))), "u^5")
+    check("count_var counts every occurrence", caseng.count_var(caslex.parse("x^2+x"), 'x'), 2)
+    check("count_var of an absent letter", caseng.count_var(t, 'y'), 0)
+    check("vars_in", caseng.vars_in(caslex.parse("x*y+z")), ['x', 'y', 'z'])
+
+    # invert, each checked by composing back: f(f-inverse(y)) must be y
+    for expr, want in (("2x+3", "(y-3)/2"), ("(x-1)/2", "2*y+1"),
+                       ("exp(2x)", "ln(y)/2"), ("3ln(x)+1", "exp((y-1)/3)"),
+                       ("5-2x", "(5-y)/2"), ("2^x", "ln(y)/ln(2)")):
+        f = caslex.parse(expr)
+        inv = caseng.invert(f, 'x', 'y')
+        check("invert " + expr, caseng.tostr(inv), want)
+        for yv in (0.6, 1.4, 2.9):
+            try:
+                xv = caseng.evalf(inv, 0.0, False, {'y': yv})
+                back = caseng.evalf(f, xv)
+            except:
+                continue
+            close("invert " + expr + " round-trips at y=" + str(yv), back, yv, 1e-9)
+    # x appearing twice cannot be undone this way, and abs is not one-to-one
+    check("invert refuses x^2+x", caseng.invert(caslex.parse("x^2+x"), 'x', 'y'), None)
+    check("invert refuses abs", caseng.invert(caslex.parse("abs(x)"), 'x', 'y'), None)
+
+def test_solve_variable():
+    # solve() and defint() passed the sample point to evalf positionally, and
+    # evalf's positional argument is always x. Anything written in another
+    # letter raised on every sample, the exception was swallowed, and solve
+    # returned an empty list rather than failing - a confident wrong answer.
+    r = cascalc.solve(caslex.parse("3t^2-12t+9"), 't')
+    check("solve in t finds both roots", len(r), 2)
+    close("solve in t root 1", r[0], 1.0, 1e-5)
+    close("solve in t root 2", r[1], 3.0, 1e-5)
+    close("defint in t", cascalc.defint(caslex.parse("t^2"), 0.0, 3.0, False, 200, 't'),
+          9.0, 1e-9)
+    # a touching root in another letter, via the ternary-search path
+    r = cascalc.solve(caslex.parse("(y-2)^2"), 'y')
+    check("touching root in y", len(r), 1)
+    close("touching root value", r[0], 2.0, 1e-5)
+    # and x still behaves
+    close("solve in x still works", cascalc.solve(caslex.parse("x^2-4"), 'x')[1], 2.0, 1e-5)
+
+def test_purecalc():
+    import purecalc
+    # composite: f(x)=x^2, g(x)=2x+1 -> fg = (2x+1)^2, gf = 2x^2+1
+    o = drive(purecalc.t_composite, ["x^2", "2x+1", "3"])
+    has("fg(x)", o, "(2*x+1)^2")
+    has("gf(x)", o, "2*x^2+1")
+    num("fg at 3 is 49", o, "fg = ", 49.0)
+    num("gf at 3 is 19", o, "gf = ", 19.0)
+
+    # inverse of (3x-2)/4 is (4x+2)/3; f-inverse(10) = 14
+    o = drive(purecalc.t_inverse, ["(3x-2)/4", "10"])
+    has("inverse expression", o, "(4*x+2)/3")
+    has("inverse self-check", o, "check f(f-inv(x)) = x: yes")
+    num("inverse at 10", o, "f-inverse(10) = ", 14.0)
+    # x^2 is not one-to-one: it must not claim an inverse, and solving x^2 = 4
+    # has to report both roots rather than silently picking one
+    o = drive(purecalc.t_inverse, ["x^2+x", "4"])
+    has("no inverse by peeling", o, "No exact inverse")
+    has("reports both roots", o, "no inverse here")
+
+    # domain and range of 1/x on [-2, 2]: undefined at x = 0
+    o = drive(purecalc.t_domain_range, ["1/x", "-2", "2"])
+    has("undefined points reported", o, "undefined at")
+    # sqrt(x) on [0, 4] is defined throughout and reaches 0 to 2
+    o = drive(purecalc.t_domain_range, ["sqrt(x)", "0", "4"])
+    has("whole interval", o, "domain: the whole interval")
+    has("range 0 to 2", o, "range reached: 0 to 2")
+
+    # |2x-6| = 4 has solutions x = 1 and x = 5
+    o = drive(purecalc.t_modulus, ["2x-6", "4"])
+    has("modulus root 1", o, "x = 1")
+    has("modulus root 5", o, "x = 5")
+    # a negative right-hand side has no solutions at all
+    o = drive(purecalc.t_modulus, ["2x-6", "-4"])
+    has("negative modulus impossible", o, "never negative")
+
+    # y = 2f(3x+6)+1 with f(x) = x^2 is 2(3x+6)^2+1; the horizontal
+    # translation is -c/b = -2, which is the step students get backwards
+    o = drive(purecalc.t_transform, ["x^2", "2", "3", "6", "1"])
+    has("transformed expression", o, "2*(3*x+6)^2+1")
+    has("x stretch is 1/b", o, "stretch x by scale factor 0.3333")
+    has("x translation is -c/b", o, "translate x by -2")
+
+    # x = t^2, y = t^3: dy/dx = 3t/2, so at t = 2 the gradient is 3 and the
+    # point is (4, 8). d2y/dx2 = (3/2)/(2t) = 3/(4t), which is 0.375 at t = 2.
+    o = drive(purecalc.t_param_diff, ["t^2", "t^3", "2"])
+    has("dx/dt", o, "dx/dt = 2*t")
+    has("dy/dt", o, "dy/dt = 3*t^2")
+    has("parametric gradient", o, "dy/dx = 3*t/2")
+    has("point at t=2", o, "point (4, 8)")
+    num("gradient at t=2", o, "dy/dx = ", 3.0)
+    num("second derivative at t=2", o, "d2y/dx2 = ", 0.375)
+
+    # x = 2t+1, y = t^2 gives t = (x-1)/2 and y = ((x-1)/2)^2
+    o = drive(purecalc.t_param_cartesian, ["2t+1", "t^2", "0", "2"])
+    has("t in terms of x", o, "t = (x-1)/2")
+
+    # circle x^2+y^2=25: dy/dx = -x/y, which is -3/4 at (3,4)
+    o = drive(purecalc.t_implicit, ["x^2+y^2=25", "3", "4"])
+    has("implicit gradient", o, "dy/dx = -x/y")
+    num("implicit gradient at (3,4)", o, "dy/dx = ", -0.75)
+    num("normal gradient there", o, "normal gradient ", 4.0 / 3.0)
+    # a point that is not on the curve must be called out, not answered silently
+    o = drive(purecalc.t_implicit, ["x^2+y^2=25", "1", "1"])
+    has("off-curve point warned", o, "not on the curve")
+    # the folium x^3+y^3=6xy: dy/dx = -(3x^2-6y)/(3y^2-6x), which is -1 at (3,3)
+    o = drive(purecalc.t_implicit, ["x^3+y^3=6xy", "3", "3"])
+    num("folium gradient at (3,3)", o, "dy/dx = ", -1.0)
+
+    # substitution: int 2x(x^2+1)^5 dx with u = x^2+1 is (x^2+1)^6/6
+    o = drive(purecalc.t_substitution, ["2x(x^2+1)^5", "x^2+1"])
+    has("integrand clears to u^5", o, "in terms of u: u^5")
+    has("substitution answer", o, "(x^2+1)^6/6")
+    has("substitution self-check", o, "differentiating back: agrees")
+    # int x sqrt(x^2+1) dx with the same u is (x^2+1)^(3/2)/3
+    o = drive(purecalc.t_substitution, ["x*sqrt(x^2+1)", "x^2+1"])
+    has("sqrt substitution answer", o, "(x^2+1)^(3/2)/3")
+    has("sqrt substitution checks", o, "differentiating back: agrees")
+    # int cos(x) sin(x)^3 dx with u = sin(x) is sin(x)^4/4
+    o = drive(purecalc.t_substitution, ["cos(x)sin(x)^3", "sin(x)"])
+    has("trig substitution answer", o, "sin(x)^4/4")
+    # a substitution that does not clear the x must say so rather than
+    # producing an answer with an x left inside it
+    o = drive(purecalc.t_substitution, ["x^3", "sin(x)"])
+    has("bad substitution reported", o, "does not clear the integral")
+
+    # separable dy/dx = 2x y through (0,1) is y = e^(x^2)
+    o = drive(purecalc.t_separable, ["2x", "y", "0", "1"])
+    has("separable ln y side", o, "integral 1/g(y) dy = ln(y)")
+    has("separable x side", o, "integral f(x) dx   = x^2")
+    has("separable explicit", o, "y = exp(x^2)")
+    has("separable passes the point", o, "passes through")
+    # dy/dx = y^2 through (0,1) is -1/y = x - 1, i.e. y = 1/(1-x)
+    o = drive(purecalc.t_separable, ["1", "y^2", "0", "1"])
+    has("y^2 separable integral", o, "integral 1/g(y) dy = -1/y")
+    # a g that mentions x is not separable this way
+    o = drive(purecalc.t_separable, ["1", "x*y", None])
+    has("g must be in y only", o, "function of y only")
+
+    # small angles: at x = 0.1, sin x = 0.0998334 and the approximation is 0.1
+    o = drive(purecalc.t_small_angle, ["0.1"])
+    has("small angle usable", o, "good to about 0.2%")
+    num("sin exact at 0.1", o, "exact  ", math.sin(0.1), 1e-6)
+    o = drive(purecalc.t_small_angle, ["1.2"])
+    has("1.2 rad is not a small angle", o, "not a small angle")
+
+    o = drive(purecalc.t_exact_trig, [])
+    has("exact trig 30 degrees", o, "sqrt(3)/2")
+    has("exact trig 45 degrees", o, "1/sqrt(2)")
+    has("tan 90 is undefined", o, "undefined")
+
+def test_mech_variable_accel():
+    import mech640
+    # s = t^3-6t^2+9t: v = 3t^2-12t+9 = 3(t-1)(t-3), a = 6t-12.
+    # At rest at t = 1 (s = 4) and t = 3 (s = 0). At t = 2: s = 2, v = -3, a = 0.
+    o = drive(mech640.kinematics, ["t^3-6t^2+9t", "2"], [0])
+    has("v from s", o, "v(t) = 3*t^2-12*t+9")
+    has("a from s", o, "a(t) = 6*t-12")
+    has("at rest at t=1", o, "t = 1   s = 4")
+    has("at rest at t=3", o, "t = 3   s = 0")
+    num("s at t=2", o, "s = ", 2.0)
+    num("v at t=2", o, "v = ", -3.0)
+
+    # a = 6t with v(0) = 0 and s(0) = 0 gives v = 3t^2 and s = t^3
+    o = drive(mech640.kinematics, ["6t", "0", "0", "2"], [2])
+    has("v by integrating a", o, "v(t) = 3*t^2")
+    has("s by integrating v", o, "s(t) = t^3")
+    num("s at t=2 from a", o, "s = ", 8.0)
+
+    # v = t^2-4t on 0 <= t <= 5 reverses at t = 4.
+    # displacement = 125/3 - 50 = -8.333; distance = 32-64/3 + 125/3-50-(64/3-32)
+    #             = 10.6667 + 2.3333 = 13. Getting this wrong is the classic
+    # variable-acceleration mark drop, so it is asserted both ways.
+    o = drive(mech640.distance_travelled, ["t^2-4t", "0", "5"])
+    has("sign change found", o, "t = 4")
+    num("displacement", o, "displacement = ", -25.0 / 3.0, 1e-3)
+    num("distance travelled", o, "distance     = ", 13.0, 1e-3)
+    has("they differ", o, "They differ")
+    # v = t^2+1 never changes sign, so the two agree
+    o = drive(mech640.distance_travelled, ["t^2+1", "0", "3"])
+    num("no reversal displacement", o, "displacement = ", 12.0, 1e-3)
+    num("no reversal distance", o, "distance     = ", 12.0, 1e-3)
+    has("same when v keeps its sign", o, "Same, because")
+
+    # 5 kg hanging pulls 3 kg along a smooth horizontal table:
+    # a = 5g/8 = 6.125, T = 3a = 18.375
+    o = drive(mech640.connected, ["9.8", "5", "90", "0", "3", "0", "0"])
+    num("connected acceleration", o, "a = ", 6.125, 1e-3)
+    num("connected tension", o, "tension T = ", 18.375, 1e-3)
+    # 2 kg hanging against 5 kg on a rough horizontal table with mu = 0.6:
+    # drive = 2g = 19.6, friction = 0.6*5g = 29.4, so nothing moves
+    o = drive(mech640.connected, ["9.8", "2", "90", "0", "5", "0", "0.6"])
+    has("stays at rest", o, "stays at rest")
+    has("friction is not at maximum", o, "not its maximum")
+
+def test_matrix_invariant():
+    import matrix
+    # shear [[1,2],[0,1]]: every point on y = 0 is invariant, and y = 0 is the
+    # only invariant line (the y-axis is not: (0,1) maps to (2,1))
+    matrix.A = [[1.0, 2.0], [0.0, 1.0]]
+    o = drive(matrix.t_invariant, [])
+    has("shear has a line of invariant points", o, "LINE of invariant points")
+    truthy("shear does not claim the y-axis is invariant",
+           not [ln for ln in o if 'x = 0 (the y-axis)' in ln])
+    # diag(3,2): only the origin is invariant, but both axes are invariant lines
+    matrix.A = [[3.0, 0.0], [0.0, 2.0]]
+    o = drive(matrix.t_invariant, [])
+    has("diagonal has only the origin", o, "only")
+    has("x-axis is an invariant line", o, "y = 0 x")
+    has("y-axis is an invariant line", o, "x = 0 (the y-axis)")
+    # a rotation by 90 degrees has no real invariant line
+    matrix.A = [[0.0, -1.0], [1.0, 0.0]]
+    o = drive(matrix.t_invariant, [])
+    has("rotation has no invariant line", o, "no invariant line")
+
+    # 3x3: a rotation about z has determinant 1; a reflection has -1
+    o = drive(matrix.t_transform3, ["90"], [2])
+    num("3D rotation determinant", o, "det = ", 1.0, 1e-6)
+    o = drive(matrix.t_transform3, [], [4])
+    num("3D reflection determinant", o, "det = ", -1.0, 1e-6)
+    has("reflection reverses orientation", o, "orientation is reversed")
+
+def test_method_of_differences():
+    import series
+    # 1/(r(r+1)) = 1/r - 1/(r+1), so S(n) = 1 - 1/(n+1) and S(10) = 10/11
+    o = drive(series.t_differences, ["1/(r(r+1))", "10"])
+    has("g(r) for the standard case", o, "take g(r) = 1/r")
+    has("telescoping checked", o, "checked numerically")
+    num("S(10) of 1/(r(r+1))", o, "S(10) = ", 10.0 / 11.0, 1e-4)
+    num("direct sum agrees", o, "direct sum  = ", 10.0 / 11.0, 1e-4)
+    # 1/(r(r+2)) = (1/2)(1/r - 1/(r+2)), a two-step gap:
+    # S(n) = 3/4 - 1/(2(n+1)) - 1/(2(n+2)), so S(20) = 0.75 - 1/42 - 1/44
+    want = 0.75 - 1.0 / 42.0 - 1.0 / 44.0
+    o = drive(series.t_differences, ["1/(r(r+2))", "20"])
+    num("S(20) of 1/(r(r+2))", o, "S(20) = ", want, 1e-4)
+    num("two-step direct sum agrees", o, "direct sum  = ", want, 1e-4)
+    # 2/((2r-1)(2r+1)) = 1/(2r-1) - 1/(2r+1), so S(n) = 1 - 1/(2n+1)
+    o = drive(series.t_differences, ["2/((2r-1)(2r+1))", "50"])
+    num("S(50) of the odd-denominator sum", o, "S(50) = ", 1.0 - 1.0 / 101.0, 1e-4)
+    # something that does not telescope must say so
+    o = drive(series.t_differences, ["1/(r^2+1)", None])
+    has("non-telescoping reported", o, "does not telescope")
+
+
 # =========================================================== cascalc tests =
 def test_calculus():
     # linear_coeff must be structural. Sampling at x = 0, 1, 2 accepted this
@@ -1499,6 +1755,12 @@ TESTS = [
     ("calculus", test_calculus),
     ("polynomial algebra", test_polyalg),
     ("CAS algebra UI", test_cas_algebra_ui),
+    ("engine substitution", test_engine_substitution),
+    ("solve in any variable", test_solve_variable),
+    ("purecalc", test_purecalc),
+    ("mechanics variable accel", test_mech_variable_accel),
+    ("matrix invariants", test_matrix_invariant),
+    ("method of differences", test_method_of_differences),
     ("render", test_render),
     ("ui format", test_ui_format),
     ("keymap vs hardware", test_keymap_matches_hardware),

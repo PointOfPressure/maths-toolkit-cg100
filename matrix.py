@@ -334,6 +334,143 @@ def t_transform():
     _show('TRANSFORM', lines)
 
 
+def t_invariant():
+    # An invariant POINT satisfies Ap = p, i.e. (A - I)p = 0. An invariant LINE
+    # is mapped to itself as a set: its points move along it but do not leave
+    # it. Students routinely conflate the two, so both are reported and the
+    # difference is spelled out.
+    if A is None:
+        _show('INVARIANT', ['Enter A first.'])
+        return
+    if len(A) != 2 or len(A[0]) != 2:
+        _show('INVARIANT', ['A must be 2x2 for this tool.'])
+        return
+    a = A[0][0]
+    b = A[0][1]
+    c = A[1][0]
+    d = A[1][1]
+    lines = _matlines('A', A) + ['']
+    # invariant points: (A - I)p = 0
+    p = a - 1.0
+    q = b
+    r = c
+    s = d - 1.0
+    det = p * s - q * r
+    lines.append('INVARIANT POINTS  (A p = p)')
+    lines.append('solve (A - I)p = 0:')
+    lines.append('  (' + _fn(p) + ')x + (' + _fn(q) + ')y = 0')
+    lines.append('  (' + _fn(r) + ')x + (' + _fn(s) + ')y = 0')
+    if abs(det) > 1e-12:
+        lines.append('det(A - I) = ' + _fn(det) + ', not 0,')
+        lines.append('so the origin is the only')
+        lines.append('invariant point.')
+    else:
+        lines.append('det(A - I) = 0, so there is a whole')
+        lines.append('LINE of invariant points:')
+        if abs(p) > 1e-12 or abs(q) > 1e-12:
+            if abs(q) > 1e-12:
+                lines.append('  y = ' + _fn(-p / q) + ' x')
+            else:
+                lines.append('  x = 0')
+        elif abs(r) > 1e-12 or abs(s) > 1e-12:
+            if abs(s) > 1e-12:
+                lines.append('  y = ' + _fn(-r / s) + ' x')
+            else:
+                lines.append('  x = 0')
+        else:
+            lines.append('  every point (A is the identity)')
+    # invariant lines through the origin: y = mx maps to y = mx, so
+    # (c + d m) = m (a + b m), i.e. b m^2 + (a - d) m - c = 0
+    lines.append('')
+    lines.append('INVARIANT LINES y = m x')
+    lines.append('need c + d m = m(a + b m), so')
+    lines.append('  b m^2 + (a - d)m - c = 0')
+    lines.append('  (' + _fn(b) + ')m^2 + (' + _fn(a - d) + ')m - (' + _fn(c) + ') = 0')
+    ms = []
+    if abs(b) < 1e-12:
+        if abs(a - d) > 1e-12:
+            ms.append(c / (a - d))
+        elif abs(c) < 1e-12:
+            lines.append('  every m works: every line')
+            lines.append('  through the origin is invariant')
+    else:
+        disc = (a - d) * (a - d) + 4.0 * b * c
+        if disc < -1e-12:
+            lines.append('  no real m: no invariant line')
+            lines.append('  through the origin')
+        else:
+            if disc < 0:
+                disc = 0.0
+            rt = math.sqrt(disc)
+            ms.append((-(a - d) + rt) / (2.0 * b))
+            if rt > 1e-12:
+                ms.append((-(a - d) - rt) / (2.0 * b))
+    for m in ms:
+        lines.append('  y = ' + _fn(m) + ' x')
+    # x = 0 is invariant when the image of (0,1) has zero x-component
+    if abs(b) < 1e-12:
+        lines.append('  x = 0 (the y-axis) as well')
+    lines.append('')
+    lines.append('A line of invariant points is')
+    lines.append('invariant; an invariant line need')
+    lines.append('not have any invariant point on it')
+    lines.append('other than the origin.')
+    _show('INVARIANT', lines)
+
+
+def t_transform3():
+    # 3x3 transformation matrices: rotations about and reflections in the
+    # coordinate axes and planes.
+    global A
+    opts = ['Rotate about x-axis', 'Rotate about y-axis', 'Rotate about z-axis',
+            'Reflect in plane x=0', 'Reflect in plane y=0', 'Reflect in plane z=0',
+            'Enlargement k']
+    c = casui.menu('3D TRANSFORM', opts)
+    if c == -1:
+        return
+    m = None
+    note = ''
+    if c <= 2:
+        th = _asknum('angle theta (deg):')
+        if th is None:
+            return
+        rad = th * math.pi / 180.0
+        co = math.cos(rad)
+        si = math.sin(rad)
+        if c == 0:
+            m = [[1.0, 0.0, 0.0], [0.0, co, -si], [0.0, si, co]]
+            note = 'rotation ' + _fn(th) + ' deg about x'
+        elif c == 1:
+            m = [[co, 0.0, si], [0.0, 1.0, 0.0], [-si, 0.0, co]]
+            note = 'rotation ' + _fn(th) + ' deg about y'
+        else:
+            m = [[co, -si, 0.0], [si, co, 0.0], [0.0, 0.0, 1.0]]
+            note = 'rotation ' + _fn(th) + ' deg about z'
+    elif c == 3:
+        m = [[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+        note = 'reflect in the plane x = 0'
+    elif c == 4:
+        m = [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]]
+        note = 'reflect in the plane y = 0'
+    elif c == 5:
+        m = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]]
+        note = 'reflect in the plane z = 0'
+    else:
+        k = _asknum('scale factor k:')
+        if k is None:
+            return
+        m = [[k, 0.0, 0.0], [0.0, k, 0.0], [0.0, 0.0, k]]
+        note = 'enlargement k = ' + _fn(k)
+    A = m
+    det = _det(m)
+    lines = [note] + _matlines('A', m) + ['det = ' + _fn(det),
+                                          '|det| = volume scale factor']
+    if det < 0:
+        lines.append('det < 0: orientation is reversed')
+        lines.append('(it includes a reflection)')
+    _show('3D TRANSFORM', lines)
+
+
 TOOLS = [
     ('Enter A', t_enterA),
     ('Enter B', t_enterB),
