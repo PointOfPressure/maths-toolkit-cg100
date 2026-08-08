@@ -1,5 +1,8 @@
 import math
 import casui
+import caslex
+import caseng
+import cascalc
 import casutil
 
 _asknum = casutil.asknum
@@ -349,6 +352,288 @@ TOOLS = [
     ('Moments / reactions', moments),
 ]
 
+
+# ---------------------------------------------------------------------------
+# Variable acceleration. SUVAT is constant-acceleration only, so none of the
+# tools above apply once a, v or s is a function of t. The relationships are
+#   v = ds/dt,  a = dv/dt = d2s/dt2,  v = integral a dt,  s = integral v dt
+# and the constants of integration come from the initial conditions.
+def _tvalue(tree, tv):
+    try:
+        val = caseng.evalf(tree, 0.0, False, {'t': tv})
+    except:
+        return None
+    if isinstance(val, complex) or val != val:
+        return None
+    return val
+
+def _tparse(prompt):
+    s = casui.input_expr(prompt)
+    if s is None:
+        return None
+    tree = caslex.parse(s)
+    if tree is None:
+        _show('Variable acceleration', ['Could not read that expression.'])
+        return None
+    if caseng.count_var(tree, 'x'):
+        # a student who types x for time gets silence otherwise: evalf would
+        # take x as the sample point and quietly answer for the wrong variable
+        _show('Variable acceleration', ['Type the time variable as t,',
+                                        'not x. Use ALPHA then the',
+                                        'divide key for t.'])
+        return None
+    return tree
+
+def kinematics():
+    _show('Variable acceleration', ['SUVAT only works when a is',
+                                    'constant. Here a, v or s is a',
+                                    'function of t and calculus does',
+                                    'the work:',
+                                    '  v = ds/dt   a = dv/dt',
+                                    '  v = int a dt   s = int v dt'])
+    which = casui.menu('You are given', ['s(t) displacement', 'v(t) velocity',
+                                         'a(t) acceleration'])
+    if which == -1:
+        return
+    tree = _tparse(('s(t) =', 'v(t) =', 'a(t) =')[which])
+    if tree is None:
+        return
+    s = None
+    v = None
+    a = None
+    lines = []
+    if which == 0:
+        s = tree
+        try:
+            v = cascalc.tidy(caseng.diff(s, 't'))
+            a = cascalc.tidy(caseng.diff(v, 't'))
+        except:
+            _show('Variable acceleration', ['Cannot differentiate that.'])
+            return
+    elif which == 1:
+        v = tree
+        try:
+            a = cascalc.tidy(caseng.diff(v, 't'))
+        except:
+            a = None
+        S = cascalc.integ(v, 't')
+        if S is not None:
+            s0 = _asknum('s when t=0 [0]')
+            if s0 is None:
+                s0 = 0.0
+            base = _tvalue(S, 0.0)
+            c = 0.0 if base is None else s0 - base
+            s = cascalc.tidy(('+', S, ('n', c)))
+            lines.append('s(0) = ' + _fn(s0) + ' fixes the constant')
+    else:
+        a = tree
+        V = cascalc.integ(a, 't')
+        if V is None:
+            _show('Variable acceleration', ['a(t) has no elementary integral,',
+                                            'so v cannot be written down.'])
+            return
+        v0 = _asknum('v when t=0 [0]')
+        if v0 is None:
+            v0 = 0.0
+        base = _tvalue(V, 0.0)
+        c = 0.0 if base is None else v0 - base
+        v = cascalc.tidy(('+', V, ('n', c)))
+        S = cascalc.integ(v, 't')
+        if S is not None:
+            s0 = _asknum('s when t=0 [0]')
+            if s0 is None:
+                s0 = 0.0
+            base = _tvalue(S, 0.0)
+            c2 = 0.0 if base is None else s0 - base
+            s = cascalc.tidy(('+', S, ('n', c2)))
+        lines.append('v(0) = ' + _fn(v0) + ' fixes the constant')
+    out = []
+    if s is not None:
+        out.append('s(t) = ' + caseng.tostr(s))
+    else:
+        out.append('s(t): no elementary integral')
+    if v is not None:
+        out.append('v(t) = ' + caseng.tostr(v))
+    if a is not None:
+        out.append('a(t) = ' + caseng.tostr(a))
+    out.append('')
+    for ln in lines:
+        out.append(ln)
+    # the questions that actually get asked about these
+    if v is not None:
+        zeros = cascalc.solve(v, 't')
+        pos = []
+        for r in zeros:
+            if r >= 0:
+                pos.append(r)
+        out.append('')
+        if pos:
+            out.append('at rest (v = 0) when:')
+            for r in pos:
+                extra = ''
+                if s is not None:
+                    sv = _tvalue(s, r)
+                    if sv is not None:
+                        extra = '   s = ' + _fn(sv)
+                out.append('  t = ' + _fn(r) + extra)
+            out.append('(these are the turning points of s,')
+            out.append(' so distance travelled and')
+            out.append(' displacement differ after them)')
+        else:
+            out.append('v is never 0 for t >= 0 in the')
+            out.append('search range, so the motion does')
+            out.append('not reverse.')
+    tv = _asknum('values at t = (or cancel)')
+    if tv is not None:
+        out.append('')
+        out.append('at t = ' + _fn(tv) + ':')
+        for nm, tr in (('s', s), ('v', v), ('a', a)):
+            if tr is None:
+                continue
+            val = _tvalue(tr, tv)
+            out.append('  ' + nm + ' = ' + ('undefined' if val is None else _fn(val)))
+    _show('Variable acceleration', out)
+
+def distance_travelled():
+    # Distance is the integral of |v|, which is not the same as the change in
+    # displacement whenever the object turns round. This is the mark students
+    # most often drop on a variable-acceleration question.
+    _show('Distance vs displacement', ['Displacement is int v dt.',
+                                       'Distance travelled is int |v| dt,',
+                                       'and they differ as soon as v',
+                                       'changes sign. Enter v(t) and the',
+                                       'time interval.'])
+    v = _tparse('v(t) =')
+    if v is None:
+        return
+    t0 = _asknum('from t =')
+    if t0 is None:
+        return
+    t1 = _asknum('to t =')
+    if t1 is None:
+        return
+    if t1 < t0:
+        t0, t1 = t1, t0
+    turns = []
+    for r in cascalc.solve(v, 't'):
+        if t0 + 1e-9 < r < t1 - 1e-9:
+            turns.append(r)
+    turns.sort()
+    bounds = [t0] + turns + [t1]
+    disp = 0.0
+    dist = 0.0
+    parts = []
+    i = 0
+    ok = True
+    while i < len(bounds) - 1:
+        seg = cascalc.defint(v, bounds[i], bounds[i + 1], False, 200, 't')
+        if seg is None:
+            ok = False
+            break
+        disp += seg
+        dist += seg if seg >= 0 else -seg
+        parts.append((bounds[i], bounds[i + 1], seg))
+        i += 1
+    if not ok:
+        _show('Distance', ['Could not integrate v over that', 'interval.'])
+        return
+    lines = ['v(t) = ' + caseng.tostr(caseng.simplify(v)),
+             'from t = ' + _fn(t0) + ' to t = ' + _fn(t1), '']
+    if turns:
+        lines.append('v = 0 inside the interval at:')
+        for r in turns:
+            lines.append('  t = ' + _fn(r))
+        lines.append('so the motion reverses - split the')
+        lines.append('integral there:')
+        for a0, b0, seg in parts:
+            lines.append('  ' + _fn(a0) + ' to ' + _fn(b0) + ':  ' + _fn(seg))
+        lines.append('')
+    lines.append('displacement = ' + _fn(disp))
+    lines.append('distance     = ' + _fn(dist))
+    if abs(dist - abs(disp)) > 1e-6:
+        lines.append('')
+        lines.append('They differ because v changes sign.')
+    else:
+        lines.append('')
+        lines.append('Same, because v keeps one sign.')
+    _show('Distance', lines)
+
+def connected():
+    # Two particles joined by a light inextensible string over a smooth pulley,
+    # with either or both on a rough inclined plane. The simple pulley tool
+    # above is the special case of two vertical hangs.
+    _show('Connected particles', ['Two masses joined over a smooth',
+                                  'pulley. Each one either hangs',
+                                  'vertically or sits on a plane at',
+                                  'an angle, possibly rough.',
+                                  'Angle 90 means hanging.'])
+    g = _askg()
+    m1 = _asknum('mass 1 (kg)')
+    if m1 is None or m1 <= 0:
+        return
+    a1 = _asknum('mass 1 plane angle deg [90]')
+    if a1 is None:
+        a1 = 90.0
+    mu1 = _asknum('mass 1 friction mu [0]')
+    if mu1 is None:
+        mu1 = 0.0
+    m2 = _asknum('mass 2 (kg)')
+    if m2 is None or m2 <= 0:
+        return
+    a2 = _asknum('mass 2 plane angle deg [90]')
+    if a2 is None:
+        a2 = 90.0
+    mu2 = _asknum('mass 2 friction mu [0]')
+    if mu2 is None:
+        mu2 = 0.0
+    s1 = math.sin(_rad(a1))
+    c1 = math.cos(_rad(a1))
+    s2 = math.sin(_rad(a2))
+    c2 = math.cos(_rad(a2))
+    # take mass 1 as the one that moves down its plane; driving forces are the
+    # components of weight along each plane, friction always opposes motion
+    drive = m1 * g * s1 - m2 * g * s2
+    fric = mu1 * m1 * g * c1 + mu2 * m2 * g * c2
+    lines = ['g = ' + _fn(g),
+             'mass 1: ' + _fn(m1) + ' kg at ' + _fn(a1) + ' deg, mu = ' + _fn(mu1),
+             'mass 2: ' + _fn(m2) + ' kg at ' + _fn(a2) + ' deg, mu = ' + _fn(mu2),
+             '',
+             'driving force along the string:',
+             '  m1 g sin' + _fn(a1) + ' - m2 g sin' + _fn(a2) + ' = ' + _fn(drive),
+             'maximum total friction:',
+             '  mu1 m1 g cos' + _fn(a1) + ' + mu2 m2 g cos' + _fn(a2) + ' = ' + _fn(fric)]
+    if abs(drive) <= fric + 1e-9:
+        lines.append('')
+        lines.append('|driving| <= friction, so the')
+        lines.append('system stays at rest. Friction')
+        lines.append('takes the value that balances it,')
+        lines.append('which is ' + _fn(abs(drive)) + ' N, not its maximum.')
+        lines.append('Tension is then indeterminate from')
+        lines.append('these equations alone.')
+        _show('Connected particles', lines)
+        return
+    sgn = 1.0 if drive > 0 else -1.0
+    a = (abs(drive) - fric) / (m1 + m2)
+    # tension from mass 2's equation: T - m2 g sin(a2) - friction2 = m2 * a
+    f2 = mu2 * m2 * g * c2
+    T = m2 * a + m2 * g * s2 + f2 if sgn > 0 else m1 * a + m1 * g * s1 + mu1 * m1 * g * c1
+    lines.append('')
+    lines.append('acceleration a = (|drive| - friction)')
+    lines.append('                 / (m1 + m2)')
+    lines.append('a = ' + _fn(a) + ' m/s^2')
+    lines.append('mass ' + ('1' if sgn > 0 else '2') + ' accelerates down its plane.')
+    lines.append('tension T = ' + _fn(T) + ' N')
+    lines.append('')
+    lines.append('')
+    lines.append('(T is the same throughout a light')
+    lines.append(' inextensible string over a smooth')
+    lines.append(' pulley - that is what makes one')
+    lines.append(' equation per mass enough)')
+    _show('Connected particles', lines)
+
+TOOLS.append(('Variable acceleration', kinematics))
+TOOLS.append(('Distance vs displacement', distance_travelled))
+TOOLS.append(('Connected particles', connected))
 
 def run():
     casutil.run_tools('MECHANICS', TOOLS)

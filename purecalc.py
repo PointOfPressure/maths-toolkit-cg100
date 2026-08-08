@@ -557,7 +557,75 @@ def t_substitution():
         pass
     _show('Substitution', lines)
 
-# 10. SMALL-ANGLE APPROXIMATIONS --------------------------------------------
+# 10. SEPARATION OF VARIABLES -----------------------------------------------
+def t_separable():
+    _show('Separation of variables', ['For dy/dx = f(x) g(y):',
+                                      '  integral 1/g(y) dy',
+                                      '   = integral f(x) dx + C',
+                                      'Enter f(x), then g(y) typed in y.',
+                                      'For dy/dx = f(x) alone, put g(y) = 1.'])
+    f = _parse('f(x) =')
+    if f is None:
+        return
+    g = _parse('g(y) = (use y; 1 if none)')
+    if g is None:
+        return
+    if caseng.count_var(g, 'x'):
+        _show('Separable', ['g must be a function of y only.',
+                            'If x and y will not separate,',
+                            'this method does not apply -',
+                            'try the integrating factor.'])
+        return
+    B = cascalc.integ(f, 'x')
+    A = cascalc.integ(caseng.simplify(('/', ('n', 1), g)), 'y')
+    lines = ['dy/dx = (' + _ts(f) + ')(' + _ts(g) + ')', '']
+    if A is None or B is None:
+        lines.append('One side has no elementary')
+        lines.append('integral, so there is no formula')
+        lines.append('to write down. Use Euler\'s method')
+        lines.append('in Numerical Methods for values.')
+        _show('Separable', lines)
+        return
+    A = cascalc.tidy(A)
+    B = cascalc.tidy(B)
+    lines.append('separate:  dy/g(y) = f(x) dx')
+    lines.append('')
+    lines.append('integral 1/g(y) dy = ' + caseng.tostr(A))
+    lines.append('integral f(x) dx   = ' + caseng.tostr(B))
+    lines.append('')
+    lines.append('general solution (implicit):')
+    lines.append('  ' + caseng.tostr(A) + ' = ' + caseng.tostr(B) + ' + C')
+    x0 = _asknum('initial condition x = (or cancel)')
+    if x0 is not None:
+        y0 = _asknum('when y =')
+        if y0 is not None:
+            a0 = _safe(A, 0.0, {'y': y0})
+            b0 = _safe(B, x0)
+            if a0 is None or b0 is None:
+                lines.append('')
+                lines.append('That point is outside the domain')
+                lines.append('of one of the integrals.')
+            else:
+                C = a0 - b0
+                lines.append('')
+                lines.append('at (' + _fn(x0) + ', ' + _fn(y0) + '):  C = ' + _fn(C))
+                lines.append('  ' + caseng.tostr(A) + ' = ' + caseng.tostr(B) +
+                             ' + ' + _fn(C))
+                # make y explicit where A can be undone
+                inv = caseng.invert(A, 'y', 'w')
+                if inv is not None:
+                    rhs = caseng.simplify(('+', B, ('n', C)))
+                    expl = cascalc.tidy(caseng.subst(inv, 'w', rhs))
+                    lines.append('')
+                    lines.append('explicit:  y = ' + caseng.tostr(expl))
+                    # check it satisfies the equation at the given point
+                    yv = _safe(expl, x0)
+                    if yv is not None and abs(yv - y0) < 1e-6:
+                        lines.append('(checked: it passes through the')
+                        lines.append(' initial point)')
+    _show('Separable', lines)
+
+# 11. SMALL-ANGLE APPROXIMATIONS --------------------------------------------
 def t_small_angle():
     _show('Small angles', ['For small x IN RADIANS:',
                            '  sin x = x', '  tan x = x',
@@ -595,7 +663,7 @@ def t_small_angle():
         lines.append('do not use these here.')
     _show('Small angles', lines)
 
-# 11. EXACT TRIG VALUES -----------------------------------------------------
+# 12. EXACT TRIG VALUES -----------------------------------------------------
 _EXACT = [
     ('0', '0', '0', '1', '0'),
     ('30', 'pi/6', '1/2', 'sqrt(3)/2', '1/sqrt(3)'),
@@ -640,6 +708,7 @@ TOOLS = [
     ('Parametric -> Cartesian', t_param_cartesian),
     ('Implicit d/dx', t_implicit),
     ('Integration by substitution', t_substitution),
+    ('Separation of variables', t_separable),
     ('Small-angle approx', t_small_angle),
     ('Exact trig values', t_exact_trig),
 ]

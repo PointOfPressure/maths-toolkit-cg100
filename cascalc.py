@@ -448,16 +448,25 @@ def integ(n, var='x', depth=0):
         return None
     return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
 
-def defint(tree, a, b, deg=False, n=200):
+def _at(tree, val, deg, var):
+    # evaluate with `val` bound to `var`. evalf's positional argument is always
+    # x, so anything solved or integrated in another letter has to go through
+    # the env - without this, solve(v, 't') sampled a tree that mentions t with
+    # only x bound, every sample raised, and it reported no roots at all.
+    if var == 'x':
+        return caseng.evalf(tree, val, deg)
+    return caseng.evalf(tree, val, deg, {var: val})
+
+def defint(tree, a, b, deg=False, n=200, var='x'):
     # numeric definite integral by composite Simpson's rule; None on domain error
     if n % 2:
         n += 1
     h = (b - a) / n
     try:
-        s = caseng.evalf(tree, a, deg) + caseng.evalf(tree, b, deg)
+        s = _at(tree, a, deg, var) + _at(tree, b, deg, var)
         i = 1
         while i < n:
-            v = caseng.evalf(tree, a + i * h, deg)
+            v = _at(tree, a + i * h, deg, var)
             s += (4 if (i % 2) else 2) * v
             i += 1
     except:
@@ -467,10 +476,10 @@ def defint(tree, a, b, deg=False, n=200):
         return None  # singularity inside a..b - report it rather than print junk
     return r
 
-def _bisect(tree, a, b, deg=False):
+def _bisect(tree, a, b, deg=False, var='x'):
     try:
-        fa = caseng.evalf(tree, a, deg)
-        fb = caseng.evalf(tree, b, deg)
+        fa = _at(tree, a, deg, var)
+        fb = _at(tree, b, deg, var)
     except:
         return None
     if (fa < 0 and fb < 0) or (fa > 0 and fb > 0):
@@ -479,7 +488,7 @@ def _bisect(tree, a, b, deg=False):
     while i < 60:
         m = (a + b) / 2
         try:
-            fm = caseng.evalf(tree, m, deg)
+            fm = _at(tree, m, deg, var)
         except:
             return None
         if fm == 0 or (b - a) < 1e-7:
@@ -494,7 +503,7 @@ def _bisect(tree, a, b, deg=False):
 MAXROOTS = 24
 SAMPLES = 800
 
-def _touch(tree, lo, hi, deg):
+def _touch(tree, lo, hi, deg, var='x'):
     # ternary search for the minimum of |f| on [lo, hi]; used to catch roots the
     # curve only touches (x^2, (x-1)^2), which never produce a sign change.
     i = 0
@@ -502,8 +511,8 @@ def _touch(tree, lo, hi, deg):
         m1 = lo + (hi - lo) / 3.0
         m2 = hi - (hi - lo) / 3.0
         try:
-            f1 = caseng.evalf(tree, m1, deg)
-            f2 = caseng.evalf(tree, m2, deg)
+            f1 = _at(tree, m1, deg, var)
+            f2 = _at(tree, m2, deg, var)
         except:
             return None
         if (f1 if f1 >= 0 else -f1) <= (f2 if f2 >= 0 else -f2):
@@ -513,7 +522,7 @@ def _touch(tree, lo, hi, deg):
         i += 1
     m = (lo + hi) / 2.0
     try:
-        fm = caseng.evalf(tree, m, deg)
+        fm = _at(tree, m, deg, var)
     except:
         return None
     return m if -1e-9 < fm < 1e-9 else None
@@ -539,7 +548,7 @@ def solve(tree, var='x', deg=False):
     i = 0
     while i <= SAMPLES:
         try:
-            ys.append(caseng.evalf(tree, -hi + i * step, deg))
+            ys.append(_at(tree, -hi + i * step, deg, var))
         except:
             ys.append(None)
         i += 1
@@ -549,7 +558,7 @@ def solve(tree, var='x', deg=False):
         p = ys[i - 1]
         if y is not None and p is not None:
             if (p <= 0 and y >= 0) or (p >= 0 and y <= 0):
-                _add(roots, _bisect(tree, -hi + (i - 1) * step, -hi + i * step, deg))
+                _add(roots, _bisect(tree, -hi + (i - 1) * step, -hi + i * step, deg, var))
             elif i + 1 <= SAMPLES and ys[i + 1] is not None:
                 # same sign either side but a local minimum of |f| - a possible
                 # tangential root, e.g. x^2 or (x-1)^2
@@ -557,7 +566,7 @@ def solve(tree, var='x', deg=False):
                 ap = p if p >= 0 else -p
                 an = ys[i + 1] if ys[i + 1] >= 0 else -ys[i + 1]
                 if ay < ap and ay < an:
-                    _add(roots, _touch(tree, -hi + (i - 1) * step, -hi + (i + 1) * step, deg))
+                    _add(roots, _touch(tree, -hi + (i - 1) * step, -hi + (i + 1) * step, deg, var))
         i += 1
     roots.sort()
     return roots
