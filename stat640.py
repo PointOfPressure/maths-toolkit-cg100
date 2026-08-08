@@ -1,4 +1,5 @@
 import math
+import casui
 import casutil
 
 _asknum = casutil.asknum
@@ -43,6 +44,30 @@ def _quant(srt, pos):
         return srt[n - 1]
     frac = pos - lo
     return srt[lo - 1] + frac * (srt[lo] - srt[lo - 1])
+
+def _median_of(srt):
+    # median of an already-sorted list, None for an empty one
+    m = len(srt)
+    if m == 0:
+        return None
+    mid = m // 2
+    if m % 2 == 1:
+        return srt[mid]
+    return (srt[mid - 1] + srt[mid]) / 2.0
+
+def _quartiles_split(srt):
+    # OCR B (MEI) quartile method for a raw data list: Q1 is the median of
+    # the lower half of the sorted data and Q3 the median of the upper half,
+    # with the overall median itself excluded from both halves when n is odd.
+    n = len(srt)
+    mid = n // 2
+    if n % 2 == 1:
+        lower = srt[0:mid]
+        upper = srt[mid + 1:]
+    else:
+        lower = srt[0:mid]
+        upper = srt[mid:]
+    return (_median_of(lower), _median_of(srt), _median_of(upper))
 
 def t_summary():
     a = _getlist('Data list:')
@@ -96,6 +121,75 @@ def t_summary():
         lines.append('outliers: none')
     _pages('Summary stats', lines)
 
+def t_boxplot():
+    a = _getlist('Data list:')
+    if a is None or len(a) == 0:
+        _show('Box plot', ['Need data.'])
+        return
+    srt = _sorted(a)
+    n = len(srt)
+    q1, med, q3 = _quartiles_split(srt)
+    if q1 is None or q3 is None:
+        _show('Box plot', ['Need more data (n>=2).'])
+        return
+    iqr = q3 - q1
+    lf = q1 - 1.5 * iqr
+    uf = q3 + 1.5 * iqr
+    # outliers are beyond the fences; the whiskers stop at the most extreme
+    # point that is NOT an outlier, not at the true min/max
+    outs = []
+    keep = []
+    i = 0
+    while i < n:
+        v = srt[i]
+        if v < lf or v > uf:
+            outs.append(v)
+        else:
+            keep.append(v)
+        i += 1
+    if keep:
+        wlo = keep[0]
+        whi = keep[len(keep) - 1]
+    else:
+        wlo = srt[0]
+        whi = srt[n - 1]
+    lines = []
+    lines.append('n = ' + str(n))
+    lines.append('min = ' + _fn(srt[0]) + '  max = ' + _fn(srt[n - 1]))
+    lines.append('Q1 = ' + _fn(q1))
+    lines.append('median = ' + _fn(med))
+    lines.append('Q3 = ' + _fn(q3))
+    lines.append('IQR = ' + _fn(iqr))
+    lines.append('fences ' + _fn(lf) + ' .. ' + _fn(uf))
+    lines.append('whisker lo = ' + _fn(wlo) + '  whisker hi = ' + _fn(whi))
+    outstr = []
+    j = 0
+    while j < len(outs):
+        outstr.append(_fn(outs[j]))
+        j += 1
+    if outstr:
+        lines.append('outliers: ' + ' '.join(outstr))
+    else:
+        lines.append('outliers: none')
+    _pages('Box plot', lines)
+    xlo, xhi = casutil.nice_range(srt)
+    fr = casutil.frame(xlo, xhi, 0.0, 10.0)
+    casutil.axes(fr, 'Box plot', 'value', None)
+    midy = 5.0
+    half = 2.5
+    cap = 1.25
+    casutil.seg(fr, wlo, midy, q1, midy, casui.BLACK)
+    casutil.seg(fr, q3, midy, whi, midy, casui.BLACK)
+    casutil.seg(fr, wlo, midy - cap, wlo, midy + cap, casui.BLACK)
+    casutil.seg(fr, whi, midy - cap, whi, midy + cap, casui.BLACK)
+    casutil.box(fr, q1, midy - half, q3, midy + half, casui.BLACK, False)
+    casutil.seg(fr, med, midy - half, med, midy + half, casui.ACC)
+    k = 0
+    while k < len(outs):
+        casutil.marker(fr, outs[k], midy, casui.RED, 2)
+        k += 1
+    casutil.chart_hold('EXIT to go back')
+
 def t_freq():
     xs = _getlist('Values list:')
     if xs is None or len(xs) == 0:
@@ -132,6 +226,151 @@ def t_freq():
     lines.append('sd (n) = ' + _fn(math.sqrt(varp)))
     lines.append('var (n) = ' + _fn(varp))
     _pages('Freq mean/var', lines)
+
+def _cf_interp(bnds, cf, target):
+    # cumulative frequency is plotted at the UPPER class boundary; read off a
+    # target (n/4, n/2, 3n/4) by linear interpolation across the class it
+    # falls in
+    n = len(cf)
+    prev = 0.0
+    i = 0
+    while i < n:
+        if target <= cf[i]:
+            denom = cf[i] - prev
+            if denom <= 0:
+                return bnds[i + 1]
+            frac = (target - prev) / denom
+            return bnds[i] + frac * (bnds[i + 1] - bnds[i])
+        prev = cf[i]
+        i += 1
+    return bnds[n]
+
+def t_hist():
+    bnds = _getlist('Class boundaries (n+1):')
+    if bnds is None or len(bnds) < 2:
+        _show('Histogram', ['Need >=2 boundaries.'])
+        return
+    fs = _getlist('Frequencies (n):')
+    if fs is None or len(fs) != len(bnds) - 1:
+        _show('Histogram', ['Freq count mismatch.'])
+        return
+    n = len(fs)
+    i = 0
+    while i < n:
+        if bnds[i + 1] <= bnds[i]:
+            _show('Histogram', ['Boundaries must increase.'])
+            return
+        if fs[i] < 0:
+            _show('Histogram', ['Frequencies must be >=0.'])
+            return
+        i += 1
+    # frequency density = frequency / class width, so the bar AREA (not its
+    # height) is the frequency - plotting raw frequency against unequal
+    # widths would be misleading, which is the whole point of this tool
+    widths = []
+    dens = []
+    tot = 0.0
+    i = 0
+    while i < n:
+        w = bnds[i + 1] - bnds[i]
+        widths.append(w)
+        dens.append(fs[i] / w)
+        tot += fs[i]
+        i += 1
+    lines = []
+    lines.append('n classes = ' + str(n))
+    lines.append('total freq = ' + _fn(tot))
+    i = 0
+    while i < n:
+        lines.append(_fn(bnds[i]) + '-' + _fn(bnds[i + 1]) + ' f=' + _fn(fs[i]) +
+                     ' w=' + _fn(widths[i]) + ' fd=' + _fn(dens[i]))
+        i += 1
+    _pages('Histogram', lines)
+    maxd = dens[0]
+    i = 1
+    while i < n:
+        if dens[i] > maxd:
+            maxd = dens[i]
+        i += 1
+    yhi = maxd * 1.15 if maxd > 0.0 else 1.0
+    fr = casutil.frame(bnds[0], bnds[n], 0.0, yhi)
+    casutil.axes(fr, 'Histogram', 'value', 'freq density')
+    i = 0
+    while i < n:
+        casutil.box(fr, bnds[i], 0.0, bnds[i + 1], dens[i], casui.ACC, True)
+        casutil.box(fr, bnds[i], 0.0, bnds[i + 1], dens[i], casui.BLACK, False)
+        i += 1
+    casutil.chart_hold('EXIT to go back')
+
+def t_cumfreq():
+    bnds = _getlist('Class boundaries (n+1):')
+    if bnds is None or len(bnds) < 2:
+        _show('Cumulative freq', ['Need >=2 boundaries.'])
+        return
+    fs = _getlist('Frequencies (n):')
+    if fs is None or len(fs) != len(bnds) - 1:
+        _show('Cumulative freq', ['Freq count mismatch.'])
+        return
+    n = len(fs)
+    i = 0
+    while i < n:
+        if bnds[i + 1] <= bnds[i]:
+            _show('Cumulative freq', ['Boundaries must increase.'])
+            return
+        if fs[i] < 0:
+            _show('Cumulative freq', ['Frequencies must be >=0.'])
+            return
+        i += 1
+    cf = []
+    run = 0.0
+    i = 0
+    while i < n:
+        run += fs[i]
+        cf.append(run)
+        i += 1
+    tot = run
+    if tot <= 0:
+        _show('Cumulative freq', ['Total freq is 0.'])
+        return
+    # plotted at the upper class boundary; median/quartiles read off by
+    # linear interpolation at n/2 and n/4, 3n/4
+    med = _cf_interp(bnds, cf, tot * 0.5)
+    q1 = _cf_interp(bnds, cf, tot * 0.25)
+    q3 = _cf_interp(bnds, cf, tot * 0.75)
+    lines = []
+    lines.append('n classes = ' + str(n))
+    lines.append('total freq = ' + _fn(tot))
+    i = 0
+    while i < n:
+        lines.append('<=' + _fn(bnds[i + 1]) + ' cf=' + _fn(cf[i]))
+        i += 1
+    lines.append('Q1 (n/4) = ' + _fn(q1))
+    lines.append('median (n/2) = ' + _fn(med))
+    lines.append('Q3 (3n/4) = ' + _fn(q3))
+    lines.append('IQR = ' + _fn(q3 - q1))
+    _pages('Cumulative freq', lines)
+    xlo = bnds[0]
+    xhi = bnds[n]
+    fr = casutil.frame(xlo, xhi, 0.0, tot * 1.05)
+    casutil.axes(fr, 'Cumulative freq', 'value', 'cum freq')
+    px = bnds[0]
+    py = 0.0
+    i = 0
+    while i < n:
+        nx = bnds[i + 1]
+        ny = cf[i]
+        casutil.seg(fr, px, py, nx, ny, casui.ACC)
+        casutil.marker(fr, nx, ny, casui.ACC, 1)
+        px = nx
+        py = ny
+        i += 1
+    casutil.seg(fr, xlo, tot * 0.25, q1, tot * 0.25, casui.RED)
+    casutil.seg(fr, q1, 0.0, q1, tot * 0.25, casui.RED)
+    casutil.seg(fr, xlo, tot * 0.5, med, tot * 0.5, casui.RED)
+    casutil.seg(fr, med, 0.0, med, tot * 0.5, casui.RED)
+    casutil.seg(fr, xlo, tot * 0.75, q3, tot * 0.75, casui.RED)
+    casutil.seg(fr, q3, 0.0, q3, tot * 0.75, casui.RED)
+    casutil.chart_hold('EXIT to go back')
 
 def t_drv():
     xs = _getlist('X values:')
@@ -350,15 +589,10 @@ def t_htmean():
         lines.append('reject: ' + ('YES' if abs(z) >= zc else 'NO'))
     _pages('z-test mean', lines)
 
-def t_regress():
-    xs = _getlist('X values:')
-    if xs is None or len(xs) < 2:
-        _show('Regression', ['Need >=2 X.'])
-        return
-    ys = _getlist('Y values:')
-    if ys is None or len(ys) != len(xs):
-        _show('Regression', ['Count mismatch.'])
-        return
+def _linreg(xs, ys):
+    # least-squares y on x: b = Sxy/Sxx, a = ybar - b*xbar, plus PMCC r.
+    # Shared by t_regress and t_scatter so the two tools cannot drift apart.
+    # Returns None for degenerate data (zero spread in x or y).
     n = len(xs)
     sx = 0.0
     sy = 0.0
@@ -377,12 +611,28 @@ def t_regress():
     syyd = syy - sy * sy / n
     sxyd = sxy - sx * sy / n
     if sxxd <= 0 or syyd <= 0:
-        _show('Regression', ['Degenerate data.'])
-        return
+        return None
     den = math.sqrt(sxxd * syyd)
     r = sxyd / den
     b = sxyd / sxxd
     a = sy / n - b * sx / n
+    return (a, b, r)
+
+def t_regress():
+    xs = _getlist('X values:')
+    if xs is None or len(xs) < 2:
+        _show('Regression', ['Need >=2 X.'])
+        return
+    ys = _getlist('Y values:')
+    if ys is None or len(ys) != len(xs):
+        _show('Regression', ['Count mismatch.'])
+        return
+    res = _linreg(xs, ys)
+    if res is None:
+        _show('Regression', ['Degenerate data.'])
+        return
+    a, b, r = res
+    n = len(xs)
     lines = []
     lines.append('n = ' + str(n))
     lines.append('r = ' + _fn(r))
@@ -396,6 +646,42 @@ def t_regress():
     px = _asknum('predict at x (blank skip):')
     if px is not None:
         _show('Prediction', ['x = ' + _fn(px), 'y = ' + _fn(a + b * px)])
+
+def t_scatter():
+    xs = _getlist('X values:')
+    if xs is None or len(xs) < 2:
+        _show('Scatter + regression', ['Need >=2 X.'])
+        return
+    ys = _getlist('Y values:')
+    if ys is None or len(ys) != len(xs):
+        _show('Scatter + regression', ['Count mismatch.'])
+        return
+    res = _linreg(xs, ys)
+    if res is None:
+        _show('Scatter + regression', ['Degenerate data.'])
+        return
+    a, b, r = res
+    n = len(xs)
+    lines = []
+    lines.append('n = ' + str(n))
+    lines.append('r = ' + _fn(r))
+    lines.append('b (grad) = ' + _fn(b))
+    lines.append('a (intercept) = ' + _fn(a))
+    if b < 0:
+        lines.append('y = ' + _fn(a) + ' - ' + _fn(-b) + 'x')
+    else:
+        lines.append('y = ' + _fn(a) + ' + ' + _fn(b) + 'x')
+    _show('Scatter + regression', lines)
+    xlo, xhi = casutil.nice_range(xs)
+    ylo, yhi = casutil.nice_range(ys)
+    fr = casutil.frame(xlo, xhi, ylo, yhi)
+    casutil.axes(fr, 'Scatter + regression', 'x', 'y')
+    i = 0
+    while i < n:
+        casutil.marker(fr, xs[i], ys[i], casui.BLACK, 2)
+        i += 1
+    casutil.seg(fr, xlo, a + b * xlo, xhi, a + b * xhi, casui.ACC)
+    casutil.chart_hold('EXIT to go back')
 
 def t_prob():
     pa = _asknum('P(A) =')
@@ -459,6 +745,10 @@ TOOLS = [
     ('PMCC + regression', t_regress),
     ('Probability rules', t_prob),
     ('Factorial / nCr', t_ncrfact),
+    ('Box plot', t_boxplot),
+    ('Histogram', t_hist),
+    ('Cumulative freq', t_cumfreq),
+    ('Scatter + regression', t_scatter),
 ]
 
 def run():

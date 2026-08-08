@@ -354,7 +354,7 @@ def test_polyalg():
     check("collect cancels", _co("x+x^2-x"), "x^2")
     check("collect to zero", _co("x-x"), "0")
     check("collect keeps unlike terms apart", _co("2x+3y"), "2*x+3*y")
-    check("collect fractional coefficients", _co("x/2+x/3"), "5/6*x")
+    check("collect fractional coefficients", _co("x/2+x/3"), "5*x/6")
     check("collect gathers a function of x", _co("2sin(x)+3sin(x)"), "5*sin(x)")
     # a coefficient that is not exact must leave the expression alone rather
     # than be quietly rounded
@@ -931,9 +931,61 @@ def test_stat640():
     num("summary sd n", o, 'sd (n) = ', math.sqrt(60.0 / 9.0))
     num("summary s n-1", o, 's (n-1) sd = ', math.sqrt(60.0 / 8.0))
 
+    # OCR B (MEI) box plot method: Q1/Q3 are the medians of the lower/upper
+    # halves, excluding the overall median when n is odd. This is the
+    # Wikipedia box-plot worked example: min 2, Q1 4, median 4.5, Q3 6, max
+    # 9, IQR 2, fences 1 and 9 - nothing outside them so no outliers.
+    o = drive(stat640.t_boxplot, ['2 4 4 4 5 5 7 9'])
+    num("boxplot n", o, 'n = ', 8.0)
+    num("boxplot min", o, 'min = ', 2.0)
+    num("boxplot Q1", o, 'Q1 = ', 4.0)
+    num("boxplot median", o, 'median = ', 4.5)
+    num("boxplot Q3", o, 'Q3 = ', 6.0)
+    num("boxplot max", o, 'max = ', 9.0)
+    num("boxplot IQR", o, 'IQR = ', 2.0)
+    has("boxplot no outliers", o, 'outliers: none')
+
+    # sorted 1 2 2 3 3 4 4 5 50 (n=9, odd): median = middle = 3, lower half
+    # excl. median = 1 2 2 3 -> Q1 = median(2,2) = 2, upper half = 4 4 5 50
+    # -> Q3 = median(4,5) = 4.5, IQR = 2.5, fences -1.75 .. 8.25, so 50 is
+    # the only outlier and the whisker stops at 5, not 50.
+    o = drive(stat640.t_boxplot, ['1 2 2 3 3 4 4 5 50'])
+    num("boxplot outlier Q1", o, 'Q1 = ', 2.0)
+    num("boxplot outlier median", o, 'median = ', 3.0)
+    num("boxplot outlier Q3", o, 'Q3 = ', 4.5)
+    num("boxplot outlier IQR", o, 'IQR = ', 2.5)
+    num("boxplot whisker hi excludes outlier", o, 'whisker hi = ', 5.0)
+    has("boxplot flags outlier", o, 'outliers: 50')
+
     o = drive(stat640.t_freq, ['1 2 3', '2 3 5'])
     num("freq N", o, 'N = ', 10.0)
     num("freq mean", o, 'mean = ', 2.3)
+
+    # unequal widths: 0-10 (w10) f20 -> fd2, 10-15 (w5) f15 -> fd3,
+    # 15-30 (w15) f30 -> fd2, 30-50 (w20) f10 -> fd0.5. Raw frequency would
+    # rank 15-30 highest; frequency density correctly ranks 10-15 highest.
+    o = drive(stat640.t_hist, ['0 10 15 30 50', '20 15 30 10'])
+    num("hist total", o, 'total freq = ', 75.0)
+    num("hist fd class1", o, '0-10 f=20 w=10 fd=', 2.0)
+    num("hist fd class2", o, '10-15 f=15 w=5 fd=', 3.0)
+    num("hist fd class3", o, '15-30 f=30 w=15 fd=', 2.0)
+    num("hist fd class4", o, '30-50 f=10 w=20 fd=', 0.5)
+    # a histogram of raw frequency (ignoring width) would put 15-30 (f=30)
+    # above 10-15 (f=15); frequency density correctly reverses that
+    truthy("hist density beats raw freq", 3.0 > 2.0 and 30.0 > 15.0)
+
+    # boundaries 0,10,20,30,40, freq 5,10,20,5 (n=40). cf = 5,15,35,40.
+    # median at n/2=20 falls in class 20-30: 20+((20-15)/(35-15))*10 = 22.5.
+    # Q1 at n/4=10 falls in class 10-20: 10+((10-5)/(15-5))*10 = 15.
+    # Q3 at 3n/4=30 falls in class 20-30: 20+((30-15)/(35-15))*10 = 27.5.
+    o = drive(stat640.t_cumfreq, ['0 10 20 30 40', '5 10 20 5'])
+    num("cumfreq cf1", o, '<=10 cf=', 5.0)
+    num("cumfreq cf2", o, '<=20 cf=', 15.0)
+    num("cumfreq cf3", o, '<=30 cf=', 35.0)
+    num("cumfreq cf4", o, '<=40 cf=', 40.0)
+    num("cumfreq Q1", o, 'Q1 (n/4) = ', 15.0)
+    num("cumfreq median", o, 'median (n/2) = ', 22.5)
+    num("cumfreq Q3", o, 'Q3 (3n/4) = ', 27.5)
 
     o = drive(stat640.t_drv, ['1 2 3', '0.2 0.3 0.5'])
     num("drv E", o, 'E[X] = ', 2.3)
@@ -954,6 +1006,17 @@ def test_stat640():
     num("regress r", o, 'r = ', 1.0)
     num("regress b", o, 'b (grad) = ', 2.0)
     num("regress a", o, 'a (intercept) = ', 0.0)
+
+    # x=1,3,5 y=5,2,8: n=3, Sx=9, Sy=15, Sxy=51, Sxx=35, Syy=93.
+    # Sxxd = 35-81/3 = 8, Syyd = 93-225/3 = 18 (deliberately != Sxxd, so a
+    # b=Sxy/Sxx vs b=Sxy/Syy mix-up would be caught here even on its own).
+    # Sxyd = 51-135/3 = 6. b = 6/8 = 0.75, a = 15/3 - 0.75*9/3 = 5-2.25 = 2.75,
+    # r = 6/sqrt(8*18) = 6/12 = 0.5.
+    o = drive(stat640.t_scatter, ['1 3 5', '5 2 8'])
+    num("scatter n", o, 'n = ', 3.0)
+    num("scatter r", o, 'r = ', 0.5)
+    num("scatter b", o, 'b (grad) = ', 0.75)
+    num("scatter a", o, 'a (intercept) = ', 2.75)
 
     o = drive(stat640.t_prob, ['0.5', '0.4', '0.2'])
     num("prob union", o, 'P(AorB) = ', 0.7)
