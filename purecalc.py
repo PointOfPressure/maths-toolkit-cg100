@@ -611,8 +611,14 @@ def t_separable():
                 lines.append('at (' + _fn(x0) + ', ' + _fn(y0) + '):  C = ' + _fn(C))
                 lines.append('  ' + caseng.tostr(A) + ' = ' + caseng.tostr(B) +
                              ' + ' + _fn(C))
-                # make y explicit where A can be undone
-                inv = caseng.invert(A, 'y', 'w')
+                # make y explicit where A can be undone. ln|y| has to lose its
+                # modulus first - the initial condition is what settles the
+                # sign, and the check below confirms the branch is the right one.
+                Aplain = caseng.strip_abs(A)
+                if Aplain != A:
+                    lines.append('  (y keeps the sign it has at the')
+                    lines.append('   initial point, so the modulus goes)')
+                inv = caseng.invert(Aplain, 'y', 'w')
                 if inv is not None:
                     rhs = caseng.simplify(('+', B, ('n', C)))
                     expl = cascalc.tidy(caseng.subst(inv, 'w', rhs))
@@ -623,6 +629,10 @@ def t_separable():
                     if yv is not None and abs(yv - y0) < 1e-6:
                         lines.append('(checked: it passes through the')
                         lines.append(' initial point)')
+                    else:
+                        lines.append('(WARNING: this does not pass through')
+                        lines.append(' the initial point - use the implicit')
+                        lines.append(' form above)')
     _show('Separable', lines)
 
 # 11. SMALL-ANGLE APPROXIMATIONS --------------------------------------------

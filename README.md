@@ -11,8 +11,8 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-736%20checks%2C%200%20failures-brightgreen)
-![smoke](https://img.shields.io/badge/smoke-323%20checks%2C%200%20errors-brightgreen)
+![tests](https://img.shields.io/badge/tests-1250%20checks%2C%200%20failures-brightgreen)
+![smoke](https://img.shields.io/badge/smoke-343%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
 
@@ -261,9 +261,9 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 898 checks, 0 failures
-python3 stress.py      # smoke: 323 checks, 0 errors
-python3 devlint.py     # device compliance: 0 problems in 28 files
+python3 tests.py       # correctness: 1250 checks, 0 failures
+python3 stress.py      # smoke: 343 checks, 0 errors
+python3 devlint.py     # device compliance: 0 problems in 30 files
 ```
 
 All three run on every push and pull request via `.github/workflows/ci.yml`, along with a `compileall` pass over the whole repo. No dependencies beyond CPython.
@@ -285,7 +285,7 @@ module's `TOOLS` registry and hammers the engine over ~30 expressions. It proves
 nothing crashes; it does not check that any answer is right. On a PC it writes
 `stress_log.txt`; on the device (no file writes) it prints progress instead.
 
-**`devlint.py` - device compliance.** Parses each of the 28 device files and
+**`devlint.py` - device compliance.** Parses each of the 30 device files and
 reports anything the calculator's MicroPython 1.9.4 cannot run: f-strings,
 non-ASCII bytes, imports beyond `math`/`random`/`casioplot`, `math` members the
 build lacks (`factorial`, `atan2`, the hyperbolics), annotations, walrus,

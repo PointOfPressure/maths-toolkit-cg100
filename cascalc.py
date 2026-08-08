@@ -369,7 +369,7 @@ def integ(n, var='x', depth=0):
                 # differ by a constant, but only the first is the answer a
                 # student writes down
                 inner = ('v', var) if lc[1] == 0 else b
-                F = ('*', a, ('ln', inner))
+                F = ('*', a, ('ln', ('abs', inner)))
                 return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
         # k f'(x) / f(x) -> k ln f(x). Tested by dividing the numerator by the
         # derivative of the denominator and asking whether the variable is gone.
@@ -378,7 +378,7 @@ def integ(n, var='x', depth=0):
             if db != ('n', 0):
                 k = caseng.simplify(('/', a, db))
                 if not has_var(k, var):
-                    F = ('ln', b)
+                    F = ('ln', ('abs', b))
                     return F if k == ('n', 1) else ('*', k, F)
         except:
             pass
@@ -389,6 +389,17 @@ def integ(n, var='x', depth=0):
         # double-angle form is how the specification asks for them:
         #   sin^2 u = (1 - cos 2u)/2 and cos^2 u = (1 + cos 2u)/2.
         # tan^2 u = sec^2 u - 1 integrates to tan(u)/k - x the same way.
+        # sec^2, cosec^2 and sech^2 integrate straight back to tan, -cot, tanh
+        if b == ('n', 2) and a[0] in ('sec', 'cosec', 'sech'):
+            lc = linear_coeff(a[1], var)
+            if lc is not None and lc[0] != 0:
+                if a[0] == 'sec':
+                    F = ('tan', a[1])
+                elif a[0] == 'sech':
+                    F = ('tanh', a[1])
+                else:
+                    F = ('neg', ('cot', a[1]))
+                return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
         if b == ('n', 2) and a[0] in ('sin', 'cos', 'tan'):
             lc = linear_coeff(a[1], var)
             if lc is not None and lc[0] != 0:
@@ -407,7 +418,7 @@ def integ(n, var='x', depth=0):
             if lc is not None and lc[0] != 0:
                 if e == -1:
                     # power rule breaks at -1: the integral is a logarithm
-                    F = ('ln', a)
+                    F = ('ln', ('abs', a))
                     return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
                 fr = _ratio(b)
                 if fr is not None:
@@ -434,7 +445,17 @@ def integ(n, var='x', depth=0):
     elif t == 'cosh':
         F = ('sinh', arg)
     elif t == 'tan':
-        F = ('neg', ('ln', ('cos', arg)))
+        F = ('neg', ('ln', ('abs', ('cos', arg))))
+    elif t == 'cot':
+        F = ('ln', ('abs', ('sin', arg)))
+    elif t == 'sec':
+        F = ('ln', ('abs', ('+', ('sec', arg), ('tan', arg))))
+    elif t == 'cosec':
+        F = ('neg', ('ln', ('abs', ('+', ('cosec', arg), ('cot', arg)))))
+    elif t == 'sech':
+        F = ('*', ('n', 2), ('atan', ('exp', arg)))
+    elif t == 'coth':
+        F = ('ln', ('abs', ('sinh', arg)))
     elif t == 'sqrt':
         return _powrule(arg, 1, 2, lc[0])  # sqrt(u) is u^(1/2)
     elif t == 'ln':

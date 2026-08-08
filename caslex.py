@@ -9,14 +9,27 @@
 
 # unary functions that take one bracketed argument
 UFUNCS = ("sqrt", "asinh", "acosh", "atanh", "asin", "acos", "atan",
-          "sinh", "cosh", "tanh", "sin", "cos", "tan", "log", "exp", "ln", "abs")
+          "sinh", "cosh", "tanh", "sech", "cosech", "coth",
+          "sin", "cos", "tan", "sec", "cosec", "cot",
+          "log", "exp", "ln", "abs")
 # two-argument functions: f(a, b)
 BINFUNCS = ("ncr", "npr", "logb")
 FUNCS = UFUNCS + BINFUNCS
-# matched longest-first so "asinh" beats "asin" beats "sin"; single letters = vars
-WORDS = ["asinh", "acosh", "atanh", "sqrt", "asin", "acos", "atan", "sinh",
-         "cosh", "tanh", "logb", "ncr", "npr", "abs", "log", "exp", "sin",
-         "cos", "tan", "ans", "ln", "pi", "e", "x", "y"]
+# Matched longest-first, so "cosech" beats "cosec" beats "cos", and "asinh"
+# beats "asin" beats "sin". Getting this order wrong is not a cosmetic problem:
+# before sec/cosec/cot existed at all, "sec(x)" fell through to the
+# single-letter rule and parsed as s*e*c*x, and "cosec(x)" parsed as
+# cos(e*c*x) - a perfectly well-formed tree for a completely different
+# function. Only the rule that an unknown variable raises stopped that becoming
+# a silent wrong answer.
+WORDS = ["arcsinh", "arccosh", "arctanh", "arcsin", "arccos", "arctan",
+         "asinh", "acosh", "atanh", "cosech", "sqrt", "asin", "acos", "atan",
+         "sinh", "cosh", "tanh", "cosec", "sech", "coth", "logb", "ncr", "npr",
+         "abs", "log", "exp", "sec", "cot", "sin", "cos", "tan", "ans", "ln",
+         "pi", "e", "x", "y"]
+# what a student may write on the left, what the engine calls it on the right
+ALIAS = {"arcsin": "asin", "arccos": "acos", "arctan": "atan",
+         "arcsinh": "asinh", "arccosh": "acosh", "arctanh": "atanh"}
 
 def tokenize(s):
     toks = []
@@ -67,6 +80,11 @@ def tokenize(s):
                     break
             if matched is None:
                 matched = c.lower()
+            if matched in ALIAS:
+                matched2 = ALIAS[matched]
+                toks.append(('fn', matched2))
+                i += len(matched)
+                continue
             if matched in FUNCS:
                 toks.append(('fn', matched))
             elif matched == 'pi':

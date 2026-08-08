@@ -90,8 +90,10 @@ PAL_ROWS = 3
 PAL_PER = PAL_COLS * PAL_ROWS
 EXTRAS = [
     '!', 'abs(', 'nCr(', 'nPr(',
-    'sinh(', 'cosh(', 'tanh(', 'ans',
-    'asinh(', 'acosh(', 'atanh(', ',',
+    'sec(', 'cosec(', 'cot(', 'ans',
+    'sinh(', 'cosh(', 'tanh(', ',',
+    'asinh(', 'acosh(', 'atanh(', 'logb(',
+    'sech(', 'cosech(', 'coth(', 'pi',
 ]
 
 # global angle mode for Calculate + CAS evaluate/graph/table (FM modules stay radians)

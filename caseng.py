@@ -5,8 +5,10 @@ import math
 
 # unary funcs rendered as name(arg); 'fact' (postfix !) and the BFUNCS are
 # handled separately. Inverse-trig answers honour the deg flag in evalf.
-UFUNCS = ('sin', 'cos', 'tan', 'ln', 'log', 'exp', 'sqrt', 'asin', 'acos',
-          'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'abs')
+UFUNCS = ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot',
+          'ln', 'log', 'exp', 'sqrt', 'asin', 'acos', 'atan',
+          'sinh', 'cosh', 'tanh', 'sech', 'cosech', 'coth',
+          'asinh', 'acosh', 'atanh', 'abs')
 BFUNCS = ('ncr', 'npr', 'logb')
 
 PI = 3.141592653589793
@@ -151,6 +153,8 @@ def _s(node):
             if t == 'cos' and v == 0: return ('n', 1)
             if t == 'tan' and v == 0: return ('n', 0)
             if t == 'exp' and v == 0: return ('n', 1)
+            if t == 'sec' and v == 0: return ('n', 1)
+            if t == 'sech' and v == 0: return ('n', 1)
             if t == 'ln' and v == 1: return ('n', 0)
             if t == 'log' and v == 1: return ('n', 0)
             if t == 'sqrt' and v == 0: return ('n', 0)
@@ -302,6 +306,18 @@ def _d(n, var):
         return ('neg', ('*', ('sin', n[1]), _d(n[1], var)))
     if t == 'tan':
         return ('*', ('+', ('n', 1), ('^', ('tan', n[1]), ('n', 2))), _d(n[1], var))
+    if t == 'sec':
+        return ('*', ('*', ('sec', n[1]), ('tan', n[1])), _d(n[1], var))
+    if t == 'cosec':
+        return ('neg', ('*', ('*', ('cosec', n[1]), ('cot', n[1])), _d(n[1], var)))
+    if t == 'cot':
+        return ('neg', ('*', ('^', ('cosec', n[1]), ('n', 2)), _d(n[1], var)))
+    if t == 'sech':
+        return ('neg', ('*', ('*', ('sech', n[1]), ('tanh', n[1])), _d(n[1], var)))
+    if t == 'cosech':
+        return ('neg', ('*', ('*', ('cosech', n[1]), ('coth', n[1])), _d(n[1], var)))
+    if t == 'coth':
+        return ('neg', ('*', ('^', ('cosech', n[1]), ('n', 2)), _d(n[1], var)))
     if t == 'exp':
         return ('*', ('exp', n[1]), _d(n[1], var))
     if t == 'ln':
@@ -369,6 +385,22 @@ def subst_tree(n, target, repl):
         return (t, subst_tree(n[1], target, repl))
     if len(n) == 3:
         return (t, subst_tree(n[1], target, repl), subst_tree(n[2], target, repl))
+    return n
+
+def strip_abs(n):
+    # drop every abs(...) wrapper. Used where the caller can settle the sign
+    # itself: separating variables gives ln|y| = ..., and the initial condition
+    # says which side of zero y is on, which is exactly the step a student
+    # writes as "y > 0 here, so drop the modulus".
+    t = n[0]
+    if t == 'abs':
+        return strip_abs(n[1])
+    if t == 'n' or t == 'v':
+        return n
+    if len(n) == 2:
+        return (t, strip_abs(n[1]))
+    if len(n) == 3:
+        return (t, strip_abs(n[1]), strip_abs(n[2]))
     return n
 
 def count_var(n, var):
@@ -543,6 +575,27 @@ def evalf(n, x, deg=False, env=None):
         return math.cos(_torad(a, deg))
     if t == 'tan':
         return math.tan(_torad(a, deg))
+    if t == 'sec':
+        # Tested against a tolerance, not against exact zero: cos(pi/2) is
+        # 6.1e-17 in floating point, so an exact test would hand back 1.6e16
+        # and print it as an answer. At an asymptote "undefined" is the answer,
+        # and the graph code already draws a gap where evaluation raises.
+        c = math.cos(_torad(a, deg))
+        if -1e-12 < c < 1e-12:
+            raise ValueError("sec undefined here")
+        return 1.0 / c
+    if t == 'cosec':
+        s = math.sin(_torad(a, deg))
+        if -1e-12 < s < 1e-12:
+            raise ValueError("cosec undefined here")
+        return 1.0 / s
+    if t == 'cot':
+        # cos/sin, not 1/tan: tan is infinite at pi/2 where cot is simply 0
+        r = _torad(a, deg)
+        s = math.sin(r)
+        if -1e-12 < s < 1e-12:
+            raise ValueError("cot undefined here")
+        return math.cos(r) / s
     if t == 'asin':
         return _fromrad(math.asin(a), deg)
     if t == 'acos':
@@ -570,6 +623,18 @@ def evalf(n, x, deg=False, env=None):
             return -1.0
         e2 = math.exp(2.0 * a)
         return (e2 - 1.0) / (e2 + 1.0)
+    if t == 'sech':
+        return 2.0 / (math.exp(a) + math.exp(-a))
+    if t == 'cosech':
+        d = math.exp(a) - math.exp(-a)
+        if -1e-12 < d < 1e-12:
+            raise ValueError("cosech undefined at 0")
+        return 2.0 / d
+    if t == 'coth':
+        d = math.exp(a) - math.exp(-a)
+        if -1e-12 < d < 1e-12:
+            raise ValueError("coth undefined at 0")
+        return (math.exp(a) + math.exp(-a)) / d
     if t == 'asinh':
         sgn = -1.0 if a < 0 else 1.0
         aa = a if a >= 0 else -a

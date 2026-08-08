@@ -53,56 +53,43 @@ These were verified by running the modules, not inferred:
 
 | Code | Content statement | Toolkit coverage | Verdict |
 |---|---|---|---|
-| `*` (Algebra) | Change the subject of a formula | Nothing rearranges symbolically; `caseng.simplify` will not even expand brackets | MISSING |
 | `Ma7` | Solve linear inequalities in one variable; represent graphically | No inequality solver anywhere; CAS `Solve` handles equations only | MISSING |
 | `a9` | Express solutions of inequalities using and/or or set notation | No inequality output at all | MISSING |
 | `a10` | Use and manipulate surds | `simplify` leaves `sqrt(8)` as `sqrt(8)`; no exact surd arithmetic | MISSING |
 | `a11` | Rationalise the denominator of a surd | No exact-surd engine | MISSING |
 | `a14` | Understand and use proportional relationships (y = kx, y = k/x) | No tool finds k or handles proportion | MISSING |
-| `a15` | Express algebraic fractions as partial fractions | `cascalc.integ_rational` decomposes internally but the decomposition is never surfaced as a tool; no standalone partial-fraction output | MISSING |
-| `a16` | Simplify rational expressions (factorise, cancel) | `simplify` does not cancel `(x^2-1)/(x-1)` (tested) | MISSING |
-| `Mf1` | Add, subtract, multiply and divide polynomials | `simplify` does not expand brackets or collect terms; no polynomial division | MISSING |
-| `f4` | Understand and use composite functions gf(x) | No function-composition tool | MISSING |
-| `f5` | Understand and use inverse functions and their graphs | No inverse-function tool | MISSING |
-| `f7` | Solve simple inequalities involving the modulus function | No modulus inequality solver | MISSING |
 | `g9` | Find the point(s) of intersection of a line and a circle | `pure640.t_simul` only handles line + `y=px^2+qx+r`; the circle case is not offered | MISSING |
 | `g11` | Circle properties: angle in semicircle, perpendicular bisector of chord, tangent perpendicular to radius | No circle-geometry tool | MISSING |
-| `g13` | Convert between cartesian and parametric forms | No parametric handling anywhere | MISSING |
 | `g14` | Equation of a circle in parametric form | Not offered by `pure640.t_circle` | MISSING |
 | `s7` | Generate a sequence from a formula for the kth term or a recurrence | Only arithmetic/geometric closed forms; `xpure.t_recur` is 2nd-order linear only, in the FM section | MISSING |
 | `s10` | Recognise increasing, decreasing and periodic sequences | No sequence-behaviour tool | MISSING |
 | `t3` | Area of a triangle = 1/2 ab sin C | No triangle tool at all | MISSING |
 | `t4` | Sine rule and cosine rule | No triangle solver anywhere in the toolkit | MISSING |
 | `t11` | Arc length s = r*theta and sector area A = 1/2 r^2 theta | No circular-measure tool | MISSING |
-| `t12` | Small angle approximations sin x ~ x, cos x ~ 1 - x^2/2, tan x ~ x | Not implemented | MISSING |
 | `t13` | Definitions and graphs of sec, cosec and cot | Not in `caslex.UFUNCS`; `sec(x)` silently parses as the product `s*e*c*x` (tested) - actively unsafe | MISSING |
 | `t14` | Relationships between the graphs of sin/cos/tan and their reciprocal and inverse functions | No reciprocal trig at all | MISSING |
-| `t15` | Use tan^2 + 1 = sec^2 and cot^2 + 1 = cosec^2 | Reciprocal trig functions do not exist in the CAS | MISSING |
-| `Mt16` | Identities for sin(A+-B), cos(A+-B), tan(A+-B) | No symbolic trig expansion | MISSING |
-| `t17` | Identities for sin 2A, cos 2A, tan 2A | No symbolic trig expansion | MISSING |
 | `t19` | Use trigonometric identities to solve equations | `pure640._trig_solve` only handles the bare forms sin/cos/tan x = k | MISSING |
 | `E7` | Reduce y = a x^n and y = a b^x to linear form by taking logs | No log-transform of a data list; `t_regress` takes raw x,y only | MISSING |
-| `c16` | Differentiate a relation implicitly | CAS is explicit single-variable only | MISSING |
 | `c18` | Points of inflection | No second-derivative or inflection tool | MISSING |
 | `c21` | Find the constant of integration from a given point | `Integrate` prints "+ C"; no particular-solution step | MISSING |
-| `c28` | Integration by substitution in other (non-obvious) cases | Tested: `x(1+x^2)^8`, `x e^(x^2)` both return `None` | MISSING |
-| `c32` | Find general/particular solutions of first order differential equations by separating variables | `diffeq.py` does integrating factors and 2nd-order CFs only - separation of variables is not implemented | MISSING |
+| `*` (Algebra) | Change the subject of a formula | `caseng.invert`, behind `purecalc.t_inverse`, rearranges exactly when the variable occurs once; it returns `None` for `(x-1)/(x+2)` (tested), and there is no general rearrange-for-any-symbol tool | PARTIAL |
+| `a16` | Simplify rational expressions (factorise, cancel) | `Expand`, `Factorise` and `Collect like terms` all work now, but `caspoly.cancel` still does not cancel `(x^2-1)/(x-1)` (tested), so common factors are not removed | PARTIAL |
+| `Mf1` | Add, subtract, multiply and divide polynomials | CAS `Expand brackets` and `Collect like terms` (`caspoly.expand`/`collect`) both work; polynomial long division exists as `caspoly.pdivmod` but is not reachable from any menu | PARTIAL |
+| `f7` | Solve simple inequalities involving the modulus function | `purecalc.t_modulus` solves the equation \|f(x)\| = k and graphs y = \|f(x)\|, which gives the boundary points, but the inequality itself is never stated | PARTIAL |
+| `g13` | Convert between cartesian and parametric forms | `purecalc.t_param_cartesian` converts parametric -> cartesian when x(t) inverts, and prints the sin^2+cos^2 route when it does not; the cartesian -> parametric direction is not implemented | PARTIAL |
+| `t15` | Use tan^2 + 1 = sec^2 and cot^2 + 1 = cosec^2 | The reference card prints both identities, but sec, cosec and cot still do not exist in the CAS (see `t13`) | PARTIAL |
+| `Mt16` | Identities for sin(A+-B), cos(A+-B), tan(A+-B) | `purecalc.t_exact_trig` now prints sin(A+B) and cos(A+B) on its reference card, but nothing expands or applies them symbolically | PARTIAL |
+| `t17` | Identities for sin 2A, cos 2A, tan 2A | The same reference card prints sin 2A and both forms of cos 2A; there is still no symbolic expansion | PARTIAL |
 | `*` (Trigonometry) | Solve right-angled triangles using trig ratios and Pythagoras | Trig values are evaluable in Calculate, but there is no triangle solver | PARTIAL |
 | `a8` | Solve quadratic inequalities; represent graphically | `pure640.t_quadratic` gives the roots, which is the hard part, but nothing states the solution interval or shades a region | PARTIAL |
 | `a12` | Laws of indices for all rational exponents | `simplify` folds numeric powers only; no symbolic index-law manipulation | PARTIAL |
 | `a13` | Negative, zero and fractional indices | Evaluable; not manipulable symbolically | PARTIAL |
-| `f2` | Factor theorem; factorise cubics/quartics | `polyroots.t_numeric_roots` / CAS `Solve` give numeric real roots but only in [-20, 20], and never a factorised form | PARTIAL |
-| `f6` | Understand and use the modulus function | `abs()` is in the parser, graphable and differentiable; no solving of `\|f(x)\| = k` | PARTIAL |
-| `MC1` | Understand and use graphs of functions | CAS `Graph` + `Table of values` plot any parsed f(x) | COVERED |
 | `C2` | Find intersection points of two graphs | You must form f-g by hand and use `Solve`, which is limited to [-20, 20]; no two-curve tool | PARTIAL |
 | `C4` | Sketch and interpret graphs of polynomial functions | `Graph` plots with auto-scaling; roots, turning points and shape are not annotated | PARTIAL |
 | `C5` | Use stationary points when curve sketching | No stationary-point finder; requires Differentiate (retyped) then Solve, range-limited | PARTIAL |
 | `C6` | Sketch and interpret y = a/x and y = a/x^2 including asymptotes | `Graph` plots them; no asymptote detection or reporting | PARTIAL |
-| `MC7` | Sketch curves y = f(x)+a, f(x+a), af(x), f(ax) | Any transformed expression can be typed and graphed, but there is no transformation tool and no before/after comparison | PARTIAL |
-| `C8` | Effect of combined transformations | As `MC7`: manual only | PARTIAL |
 | `C9` | Stationary points of inflection | Second derivative must be retyped by hand; no test | PARTIAL |
 | `Mg8` | Point(s) of intersection of a line and a curve, or of two curves | `pure640._simul_linquad` covers only line + `y = px^2+qx+r` | PARTIAL |
-| `g15` | Gradient of a curve defined parametrically, dy/dx = (dy/dt)/(dx/dt) | Achievable by differentiating each component separately (calling t "x") and dividing by hand; no parametric support | PARTIAL |
 | `s4` | Write (a+bx)^n as a^n(1+bx/a)^n and expand | `_binom_int` covers integer n; `_binom_real` only does `(1+x)^n`, so rational n with a != 1 is not supported | PARTIAL |
 | `s5` | Use binomial expansions with n rational to approximate (a+bx)^n | Coefficients of `(1+x)^n` only; no substitution/evaluation step, no `(a+bx)^n` for rational n | PARTIAL |
 | `s9` | Understand and use sigma notation | `series.py` has closed forms for Sum r, r^2, r^3 only; no general Sigma evaluator | PARTIAL |
@@ -113,20 +100,33 @@ These were verified by running the modules, not inferred:
 | `E4` | Understand and apply the laws of logarithms | `_log_laws` is a static reference card - it prints the laws but cannot combine or split logs | PARTIAL |
 | `E11` | Solve problems involving exponential growth and decay | Evaluation and graphing available; no model-fitting from data | PARTIAL |
 | `c4` | Sketch the gradient function for a given curve | Differentiate then Graph, in two manual steps | PARTIAL |
-| `c6` | Second derivative as rate of change of gradient | No `d2/dx2`; the first derivative must be retyped | PARTIAL |
+| `c6` | Second derivative as rate of change of gradient | `purecalc.t_param_diff` gives d2y/dx2 for a parametric curve; for a plain y = f(x) there is still no `d2/dx2` and the first derivative must be retyped | PARTIAL |
 | `c7` | Use differentiation to find stationary points and classify them | Nothing solves f'(x)=0 or applies the second-derivative test | PARTIAL |
 | `c8` | Increasing and decreasing functions | Sign of f' only by evaluating at chosen points | PARTIAL |
-| `c9` | Equation of the tangent and normal to a curve | `Gradient at a point` gives m; the line equation is formed by hand | PARTIAL |
+| `c9` | Equation of the tangent and normal to a curve | `purecalc.t_implicit` and `t_param_diff` both print the tangent and normal, but for a plain y = f(x) the CAS still gives only the gradient | PARTIAL |
 | `c15` | Rates of change using the chain rule, dy/dx = 1/(dx/dy) | Chain rule differentiates; connected-rates problems are manual | PARTIAL |
 | `c17` | Concave upwards/downwards sections | Requires a second derivative that has to be retyped | PARTIAL |
 | `c23` | Area between a curve and the x-axis including regions below the axis | `Definite integral a..b` returns the signed value; nothing splits at the roots to give a true area | PARTIAL |
 | `c26` | Area between two curves; integration with respect to y | f-g must be formed by hand; y-integration works only by renaming the variable | PARTIAL |
-| `c27` | Integration by substitution where the process reverses the chain rule | Works for linear inner functions and `k f'/f`; tested failures on `x(1+x^2)^8` and `x e^(x^2)` | PARTIAL |
 | `e5` | Understand that not all iterations converge; failure of Newton-Raphson | `numeric.py` lists every iterate and flags divergence, but there is no cobweb/staircase diagram | PARTIAL |
 | `c35` | Use rectangles to find upper and lower bounds for an area | `numeric.t_integ` gives midpoint and trapezium; no explicit upper/lower rectangle sums | PARTIAL |
 | `v2` | Add and subtract vectors, including using a diagram | `vectors.py` has no add/subtract entry at all; `matrix.py` A+B works if vectors are entered as column matrices | PARTIAL |
 | `v5` | Calculate the distance between two points in 2-D/3-D | `pure640.t_coord` does 2-D; there is no two-point 3-D distance tool (only point-to-line and point-to-plane) | PARTIAL |
 | `v6` | Use vectors to solve problems in pure and applied contexts | The primitives exist; problem set-up is manual | PARTIAL |
+| `a15` | Express algebraic fractions as partial fractions | CAS menu item `Partial fractions` -> `caspoly.partial`; tested correct on distinct linear factors and on the repeated factor case `(x+4)/((x+1)^2(x-2))` | COVERED |
+| `f4` | Understand and use composite functions gf(x) | `purecalc.t_composite` gives fg(x) and gf(x) and evaluates both at a chosen x | COVERED |
+| `f5` | Understand and use inverse functions and their graphs | `purecalc.t_inverse` inverts exactly by undoing steps when x occurs once, falls back to numeric solving otherwise, and checks f(f-inv(x)) = x | COVERED |
+| `t12` | Small angle approximations sin x ~ x, cos x ~ 1 - x^2/2, tan x ~ x | `purecalc.t_small_angle` prints exact against approximate with the absolute and percentage error, and comments on validity | COVERED |
+| `c16` | Differentiate a relation implicitly | `purecalc.t_implicit` parses an equation in x and y, gives dF/dx, dF/dy and dy/dx, then the tangent and normal at a point (with an on-the-curve check) | COVERED |
+| `c28` | Integration by substitution in other (non-obvious) cases | `purecalc.t_substitution` takes the user's choice of u, changes variable, integrates in u, back-substitutes and verifies by differentiating. Tested: `x e^(x^2)` with u = x^2 -> `e^(x^2)/2`; `x(1+x^2)^8` -> `(1+x^2)^9/18` | COVERED |
+| `c32` | Find general/particular solutions of first order differential equations by separating variables | `purecalc.t_separable` integrates both sides, gives the implicit general solution, fixes C from an initial condition and makes y explicit where the y-integral inverts | COVERED |
+| `f2` | Factor theorem; factorise cubics/quartics | CAS `Factorise` -> `caspoly.factor`; tested `x^3-6x^2+11x-6` -> `(x-1)(x-2)(x-3)` and `2x^2+x-1` -> `(x+1)(2x-1)`. Returns `None` when there is no rational factorisation | COVERED |
+| `f6` | Understand and use the modulus function | `purecalc.t_modulus` solves f(x) = k and f(x) = -k, lists the roots and graphs y = \|f(x)\| (root search still limited to [-20, 20]) | COVERED |
+| `MC1` | Understand and use graphs of functions | CAS `Graph` + `Table of values` plot any parsed f(x) | COVERED |
+| `MC7` | Sketch curves y = f(x)+a, f(x+a), af(x), f(ax) | `purecalc.t_transform` builds y = a f(bx+c) + d, prints the transformations in the correct order in words, and graphs the result | COVERED |
+| `C8` | Effect of combined transformations | `purecalc.t_transform` takes all four parameters at once and names the sequence | COVERED |
+| `g15` | Gradient of a curve defined parametrically, dy/dx = (dy/dt)/(dx/dt) | `purecalc.t_param_diff` gives dx/dt, dy/dt, dy/dx and d2y/dx2, plus the point, tangent and normal at a chosen t | COVERED |
+| `c27` | Integration by substitution where the process reverses the chain rule | `purecalc.t_substitution` handles these once the user names u, which is what the specification expects; note the automatic CAS `Integrate` still returns `None` for the same integrands | COVERED |
 | `*` (Algebra) | Solve linear equations in one unknown | `pure640.t_quadratic` with a=0 solves bx+c=0 exactly | COVERED |
 | `Ma2` | Solve quadratic equations | `pure640.t_quadratic` - roots, discriminant, completed square, vertex, complex roots | COVERED |
 | `a3` | Find the discriminant and understand its significance | Same tool prints b^2-4ac and the root-nature conclusion | COVERED |
@@ -187,7 +187,7 @@ These were verified by running the modules, not inferred:
 | `p3` | Proof by contradiction | Requires constructing an argument | N/A |
 | `Ma1` | Vocabulary and notation (constant, coefficient, identity, ...) | Terminology only | N/A |
 | `a6` | Significance of points of intersection in relation to solving equations | Conceptual link; the intersection calculation itself is `Ma4`/`Ma5` | N/A |
-| `f3` | Definition of a function; domain and range | Definitional | N/A |
+| `f3` | Definition of a function; domain and range | Definitional (the computable part, the range on an interval, is handled by `purecalc.t_domain_range` by sampling) | N/A |
 | `f8` | Use functions in modelling | Modelling judgement | N/A |
 | `g7` | Use straight-line models | Modelling judgement | N/A |
 | `g12` | Meaning of the terms parameter and parametric equations | Terminology only | N/A |
@@ -215,24 +215,24 @@ These were verified by running the modules, not inferred:
 | Code | Content statement | Toolkit coverage | Verdict |
 |---|---|---|---|
 | `p24` | Use a variety of sampling techniques: simple random, systematic, stratified, quota, opportunity, cluster | No sampler and no random-number generator anywhere in the toolkit | MISSING |
-| `MD1` | Recognise categorical/discrete/continuous/ranked data; interpret bar charts, dot plots, histograms, vertical line charts, pie charts, stem-and-leaf, box plots, frequency charts | No statistical charting of any kind - `stat640` produces numbers only | MISSING |
-| `D2` | Area of a histogram bar is proportional to frequency; calculate frequency from frequency density | No histogram/frequency-density tool | MISSING |
-| `D3` | Interpret a cumulative frequency diagram | Not implemented | MISSING |
 | `D4` | Describe frequency distributions (symmetric, unimodal, bimodal, skewed) | No shape/skew classifier | MISSING |
-| `D7` | Recognise when a scatter diagram shows an outlier | 1-D IQR fences only; nothing bivariate | MISSING |
 | `D14` | Clean data: missing values, errors, outliers | No data-cleaning tool | MISSING |
 | `*` (Probability) | Use tree diagrams and sample space diagrams | No diagram tools | MISSING |
 | `u5` | Use Venn diagrams for up to three events | Not implemented | MISSING |
+| `MD1` | Recognise categorical/discrete/continuous/ranked data; interpret bar charts, dot plots, histograms, vertical line charts, pie charts, stem-and-leaf, box plots, frequency charts | `stat640` now draws box plots, histograms, cumulative frequency curves and scatter diagrams; bar charts, pie charts, dot plots, vertical line charts and stem-and-leaf are still absent | PARTIAL |
+| `D7` | Recognise when a scatter diagram shows an outlier | `t_scatter` now makes a bivariate outlier visible on the plot, but nothing identifies or flags one | PARTIAL |
 | `p22` | Use samples to make informal inferences about the population | `t_summary` gives the sample statistics; inference is by hand | PARTIAL |
-| `D6` | Interpret a scatter diagram and a regression line, including interpolation and extrapolation | `t_regress` computes the line and predicts at a given x, but there is no scatter plot to interpret | PARTIAL |
-| `D8` | Recognise and describe correlation | `t_regress` prints r; no plot and no verbal classification | PARTIAL |
 | `D11` | Simple measures of spread: range, percentiles, quartiles, IQR | `t_summary` gives range, Q1, Q3, IQR - but not arbitrary percentiles | PARTIAL |
-| `D13` | Understand the term outlier and identify outliers | 1.5*IQR fences are implemented; the "more than 2 standard deviations from the mean" rule is not | PARTIAL |
+| `D13` | Understand the term outlier and identify outliers | `t_summary` and `t_boxplot` both apply the 1.5*IQR fences and list the outliers; the "more than 2 standard deviations from the mean" rule is not implemented | PARTIAL |
 | `*` (Probability) | Understand the concept of a complementary event | `t_prob` gives P(A or B), P(A\|B), P(B\|A); the complement must be formed as 1-P by hand | PARTIAL |
 | `*` (Probability) | Calculate the expected frequency of an event | `t_binom` prints the binomial mean np; there is no general n*P(event) tool | PARTIAL |
 | `R5` | Calculate expected frequencies from a binomial distribution | Mean np is printed; a full table of expected frequencies is not produced | PARTIAL |
 | `H9` | Identify the critical and acceptance regions for a test on a mean | `t_htmean` prints the critical z but not the critical value of the sample mean | PARTIAL |
 | `H11` | Use a given correlation coefficient to carry out a hypothesis test for correlation | `t_regress` computes r; no critical values for r and no test decision (contrast `t_htbinom`, which does print a CR) | PARTIAL |
+| `D2` | Area of a histogram bar is proportional to frequency; calculate frequency from frequency density | `stat640.t_hist` takes class boundaries and frequencies, computes the frequency density and draws area-correct bars | COVERED |
+| `D3` | Interpret a cumulative frequency diagram | `stat640.t_cumfreq` plots the curve at upper class boundaries and reads off the median and quartiles by linear interpolation | COVERED |
+| `D6` | Interpret a scatter diagram and a regression line, including interpolation and extrapolation | `stat640.t_scatter` draws the points with the fitted line; `t_regress` predicts at a chosen x | COVERED |
+| `D8` | Recognise and describe correlation | `t_scatter` gives the plot and r together, which is what the recognition step needs; the verbal description is left to the candidate | COVERED |
 | `MD10` | Standard measures of central tendency: median, mode, mean | `stat640.t_summary` and `t_freq` | COVERED |
 | `MD12` | Calculate and interpret variance and standard deviation; Sxx | `t_summary` gives Sxx, s (n-1) and sd (n); `t_freq` the same from a frequency table | COVERED |
 | `Mu1` | Mutually exclusive events | `t_prob` addition rule | COVERED |
@@ -275,23 +275,23 @@ These were verified by running the modules, not inferred:
 
 | Code | Content statement | Toolkit coverage | Verdict |
 |---|---|---|---|
-| `k4` | Draw and interpret kinematics graphs (position-time, velocity-time), including gradient and area | No kinematics graphing; CAS `Graph` plots a typed f(x) but nothing computes area under a v-t graph as displacement | MISSING |
 | `Mk9` | Language of 2-D kinematics; position vector, relative position | No relative-position or 2-D kinematics tool | MISSING |
 | `k11` | Find the cartesian equation of the path of a particle | No parameter elimination anywhere | MISSING |
 | `y3` | Find the initial velocity (speed and angle) of a projectile from given information | `mech640.projectile` runs forward only: it needs u and the angle as inputs and cannot be inverted | MISSING |
 | `y4` | Eliminate time from the component equations to get the path equation | Not implemented | MISSING |
 | `F8` | Vectors representing a set of forces in equilibrium form a closed polygon | No polygon/triangle of forces drawing | MISSING |
+| `k4` | Draw and interpret kinematics graphs (position-time, velocity-time), including gradient and area | `mech640.distance_travelled` does the area-under-v-t job properly, splitting at the sign changes of v and separating distance from displacement; no s-t or v-t graph is actually drawn | PARTIAL |
 | `k10` | Extend 1-D techniques (calculus and constant acceleration) to 2-D | CAS is scalar; components must be handled separately by hand | PARTIAL |
 | `k12` | Use vectors to solve problems in kinematics | `vectors.py` primitives exist; nothing kinematic | PARTIAL |
 | `y5` | Solve simple problems involving projectiles, including maximum range | `projectile` gives range for a given angle; no maximum-range or optimal-angle calculation | PARTIAL |
 | `F4` | Find the resultant of several concurrent forces | `resultant` takes exactly two forces; `equilibrium` sums up to 8 but reports only Sum Fx, Sum Fy and the resultant magnitude - no direction | PARTIAL |
 | `F9` | Formulate and solve equations for a particle in equilibrium (triangle of forces) | `equilibrium` only tests a given set of forces; it does not solve for unknown magnitudes or angles | PARTIAL |
-| `n4` | Model a system as connected particles | `pulley` handles only two masses over a smooth pulley; particle-on-table, lift and train systems are not offered | PARTIAL |
-| `n5` | Formulate the equations of motion for a connected system | As `n4` | PARTIAL |
-| `n6` | A system whose components all have the same acceleration | As `n4` | PARTIAL |
 | `n7` | Formulate the equation of motion for a particle in two dimensions | `newton2` is scalar only | PARTIAL |
-| `k5` | Differentiate position and velocity with respect to time | CAS `Differentiate` (using x for t) | COVERED |
-| `k6` | Integrate acceleration and velocity with respect to time | CAS `Integrate` | COVERED |
+| `n4` | Model a system as connected particles | `mech640.connected` handles two masses over a smooth pulley with either mass hanging or on a plane at any angle, with friction on each | COVERED |
+| `n5` | Formulate the equations of motion for a connected system | `mech640.connected` prints the driving force, the maximum friction, the acceleration and the tension, and detects the stays-at-rest case | COVERED |
+| `n6` | A system whose components all have the same acceleration | `mech640.connected` (a single acceleration for the pair, with the tension found from one particle's equation) | COVERED |
+| `k5` | Differentiate position and velocity with respect to time | `mech640.kinematics` differentiates s -> v -> a in t directly, and also finds when v = 0 | COVERED |
+| `k6` | Integrate acceleration and velocity with respect to time | `mech640.kinematics` integrates a -> v -> s and fixes each constant from the value at t = 0 | COVERED |
 | `k7` | Recognise when constant acceleration applies; the suvat formulae | `mech640.suvat` (fixed-point solver over all five suvat relations) | COVERED |
 | `k8` | Solve kinematics problems with constant acceleration, including vertical motion under gravity | `suvat` + `casutil.askg` | COVERED |
 | `My1` | Model motion under gravity in a vertical plane; projectile assumptions | `mech640.projectile` | COVERED |
@@ -331,23 +331,22 @@ These were verified by running the modules, not inferred:
 | `Pp5` | Construct a proof by induction generally (divisibility, de Moivre) | Nothing | MISSING |
 | `j11` | Represent and interpret loci on an Argand diagram: \|z-a\| = r, \|z-a\| = \|z-b\|, arg(z-a) = theta, and regions | `t_argand` plots isolated points only; no loci and no regions | MISSING |
 | `j13` | Apply de Moivre's theorem to trigonometric identities (cos n*theta, tan 4*theta) | No symbolic trig expansion in the CAS | MISSING |
-| `Pm6` | Find invariant points and invariant lines of a linear transformation | Not implemented anywhere | MISSING |
+| `Pm6` | Find invariant points and invariant lines of a linear transformation | `matrix.t_invariant` exists in the working tree (uncommitted) and looks correct, but it is **not registered in `matrix.TOOLS`**, so it is unreachable from the menu | MISSING |
 | `Pv14` | Find the intersection of a line and a plane | No tool; `vectors.py` has distances and angles only | MISSING |
 | `v9` | Form and use the equation of a line in 2-D and 3-D, in vector and cartesian form | `t_ptline`/`t_skew` consume a line as (point, direction) but nothing forms the equation from two points or converts to cartesian | MISSING |
-| `Ps2` | Sum a series using partial fractions (method of differences) | Not implemented; `series.py` has Sum r, r^2, r^3 and Maclaurin only | MISSING |
 | `Pc1` | Evaluate improper integrals where a limit is infinite or the integrand is undefined at an endpoint | `cascalc.defint` is composite Simpson on a finite interval; it cannot take a limit | MISSING |
 | `c2` | Derive formulae for and calculate volumes of revolution about the x- and y-axes | No volume-of-revolution tool | MISSING |
 | `c8` | Recognise differential equations where the variables are separable | No separable-DE handling | MISSING |
 | `c14` | Find particular integrals in simple cases (polynomial, exponential, trigonometric f(x)) | `diffeq.t_second_order` produces the complementary function only | MISSING |
 | `c18` | Analyse and interpret coupled first order simultaneous differential equations (e.g. predator-prey) | Not implemented | MISSING |
 | `a2` | Form a new equation whose roots are related to the original (2*alpha, alpha+k, 1/alpha, alpha^2) | `polyroots.t_shift_roots` covers only the +k substitution; scaling, reciprocal and squaring are not implemented | PARTIAL |
-| `j3` | Complex roots occur in conjugate pairs; solve cubic and quartic equations with real coefficients | `polyroots.t_numeric_roots` gives real roots only, in [-20, 20]; no complex root extraction beyond the quadratic case | PARTIAL |
+| `j3` | Complex roots occur in conjugate pairs; solve cubic and quartic equations with real coefficients | CAS `Factorise` now peels off rational linear factors, and `vcplx.t_quad` finishes the remaining quadratic; but nothing joins the two steps, and a cubic with no rational root still yields nothing complex | PARTIAL |
 | `j8` | Multiply and divide complex numbers in modulus-argument form | `vcplx.t_arith` multiplies and divides but reports the answer in cartesian form only; nothing shows r1*r2 and theta1+theta2 | PARTIAL |
 | `j10` | Represent sum, difference, product and quotient on an Argand diagram | `t_argand` plots points; no vector/parallelogram construction and no link to `t_arith` | PARTIAL |
 | `j19` | Represent the complex roots of unity on an Argand diagram | `t_roots` lists them; plotting requires retyping each root into `t_argand` | PARTIAL |
 | `j20` | Apply complex numbers to geometrical problems (regular polygons) | Roots and moduli available; the geometry is manual | PARTIAL |
 | `m2` | Understand and use the zero and identity matrices | No built-in I or 0; the user types them in | PARTIAL |
-| `m4` | Find the matrix of a given 2-D transformation and vice versa; 3-D reflections in x=0/y=0/z=0 and rotations of multiples of 90 degrees about an axis | `matrix.t_transform` builds 2-D matrices only; the 3-D transformations named in the spec are absent, and there is no matrix -> description direction | PARTIAL |
+| `m4` | Find the matrix of a given 2-D transformation and vice versa; 3-D reflections in x=0/y=0/z=0 and rotations of multiples of 90 degrees about an axis | `matrix.t_transform` builds 2-D matrices; `matrix.t_transform3` covers the 3-D cases but is **not registered in `matrix.TOOLS`** (uncommitted work in progress). There is no matrix -> description direction either way | PARTIAL |
 | `m5` | Successive transformations and matrix multiplication | `A*B` works, but the composed matrix is not described as a transformation | PARTIAL |
 | `m9` | The magnitude of a 3x3 determinant is the volume scale factor; the sign gives orientation | `t_det` computes a 3x3 determinant; only the 2-D tool mentions the area/scale interpretation, and orientation is never reported | PARTIAL |
 | `m15` | Find the determinant and inverse of a 3x3 matrix without a calculator, possibly with algebraic terms | Numeric 3x3 only; algebraic entries are not supported | PARTIAL |
@@ -366,6 +365,7 @@ These were verified by running the modules, not inferred:
 | `c10` | Solve an equation using an integrating factor, including finding a particular solution | `diffeq.t_first_order` computes int P dx and shows the IF and the method, but it never performs int (IF * Q) dx and never applies an initial condition - the answer is not produced | PARTIAL |
 | `c13` | Solve a y'' + b y' + c y = f(x) | `t_second_order` gives the complementary function only; no particular integral, so the general solution is never completed | PARTIAL |
 | `Pc15` | Solve the simple harmonic motion equation and relate the solution to the motion | `diffeq.t_shm` gives omega, T, f and both general forms, but does not fit A and phi (or C and D) from initial conditions | PARTIAL |
+| `Ps2` | Sum a series using partial fractions (method of differences) | `series.t_differences` splits f(r) with `caspoly.partial`, builds g(r), verifies g(r)-g(r+1) = f(r) numerically, telescopes to g(1)-g(n+1) and cross-checks against a direct sum | COVERED |
 | `Pj1` | Language of complex numbers: real part, imaginary part, conjugate, modulus, argument | `vcplx.t_modarg` (prints the conjugate too) | COVERED |
 | `j2` | Solve any quadratic equation with real coefficients | `vcplx.t_quad` (real and complex cases) | COVERED |
 | `j4` | Add, subtract, multiply and divide complex numbers in x + yi form | `vcplx.t_arith` | COVERED |
@@ -509,7 +509,7 @@ Toolkit modules in scope: `fmmech.py`, plus everything in `mech640.py`,
 | `h6` | Calculate the energy stored in a stretched string or spring | `t_hooke` (EPE = lambda x^2 / (2l)) | COVERED |
 | `G4` | Find the centre of mass of a composite body | `fmmech.t_com` (negative masses model removed pieces) | COVERED |
 | `G8` | Find the centre of mass of a compound body by treating parts as particles | `t_com` | COVERED |
-| `Mv1` | Find acceleration, velocity and position by calculus (variable acceleration) | CAS `Differentiate` / `Integrate` | COVERED |
+| `Mv1` | Find acceleration, velocity and position by calculus (variable acceleration) | `mech640.kinematics` (differentiates or integrates in t, fixes constants from t = 0, and locates v = 0) | COVERED |
 | `v11` | Recognise and formulate the simple harmonic motion equation | `diffeq.t_shm` and `t_damping` | COVERED |
 | `q7` | Use a model based on dimensional analysis | Modelling judgement | N/A |
 | `*` (Forces) | Language relating to forces | Terminology only | N/A |

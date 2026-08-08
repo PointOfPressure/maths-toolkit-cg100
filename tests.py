@@ -440,6 +440,93 @@ def test_cas_algebra_ui():
     has("partial fractions needs a fraction", out, "one fraction")
 
 
+def test_reciprocal_trig():
+    # sec, cosec and cot had no tokens at all, so "sec(x)" fell through to the
+    # single-letter rule and parsed as s*e*c*x, and "cosec(x)" parsed as
+    # cos(e*c*x) - a well-formed tree for a completely different function.
+    # Only the rule that an unknown variable raises stopped that from being a
+    # silent wrong answer on a real paper.
+    for name in ('sec', 'cosec', 'cot', 'sech', 'cosech', 'coth'):
+        t = caslex.parse(name + "(x)")
+        check(name + " parses as itself", caseng.tostr(t), name + "(x)")
+        check(name + " is one node", t[0], name)
+    # the longest-first order matters: cosec must not be read as cos
+    check("cosec is not cos", caslex.parse("cosec(x)")[0], 'cosec')
+    check("cosech is not cosec", caslex.parse("cosech(x)")[0], 'cosech')
+    check("cosh is still cosh", caslex.parse("cosh(x)")[0], 'cosh')
+    check("cos is still cos", caslex.parse("cos(x)")[0], 'cos')
+    check("sech is not sec", caslex.parse("sech(x)")[0], 'sech')
+    check("coth is not cot", caslex.parse("coth(x)")[0], 'coth')
+    # arc-prefixed names are accepted and normalised
+    check("arcsin is asin", caslex.parse("arcsin(x)")[0], 'asin')
+    check("arctan is atan", caslex.parse("arctan(x)")[0], 'atan')
+    check("arccosh is acosh", caslex.parse("arccosh(x)")[0], 'acosh')
+
+    # values, against the reciprocals computed directly
+    close("sec(1)", caseng.evalf(caslex.parse("sec(x)"), 1.0), 1.0 / math.cos(1.0))
+    close("cosec(1)", caseng.evalf(caslex.parse("cosec(x)"), 1.0), 1.0 / math.sin(1.0))
+    close("cot(1)", caseng.evalf(caslex.parse("cot(x)"), 1.0),
+          math.cos(1.0) / math.sin(1.0))
+    close("sech(1)", caseng.evalf(caslex.parse("sech(x)"), 1.0), 1.0 / math.cosh(1.0))
+    close("coth(1)", caseng.evalf(caslex.parse("coth(x)"), 1.0),
+          math.cosh(1.0) / math.sinh(1.0))
+    # cot(pi/2) is 0; computing it as 1/tan would divide by an infinity
+    close("cot(pi/2) is 0", caseng.evalf(caslex.parse("cot(x)"), math.pi / 2), 0.0, 1e-12)
+    # undefined points raise rather than returning a huge number
+    raises("sec(pi/2) raises", lambda: caseng.evalf(caslex.parse("sec(x)"), math.pi / 2))
+    raises("cosec(0) raises", lambda: caseng.evalf(caslex.parse("cosec(x)"), 0.0))
+    raises("cot(0) raises", lambda: caseng.evalf(caslex.parse("cot(x)"), 0.0))
+    raises("cosech(0) raises", lambda: caseng.evalf(caslex.parse("cosech(x)"), 0.0))
+    raises("sec(90 deg) raises", lambda: caseng.evalf(caslex.parse("sec(x)"), 90.0, True))
+    # in degree mode too
+    close("sec(60 deg) is 2", caseng.evalf(caslex.parse("sec(x)"), 60.0, True), 2.0)
+
+    # derivatives, against the standard results
+    check("d/dx sec", caseng.tostr(caseng.simplify(caseng.diff(caslex.parse("sec(x)")))),
+          "sec(x)*tan(x)")
+    check("d/dx cot(2x)",
+          caseng.tostr(caseng.simplify(caseng.diff(caslex.parse("cot(2x)")))),
+          "-(2*cosec(2*x)^2)")
+    # every derivative also checked numerically against a central difference
+    for expr in ("sec(x)", "cosec(x)", "cot(x)", "sech(x)", "cosech(x)", "coth(x)"):
+        f = caslex.parse(expr)
+        d = caseng.simplify(caseng.diff(f))
+        for xv in (0.7, 1.3, 2.4):
+            h = 1e-6
+            try:
+                num_d = (caseng.evalf(f, xv + h) - caseng.evalf(f, xv - h)) / (2 * h)
+                close("d/dx " + expr + " at " + str(xv),
+                      caseng.evalf(d, xv), num_d, 1e-4)
+            except:
+                pass
+
+    # integrals
+    check("int sec^2 is tan", isym("sec(x)^2"), "tan(x)")
+    check("int cosec^2 is -cot", isym("cosec(x)^2"), "-cot(x)")
+    check("int sech^2 is tanh", isym("sech(x)^2"), "tanh(x)")
+    check("int cot is ln|sin|", isym("cot(x)"), "ln(abs(sin(x)))")
+    check("int sec", isym("sec(x)"), "ln(abs(sec(x)+tan(x)))")
+    check("int cosec(2x)", isym("cosec(2x)"), "-ln(abs(cosec(2*x)+cot(2*x)))/2")
+    # each one differentiated back, which is the check that actually matters
+    for expr in ("sec(x)^2", "cosec(x)^2", "cot(x)", "sec(x)", "cosec(2x)", "sech(x)^2"):
+        f = caslex.parse(expr)
+        F = cascalc.integ(f)
+        truthy("int " + expr + " exists", F is not None)
+        if F is None:
+            continue
+        d = caseng.simplify(caseng.diff(cascalc.tidy(F)))
+        for xv in (0.4, 1.1, 2.3):
+            try:
+                close("d/dx int " + expr + " at " + str(xv),
+                      caseng.evalf(d, xv), caseng.evalf(f, xv), 1e-6)
+            except:
+                pass
+
+    # and they have to be typeable: no key carries sec, cosec or cot
+    for tok in ('sec(', 'cosec(', 'cot(', 'sech(', 'cosech(', 'coth('):
+        truthy(tok + " is in the CATALOG picker", tok in casui.EXTRAS)
+
+
 # =========================================================== purecalc tests =
 def test_engine_substitution():
     # subst / subst_tree / count_var / invert - the pieces composite functions,
@@ -580,7 +667,7 @@ def test_purecalc():
 
     # separable dy/dx = 2x y through (0,1) is y = e^(x^2)
     o = drive(purecalc.t_separable, ["2x", "y", "0", "1"])
-    has("separable ln y side", o, "integral 1/g(y) dy = ln(y)")
+    has("separable ln y side", o, "integral 1/g(y) dy = ln(abs(y))")
     has("separable x side", o, "integral f(x) dx   = x^2")
     has("separable explicit", o, "y = exp(x^2)")
     has("separable passes the point", o, "passes through")
@@ -707,13 +794,13 @@ def test_calculus():
     check("integ of non-linear arg", isym("sin(x^3-3x^2+3x)"), None)
 
     check("int x^2", isym("x^2"), "x^3/3")
-    check("int 1/x", isym("1/x"), "ln(x)")
-    check("int x^-1", isym("x^-1"), "ln(x)")
-    check("int 3/x", isym("3/x"), "3*ln(x)")
+    check("int 1/x", isym("1/x"), "ln(abs(x))")
+    check("int x^-1", isym("x^-1"), "ln(abs(x))")
+    check("int 3/x", isym("3/x"), "3*ln(abs(x))")
     check("int sqrt(x)", isym("sqrt(x)"), "2/3*x^(3/2)")
     check("int ln(x)", isym("ln(x)"), "x*ln(x)-x")
-    check("int tan(x)", isym("tan(x)"), "-ln(cos(x))")
-    check("int 1/(2x+1)", isym("1/(2x+1)"), "ln(2*x+1)/2")
+    check("int tan(x)", isym("tan(x)"), "-ln(abs(cos(x)))")
+    check("int 1/(2x+1)", isym("1/(2x+1)"), "ln(abs(2*x+1))/2")
     check("int exp(-x)", isym("exp(-x)"), "-exp(-x)")
     check("int x^(2/3)", isym("x^(2/3)"), "3/5*x^(5/3)")
     check("int sin(x)", isym("sin(x)"), "-cos(x)")
@@ -722,7 +809,7 @@ def test_calculus():
     # integration by parts
     check("int x ln(x)", isym("x*ln(x)"), "ln(x)*x^2/2-x^2/4")
     check("int x^2 ln(x)", isym("x^2*ln(x)"), "ln(x)*x^3/3-x^3/9")
-    check("int atan(x)", isym("atan(x)"), "atan(x)*x-1/2*ln(1+x^2)")
+    check("int atan(x)", isym("atan(x)"), "atan(x)*x-1/2*ln(abs(1+x^2))")
     truthy("int x sin(x) closes", isym("x*sin(x)") is not None)
     truthy("int x^2 sin(x) closes", isym("x^2*sin(x)") is not None)
     truthy("int x^3 exp(x) closes", isym("x^3*exp(x)") is not None)
@@ -733,9 +820,9 @@ def test_calculus():
     check("int sin(x)cos(x)", isym("sin(x)*cos(x)"), "sin(x)^2/2")
     check("int exp(x)exp(x)", isym("exp(x)*exp(x)"), "exp(x)^2/2")
     # f'/f -> ln f
-    check("int 2x/(x^2+1)", isym("2x/(x^2+1)"), "ln(x^2+1)")
-    check("int cot", isym("cos(x)/sin(x)"), "ln(sin(x))")
-    check("int x/(x^2+4)", isym("x/(x^2+4)"), "1/2*ln(x^2+4)")
+    check("int 2x/(x^2+1)", isym("2x/(x^2+1)"), "ln(abs(x^2+1))")
+    check("int cot", isym("cos(x)/sin(x)"), "ln(abs(sin(x)))")
+    check("int x/(x^2+4)", isym("x/(x^2+4)"), "1/2*ln(abs(x^2+4))")
     # trig identity rewriting: sin^2 and cos^2 have no term-by-term
     # antiderivative, so they go through the double-angle form the
     # specification asks for. Typing it as a product must give the same answer.
@@ -1755,6 +1842,7 @@ TESTS = [
     ("calculus", test_calculus),
     ("polynomial algebra", test_polyalg),
     ("CAS algebra UI", test_cas_algebra_ui),
+    ("reciprocal trig", test_reciprocal_trig),
     ("engine substitution", test_engine_substitution),
     ("solve in any variable", test_solve_variable),
     ("purecalc", test_purecalc),
