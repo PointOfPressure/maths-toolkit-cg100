@@ -297,11 +297,12 @@ def integ_rational(a, b, var, depth):
     return tidy(out)
 
 def tidy(node):
-    # Presentation pass for an answer that is about to be shown: fold constants,
-    # then gather like terms so a negative coefficient prints as a subtraction.
-    # Kept out of integ itself, which recurses - this runs once, at the end.
+    # Presentation pass for an answer that is about to be shown: cancel common
+    # factors out of a quotient, fold constants, then gather like terms so a
+    # negative coefficient prints as a subtraction. Kept out of integ itself,
+    # which recurses - this runs once, at the end.
     try:
-        return caspoly.collect(caseng.simplify(node))
+        return caspoly.collect(caspoly.cancel(caseng.simplify(node)))
     except:
         return caseng.simplify(node)
 
@@ -364,7 +365,11 @@ def integ(n, var='x', depth=0):
         if not has_var(a, var):
             lc = linear_coeff(b, var)
             if lc is not None and lc[0] != 0:
-                F = ('*', a, ('ln', b))
+                # c/(p*var) is (c/p) ln(var), not (c/p) ln(p*var): the two
+                # differ by a constant, but only the first is the answer a
+                # student writes down
+                inner = ('v', var) if lc[1] == 0 else b
+                F = ('*', a, ('ln', inner))
                 return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
         # k f'(x) / f(x) -> k ln f(x). Tested by dividing the numerator by the
         # derivative of the denominator and asking whether the variable is gone.

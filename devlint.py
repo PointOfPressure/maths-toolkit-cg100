@@ -20,7 +20,7 @@ DEVICE_FILES = [
     "vcplx.py", "matrix.py", "vectors.py", "polyroots.py", "series.py",
     "hyper.py", "polar.py", "diffeq.py", "fmmech.py", "fmstat.py",
     "numeric.py", "algos.py", "xpure.py", "fpt.py",
-    "pure640.py", "stat640.py", "mech640.py",
+    "pure640.py", "purecalc.py", "stat640.py", "mech640.py",
     # one-off hardware probes: not part of the toolkit, but they do run on the
     # calculator, so they are held to the same limits
     "calib_screen.py", "fontmetrics.py", "fontmetrics2.py", "keyprobe.py",

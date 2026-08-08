@@ -665,6 +665,7 @@ HELP = {
     "fpt": "Further Pure with Tech. Plot curves, complex De Moivre & roots, Euler's method, number theory (gcd, primes, factorising, modular).",
     "pure640": "Pure (A-Level). Quadratics, simultaneous equations, sequences & series, binomial, logs, coordinate geometry & circles, trig and R-form.",
     "stat640": "Statistics (A-Level). Summary stats, frequency tables, discrete random variables, binomial & Normal, hypothesis tests, PMCC & regression.",
+    "purecalc": "Pure functions and calculus techniques. Composite fg(x) and inverse functions, domain and range, the modulus function, graph transformations, parametric and implicit differentiation, integration by substitution (you choose u), small-angle approximations and the exact trig values. Type t as t and y as y with ALPHA.",
     "mech640": "Mechanics (A-Level). SUVAT (enter any 3 of u,v,a,s,t), projectiles, forces & resolving, friction on slopes, pulleys, moments.",
 }
 _helped = []
@@ -971,8 +972,9 @@ def fm_section():
         elif c == 1:
             _submenu("FM OPTIONS", FM_OPT_LABELS, FM_OPT_MODS)
 
-MATHS_LABELS = ["Pure", "Statistics", "Mechanics"]
-MATHS_MODS = ["pure640", "stat640", "mech640"]
+MATHS_LABELS = ["Pure: algebra & trig", "Pure: functions & calculus",
+                "Statistics", "Mechanics"]
+MATHS_MODS = ["pure640", "purecalc", "stat640", "mech640"]
 
 def maths_section():
     _submenu("A-LEVEL MATHS", MATHS_LABELS, MATHS_MODS)

@@ -113,7 +113,7 @@ def _render(tr):
 
 MODNAMES = ["vcplx", "matrix", "vectors", "polyroots", "series", "hyper",
             "polar", "diffeq", "fmmech", "fmstat", "numeric", "algos",
-            "xpure", "fpt", "pure640", "stat640", "mech640"]
+            "xpure", "fpt", "pure640", "purecalc", "stat640", "mech640"]
 
 def _sections():
     # Drive the TOOLS registry, not a "t_" name prefix. The old prefix scan

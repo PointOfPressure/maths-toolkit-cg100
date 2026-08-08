@@ -335,6 +335,146 @@ def _d(n, var):
         return ('n', 0)
     return ('n', 0)
 
+def subst(n, var, repl):
+    # replace every ('v', var) with the tree repl. Composite functions, implicit
+    # differentiation and integration by substitution all need this.
+    t = n[0]
+    if t == 'v':
+        return repl if n[1] == var else n
+    if t == 'n':
+        return n
+    if len(n) == 2:
+        return (t, subst(n[1], var, repl))
+    if len(n) == 3:
+        return (t, subst(n[1], var, repl), subst(n[2], var, repl))
+    return n
+
+def subst_tree(n, target, repl):
+    # replace every occurrence of the subtree `target` with `repl`. This is how
+    # a substitution u = g(x) is checked: rewrite, then see whether any x is
+    # left. Compared structurally, so g(x) has to be written the same way it
+    # appears in the integrand - which is what a student does anyway.
+    if n == target:
+        return repl
+    t = n[0]
+    if t == 'n' or t == 'v':
+        return n
+    if len(n) == 2:
+        return (t, subst_tree(n[1], target, repl))
+    if len(n) == 3:
+        return (t, subst_tree(n[1], target, repl), subst_tree(n[2], target, repl))
+    return n
+
+def count_var(n, var):
+    # how many times var appears; 1 means an expression can be inverted by
+    # peeling operations off the outside one at a time
+    t = n[0]
+    if t == 'n':
+        return 0
+    if t == 'v':
+        return 1 if n[1] == var else 0
+    if len(n) == 2:
+        return count_var(n[1], var)
+    if len(n) == 3:
+        return count_var(n[1], var) + count_var(n[2], var)
+    return 0
+
+def vars_in(n, out=None):
+    # the variable names an expression mentions, in first-seen order
+    if out is None:
+        out = []
+    t = n[0]
+    if t == 'v':
+        if n[1] not in out:
+            out.append(n[1])
+        return out
+    if t == 'n':
+        return out
+    if len(n) >= 2:
+        vars_in(n[1], out)
+    if len(n) >= 3:
+        vars_in(n[2], out)
+    return out
+
+# ---------- invert y = f(x) by peeling operations off the outside ----------
+# Only valid when x occurs exactly once; with two occurrences the inverse is
+# not obtainable this way and the caller falls back to solving numerically.
+_INVFN = {'sin': 'asin', 'cos': 'acos', 'tan': 'atan', 'asin': 'sin',
+          'acos': 'cos', 'atan': 'tan', 'exp': 'ln', 'ln': 'exp',
+          'sinh': 'asinh', 'cosh': 'acosh', 'tanh': 'atanh',
+          'asinh': 'sinh', 'acosh': 'cosh', 'atanh': 'tanh'}
+
+def invert(f, var='x', yname='y'):
+    # x as a function of y, or None
+    if count_var(f, var) != 1:
+        return None
+    lhs = f
+    rhs = ('v', yname)
+    guard = 0
+    while guard < 40:
+        guard += 1
+        t = lhs[0]
+        if t == 'v':
+            return simplify(rhs) if lhs[1] == var else None
+        if t == 'neg':
+            lhs = lhs[1]
+            rhs = ('neg', rhs)
+            continue
+        if t in _INVFN:
+            rhs = (_INVFN[t], rhs)
+            lhs = lhs[1]
+            continue
+        if t == 'sqrt':
+            rhs = ('^', rhs, ('n', 2))
+            lhs = lhs[1]
+            continue
+        if t == 'log':
+            rhs = ('^', ('n', 10), rhs)
+            lhs = lhs[1]
+            continue
+        if t == 'abs':
+            return None       # not one-to-one: no single inverse
+        if t in ('+', '-', '*', '/', '^'):
+            a = lhs[1]
+            b = lhs[2]
+            ax = _hasvar(a, var)
+            if ax and _hasvar(b, var):
+                return None
+            if ax:
+                if t == '+':
+                    rhs = ('-', rhs, b)
+                elif t == '-':
+                    rhs = ('+', rhs, b)
+                elif t == '*':
+                    rhs = ('/', rhs, b)
+                elif t == '/':
+                    rhs = ('*', rhs, b)
+                else:
+                    if b[0] != 'n':
+                        return None
+                    e = b[1]
+                    if e == 0:
+                        return None
+                    rhs = ('^', rhs, ('/', ('n', 1), ('n', e)))
+                lhs = a
+                continue
+            # the variable is on the right of the operator
+            if t == '+':
+                rhs = ('-', rhs, a)
+            elif t == '-':
+                rhs = ('-', a, rhs)
+            elif t == '*':
+                rhs = ('/', rhs, a)
+            elif t == '/':
+                rhs = ('/', a, rhs)
+            else:
+                # a^x = y  ->  x = ln y / ln a
+                rhs = ('/', ('ln', rhs), ('ln', a))
+            lhs = b
+            continue
+        return None
+    return None
+
 def _hasvar(n, var):
     t = n[0]
     if t == 'n':

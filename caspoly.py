@@ -208,23 +208,47 @@ def term_deg(facs):
         d += e
     return d
 
+def _mulchain(items):
+    node = None
+    for f in items:
+        node = f if node is None else ('*', node, f)
+    return node
+
 def term_node(coef, facs):
-    if not facs:
-        return ratnode(coef)
-    body = None
+    # Rebuild a term with the negative exponents gathered into a denominator,
+    # so x*y^-1 prints as x/y rather than x*y^(-1).
+    top = []
+    bot = []
     for key, base, e in facs:
-        if e == 1:
-            f = base
-        else:
-            f = ('^', base, ('n', e)) if e > 0 else ('^', base, ('neg', ('n', -e)))
-        body = f if body is None else ('*', body, f)
-    if coef == R1:
-        return body
-    if coef == (-1, 1):
-        return ('neg', body)
-    if coef[1] == 1:
-        return ('*', ('n', coef[0]), body)
-    return ('/', ('*', ('n', coef[0]), body), ('n', coef[1]))
+        if e > 0:
+            top.append(base if e == 1 else ('^', base, ('n', e)))
+        elif e < 0:
+            bot.append(base if e == -1 else ('^', base, ('n', -e)))
+    num = _mulchain(top)
+    den = _mulchain(bot)
+    neg = coef[0] < 0
+    cn = -coef[0] if neg else coef[0]
+    if cn != 1 or num is None:
+        num = ('n', cn) if num is None else ('*', ('n', cn), num)
+    if coef[1] != 1:
+        den = ('n', coef[1]) if den is None else ('*', ('n', coef[1]), den)
+    if neg:
+        num = ('neg', num)      # -x/y, not -(x/y)
+    return num if den is None else ('/', num, den)
+
+def cancel(node):
+    # Divide out the factors a quotient has in common, top and bottom.
+    # simplify only cancels x^p/x^q when each side is a bare power, so
+    # 2x(x^2+1)^5 / (2x) came back untouched - and the substitution tool
+    # depends on that cancellation to see that no x is left.
+    if node[0] not in ('*', '/', 'neg', '^'):
+        return caseng.simplify(node)
+    tm = term_of(node)
+    if tm is None:
+        return caseng.simplify(node)
+    # deliberately not re-simplified: simplify's A/(k*B) -> (A/B)/k rule would
+    # undo the single-quotient form and print 3/t/4 for 3/(4t)
+    return term_node(tm[0], tm[1])
 
 # ------------------------------------------------------------------- expand --
 def _addterms(node, sign, out):
@@ -359,7 +383,9 @@ def collect(node):
             out = ('-', out, term_node(rneg(coef), facs))
         else:
             out = ('+', out, piece)
-    return caseng.simplify(out)
+    # not re-simplified: each term is already canonical, and simplify's
+    # A/(k*B) -> (A/B)/k rule would turn 3/(4t) back into 3/t/4
+    return out
 
 # --------------------------------------------------------------- polynomials --
 # A polynomial is a list of rationals indexed by power: [c0, c1, c2] is
