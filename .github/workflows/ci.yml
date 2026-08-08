@@ -1,0 +1,42 @@
+name: checks
+
+# The toolkit runs unmodified under desktop CPython via the casioplot stub, so
+# all three harnesses run here with no extra dependencies.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # every device file must still parse
+      - name: compile
+        run: python -m compileall -q .
+
+      # stays inside stock MicroPython 1.9.4 on the fx-CG100
+      - name: device compliance
+        run: python devlint.py
+
+      # answers are right, not merely non-crashing
+      - name: correctness
+        run: python tests.py
+
+      # every tool in all 17 sections is reachable and does not raise
+      - name: smoke
+        run: python stress.py
+
+      - name: smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-log
+          path: stress_log.txt
+          if-no-files-found: ignore
