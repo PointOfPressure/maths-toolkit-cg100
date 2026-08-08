@@ -4,16 +4,39 @@
 # Imports caslex, caseng, casrender, cascalc. EXIT at the top menu quits.
 #
 # Key codes are row*10+col, which is Casio's documented scheme. The map below
-# was decoded by hand on real hardware; keyprobe.py re-checks it on a device.
-# Note that [ON] and [AC] are assigned no key code at all, so getkey cannot see
-# them - quitting has to be on EXIT.
+# is the key-code diagram on page 142 of the fx-CG100 Software User's Guide
+# (v2.10) read against the printed keytops; keyprobe.py re-checks it on a
+# device. Note that [ON] and [AC] are assigned no key code at all, so getkey
+# cannot see them - quitting has to be on EXIT.
 from casioplot import *
 import caslex
 import caseng
 import casrender
 import cascalc
 
-IDLE = getkey()
+# Every code the keypad can produce (page 142's diagram: 9 rows, cols 1-6, with
+# row 1 col 1 = [ON] and row 6 col 5 = [AC] carrying no code, and rows 7-9
+# stopping at col 5). The manual does not state what getkey returns when no key
+# is held, so the toolkit does not depend on knowing: anything outside this set
+# is idle. Sampling getkey() once at import to learn the idle value was wrong
+# twice over - the key that launched the script is still down at import, which
+# made that key permanently unreadable for the rest of the session.
+KEYCODES = set([
+    12, 13, 14, 15, 16,
+    21, 22, 23, 24, 25, 26,
+    31, 32, 33, 34, 35, 36,
+    41, 42, 43, 44, 45, 46,
+    51, 52, 53, 54, 55, 56,
+    61, 62, 63, 64,
+    71, 72, 73, 74, 75,
+    81, 82, 83, 84, 85,
+    91, 92, 93, 94, 95,
+])
+
+def readkey():
+    # the code of the key held now, or 0 for none
+    k = getkey()
+    return k if k in KEYCODES else 0
 
 WHITE = (255, 255, 255)
 BLACK = (20, 20, 25)
@@ -74,11 +97,11 @@ EXTRAS = [
 ANGLE_DEG = False
 
 def wait_release():
-    while getkey() != IDLE:
+    while readkey():
         pass
 
 def wait_press():
-    while getkey() == IDLE:
+    while not readkey():
         pass
 
 def rect(x0, y0, x1, y1, c):
@@ -283,8 +306,8 @@ def input_expr(prompt):
     psel = 0
     draw_input(prompt, ex, cur, shift, alpha, palette, psel)
     while True:
-        k = getkey()
-        if k == IDLE:
+        k = readkey()
+        if not k:
             continue
         if palette:
             if k == LEFT:
@@ -397,8 +420,8 @@ def menu(title, opts):
     sel = 0
     draw_menu(title, opts, sel)
     while True:
-        k = getkey()
-        if k == IDLE:
+        k = readkey()
+        if not k:
             continue
         if k == UP:
             sel = (sel - 1) % len(opts)
@@ -441,9 +464,9 @@ def hold_page():
     draw_string(6, 178, "any key = more   EXIT = stop", GREY, "small")
     show_screen()
     wait_release()
-    k = getkey()
-    while k == IDLE:
-        k = getkey()
+    k = readkey()
+    while not k:
+        k = readkey()
     wait_release()
     return k == EXITK
 

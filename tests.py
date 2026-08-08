@@ -11,7 +11,11 @@
 # for the handheld's shallow call stack.
 
 import math
+import os
+import re
 import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__)) or "."
 
 import casui
 
@@ -438,9 +442,12 @@ def _typeable_tokens():
 def _typeable_chars(tokens):
     return set(v for v in tokens if len(v) == 1)
 
-# The fx-CG100 keypad, transcribed independently from the key-code diagram in
-# Casio's manual and the printed keytops. Codes are row*10+col. [ON] (row 1
-# col 1) and [AC] (row 6 col 5) are assigned no code and cannot be read.
+# The fx-CG100 keypad, transcribed independently from the key-code diagram on
+# page 142 of the fx-CG100/fx-1AU GRAPH Software User's Guide (v2.10) read
+# against the printed keytops. Codes are row*10+col. [ON] (row 1 col 1) and
+# [AC] (row 6 col 5) are drawn greyed out in that diagram - they carry no code
+# and cannot be read. The manual's own worked example ("the 5 key is held
+# down" prints 72) anchors the grid: row 7 col 2 is indeed the 5 key.
 KEYPAD = {
     12: 'HOME', 13: 'LINESTART', 14: 'UP', 15: 'LINEEND', 16: 'PAGEUP',
     21: 'SETTINGS', 22: 'BACK', 23: 'LEFT', 24: 'OK', 25: 'RIGHT', 26: 'PAGEDOWN',
@@ -527,6 +534,59 @@ def test_keymap_matches_hardware():
     for code in (11, 65):
         truthy("nothing bound to the codeless key " + str(code),
                code not in KEYPAD and code not in casui.UNSHIFT)
+
+    # casui.KEYCODES is what tells a real keypress from an idle poll, so it has
+    # to be exactly the set of codes the diagram shows and nothing more.
+    check("KEYCODES is the whole keypad", casui.KEYCODES, set(KEYPAD.keys()))
+    check("48 readable keys", len(casui.KEYCODES), 48)
+
+    # readkey() must report anything outside that set as "no key". The toolkit
+    # used to sample getkey() once at import and call the result idle, which
+    # broke whenever a key was still held at import - and the key that launches
+    # the script always is.
+    real = casui.getkey
+    try:
+        for code in (0, 11, 65, 96, 99, -1, 255):
+            casui.getkey = (lambda c: (lambda: c))(code)
+            check("readkey treats " + str(code) + " as idle", casui.readkey(), 0)
+        for code in (22, 72, 95):
+            casui.getkey = (lambda c: (lambda: c))(code)
+            check("readkey passes key " + str(code) + " through", casui.readkey(), code)
+    finally:
+        casui.getkey = real
+
+def test_draw_string_sizes():
+    # Every draw_string size argument the toolkit passes has to be one of the
+    # three the manual accepts: "large", "medium", "small", with "medium" the
+    # default when omitted (Software User's Guide v2.10, page 143). A wrong
+    # size is not a soft failure on hardware, so this is checked statically
+    # across every device file rather than left to whichever screen shows it.
+    import ast
+    ok = set(["small", "medium", "large"])
+    seen = [0]
+    for path in devlint.DEVICE_FILES:
+        full = os.path.join(HERE, path)
+        if not os.path.exists(full):
+            continue
+        tree = ast.parse(open(full).read(), path)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fn = node.func
+            name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
+            if name != "draw_string":
+                continue
+            truthy(path + ":" + str(node.lineno) + " draw_string arity",
+                   3 <= len(node.args) <= 5 and not node.keywords)
+            if len(node.args) == 5:
+                a = node.args[4]
+                if isinstance(a, ast.Str) or (isinstance(a, ast.Constant)
+                                              and isinstance(a.value, str)):
+                    v = a.s if isinstance(a, ast.Str) else a.value
+                    seen[0] += 1
+                    truthy(path + ":" + str(node.lineno) + " size " + repr(v) +
+                           " is one of small/medium/large", v in ok)
+    truthy("draw_string size argument is actually used", seen[0] > 50)
 
 def test_input_reachability():
     # Everything the toolkit documents has to be enterable on the real keypad.
@@ -1220,6 +1280,7 @@ TESTS = [
     ("render", test_render),
     ("ui format", test_ui_format),
     ("keymap vs hardware", test_keymap_matches_hardware),
+    ("draw_string sizes", test_draw_string_sizes),
     ("input reachability", test_input_reachability),
     ("cursor window", test_cursor_window),
     ("casutil", test_util),

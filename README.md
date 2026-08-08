@@ -261,9 +261,9 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 736 checks, 0 failures
+python3 tests.py       # correctness: 898 checks, 0 failures
 python3 stress.py      # smoke: 323 checks, 0 errors
-python3 devlint.py     # device compliance: 0 problems in 24 files
+python3 devlint.py     # device compliance: 0 problems in 28 files
 ```
 
 All three run on every push and pull request via `.github/workflows/ci.yml`, along with a `compileall` pass over the whole repo. No dependencies beyond CPython.
@@ -285,7 +285,7 @@ module's `TOOLS` registry and hammers the engine over ~30 expressions. It proves
 nothing crashes; it does not check that any answer is right. On a PC it writes
 `stress_log.txt`; on the device (no file writes) it prints progress instead.
 
-**`devlint.py` - device compliance.** Parses each of the 24 device files and
+**`devlint.py` - device compliance.** Parses each of the 28 device files and
 reports anything the calculator's MicroPython 1.9.4 cannot run: f-strings,
 non-ASCII bytes, imports beyond `math`/`random`/`casioplot`, `math` members the
 build lacks (`factorial`, `atan2`, the hyperbolics), annotations, walrus,
@@ -297,6 +297,30 @@ it too, so a change that would only fail on real hardware fails on the PC first.
 and must not be copied to the calculator.
 
 `calib_screen.py`, `fontmetrics.py`, and `fontmetrics2.py` are one-off hardware probes that were run on the real device to measure its display. `calib_screen.py` walks black pixels off each edge to detect the screen size (found to be 384x192). `fontmetrics.py` measures per-character advance and glyph height for the small/medium/large fonts and how many characters fit across the 384px width. `fontmetrics2.py` measures proportional glyph widths (narrow `i`, normal `o`, wide `m`) plus a real-prose average. These are not part of the toolkit; they were used to calibrate the layout constants.
+
+### Device facts, and how each one was settled
+
+Several constants in this repo used to be assumptions written without hardware
+or documentation to hand. Where they have been settled, this is the evidence.
+The source is the **fx-CG100/fx-1AU GRAPH Software User's Guide, version 2.10**
+(CASIO, published 12/2025), [available from
+CASIO](https://support.casio.com/global/en/calc/manual/fx-CG100_1AUGRAPH_en/);
+the `casioplot` chapter is pages 141-143.
+
+| Assumption | Status | Evidence |
+| --- | --- | --- |
+| `draw_string` size argument | **Confirmed** | Page 143: *"Specifies one of the following as the character size: 'large', 'medium', 'small'. 'medium' is applied when this argument is omitted."* The manual's own example passes `"large"`. `tests.py` now walks every device file with `ast` and asserts every literal size argument is one of the three. |
+| Colour argument format | **Confirmed** | Page 143: *"The color argument specifies the drawing color in 256 shades of RGB... to specify black, input (0,0,0) or [0,0,0)."* Tuples of 0-255 are correct, and `(0,0,0)` is the default when omitted. |
+| Key codes are `row*10+col` | **Confirmed** | Page 142 prints the grid: 9 rows, columns 1-6, with row 1 col 1 (`[ON]`) and row 6 col 5 (`[AC]`) greyed out as codeless, and rows 7-9 stopping at column 5. 48 readable keys. The manual's worked example holds the `5` key and prints `72`, which anchors the grid to the physical keypad. |
+| Which key each code is | **Confirmed** | The page-142 diagram is a blank keypad outline, so the codes were matched to the printed keytops against a full-resolution photograph of the fx-CG100 front panel. Every binding in `casui.py` agrees: the cursor cross is 14/23/25/34 around `OK` 24, `EXIT` is the back-arrow at 22 (13 is jump-to-line-start), and the ALPHA letters run A-F on 41-46, G-L on 51-56, M-O on 61-63, P-T on 71-75, U-Y on 81-85, Z on 91, with `Ans` on 94. `tests.py` holds that table independently and asserts `casui` matches it. |
+| `getkey()` idle value | **No longer relied on** | The manual documents `getkey()` as *"returns the key code of the calculator key pressed at the time this function is executed"* and its example polls it in a bare `while True`, so it is non-blocking - but it never states the idle return. The toolkit no longer needs to know: `casui.KEYCODES` is the set of codes the keypad can produce and `casui.readkey()` reports anything else as "no key". This also fixed a real bug - the old code sampled `getkey()` once at import and called that the idle value, but the key that launches the script is still held at import, which made that key unreadable for the whole session. |
+| `math` members available | **Partly settled** | The manual does not enumerate the `math` module; it is browsable on the device under `CATALOG > [math]`. What the manual does document (page 125, Python-mode key input) is `sqrt()`, `exp()`, `log()` (natural), `log10()`, `asin()`, `acos()`, `atan()` and `pi`. `devlint.MATH_OK` has deliberately **not** been widened past what the toolkit uses and the manual attests. |
+| Recursion ceiling (~38 frames) | **Unverified** | Needs the device. `tests.py` caps CPython at 38 frames and asserts parse/simplify/diff/evalf/integ still run, which is the property that matters (recursion on expression nesting, never on input length), but the true figure has not been measured. |
+| Pixel-level screen layout | **Unverified** | The autoscaling graph, the paged result screens, the CATALOG picker grid and caret windowing in long expressions were written from measured font metrics, not from screenshots. |
+
+`keyprobe.py` re-checks the key map on hardware and flags any code outside
+`casui.KEYCODES`; `calib_screen.py`, `fontmetrics.py` and `fontmetrics2.py`
+measured the display.
 
 ### Device constraints the code works around
 

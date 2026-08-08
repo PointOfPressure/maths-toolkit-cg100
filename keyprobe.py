@@ -1,15 +1,21 @@
 # keyprobe.py - one-off hardware probe: report the getkey code of any key.
 #
-# Casio documents the scheme (the code is the row number followed by the column
-# number) but publishes the full table only inside the fx-CG100 manual's
-# casioplot section, so the toolkit's map in casui.py was decoded by hand on
-# real hardware. This script is how you check it: press a key, read its code,
-# and see what the toolkit currently believes that key is.
+# The code is the row number followed by the column number. Casio prints the
+# grid of codes on page 142 of the fx-CG100 Software User's Guide, but the
+# diagram is a blank keypad outline - it never says which code is which key.
+# casui.py's map is that grid read against the printed keytops. This script is
+# how you check it on the device: press a key, read its code, and see what the
+# toolkit currently believes that key is.
 #
 # Press every key in turn to audit the whole map. Anything reported as "not
 # mapped" is a free code you can bind. [ON] and [AC] are assigned no key code
 # by Casio at all, so getkey cannot see them - that is why the toolkit quits on
 # EXIT rather than AC.
+#
+# This probe assumes getkey() returns 0 with nothing held (the manual does not
+# say). If the code display keeps changing with no key down, that assumption is
+# wrong and the idle value is whatever it keeps reporting. casui.py itself does
+# not depend on it - see casui.KEYCODES.
 #
 # Not part of the toolkit; a sibling of calib_screen.py and fontmetrics.py.
 from casioplot import *
@@ -59,6 +65,8 @@ def show(k, count):
     r = k // 10
     c = k % 10
     draw_string(6, 66, "row " + str(r) + ", column " + str(c), GREY, "medium")
+    if k not in casui.KEYCODES:
+        draw_string(230, 68, "NOT IN KEYCODES", RED, "small")
     y = 92
     rs = roles(k)
     if not rs:
@@ -73,7 +81,6 @@ def show(k, count):
     show_screen()
 
 def main():
-    idle = getkey()
     clear_screen()
     draw_string(6, 4, "KEY PROBE", ACC, "medium")
     draw_string(6, 40, "Press any key to see its", BLACK, "medium")
@@ -86,10 +93,12 @@ def main():
     count = 0
     last = None
     while True:
+        # raw getkey on purpose: casui.readkey() filters to the codes we believe
+        # exist, and catching a code we do not is the whole point of the probe.
         k = getkey()
-        if k == idle:
+        if k == 0:
             continue
-        while getkey() != idle:
+        while getkey() != 0:
             pass                      # wait for release
         if k == casui.EXITK and last == casui.EXITK:
             clear_screen()
