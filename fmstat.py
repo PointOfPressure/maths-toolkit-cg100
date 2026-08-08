@@ -1,104 +1,23 @@
 import math
-import casui
-import caslex
-import caseng
+import casutil
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _askint(prompt):
-    v = _asknum(prompt)
-    if v is None:
-        return None
-    return int(round(v))
+_asknum = casutil.asknum
+_askint = casutil.askint
+_fn = casutil.fmt
+_show = casutil.show
+_ncr = casutil.ncr
+_erf = casutil.erf
+_phi = casutil.phi
+_invphi = casutil.invphi
+_poispmf = casutil.poisson_pmf
+_binpmf = casutil.binom_pmf
 
 def _asklist(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
+    # this module treats "nothing entered" as a cancel
+    v = casutil.asklist(prompt)
+    if not v:
         return None
-    out = []
-    for p in s.replace(',', ' ').split():
-        try:
-            out.append(float(p))
-        except:
-            pass
-    if len(out) == 0:
-        return None
-    return out
-
-def _fn(x):
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-# --- numeric primitives (math lacks factorial / erf) ---
-
-def _fact(n):
-    r = 1.0
-    i = 2
-    while i <= n:
-        r = r * i
-        i += 1
-    return r
-
-def _ncr(n, r):
-    if r < 0 or r > n:
-        return 0.0
-    if r > n - r:
-        r = n - r
-    res = 1.0
-    i = 0
-    while i < r:
-        res = res * (n - i) / (i + 1)
-        i += 1
-    return res
-
-def _erf(x):
-    # Abramowitz & Stegun 7.1.26
-    s = 1.0 if x >= 0 else -1.0
-    x = abs(x)
-    t = 1.0 / (1.0 + 0.3275911 * x)
-    y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * math.exp(-x * x)
-    return s * y
-
-def _phi(z):
-    return 0.5 * (1.0 + _erf(z / math.sqrt(2.0)))
-
-def _invphi(p):
-    if p <= 0.0:
-        return -6.0
-    if p >= 1.0:
-        return 6.0
-    lo = -6.0
-    hi = 6.0
-    i = 0
-    while i < 80:
-        mid = (lo + hi) / 2.0
-        if _phi(mid) < p:
-            lo = mid
-        else:
-            hi = mid
-        i += 1
-    return (lo + hi) / 2.0
-
-def _poispmf(mu, k):
-    return math.exp(-mu) * (mu ** k) / _fact(k)
-
-def _binpmf(n, p, k):
-    return _ncr(n, k) * (p ** k) * ((1.0 - p) ** (n - k))
+    return v
 
 # --- tools ---
 
@@ -132,11 +51,7 @@ def t_pois():
     if k is None or k < 0:
         return
     pmf = _poispmf(mu, k)
-    cdf = 0.0
-    j = 0
-    while j <= k:
-        cdf += _poispmf(mu, j)
-        j += 1
+    cdf = casutil.poisson_cdf(mu, k)   # one pass, not k passes
     _show('Poisson', ['mu = ' + _fn(mu) + '  k = ' + str(k), 'P(X=k) = ' + _fn(pmf), 'P(X<=k) = ' + _fn(cdf), 'P(X>=k) = ' + _fn(1.0 - cdf + pmf)])
 
 def t_bin():
@@ -149,12 +64,11 @@ def t_bin():
     k = _askint('value k:')
     if k is None or k < 0 or k > n:
         return
+    if n > 5000:
+        _show('Binomial', ['n too large (max 5000).'])
+        return
     pmf = _binpmf(n, p, k)
-    cdf = 0.0
-    j = 0
-    while j <= k:
-        cdf += _binpmf(n, p, j)
-        j += 1
+    cdf = casutil.binom_cdf(n, p, k)
     _show('Binomial', ['n=' + str(n) + ' p=' + _fn(p) + ' k=' + str(k), 'P(X=k) = ' + _fn(pmf), 'P(X<=k) = ' + _fn(cdf), 'P(X>=k) = ' + _fn(1.0 - cdf + pmf)])
 
 def t_norm():
@@ -412,9 +326,4 @@ TOOLS = [
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('Statistics (FM)', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('Statistics (FM)', TOOLS)

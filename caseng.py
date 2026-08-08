@@ -66,6 +66,45 @@ def gcd(a, b):
         a, b = b, a % b
     return a
 
+def _isnum(v):
+    # real, finite number? (bool is an int subclass but never appears in trees)
+    if isinstance(v, complex):
+        return False
+    if not isinstance(v, (int, float)):
+        return False
+    if isinstance(v, float):
+        if v != v:
+            return False
+        av = v if v >= 0 else -v
+        if av > 1.7e308:
+            return False
+    return True
+
+def _fold_pow(a, b):
+    # constant-fold a ** b, but only when the answer is a real finite number we
+    # can keep in a tree. Returns None to leave ('^', a, b) unevaluated.
+    if isinstance(a, int) and isinstance(b, int):
+        if b >= 0:
+            # a huge integer power would allocate megabytes on the handheld
+            if b > 256 and a != 0 and a != 1 and a != -1:
+                return None
+            return ('n', a ** b)
+        # negative integer power of an integer stays exact as a fraction
+        if a == 0:
+            return None
+        if -b > 256 and a != 1 and a != -1:
+            return None
+        return _fold_div(1, a ** (-b))
+    if a < 0 and not (isinstance(b, int) or float(b) == int(b)):
+        return None  # fractional power of a negative -> complex, leave symbolic
+    try:
+        r = a ** b
+    except:
+        return None
+    if not _isnum(r):
+        return None
+    return ('n', r)
+
 def _fold_div(a, b):
     if isinstance(a, int) and isinstance(b, int) and b != 0:
         g = gcd(a, b)
@@ -157,23 +196,33 @@ def _s(node):
         return ('*', a, b)
     if t == '/':
         if bn and b[1] == 1: return a
+        if bn and b[1] == -1: return _s(('neg', a))
         if an and a[1] == 0: return ('n', 0)
         if an and bn:
             r = _fold_div(a[1], b[1])
             if r is not None:
                 return r
         if a == b: return ('n', 1)
+        if bn and b[1] != 0:
+            # (k*X)/m -> (k/m)*X, so an integral's constant lands in lowest terms
+            if a[0] == '*' and a[1][0] == 'n':
+                r = _fold_div(a[1][1], b[1])
+                if r is not None:
+                    return _s(('*', r, a[2]))
+            # (p/q)/m -> p/(q*m) instead of a stack of divisions
+            if a[0] == '/' and a[2][0] == 'n':
+                return _s(('/', a[1], ('n', a[2][1] * b[1])))
         return ('/', a, b)
     if t == '^':
         if bn:
             if b[1] == 0: return ('n', 1)
             if b[1] == 1: return a
             if an:
-                try:
-                    return ('n', a[1] ** b[1])
-                except:
-                    return ('^', a, b)
-            if a[0] == 'n' and a[1] == 0: return ('n', 0)
+                r = _fold_pow(a[1], b[1])
+                if r is not None:
+                    return r
+                return ('^', a, b)
+        # 1^anything is 1; 0^x is left symbolic because 0^0 is 1, not 0
         if an and a[1] == 1: return ('n', 1)
         return ('^', a, b)
     return node
@@ -241,42 +290,73 @@ def _d(n, var):
         return ('/', _d(n[1], var), ('-', ('n', 1), ('^', n[1], ('n', 2))))
     if t == 'abs':
         return ('*', ('/', n[1], ('abs', n[1])), _d(n[1], var))
+    if t == 'logb':
+        # d/dx log_a(u) = u' / (u ln a); the base is treated as constant
+        return ('/', _d(n[2], var), ('*', n[2], ('ln', n[1])))
+    # fact/ncr/npr have no elementary derivative: 0 is right only when the
+    # argument does not involve the variable at all.
+    if t in ('fact', 'ncr', 'npr'):
+        if _hasvar(n, var):
+            raise ValueError("cannot differentiate " + t)
+        return ('n', 0)
     return ('n', 0)
 
+def _hasvar(n, var):
+    t = n[0]
+    if t == 'n':
+        return False
+    if t == 'v':
+        return n[1] == var
+    if len(n) == 2:
+        return _hasvar(n[1], var)
+    return _hasvar(n[1], var) or _hasvar(n[2], var)
+
 # ---------- numeric evaluation ----------
-def evalf(n, x, deg=False):
+def evalf(n, x, deg=False, env=None):
     # deg=True makes trig take/return degrees (Calculate + CAS honour the mode;
     # the FM section modules call evalf without deg, so they stay in radians).
+    # env is an optional {name: value} map for variables other than x - it is
+    # what lets Euler's method evaluate dy/dx = f(x, y) on a one-variable engine.
+    # An unknown variable raises rather than silently evaluating to 0, so a
+    # mistyped entry is reported instead of quietly becoming a wrong answer.
     t = n[0]
     if t == 'n':
         return n[1]
     if t == 'v':
         if n[1] == 'x':
             return x
+        if env is not None and n[1] in env:
+            return env[n[1]]
         if n[1] == 'ans':
             return ANS
-        return 0.0
+        raise ValueError("unknown variable " + n[1])
     if t == 'neg':
-        return -evalf(n[1], x, deg)
+        return -evalf(n[1], x, deg, env)
     if t == '+':
-        return evalf(n[1], x, deg) + evalf(n[2], x, deg)
+        return evalf(n[1], x, deg, env) + evalf(n[2], x, deg, env)
     if t == '-':
-        return evalf(n[1], x, deg) - evalf(n[2], x, deg)
+        return evalf(n[1], x, deg, env) - evalf(n[2], x, deg, env)
     if t == '*':
-        return evalf(n[1], x, deg) * evalf(n[2], x, deg)
+        return evalf(n[1], x, deg, env) * evalf(n[2], x, deg, env)
     if t == '/':
-        return evalf(n[1], x, deg) / evalf(n[2], x, deg)
+        return evalf(n[1], x, deg, env) / evalf(n[2], x, deg, env)
     if t == '^':
-        return evalf(n[1], x, deg) ** evalf(n[2], x, deg)
+        base = evalf(n[1], x, deg, env)
+        expo = evalf(n[2], x, deg, env)
+        r = base ** expo
+        if isinstance(r, complex):
+            # e.g. (-8)^(1/3): real-valued engine, so report a domain error
+            raise ValueError("complex result")
+        return r
     if t == 'fact':
-        return _factorial(int(round(evalf(n[1], x, deg))))
+        return _factorial(int(round(evalf(n[1], x, deg, env))))
     if t == 'ncr':
-        return _ncr(int(round(evalf(n[1], x, deg))), int(round(evalf(n[2], x, deg))))
+        return _ncr(int(round(evalf(n[1], x, deg, env))), int(round(evalf(n[2], x, deg, env))))
     if t == 'npr':
-        return _npr(int(round(evalf(n[1], x, deg))), int(round(evalf(n[2], x, deg))))
+        return _npr(int(round(evalf(n[1], x, deg, env))), int(round(evalf(n[2], x, deg, env))))
     if t == 'logb':
-        return math.log(evalf(n[2], x, deg)) / math.log(evalf(n[1], x, deg))
-    a = evalf(n[1], x, deg)
+        return math.log(evalf(n[2], x, deg, env)) / math.log(evalf(n[1], x, deg, env))
+    a = evalf(n[1], x, deg, env)
     if t == 'sin':
         return math.sin(_torad(a, deg))
     if t == 'cos':
@@ -326,6 +406,11 @@ OPPREC = {'+': 1, '-': 1, '*': 2, '/': 2, 'neg': 3, '^': 4}
 def _numstr(v):
     if isinstance(v, int):
         return str(v)
+    if not _isnum(v):
+        # int() would raise on nan/inf, taking the whole result screen with it
+        if v != v:
+            return "undefined"
+        return "inf" if v > 0 else "-inf"
     r = round(v, 6)
     if r == int(r):
         return str(int(r))
@@ -337,7 +422,12 @@ def tostr(n):
 def _str(n, parent):
     t = n[0]
     if t == 'n':
-        return _numstr(n[1])
+        s = _numstr(n[1])
+        # a bare negative literal needs brackets anywhere but the top level,
+        # otherwise (-8)^(1/3) prints as -8^(1/3), which reads as -(8^(1/3))
+        if parent > 0 and s[:1] == '-':
+            return "(" + s + ")"
+        return s
     if t == 'v':
         return n[1]
     if t in UFUNCS:

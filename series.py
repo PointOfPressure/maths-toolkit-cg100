@@ -1,55 +1,13 @@
-import math
 import casui
 import caslex
 import caseng
+import casutil
 
-
-def _fact(k):
-    r = 1
-    i = 2
-    while i <= k:
-        r = r * i
-        i = i + 1
-    return r
-
-
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-
-def _askint(prompt):
-    v = _asknum(prompt)
-    if v is None:
-        return None
-    if v != v or v == float('inf') or v == float('-inf'):
-        return None
-    return int(round(v))
-
-
-def _fn(x):
-    if x != x:
-        return 'nan'
-    if x == float('inf'):
-        return 'inf'
-    if x == float('-inf'):
-        return '-inf'
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
+_fact = casutil.fact
+_asknum = casutil.asknum
+_askint = casutil.askint
+_fn = casutil.fmt
+_show = casutil.show
 
 
 def t_sum_r():
@@ -226,9 +184,4 @@ TOOLS = [
 
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('Series & Maclaurin', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('Series & Maclaurin', TOOLS)

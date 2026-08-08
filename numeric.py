@@ -1,48 +1,16 @@
-import math
-import casui
-import caslex
 import caseng
+import casutil
+
+_asknum = casutil.asknum
+_askfn = casutil.askexpr
 
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-
-def _askfn(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    return caslex.parse(s)
-
-
-def _ev(tree, x):
-    return caseng.evalf(tree, x)
+def _ev(tree, x, env=None):
+    return caseng.evalf(tree, x, False, env)
 
 
 def _fn(x):
-    try:
-        r = round(x, 6)
-    except:
-        return str(x)
-    if r != r:
-        return 'nan'
-    if r > 1e300 or r < -1e300:
-        return 'inf' if r > 0 else '-inf'
-    try:
-        if r == int(r):
-            return str(int(r))
-    except:
-        return str(r)
-    return str(r)
+    return casutil.fmt(x, 6)
 
 
 def _sig(x, k):
@@ -77,27 +45,8 @@ def _sig(x, k):
     return -r if neg else r
 
 
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-
-def _pages(title, lines):
-    if not lines:
-        _show(title, ['(no rows)'])
-        return
-    per = 6
-    i = 0
-    n = len(lines)
-    while i < n:
-        chunk = lines[i:i + per]
-        more = (i + per) < n
-        ttl = title
-        if n > per:
-            ttl = title + ' (' + str(i // per + 1) + ')'
-        if more:
-            chunk = chunk + ['...more...']
-        _show(ttl, chunk)
-        i += per
+_show = casutil.show
+_pages = casutil.show      # result_screen pages by itself now
 
 
 def t_newton():
@@ -191,7 +140,8 @@ def t_bisect():
     except:
         _show('Bisection', ['eval error'])
         return
-    if fa * fb > 0:
+    # compare signs rather than the product: fa*fb overflows to inf for big values
+    if (fa > 0 and fb > 0) or (fa < 0 and fb < 0):
         _show('Bisection', ['No sign change', 'f(a)=' + _fn(fa), 'f(b)=' + _fn(fb)])
         return
     lines = ['sign change OK']
@@ -208,7 +158,7 @@ def t_bisect():
         if fm == 0 or abs(b - a) / 2.0 < 1e-9:
             ok = True
             break
-        if fa * fm < 0:
+        if (fa < 0 and fm > 0) or (fa > 0 and fm < 0):
             b = m
             fb = fm
         else:
@@ -235,8 +185,8 @@ def t_integ():
     n = _asknum('strips n=')
     if n is None:
         return
-    n = int(n)
-    if n < 1:
+    n = int(round(n))   # int() would turn an entered 100 that evaluates to
+    if n < 1:           # 99.9999999 into 99, flipping Simpson's even-n test
         _show('Integration', ['n must be >=1'])
         return
     if n > 2000:
@@ -299,7 +249,7 @@ def t_diff():
 
 
 def t_euler():
-    f = _askfn('dy/dx=f(x)')
+    f = _askfn('dy/dx=f(x,y)')
     if f is None:
         _show('Euler', ['Bad function'])
         return
@@ -321,14 +271,14 @@ def t_euler():
         return
     if nn > 500:
         nn = 500
-    lines = ['f uses x only (1 var)', 'x0=' + _fn(x0) + ' y0=' + _fn(y0)]
+    lines = ['y(n+1) = y(n) + h f(x,y)', 'x0=' + _fn(x0) + ' y0=' + _fn(y0)]
     x = x0
     y = y0
     lines.append('n0 x=' + _fn(x) + ' y=' + _fn(y))
     ok = True
     for it in range(1, nn + 1):
         try:
-            slope = _ev(f, x)
+            slope = _ev(f, x, {'y': y})
         except:
             lines.append('n' + str(it) + ': eval error')
             ok = False
@@ -387,9 +337,4 @@ TOOLS = [
 
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('Numerical Methods', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('Numerical Methods', TOOLS)

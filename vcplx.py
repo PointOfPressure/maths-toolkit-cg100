@@ -4,21 +4,9 @@
 # section entry; EXIT returns to the home menu.
 import math
 import casui
-import caslex
-import caseng
+import casutil
 
-def _atan2(y, x):
-    if x > 0:
-        return math.atan(y / x)
-    if x < 0:
-        if y >= 0:
-            return math.atan(y / x) + math.pi
-        return math.atan(y / x) - math.pi
-    if y > 0:
-        return math.pi / 2
-    if y < 0:
-        return -math.pi / 2
-    return 0.0
+_atan2 = casutil.atan2
 
 _PIFRAC = [
     (0.0, "0"), (1.0, "pi"), (-1.0, "-pi"), (0.5, "pi/2"), (-0.5, "-pi/2"),
@@ -34,33 +22,11 @@ def _argpi(th):
             return lab
     return ""
 
-def _fn(x):
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
+_fn = casutil.fmt
+_asknum = casutil.asknum
 
 def _fc(z):
-    a = z.real
-    b = z.imag
-    if abs(b) < 1e-9:
-        return _fn(a)
-    if abs(a) < 1e-9:
-        return _fn(b) + "i"
-    sgn = "+" if b >= 0 else "-"
-    return _fn(a) + sgn + _fn(abs(b)) + "i"
-
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
+    return casutil.fmtc(z.real, z.imag)
 
 def _askz(name):
     a = _asknum(name + " real part:")
@@ -71,8 +37,7 @@ def _askz(name):
         return None
     return complex(a, b)
 
-def _show(title, lines):
-    casui.result_screen(title, lines)
+_show = casutil.show
 
 def t_arith():
     z = _askz("z")
@@ -248,9 +213,4 @@ TOOLS = [
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu("COMPLEX NUMBERS", labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools("COMPLEX NUMBERS", TOOLS)

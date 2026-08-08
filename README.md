@@ -11,13 +11,14 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/stress-243%20checks%2C%200%20errors-brightgreen)
+![tests](https://img.shields.io/badge/tests-420%20checks%2C%200%20failures-brightgreen)
+![smoke](https://img.shields.io/badge/smoke-323%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
 
 ## Quick start
 
-1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`). See [Installing on the calculator](#installing-on-the-calculator).
+1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`, `stress.py`, `tests.py` and `devlint.py`). See [Installing on the calculator](#installing-on-the-calculator).
 2. In the calculator's Python app, run **`maths.py`**.
 3. Navigate with the arrow keys and OK; EXIT goes back. Type expressions on the normal keys; use ALPHA or the MENU picker for letters and symbols.
 
@@ -45,13 +46,13 @@ The `Calculate` mode (`calc_section`) is a free-form expression calculator. Type
 The `Calculus & Algebra` mode (`cas_section`) works on a function of `x`. Type an expression (for example `x^2+3x` or `sin(x)`), press OK, then choose an operation from the menu. Variables other than `x` can be entered with ALPHA or the MENU picker. The differentiation, integration and simplify operations are fully symbolic; the rest are numeric and honour the home-menu angle mode.
 
 - **Differentiate (d/dx)** - symbolic derivative with respect to `x`, then simplified. Full rule set: sum, difference, product, quotient and power/chain rules, plus derivatives of sin, cos, tan, exp, ln, log, sqrt, asin, acos, atan, the hyperbolics sinh/cosh/tanh, the inverse hyperbolics asinh/acosh/atanh, and abs.
-- **Gradient at a point** (`do_gradient`) - numeric slope `f'(x)` at a value you supply, computed by a symmetric central difference.
-- **Integrate (+ C)** - symbolic indefinite integral, simplified and shown with the constant of integration. If there is no elementary form it says so and points you to the definite integral for a numeric area.
+- **Gradient at a point** (`do_gradient`) - numeric slope `f'(x)` at a value you supply, computed by a symmetric central difference whose step scales with the size of `x`.
+- **Integrate (+ C)** - symbolic indefinite integral, simplified and shown with the constant of integration. Covers powers (including negative and rational exponents), `1/x` and `c/(px+q)` as logarithms, and `sin`, `cos`, `tan`, `exp`, `sqrt`, `ln`, `sinh` and `cosh`, each also with a linear argument. If there is no elementary form it says so and points you to the definite integral for a numeric area.
 - **Definite integral a..b** (`do_defint`) - numeric area between two limits you enter.
 - **Simplify** - applies the engine's local algebraic simplification rules (folds constants, removes `*1`, `+0`, `^1`, `^0`, combines like terms, reduces fractions to lowest terms, etc.).
-- **Solve f(x)=0** (`do_solve`) - finds real roots over a search range. Accepts either an expression (solved against zero) or a full equation with `=` (the two sides are subtracted first). Roots are listed; if none are found in range it says so.
+- **Solve f(x)=0** (`do_solve`) - finds real roots over a search range, including roots the curve only touches without crossing (such as `x^2` or `(x-1)^2`). Accepts either an expression (solved against zero) or a full equation with `=` (the two sides are subtracted first). Roots are listed in order; if none are found in range it says so.
 - **Evaluate at x** (`do_eval`) - asks for a value of `x` and prints `f(x)`, formatted with the same smart number rules as Calculate.
-- **Graph** - plots `y = f(x)` to the screen with axes, sampling the function across the view.
+- **Graph** - plots `y = f(x)` over `-12 <= x <= 12` with axes, joining consecutive samples into a continuous curve. The y-axis autoscales to the sampled values, trimming the extreme 5% at each end so a single asymptote (as in `1/x` or `tan x`) cannot squash the rest of the curve into one pixel row. The x and y ranges are printed along the bottom.
 - **Table of values** (`do_table`) - asks for a start `x` and a step, then prints 8 rows of `x` and `f(x)`; out-of-domain rows show "undefined".
 
 Each operation is guarded: expressions that nest too deep for the handheld's small call stack report "Too complex" rather than failing hard.
@@ -66,6 +67,7 @@ The expression parser (`caslex.py`) and engine (`caseng.py`) accept the followin
 - Round brackets `( )` for grouping, with correct operator precedence.
 - **Implicit multiplication** - `2x`, `2(x+1)`, `(x+1)(x-1)` and `x sin(x)` all insert the `*` automatically.
 - Decimal numbers and integers (integer arithmetic is kept exact where possible, so fractions stay exact).
+- **Scientific notation** in a number literal: `1e3`, `2.5e-3`, `6.02e23`. This is what lets a result shown as `1.23e15` be typed straight back in. A bare `e` not followed by digits is still Euler's number, so `2e` is `2 x 2.71828...`; write `2*e+3` if you mean that rather than `2e+3`.
 
 **Functions**
 - `sqrt(...)` - square root.
@@ -111,7 +113,7 @@ Reached via `Maths Toolkit > Further Maths > Core Pure (compulsory)`.
 | --- | --- | --- |
 | Complex numbers | Further Maths > Core Pure > Complex numbers | Arithmetic z, w, Modulus & argument, Polar / exp form, From polar (r,theta), Power z^n (De Moivre), nth roots of z, Quadratic complex roots, Argand plot |
 | Matrices | Further Maths > Core Pure > Matrices | Enter A, Enter B, Show A and B, A + B, A - B, k * A, A * B, Transpose A, Determinant A, Inverse A, Solve A x = b, Eigenvalues 2x2, 2D transform builder |
-| Vectors & 3-D | Further Maths > Core Pure > Vectors & 3-D | Magnitude, Dot product a.b, Angle between, Cross product a x b, Unit vector, Scalar projection, Parallel / perp test, Point to plane dist, Angle between planes, Skew lines distance |
+| Vectors & 3-D | Further Maths > Core Pure > Vectors & 3-D | Magnitude, Dot product a.b, Angle between, Cross product a x b, Unit vector, Scalar projection, Parallel / perp test, Point to line dist, Point to plane dist, Angle between planes, Skew lines distance |
 | Roots of polynomials | Further Maths > Core Pure > Roots of polynomials | Vieta quadratic, Vieta cubic, Vieta quartic, Quadratic roots, Numeric roots (x), Shift roots by k |
 | Series & Maclaurin | Further Maths > Core Pure > Series & Maclaurin | Sum of r, Sum of r^2, Sum of r^3, Maclaurin of f(x), Approx + error, Reference card |
 | Hyperbolic functions | Further Maths > Core Pure > Hyperbolic functions | Evaluate sinh, Evaluate cosh, Evaluate tanh, All three at x, arsinh (inverse), arcosh (inverse), artanh (inverse), Reference card |
@@ -131,7 +133,7 @@ Reached via `Maths Toolkit > Further Maths > Options`.
 | Numerical Methods | Further Maths > Options > Numerical Methods | Newton-Raphson, Fixed-point iteration, Bisection, Integration (trap/mid/Simp), Numerical derivative, Euler method, Error abs/relative, Round to s.f. |
 | Modelling w/ Algorithms | Further Maths > Options > Modelling w/ Algorithms | Bubble sort, Insertion sort, Bin: first-fit, Bin: first-fit decr, Dijkstra shortest, Prim MST, Kruskal MST, Critical path |
 | Extra Pure | Further Maths > Options > Extra Pure | Recurrence relation, Group theory, 2x2 Eigen/diag, Modular arithmetic, Partial deriv (num) |
-| Further Pure w/ Tech | Further Maths > Options > Further Pure w/ Tech | Plot f(x) curve, De Moivre z^n, nth roots of z, Euler dy/dx=f(x), gcd & lcm, Prime test, Prime factorise, a^b mod m, Modular inverse, Base -> bin/hex |
+| Further Pure w/ Tech | Further Maths > Options > Further Pure w/ Tech | Plot f(x) curve, De Moivre z^n, nth roots of z, Euler dy/dx=f(x,y), gcd & lcm, Prime test, Prime factorise, a^b mod m, Modular inverse, Base -> bin/hex |
 
 In Extra Pure, `Modular arithmetic` opens its own sub-menu (`a mod m`, `a^b mod m`, `gcd(a,b)`, `modular inverse`).
 
@@ -148,6 +150,9 @@ keys -> caslex.tokenize -> caslex.parse -> tuple tree
         cascalc (integrate / solve / definite integral)
                                               |
               casrender.render -> 2D typeset preview
+
+  casui  = menus, keyboard, angle mode, paged result screens
+  casutil = the helpers all 17 section modules share
 ```
 
 ### The tuple node format
@@ -163,24 +168,25 @@ Because nodes are plain tuples, the engine tests structure with cheap `node[0]` 
 
 ### caslex - tokenizer and iterative parser
 
-`tokenize` scans the string left to right into tokens (numbers, function names matched longest-first so `asinh` beats `asin` beats `sin`, single letters as variables, operators, parens, comma, postfix `!`). `pi` and `e` are folded to numeric tokens at this stage. `_implicit` then inserts explicit `*` tokens wherever multiplication is implied (`2x`, `2(x)`, `)(`, `x sin(...)`).
+`tokenize` scans the string left to right into tokens (numbers, function names matched longest-first so `asinh` beats `asin` beats `sin`, single letters as variables, operators, parens, comma, postfix `!`). A number literal may carry a scientific-notation exponent (`1e3`, `2.5e-3`), consumed only when digits actually follow the `e`, so a bare `e` stays Euler's number. `pi` and `e` are folded to numeric tokens at this stage. `_implicit` then inserts explicit `*` tokens wherever multiplication is implied (`2x`, `2(x)`, `)(`, `x sin(...)`, `3!x`).
 
-`parse` does unary-minus marking, then a classic shunting-yard pass to Reverse Polish using a precedence table (`+ - < * / < unary < ^`, with `^` and unary right-associative). The RPN is turned into the tree by a second iterative pass over an explicit value stack: operands push leaves, operators pop their arguments and push a combined node. No recursion is used anywhere, so arbitrarily deep input cannot blow the stack. Malformed input returns `None` rather than raising.
+`parse` does unary-minus marking, then a classic shunting-yard pass to Reverse Polish using a precedence table (`+ - < * / < unary < ^`, with `^` and unary right-associative). A prefix unary minus is pushed straight onto the operator stack without popping: it binds only what follows it, so in `2^-3` the `^` has to stay pending until its right operand `-3` has been built. Popping there is what used to make every `a^-b` fail to parse. The RPN is turned into the tree by a second iterative pass over an explicit value stack: operands push leaves, operators pop their arguments and push a combined node. No recursion is used anywhere, so arbitrarily deep input cannot blow the stack. Malformed input - including an unbalanced `)` - returns `None` rather than raising.
 
 ### caseng - the engine over the trees
 
-- `simplify` is a bottom-up rewrite (`_s`): it simplifies children first, then applies local rules (constant folding, identities like `x*1`, `x+0`, `x-x=0`, `a^0=1`, rational reduction via gcd in `_fold_div`, pulling constants to the front of products). Each rule returns a strictly simpler or equal node, so it terminates.
-- `diff` (`_d`) is the full A-Level rule set: sum/product/quotient/chain rules, power rule (including variable exponents), and derivatives of every supported function. It emits an unsimplified tree that the caller then runs through `simplify`.
-- `evalf` numerically evaluates a tree at a given `x`. A `deg` flag switches trig to degrees for the everyday calculator and CAS evaluate/graph; the Further Maths section modules call it without the flag and stay in radians. Functions the device lacks (`sinh`, `asinh`, `factorial`, etc.) are implemented here iteratively from `math` primitives.
+- `simplify` is a bottom-up rewrite (`_s`): it simplifies children first, then applies local rules (constant folding, identities like `x*1`, `x+0`, `x-x=0`, `a^0=1`, rational reduction via gcd in `_fold_div`, pulling constants to the front of products, and folding `(k*X)/m` and `(p/q)/m` so an integral's constant lands in lowest terms). `_fold_pow` will not fold a power whose value cannot live in a tree: a fractional power of a negative base is complex, and a huge integer power would allocate megabytes on the handheld, so both are left symbolic. `2^-3` folds to the exact `1/8`. Each rule returns a strictly simpler or equal node, so it terminates.
+- `diff` (`_d`) is the full A-Level rule set: sum/product/quotient/chain rules, power rule (including variable exponents), and derivatives of every supported function, `logb` included. It emits an unsimplified tree that the caller then runs through `simplify`. Where no elementary derivative exists and the argument really does involve the variable (`x!`, `nCr(x,2)`) it raises rather than returning a misleading `0`.
+- `evalf` numerically evaluates a tree at a given `x`. A `deg` flag switches trig to degrees for the everyday calculator and the CAS evaluate/gradient/definite-integral/graph/table tools; the Further Maths section modules call it without the flag and stay in radians. An optional `env` map supplies values for variables other than `x`, which is how Euler's method evaluates `dy/dx = f(x, y)` on a one-variable engine. A variable with no value raises rather than evaluating to `0`, so a mistyped entry is reported instead of quietly becoming a wrong answer, and a power that would come out complex (such as `(-8)^(1/3)`) raises as a domain error rather than returning a complex number. Functions the device lacks (`sinh`, `asinh`, `factorial`, etc.) are implemented here iteratively from `math` primitives.
 - `tostr` (`_str`) is the precedence-aware linear printer used for plain-text output, inserting parentheses only where needed.
 
 These walks recurse on expression depth, which is small, so they stay well under the frame ceiling.
 
 ### cascalc - integration and solving
 
-- `integ` does symbolic integration: linearity over `+ - neg`, constant factor pull-out, the power rule, a small table (`sin`, `cos`, `exp`, `1/x -> ln x`), and a linear-argument substitution. `linear_coeff` detects `a*var + b` by sampling the argument at three points, and `has_var` decides which factor is constant. Anything it cannot integrate returns `None`, which is the signal for the UI to fall back to numerics.
-- `defint` is a numeric definite integral by composite Simpson's rule (even panel count, evaluated through `evalf`), returning `None` on a domain error.
-- `solve` finds numeric roots of `tree == 0` by scanning a grid (wider window in degree mode for the 360 period), detecting sign changes, and refining each with `_bisect` (60-iteration bisection). Duplicate roots within a tolerance are dropped.
+- `integ` does symbolic integration: linearity over `+ - neg`, constant factor pull-out, the power rule (with exact rational exponents, so `x^(2/3)` integrates to `3/5 x^(5/3)` rather than a decimal), the `-1` case as a logarithm, `c/(px+q) -> c ln(px+q)/p`, and a table covering `sin`, `cos`, `exp`, `tan`, `sqrt`, `ln`, `sinh` and `cosh` - each of which also accepts a linear argument by substitution. Anything it cannot integrate returns `None`, which is the signal for the UI to fall back to numerics.
+- `linear_coeff` decides whether an argument is `a*var + b` **structurally**, by walking the tree. It used to sample the argument at `x = 0, 1, 2` and compare, which accepted anything that happened to agree with a straight line at those three points - `x^3-3x^2+3x` among them - so every integral built on that substitution came out silently wrong. `has_var` decides which factor is constant.
+- `defint` is a numeric definite integral by composite Simpson's rule (even panel count, evaluated through `evalf`), returning `None` on a domain error or a non-finite total (a singularity inside the interval is reported rather than printed as junk).
+- `solve` finds numeric roots of `tree == 0` over a computed grid of 800 samples (a wider window in degree mode for the 360 period). Sign changes are refined by bisection; a grid point that is a local minimum of `|f|` without a sign change is refined by ternary search, which is what finds roots the curve only touches, such as `x^2` or `(x-1)^2`. A constant expression returns no roots rather than one per grid point, duplicates within a tolerance are dropped, and the list is capped at `MAXROOTS`.
 
 ### casrender - 2D math typesetter
 
@@ -188,17 +194,19 @@ These walks recurse on expression depth, which is small, so they stay well under
 
 ### casui - the UI hub
 
-`casui.py` is the front end. It owns the key map decoded from the physical keyboard (code = row*10+col, with shift/alpha layers and a MENU picker for symbols that have no obvious key), the main menus, the on-screen input editor that drives the live `casrender` preview, the global angle mode, and the pixel-based, word-wrapped result screens. Text layout is calibrated to the measured 384x192 screen using hand-tuned proportional-font width tables (`char_w` / `text_w`), so lines wrap by real pixel width rather than character count.
+`casui.py` is the front end. It owns the key map decoded from the physical keyboard (code = row*10+col, with shift/alpha layers and a MENU picker for symbols that have no obvious key), the main menus, the on-screen input editor that drives the live `casrender` preview, the global angle mode, and the pixel-based, word-wrapped result screens. Text layout is calibrated to the measured 384x192 screen using hand-tuned proportional-font width tables (`char_w` / `text_w`), so lines wrap by real pixel width rather than character count. Result screens page rather than truncate: output longer than seven lines shows a page counter, any key advances and EXIT stops. A fault inside a section tool is caught and reported, so it returns to the menu instead of dropping the whole toolkit back to the Python shell.
 
 ### Files at a glance
 
+- `casutil.py` - helpers every section module shares: value entry, safe number and complex formatting, atan2/degrees/radians, gcd/lcm/modular arithmetic, exact nCr/nPr/factorial, and the normal, binomial and Poisson distributions.
 - `caslex.py` - tokenizer plus iterative shunting-yard parser; produces the tuple tree.
 - `caseng.py` - engine: simplify, differentiate, numeric evaluate, plain-text print.
 - `cascalc.py` - symbolic integration, numeric solve (grid scan + bisection), numeric definite integral (Simpson).
 - `casrender.py` - 2D math typesetter (fractions, exponents, radicals) for the live preview.
 - `casui.py` - UI hub: menus, keyboard input, angle mode, pixel-wrapped result screens.
 - `maths.py` - launcher (imports `casui` and calls `casui.main()`).
-- 17 section modules - the H640 / H645 specification tools.
+- 17 section modules - the H640 / H645 specification tools. Each one is a registry of `(label, function)` pairs in `TOOLS` plus a `run()` that hands it to `casutil.run_tools`; the test harnesses drive that registry, so a new tool is covered the moment it is listed.
+- `tests.py`, `stress.py`, `devlint.py` - the PC-side harnesses (see [Development and testing](#development-and-testing)).
 
 ---
 
@@ -209,6 +217,7 @@ Copy these `.py` files to the calculator's storage (the root of the device, wher
 - Launcher: `maths.py`
 - UI layer: `casui.py`
 - Engine: `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`
+- Shared section helpers: `casutil.py`
 - The 17 section modules: `vcplx.py`, `matrix.py`, `vectors.py`, `polyroots.py`, `series.py`, `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`, `numeric.py`, `algos.py`, `xpure.py`, `fpt.py`, `pure640.py`, `stat640.py`, `mech640.py`
 
 To launch the toolkit, run `maths.py` (it just imports `casui` and calls `casui.main()`; the engine and section modules are pulled in from there on demand).
@@ -219,14 +228,41 @@ To launch the toolkit, run `maths.py` (it just imports `casui` and calls `casui.
 
 The entire toolkit runs unmodified under desktop CPython. The only device-specific dependency is the `casioplot` graphics module, and the repo's `casioplot.py` stub satisfies that import with no-op drawing functions (`set_pixel`, `draw_string`, `clear_screen`, `show_screen`, `getkey`, etc.), so the code imports and executes on a PC.
 
-`stress.py` is a non-interactive test harness. It stubs out the UI (canned input strings, no-op drawing, auto-exiting menus) so nothing blocks, then:
+There are three harnesses, all PC-side. Run them together before any change lands:
 
-- imports all 17 section modules,
-- calls every tool function in each module (every `t_*` callable),
-- runs an engine battery over ~24 expressions, exercising `parse`, `evalf`, `diff`, `simplify`, `integ`, and `solve` on each,
-- wraps every call so errors are logged rather than fatal, and reports a total check count and error count (currently **243 checks, 0 errors**).
+```
+python3 tests.py       # correctness: 420 checks, 0 failures
+python3 stress.py      # smoke: 323 checks, 0 errors
+python3 devlint.py     # device compliance: 0 problems in 24 files
+```
 
-Run it with `python stress.py`; on a PC it writes `stress_log.txt`, and on the device (no file writes) it prints progress instead.
+**`tests.py` - correctness.** Every check compares against a value worked out
+independently, so it catches wrong answers rather than only crashes. It covers
+the tokenizer and parser, simplification, the full differentiation rule set,
+symbolic and numeric integration (each symbolic integral is also re-checked
+against Simpson's rule over the same interval), root finding, the typesetter,
+the UI's number formatting and word wrap, all of `casutil`, and every section
+module driven through its real entry points with scripted key input - so what
+is asserted is what a student would see on screen. It finishes with a
+recursion-depth guard that caps the interpreter at the handheld's ~38-frame
+ceiling and confirms the engine still runs inside it.
+
+**`stress.py` - smoke.** Stubs the UI (canned input, no-op drawing, auto-exiting
+menus) so nothing blocks, then calls every tool in all 17 sections via each
+module's `TOOLS` registry and hammers the engine over ~30 expressions. It proves
+nothing crashes; it does not check that any answer is right. On a PC it writes
+`stress_log.txt`; on the device (no file writes) it prints progress instead.
+
+**`devlint.py` - device compliance.** Parses each of the 24 device files and
+reports anything the calculator's MicroPython 1.9.4 cannot run: f-strings,
+non-ASCII bytes, imports beyond `math`/`random`/`casioplot`, `math` members the
+build lacks (`factorial`, `atan2`, the hyperbolics), annotations, walrus,
+`async`, `yield from`, and newer string methods. Everything is an allowlist, so
+a new dependency has to be added to `devlint.py` deliberately. `tests.py` runs
+it too, so a change that would only fail on real hardware fails on the PC first.
+
+`tests.py` and `devlint.py` are desktop-only (they use `ast` and `sys._getframe`)
+and must not be copied to the calculator.
 
 `calib_screen.py`, `fontmetrics.py`, and `fontmetrics2.py` are one-off hardware probes that were run on the real device to measure its display. `calib_screen.py` walks black pixels off each edge to detect the screen size (found to be 384x192). `fontmetrics.py` measures per-character advance and glyph height for the small/medium/large fonts and how many characters fit across the 384px width. `fontmetrics2.py` measures proportional glyph widths (narrow `i`, normal `o`, wide `m`) plus a real-prose average. These are not part of the toolkit; they were used to calibrate the layout constants.
 

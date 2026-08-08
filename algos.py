@@ -1,70 +1,21 @@
-import casui
-import caslex
-import caseng
+import casutil
 
 BIG = 1000000
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _askint(prompt):
-    v = _asknum(prompt)
-    if v is None:
-        return None
-    return int(round(v))
-
-def _asklist(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    out = []
-    for p in s.replace(',', ' ').split():
-        try:
-            out.append(float(p))
-        except:
-            pass
-    return out
-
-def _askints(prompt):
-    lst = _asklist(prompt)
-    if lst is None:
-        return None
-    return [int(round(v)) for v in lst]
-
-def _num(x):
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
+_asknum = casutil.asknum
+_askint = casutil.askint
+_asklist = casutil.asklist
+_askints = casutil.askints
+_num = casutil.fmt
+_show = casutil.show
+_pages = casutil.show      # result_screen pages by itself now
 
 def _row(lst):
     return ' '.join([_num(v) for v in lst])
 
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-def _pages(title, lines):
-    if not lines:
-        _show(title, ['(nothing)'])
-        return
-    chunk = 6
-    i = 0
-    while i < len(lines):
-        _show(title, lines[i:i + chunk])
-        i += chunk
-
 def _askmatrix(prompt):
-    n = _askint('Size n (' + prompt + ')')
-    if n is None or n < 1 or n > 8:
+    n = _askint('Size n (' + prompt + ')', 1, 8)
+    if n is None:
         return None
     m = []
     for i in range(n):
@@ -165,8 +116,8 @@ def dijkstra():
     if m is None:
         return
     n = len(m)
-    s = _askint('Start node (1..' + str(n) + ')')
-    if s is None or s < 1 or s > n:
+    s = _askint('Start node (1..' + str(n) + ')', 1, n)
+    if s is None:
         return
     s -= 1
     dist = [BIG] * n
@@ -268,8 +219,8 @@ def kruskal():
 # ---- Critical path ----
 
 def critpath():
-    n = _askint('How many activities')
-    if n is None or n < 1 or n > 12:
+    n = _askint('How many activities', 1, 12)
+    if n is None:
         return
     dur = []
     preds = []
@@ -339,9 +290,4 @@ TOOLS = [
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('Modelling w/ Algorithms', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('Modelling w/ Algorithms', TOOLS)

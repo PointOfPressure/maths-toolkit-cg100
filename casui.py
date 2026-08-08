@@ -75,15 +75,13 @@ def frame(x0, y0, x1, y1, c):
         set_pixel(x1, yy, c)
         yy += 1
 
-def wrap(s, n):
-    out = []
-    while len(s) > n:
-        out.append(s[:n])
-        s = s[n:]
-    out.append(s)
-    return out
-
 def fmt(v):
+    if v != v:
+        return "undefined"       # int() raises on nan/inf
+    if v > 1.7e308:
+        return "inf"
+    if v < -1.7e308:
+        return "-inf"
     r = round(v, 6)
     if r == int(r):
         return str(int(r))
@@ -102,6 +100,14 @@ def char_w(c, size):
         if c in _NARROW:
             return 5
         return 7
+    if size == "large":
+        # large glyphs are ~1.75x medium; without this branch every "large"
+        # measurement silently used medium widths and under-measured the line
+        if c in _WIDE:
+            return 21
+        if c in _NARROW:
+            return 14
+        return 18
     if c in _WIDE:
         return 12
     if c in _NARROW:
@@ -294,6 +300,8 @@ def draw_menu(title, opts, sel):
     show_screen()
 
 def menu(title, opts):
+    if not opts:
+        return -1  # nothing to choose: never divide by len(opts) == 0
     sel = 0
     draw_menu(title, opts, sel)
     while True:
@@ -321,71 +329,159 @@ def hold():
     wait_press()
     wait_release()
 
+def hold_page():
+    # like hold(), but reports whether the user asked to stop paging
+    draw_string(6, 178, "any key = more   EXIT = stop", GREY, "small")
+    show_screen()
+    wait_release()
+    k = getkey()
+    while k == IDLE:
+        k = getkey()
+    wait_release()
+    return k == EXITK
+
+PER_PAGE = 7
+
+def _paged(title, segs, color):
+    # Draw already-wrapped lines a screenful at a time. Long output used to be
+    # cut off at the 8th line with nothing to say it had been truncated.
+    if not segs:
+        segs = [""]
+    total = len(segs)
+    pages = (total + PER_PAGE - 1) // PER_PAGE
+    p = 0
+    while p < pages:
+        clear_screen()
+        draw_string(6, 6, title, ACC, "medium")
+        hline(0, 383, 26, GREY)
+        y = 34
+        i = p * PER_PAGE
+        last = i + PER_PAGE
+        while i < total and i < last:
+            draw_string(6, y, segs[i], color, "medium")
+            y += 18
+            i += 1
+        if pages > 1:
+            draw_string(322, 178, str(p + 1) + "/" + str(pages), GREY, "small")
+        p += 1
+        if p < pages:
+            if hold_page():
+                return
+        else:
+            hold()
+
 def show_text(title, body, color):
-    clear_screen()
-    draw_string(6, 6, title, ACC, "medium")
-    hline(0, 383, 26, GREY)
-    y = 36
-    for ln in wrap_px(body, 372, "medium"):
-        draw_string(6, y, ln, color, "medium")
-        y += 18
-        if y > 164:
-            break
-    hold()
+    _paged(title, wrap_px(body, 372, "medium"), color)
 
 def result_screen(title, lines):
-    # shared result view for the section modules: full-width pixel wrap,
-    # full-height (8 lines), footer pinned to the bottom. lines is a list.
-    clear_screen()
-    draw_string(6, 6, title, ACC, "medium")
-    hline(0, 383, 26, GREY)
-    y = 34
-    done = False
+    # shared result view for the section modules: full-width pixel wrap, paged
+    segs = []
     for ln in lines:
         for seg in wrap_px(ln, 372, "medium"):
-            draw_string(6, y, seg, BLACK, "medium")
-            y += 18
-            if y > 164:
-                done = True
-                break
-        if done:
-            break
-    hold()
+            segs.append(seg)
+    _paged(title, segs, BLACK)
 
 def show_math(title, tree):
     clear_screen()
     draw_string(6, 6, title, ACC, "medium")
     hline(0, 383, 26, GREY)
     if not casrender.render(tree, 6, 32, 378, 162, BLACK):
-        y = 38
-        for ln in wrap_px(caseng.tostr(tree), 372, "medium"):
-            draw_string(6, y, ln, BLACK, "medium")
-            y += 18
-            if y > 164:
-                break
+        # too big to typeset: fall back to the paged plain-text form
+        show_text(title, caseng.tostr(tree), BLACK)
+        return
     hold()
 
+GTOP = 14      # first pixel row below the header
+GBOT = 172     # last pixel row above the footer
+
+def _gline(x0, y0, x1, y1, c):
+    # Bresenham, clipped to the plot band
+    dx = x1 - x0 if x1 >= x0 else x0 - x1
+    dy = y1 - y0 if y1 >= y0 else y0 - y1
+    sx = 1 if x1 >= x0 else -1
+    sy = 1 if y1 >= y0 else -1
+    err = dx - dy
+    while True:
+        if 0 <= x0 <= 383 and GTOP <= y0 <= GBOT:
+            set_pixel(x0, y0, c)
+        if x0 == x1 and y0 == y1:
+            return
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x0 += sx
+        if e2 < dx:
+            err += dx
+            y0 += sy
+
+def _yrange(vals):
+    # robust y window: trim the extreme 5% at each end so a single asymptote
+    # (1/x, tan x) cannot flatten the whole curve into one pixel row
+    vs = sorted(vals)
+    n = len(vs)
+    lo = vs[n // 20]
+    hi = vs[n - 1 - n // 20]
+    if hi - lo < 1e-9:
+        lo -= 1.0
+        hi += 1.0
+    pad = (hi - lo) * 0.08
+    return lo - pad, hi + pad
+
 def graph(tree):
-    clear_screen()
-    sp = set_pixel
-    hline(0, 383, 96, GREY)
-    yy = 0
-    while yy <= 191:
-        sp(192, yy, GREY)
-        yy += 1
+    XLO = -12.0
+    XHI = 12.0
+    xs = []
+    ys = []
     px = 0
     while px < 384:
+        xv = XLO + (XHI - XLO) * px / 383.0
         try:
-            yv = caseng.evalf(tree, (px - 192) / 16.0, ANGLE_DEG)
-            py = int(96 - yv * 16.0)
-            if 0 <= py <= 191:
-                sp(px, py, ACC)
-                if py + 1 <= 191:
-                    sp(px, py + 1, ACC)
+            yv = caseng.evalf(tree, xv, ANGLE_DEG)
+            if yv != yv or yv > 1e300 or yv < -1e300:
+                yv = None
         except:
-            pass
-        px += 2
-    draw_string(4, 2, "y = f(x)", GREY, "small")
+            yv = None
+        xs.append(px)
+        ys.append(yv)
+        px += 1
+    fin = [v for v in ys if v is not None]
+    if not fin:
+        show_text("Graph", "f(x) has no plottable values on -12 <= x <= 12.", RED)
+        return
+    ylo, yhi = _yrange(fin)
+    span = yhi - ylo
+    clear_screen()
+    # axes
+    if ylo <= 0.0 <= yhi:
+        ay = int(GBOT - (0.0 - ylo) / span * (GBOT - GTOP))
+        hline(0, 383, ay, GREY)
+    axx = int((0.0 - XLO) / (XHI - XLO) * 383.0)
+    yy = GTOP
+    while yy <= GBOT:
+        set_pixel(axx, yy, GREY)
+        yy += 1
+    # curve, joining consecutive finite samples
+    prev = None
+    i = 0
+    while i < len(xs):
+        v = ys[i]
+        if v is None:
+            prev = None
+            i += 1
+            continue
+        cy = int(GBOT - (v - ylo) / span * (GBOT - GTOP))
+        if cy < GTOP - 40 or cy > GBOT + 40:
+            prev = None      # far off-screen: do not draw a false vertical join
+            i += 1
+            continue
+        if prev is not None:
+            _gline(prev[0], prev[1], xs[i], cy, ACC)
+        elif GTOP <= cy <= GBOT:
+            set_pixel(xs[i], cy, ACC)
+        prev = (xs[i], cy)
+        i += 1
+    draw_string(4, 1, "y = f(x)   " + ("DEG" if ANGLE_DEG else "RAD"), GREY, "small")
+    draw_string(4, 176, "x[-12,12]  y[" + fmt(ylo) + "," + fmt(yhi) + "]", GREY, "small")
     hold()
 
 def do_solve(s):
@@ -562,9 +658,11 @@ def do_gradient(tree):
     a = _ask_value("Gradient at x =")
     if a is None:
         return
-    h = 1e-5
+    # scale the step with |a|: a fixed 1e-5 vanishes into the rounding of a
+    # large x (a + h == a), which silently reported a gradient of 0
+    h = 1e-5 * (abs(a) if abs(a) > 1.0 else 1.0)
     try:
-        g = (caseng.evalf(tree, a + h) - caseng.evalf(tree, a - h)) / (2 * h)
+        g = (caseng.evalf(tree, a + h, ANGLE_DEG) - caseng.evalf(tree, a - h, ANGLE_DEG)) / (2 * h)
         show_text("Gradient (slope)", "f'(" + fmt(a) + ") = " + _fmt_num(g), BLACK)
     except:
         show_text("Gradient", "Math error (domain?)", RED)
@@ -576,7 +674,7 @@ def do_defint(tree):
     b = _ask_value("Upper limit b =")
     if b is None:
         return
-    v = cascalc.defint(tree, a, b)
+    v = cascalc.defint(tree, a, b, ANGLE_DEG)
     if v is None:
         show_text("Definite integral", "Could not evaluate (check the domain over a..b).", RED)
     else:
@@ -621,6 +719,8 @@ def cas_section():
         if op == 0:
             try:
                 show_math("d/dx =", caseng.simplify(caseng.diff(tree)))
+            except ValueError as e:
+                show_text("Differentiate", str(e) + " - there is no elementary derivative for this.", RED)
             except:
                 show_text("Too complex", "Nests too deep", RED)
         elif op == 1:
@@ -664,7 +764,13 @@ def _submenu(title, labels, mods):
         if c == -1:
             return
         show_help(mods[c])
-        __import__(mods[c]).run()
+        # a fault inside one tool must not drop the whole toolkit back to the
+        # Python shell - report it and stay in the menu
+        try:
+            __import__(mods[c]).run()
+        except Exception as e:
+            show_text("Tool error", "That tool stopped: " + str(e) +
+                      ". Returning to the menu.", RED)
 
 def fm_section():
     while True:

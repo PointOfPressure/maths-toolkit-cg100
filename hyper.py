@@ -1,31 +1,9 @@
 import math
-import casui
-import caslex
-import caseng
+import casutil
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _fn(x):
-    try:
-        r = round(x, 4)
-    except:
-        return str(x)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
+_asknum = casutil.asknum
+_fn = casutil.fmt
+_show = casutil.show
 
 def _sinh(x):
     return (math.exp(x) - math.exp(-x)) / 2
@@ -41,6 +19,13 @@ def _tanh(x):
     e = math.exp(x)
     f = math.exp(-x)
     return (e - f) / (e + f)
+
+def _arsinh(x):
+    # ln(x + sqrt(x^2+1)) loses every significant digit for large negative x
+    # (x + sqrt(x^2+1) cancels to 0 and ln blows up), so mirror via odd symmetry
+    a = x if x >= 0 else -x
+    v = math.log(a + math.sqrt(a * a + 1.0))
+    return v if x >= 0 else -v
 
 def t_sinh():
     x = _asknum('x:')
@@ -87,7 +72,7 @@ def t_arsinh():
     if x is None:
         return
     try:
-        v = math.log(x + math.sqrt(x * x + 1))
+        v = _arsinh(x)
     except:
         _show('ARSINH', ['arsinh x = ln(x+sqrt(x^2+1))', 'x = ' + _fn(x), 'Error: value too large'])
         return
@@ -123,9 +108,4 @@ def t_ref():
 TOOLS = [('Evaluate sinh', t_sinh), ('Evaluate cosh', t_cosh), ('Evaluate tanh', t_tanh), ('All three at x', t_all), ('arsinh (inverse)', t_arsinh), ('arcosh (inverse)', t_arcosh), ('artanh (inverse)', t_artanh), ('Reference card', t_ref)]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('HYPERBOLIC FUNCTIONS', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('HYPERBOLIC FUNCTIONS', TOOLS)
