@@ -438,6 +438,96 @@ def _typeable_tokens():
 def _typeable_chars(tokens):
     return set(v for v in tokens if len(v) == 1)
 
+# The fx-CG100 keypad, transcribed independently from the key-code diagram in
+# Casio's manual and the printed keytops. Codes are row*10+col. [ON] (row 1
+# col 1) and [AC] (row 6 col 5) are assigned no code and cannot be read.
+KEYPAD = {
+    12: 'HOME', 13: 'LINESTART', 14: 'UP', 15: 'LINEEND', 16: 'PAGEUP',
+    21: 'SETTINGS', 22: 'BACK', 23: 'LEFT', 24: 'OK', 25: 'RIGHT', 26: 'PAGEDOWN',
+    31: 'SHIFT', 32: 'ALPHA', 33: 'VARIABLE', 34: 'DOWN', 35: 'CATALOG', 36: 'TOOLS',
+    41: 'x', 42: 'frac', 43: 'sqrt', 44: 'power', 45: 'square', 46: 'e^x',
+    51: ',', 52: 'sin', 53: 'cos', 54: 'tan', 55: '(', 56: ')',
+    61: '7', 62: '8', 63: '9', 64: 'DEL',
+    71: '4', 72: '5', 73: '6', 74: 'times', 75: 'divide',
+    81: '1', 82: '2', 83: '3', 84: 'plus', 85: 'minus',
+    91: '0', 92: '.', 93: 'x10', 94: 'FORMAT', 95: 'EXE',
+}
+# the orange ALPHA letter printed on each key
+ALPHA_KEYS = {
+    41: 'a', 42: 'b', 43: 'c', 44: 'd', 45: 'e', 46: 'f',
+    51: 'g', 52: 'h', 53: 'i', 54: 'j', 55: 'k', 56: 'l',
+    61: 'm', 62: 'n', 63: 'o',
+    71: 'p', 72: 'q', 73: 'r', 74: 's', 75: 't',
+    81: 'u', 82: 'v', 83: 'w', 84: 'x', 85: 'y',
+    91: 'z',
+}
+# what each key types unshifted, where the toolkit binds it
+PLAIN_KEYS = {
+    91: '0', 81: '1', 82: '2', 83: '3', 71: '4', 72: '5', 73: '6',
+    61: '7', 62: '8', 63: '9', 92: '.', 51: ',',
+    84: '+', 85: '-', 74: '*', 75: '/', 55: '(', 56: ')',
+    44: '^', 45: '^2', 43: 'sqrt(', 46: 'exp(', 93: '*10^',
+    52: 'sin(', 53: 'cos(', 54: 'tan(', 41: 'x',
+}
+
+def test_keymap_matches_hardware():
+    # Every binding must land on a key that exists and means what it is bound
+    # to. This map had drifted a whole row out of step: ALPHA 42 produced 'a'
+    # when the key is printed B, so 17 of 26 letters were wrong or missing, and
+    # EXIT was bound to 13, which is the jump-to-line-start key, not Back.
+    named = [('UP', casui.UP, 'UP'), ('DOWN', casui.DOWN, 'DOWN'),
+             ('LEFT', casui.LEFT, 'LEFT'), ('RIGHT', casui.RIGHT, 'RIGHT'),
+             ('OK', casui.OK, 'OK'), ('EXE', casui.EXE, 'EXE'),
+             ('EXITK', casui.EXITK, 'BACK'), ('DEL', casui.DEL, 'DEL'),
+             ('SHIFT', casui.SHIFT, 'SHIFT'), ('ALPHA', casui.ALPHA, 'ALPHA'),
+             ('MENU', casui.MENU, 'CATALOG'), ('HOME', casui.HOME, 'HOME'),
+             ('LINESTART', casui.LINESTART, 'LINESTART'),
+             ('LINEEND', casui.LINEEND, 'LINEEND'),
+             ('PAGEUP', casui.PAGEUP, 'PAGEUP'),
+             ('PAGEDOWN', casui.PAGEDOWN, 'PAGEDOWN'),
+             ('VARIABLE', casui.VARIABLE, 'VARIABLE'),
+             ('TOOLS', casui.TOOLS, 'TOOLS'),
+             ('SETTINGS', casui.SETTINGS, 'SETTINGS'),
+             ('FORMAT', casui.FORMAT, 'FORMAT')]
+    for name, code, want in named:
+        check("casui." + name + " is the " + want + " key", KEYPAD.get(code), want)
+
+    # no binding may reference a code the keypad does not have
+    for d, label in ((casui.UNSHIFT, 'UNSHIFT'), (casui.SHIFTED, 'SHIFTED'),
+                     (casui.ALPHADICT, 'ALPHADICT'), (casui.DIGITS, 'DIGITS')):
+        for code in d:
+            truthy(label + " key " + str(code) + " exists on the keypad", code in KEYPAD)
+
+    # ALPHA must produce the letter printed on the key
+    for code, letter in ALPHA_KEYS.items():
+        check("ALPHA on key " + str(code) + " types its printed letter",
+              casui.ALPHADICT.get(code), letter)
+    truthy("every letter a-z is on a key",
+           len(set(ALPHA_KEYS.values()) & set(casui.ALPHADICT.values())) == 26)
+
+    # unshifted keys must type what is printed on them
+    for code, tok in PLAIN_KEYS.items():
+        check("key " + str(code) + " types " + repr(tok), casui.UNSHIFT.get(code), tok)
+
+    # the digit-jump map has to agree with the digits themselves
+    for code, d in casui.DIGITS.items():
+        check("DIGITS[" + str(code) + "]", casui.UNSHIFT.get(code), str(d))
+
+    # a code used for navigation must not also insert a character, or the
+    # keystroke would be swallowed before it ever reached the editor
+    nav = set([casui.UP, casui.DOWN, casui.LEFT, casui.RIGHT, casui.OK,
+               casui.EXE, casui.EXITK, casui.DEL, casui.SHIFT, casui.ALPHA,
+               casui.MENU, casui.LINESTART, casui.LINEEND, casui.PAGEUP,
+               casui.PAGEDOWN])
+    for code in nav:
+        truthy("nav key " + str(code) + " does not also type a character",
+               code not in casui.UNSHIFT)
+
+    # ON and AC carry no code, so nothing may be bound to them
+    for code in (11, 65):
+        truthy("nothing bound to the codeless key " + str(code),
+               code not in KEYPAD and code not in casui.UNSHIFT)
+
 def test_input_reachability():
     # Everything the toolkit documents has to be enterable on the real keypad.
     # It was not: there is no ',' key (so nCr, nPr and logb could not be typed
@@ -1129,6 +1219,7 @@ TESTS = [
     ("calculus", test_calculus),
     ("render", test_render),
     ("ui format", test_ui_format),
+    ("keymap vs hardware", test_keymap_matches_hardware),
     ("input reachability", test_input_reachability),
     ("cursor window", test_cursor_window),
     ("casutil", test_util),

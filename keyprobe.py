@@ -23,8 +23,13 @@ RED = (205, 60, 60)
 NAMED = [
     ("UP", casui.UP), ("DOWN", casui.DOWN), ("LEFT", casui.LEFT),
     ("RIGHT", casui.RIGHT), ("OK", casui.OK), ("EXE", casui.EXE),
-    ("EXIT", casui.EXITK), ("DEL", casui.DEL), ("SHIFT", casui.SHIFT),
-    ("MENU", casui.MENU), ("ALPHA", casui.ALPHA),
+    ("BACK/EXIT", casui.EXITK), ("DEL", casui.DEL), ("SHIFT", casui.SHIFT),
+    ("CATALOG/picker", casui.MENU), ("ALPHA", casui.ALPHA),
+    ("HOME", casui.HOME), ("line start", casui.LINESTART),
+    ("line end", casui.LINEEND), ("page up", casui.PAGEUP),
+    ("page down", casui.PAGEDOWN), ("VARIABLE", casui.VARIABLE),
+    ("TOOLS", casui.TOOLS), ("SETTINGS", casui.SETTINGS),
+    ("FORMAT", casui.FORMAT),
 ]
 
 def roles(k):
