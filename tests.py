@@ -426,6 +426,82 @@ def test_ui_format():
     check("empty menu returns -1", casui.menu("t", []), -1)
 
 
+def _typeable_tokens():
+    t = set()
+    for d in (casui.UNSHIFT, casui.SHIFTED, casui.ALPHADICT):
+        for v in d.values():
+            t.add(v)
+    for v in casui.EXTRAS:
+        t.add(v)
+    return t
+
+def _typeable_chars(tokens):
+    return set(v for v in tokens if len(v) == 1)
+
+def test_input_reachability():
+    # Everything the toolkit documents has to be enterable on the real keypad.
+    # It was not: there is no ',' key (so nCr, nPr and logb could not be typed
+    # at all), no '!' key, and the ALPHA layer has no 'i' or 'h', which put
+    # every inverse-trig and hyperbolic name out of reach too.
+    tokens = _typeable_tokens()
+    chars = _typeable_chars(tokens)
+
+    for sym in (',', '!', '=', '(', ')', '^', '*', '/', '+', '-', '.', 'x'):
+        truthy("symbol '" + sym + "' is typeable", sym in tokens)
+    for d in "0123456789":
+        truthy("digit " + d + " is typeable", d in tokens)
+
+    # a function is reachable as a whole token, or letter by letter
+    for name in caslex.UFUNCS + caslex.BINFUNCS + ('ans',):
+        whole = (name + '(') in tokens or name in tokens
+        spelled = True
+        for ch in name:
+            if ch not in chars:
+                spelled = False
+                break
+        truthy("function '" + name + "' is reachable", whole or spelled)
+
+    # constants
+    for name in ('pi', 'e'):
+        truthy("constant '" + name + "' is reachable", name in tokens)
+
+    # Every palette entry must parse once completed the way it would be used.
+    # The two-argument functions need a comma, and '!' is postfix, so each gets
+    # a realistic sample rather than a blanket "item + 0.5)".
+    samples = {
+        ',': "nCr(6,2)", '!': "5!", 'nCr(': "nCr(6,2)",
+        'nPr(': "nPr(5,2)", 'logb(': "logb(2,8)",
+    }
+    for item in casui.EXTRAS:
+        if item == '=':
+            continue                       # handled by do_solve, not the parser
+        expr = samples.get(item, item + "0.5)" if item.endswith('(') else item)
+        truthy("palette '" + item + "' parses as " + expr, caslex.parse(expr) is not None)
+
+    # the digit-jump map must be derived from the real key codes, not invented
+    for code, d in casui.DIGITS.items():
+        check("DIGITS[" + str(code) + "] matches the key map",
+              casui.UNSHIFT.get(code), str(d))
+    for d in range(1, 10):
+        truthy("digit " + str(d) + " can jump a menu", d in casui.DIGITS.values())
+
+    # the palette grid must expose every entry
+    pages = (len(casui.EXTRAS) + casui.PAL_PER - 1) // casui.PAL_PER
+    truthy("palette shows every entry", pages * casui.PAL_PER >= len(casui.EXTRAS))
+
+def test_cursor_window():
+    # the edit line must keep the caret on screen wherever it sits
+    s = "sin(x)+cos(x)+tan(x)+sqrt(x)+exp(x)+ln(x)+atan(x)+abs(x)"
+    for cpos in (0, 1, 12, 30, len(s) - 1, len(s)):
+        out = casui.cursor_fit(s, cpos, 200, "medium")
+        truthy("cursor_fit fits at " + str(cpos), casui.text_w(out, "medium") <= 200)
+        truthy("cursor_fit is a slice at " + str(cpos), out in s)
+        if cpos < len(s):
+            start = s.find(out)
+            truthy("caret visible at " + str(cpos), start <= cpos < start + len(out))
+    check("cursor_fit passes short text through", casui.cursor_fit("abc", 1, 200, "medium"), "abc")
+
+
 # ========================================================== casutil tests ==
 def test_util():
     check("ncr", casutil.ncr(6, 2), 15)
@@ -1053,6 +1129,8 @@ TESTS = [
     ("calculus", test_calculus),
     ("render", test_render),
     ("ui format", test_ui_format),
+    ("input reachability", test_input_reachability),
+    ("cursor window", test_cursor_window),
     ("casutil", test_util),
     ("pure640", test_pure640),
     ("stat640", test_stat640),

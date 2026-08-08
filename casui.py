@@ -28,6 +28,8 @@ UNSHIFT = {
     52: 'sin(', 53: 'cos(', 54: 'tan(', 43: 'sqrt(',
 }
 SHIFTED = {55: '=', 46: 'ln(', 45: 'log(', 61: 'pi'}
+# digit keys, for jumping straight to a numbered menu entry
+DIGITS = {81: 1, 82: 2, 83: 3, 71: 4, 72: 5, 73: 6, 61: 7, 62: 8, 63: 9, 91: 0}
 # ALPHA + key -> a letter variable (lowercase). Letters other than x are
 # treated as symbolic constants by the engine. Letters are printed on the keys.
 ALPHADICT = {
@@ -35,8 +37,23 @@ ALPHADICT = {
     61: 'm', 62: 'n', 63: 'o', 71: 'p', 72: 'q', 73: 'r', 74: 's', 75: 't',
     82: 'u', 83: 'v', 84: 'w', 91: 'z',
 }
-# MENU picker (reliable on every unit) - y first since it has no obvious key.
-EXTRAS = ['y', 'a', 'b', 'c', 'n', 'pi', 'e', 'exp(']
+# MENU picker - a paged grid holding everything the physical keyboard cannot
+# reach. Without it a large part of the documented function set is untypeable:
+# there is no ',' key (so nCr, nPr and logb are impossible), no '!' key, and the
+# ALPHA layer has no 'i' or 'h' (so every inverse-trig and hyperbolic name is
+# impossible). tests.py asserts every documented token stays reachable.
+PAL_COLS = 4
+PAL_ROWS = 3
+PAL_PER = PAL_COLS * PAL_ROWS
+EXTRAS = [
+    ',', '!', 'ans', '=',
+    'asin(', 'acos(', 'atan(', 'abs(',
+    'sinh(', 'cosh(', 'tanh(', 'y',
+
+    'nCr(', 'nPr(', 'logb(', 'pi',
+    'asinh(', 'acosh(', 'atanh(', 'e',
+    'f', 'g', 'h', 'k',
+]
 
 # global angle mode for Calculate + CAS evaluate/graph/table (FM modules stay radians)
 ANGLE_DEG = False
@@ -126,6 +143,30 @@ def tail_fit(s, maxpx, size):
         s = s[1:]
     return s
 
+def cursor_fit(s, cpos, maxpx, size):
+    # Window s so the character at cpos stays on screen. Trimming only from the
+    # left (tail_fit) scrolled the cursor off as soon as you moved back into a
+    # long line, leaving you editing blind.
+    if text_w(s, size) <= maxpx:
+        return s
+    if cpos > len(s):
+        cpos = len(s)
+    lo = cpos
+    hi = cpos + 1 if cpos < len(s) else cpos
+    w = char_w(s[cpos], size) if cpos < len(s) else 0
+    while True:
+        grew = False
+        if hi < len(s) and w + char_w(s[hi], size) <= maxpx:
+            w += char_w(s[hi], size)
+            hi += 1
+            grew = True
+        if lo > 0 and w + char_w(s[lo - 1], size) <= maxpx:
+            lo -= 1
+            w += char_w(s[lo], size)
+            grew = True
+        if not grew:
+            return s[lo:hi]
+
 def wrap_px(s, maxpx, size):
     # greedy WORD wrap to a pixel width; hard-splits any single word too long.
     out = []
@@ -163,6 +204,26 @@ def wrap_px(s, maxpx, size):
     return out
 
 # ---------- input with live 2D preview ----------
+def draw_palette(psel):
+    page = psel // PAL_PER
+    pages = (len(EXTRAS) + PAL_PER - 1) // PAL_PER
+    rect(4, 100, 379, 190, HL)
+    frame(4, 100, 379, 190, ACC)
+    draw_string(10, 103, "pick a symbol", ACC, "small")
+    draw_string(250, 103, "EXIT closes   " + str(page + 1) + "/" + str(pages), GREY, "small")
+    i = page * PAL_PER
+    last = i + PAL_PER
+    while i < len(EXTRAS) and i < last:
+        r = (i - page * PAL_PER) // PAL_COLS
+        c = (i - page * PAL_PER) % PAL_COLS
+        x = 10 + c * 92
+        y = 120 + r * 23
+        if i == psel:
+            rect(x - 4, y - 3, x + 86, y + 18, (198, 214, 246))
+            frame(x - 4, y - 3, x + 86, y + 18, ACC)
+        draw_string(x, y, EXTRAS[i], BLACK, "medium")
+        i += 1
+
 def draw_input(prompt, ex, cur, shift, alpha, palette, psel):
     clear_screen()
     draw_string(6, 3, prompt, GREY, "small")
@@ -170,6 +231,9 @@ def draw_input(prompt, ex, cur, shift, alpha, palette, psel):
         draw_string(322, 3, "SHIFT", ACC, "small")
     elif alpha:
         draw_string(322, 3, "ALPHA", (210, 120, 30), "small")
+    else:
+        # the angle mode changes what sin(30) means, so keep it in sight
+        draw_string(340, 3, "DEG" if ANGLE_DEG else "RAD", GREY, "small")
     s = "".join(ex)
     tree = None
     if s:
@@ -186,24 +250,16 @@ def draw_input(prompt, ex, cur, shift, alpha, palette, psel):
         draw_string(8, 50, "...", GREY, "medium")
     hline(0, 383, 108, GREY)
     raw = "".join(ex[:cur]) + "|" + "".join(ex[cur:])
-    raw = tail_fit(raw, 368, "medium")
-    draw_string(8, 120, raw, BLACK, "medium")
-    draw_string(6, 178, "OK run  DEL del  ALPHA letter  MENU more", GREY, "small")
+    draw_string(8, 120, cursor_fit(raw, len("".join(ex[:cur])), 368, "medium"), BLACK, "medium")
+    draw_string(6, 178, "OK run  DEL del  UP last  MENU symbols", GREY, "small")
     if palette:
-        rect(6, 146, 378, 174, HL)
-        frame(6, 146, 378, 174, ACC)
-        x = 18
-        i = 0
-        while i < len(EXTRAS):
-            w = len(EXTRAS[i]) * 11 + 8
-            if i == psel:
-                rect(x - 3, 150, x + w, 172, (198, 214, 246))
-            draw_string(x, 152, EXTRAS[i], BLACK, "medium")
-            x += w + 14
-            i += 1
+        draw_palette(psel)
     show_screen()
 
+_last_expr = []   # most recent submitted entry, recalled with UP
+
 def input_expr(prompt):
+    global _last_expr
     ex = []
     cur = 0
     shift = False
@@ -220,6 +276,10 @@ def input_expr(prompt):
                 psel = (psel - 1) % len(EXTRAS)
             elif k == RIGHT:
                 psel = (psel + 1) % len(EXTRAS)
+            elif k == UP:
+                psel = (psel - PAL_COLS) % len(EXTRAS)
+            elif k == DOWN:
+                psel = (psel + PAL_COLS) % len(EXTRAS)
             elif k == OK or k == EXE:
                 ex.insert(cur, EXTRAS[psel]); cur += 1; palette = False
             elif k == MENU or k == EXITK:
@@ -234,11 +294,17 @@ def input_expr(prompt):
         elif k == MENU:
             palette = True; psel = 0
         elif k == LEFT:
-            if cur > 0:
-                cur -= 1
+            cur = 0 if shift else (cur - 1 if cur > 0 else 0)
+            shift = False
         elif k == RIGHT:
-            if cur < len(ex):
-                cur += 1
+            cur = len(ex) if shift else (cur + 1 if cur < len(ex) else cur)
+            shift = False
+        elif k == UP:
+            # recall the last entry instead of retyping a long expression
+            if _last_expr:
+                ex = list(_last_expr); cur = len(ex)
+        elif k == DOWN:
+            ex = []; cur = 0
         elif k == DEL:
             if cur > 0:
                 ex.pop(cur - 1); cur -= 1
@@ -250,6 +316,7 @@ def input_expr(prompt):
         elif k == OK or k == EXE:
             if ex:
                 wait_release()
+                _last_expr = list(ex)
                 return "".join(ex)
         else:
             if alpha:
@@ -288,9 +355,11 @@ def draw_menu(title, opts, sel):
         if i == sel:
             rect(6, y - 1, 372, y + 16, HL)
             frame(6, y - 1, 372, y + 16, ACC)
-        draw_string(14, y, opts[i], BLACK, "medium")
+        # number each visible row so it can be jumped to with a digit key
+        draw_string(14, y, str(i + 1) + "  " + opts[i] if i < 9 else "   " + opts[i],
+                    BLACK, "medium")
         r += 1
-    draw_string(8, 178, "EXIT = back", GREY, "small")
+    draw_string(8, 178, "EXIT back   1-9 jump", GREY, "small")
     if n > per:
         draw_string(318, 178, str(sel + 1) + "/" + str(n), GREY, "small")
         if top > 0:
@@ -312,12 +381,23 @@ def menu(title, opts):
             sel = (sel - 1) % len(opts)
         elif k == DOWN:
             sel = (sel + 1) % len(opts)
+        elif k == LEFT:
+            sel = 0
+        elif k == RIGHT:
+            sel = len(opts) - 1
         elif k == OK or k == EXE:
             wait_release()
             return sel
         elif k == EXITK:
             wait_release()
             return -1
+        else:
+            # a digit key picks that entry outright - a 13-tool section took
+            # twelve presses of DOWN to reach the last item
+            d = DIGITS.get(k, None)
+            if d is not None and 1 <= d <= len(opts):
+                wait_release()
+                return d - 1
         wait_release()
         draw_menu(title, opts, sel)
 
@@ -710,45 +790,49 @@ def cas_section():
         if tree is None:
             show_text("Parse error", "Could not read: " + s, RED)
             continue
-        op = menu("f(x) = " + s, ["Differentiate  d/dx", "Gradient at a point",
-                                   "Integrate (+ C)", "Definite integral a..b",
-                                   "Simplify", "Solve  f(x)=0", "Evaluate at x",
-                                   "Graph", "Table of values", "New expression"])
-        if op == -1 or op == 9:
-            continue
-        if op == 0:
-            try:
-                show_math("d/dx =", caseng.simplify(caseng.diff(tree)))
-            except ValueError as e:
-                show_text("Differentiate", str(e) + " - there is no elementary derivative for this.", RED)
-            except:
-                show_text("Too complex", "Nests too deep", RED)
-        elif op == 1:
-            do_gradient(tree)
-        elif op == 2:
-            try:
-                r = cascalc.integ(tree)
-                if r is None:
-                    show_text("Integrate", "No elementary form - try the Definite integral for a numeric area.", RED)
-                else:
-                    show_math("Integral (+ C)", caseng.simplify(r))
-            except:
-                show_text("Too complex", "Nests too deep", RED)
-        elif op == 3:
-            do_defint(tree)
-        elif op == 4:
-            try:
-                show_math("Simplified", caseng.simplify(tree))
-            except:
-                show_text("Too complex", "Nests too deep", RED)
-        elif op == 5:
-            do_solve(s)
-        elif op == 6:
-            do_eval(tree)
-        elif op == 7:
-            graph(tree)
-        elif op == 8:
-            do_table(tree)
+        # Stay on the same f(x) until the user asks for a new one. Returning to
+        # the editor after every operation meant retyping the expression to
+        # differentiate it and then integrate it.
+        while True:
+            op = menu("f(x) = " + s, ["Differentiate  d/dx", "Gradient at a point",
+                                       "Integrate (+ C)", "Definite integral a..b",
+                                       "Simplify", "Solve  f(x)=0", "Evaluate at x",
+                                       "Graph", "Table of values", "New expression"])
+            if op == -1 or op == 9:
+                break
+            if op == 0:
+                try:
+                    show_math("d/dx =", caseng.simplify(caseng.diff(tree)))
+                except ValueError as e:
+                    show_text("Differentiate", str(e) + " - there is no elementary derivative for this.", RED)
+                except:
+                    show_text("Too complex", "Nests too deep", RED)
+            elif op == 1:
+                do_gradient(tree)
+            elif op == 2:
+                try:
+                    r = cascalc.integ(tree)
+                    if r is None:
+                        show_text("Integrate", "No elementary form - try the Definite integral for a numeric area.", RED)
+                    else:
+                        show_math("Integral (+ C)", caseng.simplify(r))
+                except:
+                    show_text("Too complex", "Nests too deep", RED)
+            elif op == 3:
+                do_defint(tree)
+            elif op == 4:
+                try:
+                    show_math("Simplified", caseng.simplify(tree))
+                except:
+                    show_text("Too complex", "Nests too deep", RED)
+            elif op == 5:
+                do_solve(s)
+            elif op == 6:
+                do_eval(tree)
+            elif op == 7:
+                graph(tree)
+            elif op == 8:
+                do_table(tree)
 
 FM_CORE_LABELS = ["Complex numbers", "Matrices", "Vectors & 3-D", "Roots of polynomials",
                   "Series & Maclaurin", "Hyperbolic functions", "Polar coordinates",
@@ -803,6 +887,8 @@ def main():
         mode = "Angle mode: DEGREES" if ANGLE_DEG else "Angle mode: RADIANS"
         c = menu("MATHS TOOLKIT", ["Calculate", "Calculus & Algebra",
                                     "A-Level Maths", "Further Maths", mode])
+        if c == -1:
+            return  # EXIT at the top level leaves the app, as the key implies
         if c == 0:
             calc_section()
         elif c == 1:
