@@ -188,6 +188,12 @@ def isym(e):
     r = cascalc.integ(t)
     return None if r is None else caseng.tostr(caseng.simplify(r))
 
+def itidy(e):
+    # what the CAS screen actually shows: integ then the presentation pass
+    t = caslex.parse(e)
+    r = cascalc.integ(t)
+    return None if r is None else caseng.tostr(cascalc.tidy(r))
+
 
 # =========================================================== caslex tests ==
 def test_lexer():
@@ -1254,7 +1260,7 @@ def test_pure640():
     has("circle centre", o, 'centre (2,-3)')
     num("circle r", o, 'radius = ', 3.0)
 
-    o = drive(pure640.t_trig, ['3', '4'], menus=[1])
+    o = drive(pure640.t_trig, ['3', '4'], menus=[2])
     num("rform R", o, 'R = ', 5.0)
     num("rform alpha", o, 'alpha = ', 53.1301, 1e-3)
 
@@ -1836,6 +1842,241 @@ def test_devlint():
 
 
 # =================================================================== main ==
+
+def _verdict_after(lines, key):
+    # the MAXIMUM / MINIMUM / INFLECTION word that follows a given root line,
+    # so a verdict attached to the wrong root is caught
+    i = 0
+    while i < len(lines):
+        if key in lines[i]:
+            j = i + 1
+            while j < len(lines) and j <= i + 3:
+                for word in ("MAXIMUM", "MINIMUM", "INFLECTION"):
+                    if word in lines[j]:
+                        return word
+                j += 1
+            return "none"
+        i += 1
+    return "no such root"
+
+def test_pure640_new(h=None):
+    import pure640
+    # 3-4-5: A = 36.8699, B = 53.1301, C = 90, area 6
+    o = drive(pure640.t_triangle, ["3", "4", "5"], [0])
+    num("SSS angle A", o, "A = ", 36.8699, 1e-3)
+    num("SSS angle B", o, "B = ", 53.1301, 1e-3)
+    num("SSS angle C", o, "C = ", 90.0, 1e-3)
+    num("SSS area", o, "area = (1/2)ab sinC = ", 6.0, 1e-6)
+    # SAS: b = 5, c = 7, A = 60 -> a^2 = 25+49-2*35*0.5 = 39, a = 6.2450
+    o = drive(pure640.t_triangle, ["5", "7", "60"], [1])
+    num("SAS side a", o, "a = ", math.sqrt(39.0), 1e-4)
+    # ASA: A = 40, B = 60, a = 10 -> C = 80, b = 10 sin60/sin40 = 13.4730
+    o = drive(pure640.t_triangle, ["40", "60", "10"], [2])
+    num("ASA side b", o, "b = ", 10.0 * math.sin(math.radians(60)) / math.sin(math.radians(40)), 1e-3)
+    # SSA ambiguous: a = 7, b = 8, A = 50 -> sinB = 8 sin50/7 = 0.87542,
+    # B = 61.1018 or 118.8982, and both give a valid triangle
+    o = drive(pure640.t_triangle, ["7", "8", "50"], [3])
+    num("SSA angle B", o, "B = ", 61.1018, 1e-3)
+    has("SSA ambiguous case flagged", o, "AMBIGUOUS CASE")
+    has("SSA second angle", o, "118.8982")
+    # SSA with no triangle at all: a = 3, b = 8, A = 50 -> sinB > 1
+    o = drive(pure640.t_triangle, ["3", "8", "50"], [3])
+    has("impossible SSA reported", o, "No triangle")
+    # three lengths that cannot close
+    o = drive(pure640.t_triangle, ["1", "2", "10"], [0])
+    has("triangle inequality checked", o, "cannot form")
+
+    # r = 5, theta = 1.2 rad: arc 6, sector area 15, chord 10 sin(0.6) = 5.6464,
+    # segment area 12.5(1.2 - sin1.2) = 3.3495
+    o = drive(pure640.t_arc_sector, ["5", "1.2"], [0])
+    num("arc length", o, "r theta      = ", 6.0, 1e-6)
+    num("sector area", o, "(1/2)r^2 th  = ", 15.0, 1e-6)
+    num("chord", o, "2r sin(th/2) = ", 10.0 * math.sin(0.6), 1e-4)
+    num("segment area", o, "             = ", 12.5 * (1.2 - math.sin(1.2)), 1e-4)
+    # degrees must be converted first: 60 degrees on r = 3 gives arc pi
+    o = drive(pure640.t_arc_sector, ["3", "60"], [1])
+    num("arc from degrees", o, "r theta      = ", math.pi, 1e-4)
+    has("conversion is stated", o, "only works in radians")
+
+    # x^2-5x+6 < 0 is 2 < x < 3 (between the roots, upward parabola)
+    o = drive(pure640.t_inequality, ["1", "-5", "6"], [1, 2])
+    has("quadratic inequality between roots", o, "2 < x < 3")
+    has("says between", o, "between the roots")
+    # x^2-5x+6 > 0 is outside the roots
+    o = drive(pure640.t_inequality, ["1", "-5", "6"], [1, 0])
+    has("quadratic inequality outside", o, "x < 2  or  x > 3")
+    # -x^2+4 >= 0 opens downwards, so it is BETWEEN the roots -2 and 2
+    o = drive(pure640.t_inequality, ["-1", "0", "4"], [1, 1])
+    has("downward parabola opens downwards", o, "opens downwards")
+    has("downward parabola between roots", o, "-2 <= x <= 2")
+    # x^2+1 > 0 has no roots and is always true
+    o = drive(pure640.t_inequality, ["1", "0", "1"], [1, 0])
+    has("no real roots", o, "no real roots")
+    has("always true", o, "every real x")
+    # linear with a negative coefficient flips the sign: -2x + 6 > 0 is x < 3
+    o = drive(pure640.t_inequality, ["-2", "6"], [0, 0])
+    has("dividing by a negative flips", o, "FLIPS")
+    has("linear answer", o, "x < 3")
+
+    # sin(2x - 30) = 0.5 over 0..360 degrees: 2x-30 = 30,150,390,510 so
+    # x = 30, 90, 210, 270 - four solutions, not one
+    o = drive(pure640._trig_general, ["2", "-30", "0.5", "0", "360"], [0, 0])
+    has("multiple-angle solution 30", o, "x = 30 deg")
+    has("multiple-angle solution 90", o, "x = 90 deg")
+    has("multiple-angle solution 210", o, "x = 210 deg")
+    has("multiple-angle solution 270", o, "x = 270 deg")
+    has("four solutions found", o, "4 solutions")
+    # cos x = 0.5 in radians over 0..2pi: x = pi/3 and 5pi/3
+    o = drive(pure640._trig_general, ["1", "0", "0.5", "0", str(2 * math.pi)], [1, 1])
+    has("radian solution pi/3", o, "x = 1.0472")
+    has("radian solution 5pi/3", o, "x = 5.236")
+    # tan has period pi, so tan x = 1 over 0..2pi has two solutions
+    o = drive(pure640._trig_general, ["1", "0", "1", "0", str(2 * math.pi)], [2, 1])
+    has("tan solution pi/4", o, "x = 0.7854")
+    has("tan solution 5pi/4", o, "x = 3.927")
+    # |k| > 1 for sin has no solution
+    o = drive(pure640._trig_general, ["1", "0", "2", "0", "360"], [0, 0])
+    has("sin k>1 impossible", o, "No solution")
+
+    # compound-angle expansions checked against the direct value
+    o = drive(pure640._trig_expand, ["50", "20"])
+    has("sin(A+B) agrees", o, "agrees")
+    truthy("no expansion differs", not [ln for ln in o if "DIFFERS" in ln])
+    o = drive(pure640._trig_compound, [])
+    has("compound identity card", o, "sin(A+B) = sinA cosB + cosA sinB")
+    has("double angle card", o, "cos2A = cos^2 A - sin^2 A")
+    has("integration rearrangement", o, "sin^2 A = (1 - cos2A)/2")
+
+def test_purecalc_calculus():
+    import purecalc
+    # x^3-3x: f' = 3x^2-3 = 0 at x = -1 (max, f''=-6) and x = 1 (min, f''=6),
+    # with y = 2 and y = -2; f'' = 0 at x = 0, an inflection
+    o = drive(purecalc.t_stationary, ["x^3-3x"])
+    has("derivative shown", o, "3*x^2-3")
+    has("y at the maximum", o, "y = 2")
+    has("y at the minimum", o, "y = -2")
+    has("inflection found", o, "changes sign: inflection")
+    # The verdict has to be attached to the RIGHT root. Asserting only that
+    # the words MAXIMUM and MINIMUM appear somewhere passes even when the two
+    # are swapped, which is exactly the mistake worth catching.
+    check("x = -1 is the maximum", _verdict_after(o, "x = -1,"), "MAXIMUM")
+    check("x = 1 is the minimum", _verdict_after(o, "x = 1,"), "MINIMUM")
+    # x^4: f'' = 0 at the stationary point, so the test is inconclusive and the
+    # sign of f' either side has to settle it - it is a minimum
+    # x^4 has f'' = 0 at the stationary point, so the second-derivative test
+    # cannot settle it; the sign of f' either side does, and it is a minimum
+    o = drive(purecalc.t_stationary, ["x^4"])
+    has("f'' is zero there", o, "f'' = 0")
+    check("x^4 has a minimum at 0", _verdict_after(o, "x = 0,"), "MINIMUM")
+    # x^3: stationary at 0 but it is a point of inflection, not a turning point
+    o = drive(purecalc.t_stationary, ["x^3"])
+    check("x^3 has a stationary inflection at 0",
+          _verdict_after(o, "x = 0,"), "INFLECTION")
+    # exp(x) has no stationary point at all
+    o = drive(purecalc.t_stationary, ["exp(x)"])
+    has("no stationary points", o, "no stationary points")
+
+    # f' = 2x through (1,5): f = x^2 + 4
+    o = drive(purecalc.t_constant, ["2x", "1", "5", "3"])
+    has("integral before the constant", o, "x^2 + C")
+    has("constant found", o, "C = 4")
+    has("full curve", o, "f(x) = x^2+4")
+    num("f(3) = 13", o, "f(3) = ", 13.0)
+    has("checked through the point", o, "passes through the point")
+
+    # y = x from 0 to 1 about the x-axis: V = pi int x^2 dx = pi/3
+    o = drive(purecalc.t_revolution, ["x", "0", "1"], [0])
+    num("cone volume", o, "  = ", math.pi / 3.0, 1e-4)
+    # y = sqrt(x) from 0 to 4 about the x-axis: V = pi int x dx = 8pi
+    o = drive(purecalc.t_revolution, ["sqrt(x)", "0", "4"], [0])
+    num("paraboloid integral is 8", o, "  evaluated: ", 8.0, 1e-6)
+    has("paraboloid volume", o, "V = pi x 8")
+    # x = y^2 from 0 to 1 about the y-axis: V = pi int y^4 dy = pi/5
+    o = drive(purecalc.t_revolution, ["y^2", "0", "1"], [1])
+    num("volume about the y-axis", o, "  = ", math.pi / 5.0, 1e-4)
+    # sqrt(x)^2 has to simplify to x or the symbolic route is never taken
+    o = drive(purecalc.t_revolution, ["sqrt(x)", "0", "4"], [0])
+    truthy("paraboloid volume done symbolically",
+           not [ln for ln in o if "numerically" in ln])
+
+    # mean of x^2 on [0,3] is 9/3 = 3, reached at x = sqrt(3)
+    o = drive(purecalc.t_meanvalue, ["x^2", "0", "3"])
+    num("mean value of x^2", o, "           = ", 3.0, 1e-6)
+    has("where it reaches the mean", o, "x = 1.7321")
+    # mean of sin x over [0, pi] is 2/pi
+    o = drive(purecalc.t_meanvalue, ["sin(x)", "0", str(math.pi)])
+    num("mean value of sin", o, "           = ", 2.0 / math.pi, 1e-4)
+
+    # int 1 to infinity of 1/x^2 converges to 1; of 1/x it diverges
+    o = drive(purecalc.t_improper, ["1/x^2", "1"], [0])
+    has("1/x^2 converges", o, "CONVERGES")
+    num("1/x^2 limit is 1", o, "CONVERGES to about ", 1.0, 1e-3)
+    o = drive(purecalc.t_improper, ["1/x", "1"], [0])
+    has("1/x diverges", o, "DIVERGES")
+    # int 0 to 1 of 1/sqrt(x) converges to 2 - slowly, which is what the
+    # earlier absolute-threshold test got wrong
+    o = drive(purecalc.t_improper, ["1/sqrt(x)", "0", "1"], [2])
+    has("1/sqrt(x) converges", o, "CONVERGES")
+    num("1/sqrt(x) limit is 2", o, "CONVERGES to about ", 2.0, 1e-2)
+    o = drive(purecalc.t_improper, ["1/x", "0", "1"], [2])
+    has("1/x at 0 diverges", o, "DIVERGES")
+    # int 0 to infinity of e^-x is 1
+    o = drive(purecalc.t_improper, ["exp(-x)", "0"], [0])
+    num("exp(-x) limit is 1", o, "CONVERGES to about ", 1.0, 1e-4)
+
+def test_integ_reciprocal_powers():
+    # c/sqrt(u) and c/u^k are powers in disguise and used to return None,
+    # which sent the improper-integral tool down the numeric path unnecessarily
+    check("int 1/sqrt(x)", itidy("1/sqrt(x)"), "2*x^(1/2)")
+    check("int 3/sqrt(x)", itidy("3/sqrt(x)"), "6*x^(1/2)")
+    check("int 1/x^3", itidy("1/x^3"), "-1/(2*x^2)")
+    check("int 2/sqrt(2x+1)", itidy("2/sqrt(2x+1)"), "2*(2*x+1)^(1/2)")
+    check("int 1/x^(2/3)", itidy("1/x^(2/3)"), "3*x^(1/3)")
+    # the exponent has to stay an exact fraction: as a float the power rule
+    # printed x^0.5/0.5 instead of 2 sqrt(x)
+    for e in ("1/sqrt(x)", "1/x^3", "2/sqrt(2x+1)", "1/x^(2/3)", "3/sqrt(x)"):
+        f = caslex.parse(e)
+        F = cascalc.tidy(cascalc.integ(f))
+        d = caseng.simplify(caseng.diff(F))
+        for xv in (0.6, 1.7, 3.2):
+            try:
+                close("d/dx int " + e + " at " + str(xv),
+                      caseng.evalf(d, xv), caseng.evalf(f, xv), 1e-8)
+            except:
+                pass
+
+def test_every_tool_is_registered():
+    # A tool that is not in its module's TOOLS list is unreachable from the
+    # menu and invisible to stress.py, however well it works when called
+    # directly - which is how two matrix tools shipped in a commit that claimed
+    # to add them. Every t_* function a section module defines must be listed.
+    mods = ["vcplx", "matrix", "vectors", "polyroots", "series", "hyper",
+            "polar", "diffeq", "fmmech", "fmstat", "numeric", "algos",
+            "xpure", "fpt", "pure640", "purecalc", "stat640", "mech640"]
+    for name in mods:
+        mod = __import__(name)
+        tools = getattr(mod, "TOOLS", None)
+        truthy(name + " has a TOOLS registry", tools is not None)
+        if tools is None:
+            continue
+        listed = []
+        for label, fn in tools:
+            listed.append(fn)
+            truthy(name + " tool label is a non-empty string",
+                   isinstance(label, str) and len(label) > 0)
+        for attr in dir(mod):
+            if not attr.startswith("t_"):
+                continue
+            fn = getattr(mod, attr)
+            if not callable(fn):
+                continue
+            truthy(name + "." + attr + " is registered in TOOLS", fn in listed)
+        # labels have to be distinct, or the menu shows the same line twice
+        seen = []
+        for label, fn in tools:
+            truthy(name + " label " + repr(label) + " is unique", label not in seen)
+            seen.append(label)
+
 TESTS = [
     ("lexer", test_lexer),
     ("engine", test_engine),
@@ -1846,6 +2087,9 @@ TESTS = [
     ("engine substitution", test_engine_substitution),
     ("solve in any variable", test_solve_variable),
     ("purecalc", test_purecalc),
+    ("pure640 triangle/arc/inequality", test_pure640_new),
+    ("purecalc calculus applications", test_purecalc_calculus),
+    ("integrating reciprocal powers", test_integ_reciprocal_powers),
     ("mechanics variable accel", test_mech_variable_accel),
     ("matrix invariants", test_matrix_invariant),
     ("method of differences", test_method_of_differences),
@@ -1875,6 +2119,7 @@ TESTS = [
     ("fpt", test_fpt),
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
+    ("every tool is registered", test_every_tool_is_registered),
 ]
 
 # ---------------------------------------------------------- extra modules --

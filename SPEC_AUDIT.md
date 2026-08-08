@@ -18,8 +18,7 @@ listed here with the code `*` and a bracketed topic.
 
 ## Snapshot
 
-**This audit describes the working tree at 2026-08-09 00:09 (commit `d26de8f`
-plus uncommitted changes to `caseng.py`, `matrix.py` and `series.py`).**
+**This audit describes the working tree at 2026-08-09 00:16, commit `e1b6812`.**
 
 The repository was being actively developed while the audit was running. Over
 the course of it `purecalc.py` and `caspoly.py` appeared, `stat640.py` gained
@@ -30,10 +29,13 @@ timestamp above; verdicts elsewhere in the file that would have read MISSING
 an hour earlier have been corrected. Re-run the checks before treating any
 individual row as current.
 
-Two functions exist in the working tree but are **not registered** in a
-`TOOLS` list, so they are unreachable from the menus and are audited as
-absent: `matrix.t_invariant` and `matrix.t_transform3`. Registering them would
-move Core Pure `Pm6` from MISSING and `m4` from PARTIAL.
+**Live defect found while auditing:** commit `28d0401` is titled "Add H645
+Core Pure invariants, 3x3 transformations and the method of differences", but
+`matrix.t_invariant` and `matrix.t_transform3` were never added to
+`matrix.TOOLS` (verified at 00:16). `series.t_differences` *was* registered.
+The two matrix tools are therefore unreachable from the menu and are audited
+as absent. Adding two lines to `matrix.TOOLS` moves Core Pure `Pm6` out of
+MISSING and upgrades `m4`.
 
 ## Method and conventions
 
@@ -71,7 +73,7 @@ These were verified by running the modules, not inferred:
 | Inverse-trig / inverse-hyperbolic integral forms | `1/(x^2+1)` -> `atan(x)` works; `1/sqrt(1-x^2)`, `1/sqrt(x^2+1)`, `1/sqrt(x^2-1)` and `tanh(x)` all return `None`. |
 | `caseng.simplify` | does **not** rationalise or reduce surds (`sqrt(8)` stays `sqrt(8)`) and does **not** combine numeric fractions (`1/2+1/3` stays as-is). |
 | `caseng.invert` | exact when the variable occurs once (`2x+3` -> `(x-3)/2`, `exp(x)+1` -> `ln(x-1)`); returns `None` for `(x-1)/(x+2)`. |
-| `sec`, `cosec`, `cot` | **not in the parser's function list**. `sec(x)` silently parses as the product `s*e*c*x` - a wrong-answer hazard, not just a gap. |
+| `sec`, `cosec`, `cot` | added in commit `e7a716c` during this audit, together with `sech`/`cosech`/`coth`. They now parse, evaluate, differentiate correctly (`d/dx cot(x)` -> `-cosec(x)^2`) and `int sec(x) dx` -> `ln\|sec(x)+tan(x)\|`. Before that commit `sec(x)` silently parsed as the product `s*e*c*x`. |
 | Second derivative | no `d2/dx2` in the CAS menu (`purecalc.t_param_diff` does produce `d2y/dx2` for a parametric curve). |
 | `casutil.FACT_MAX` | 500. |
 
@@ -94,8 +96,8 @@ These were verified by running the modules, not inferred:
 | `t3` | Area of a triangle = 1/2 ab sin C | No triangle tool at all | MISSING |
 | `t4` | Sine rule and cosine rule | No triangle solver anywhere in the toolkit | MISSING |
 | `t11` | Arc length s = r*theta and sector area A = 1/2 r^2 theta | No circular-measure tool | MISSING |
-| `t13` | Definitions and graphs of sec, cosec and cot | Not in `caslex.UFUNCS`; `sec(x)` silently parses as the product `s*e*c*x` (tested) - actively unsafe | MISSING |
-| `t14` | Relationships between the graphs of sin/cos/tan and their reciprocal and inverse functions | No reciprocal trig at all | MISSING |
+| `t13` | Definitions and graphs of sec, cosec and cot | All three are in `caslex.UFUNCS` as of commit `e7a716c`: they parse, evaluate, graph, differentiate and (for sec) integrate | COVERED |
+| `t14` | Relationships between the graphs of sin/cos/tan and their reciprocal and inverse functions | All six functions can now be graphed with CAS `Graph`, but nothing reports the domains, ranges or asymptote positions, or draws a pair together for comparison | PARTIAL |
 | `t19` | Use trigonometric identities to solve equations | `pure640._trig_solve` only handles the bare forms sin/cos/tan x = k | MISSING |
 | `E7` | Reduce y = a x^n and y = a b^x to linear form by taking logs | No log-transform of a data list; `t_regress` takes raw x,y only | MISSING |
 | `c18` | Points of inflection | No second-derivative or inflection tool | MISSING |
@@ -105,7 +107,7 @@ These were verified by running the modules, not inferred:
 | `Mf1` | Add, subtract, multiply and divide polynomials | CAS `Expand brackets` and `Collect like terms` (`caspoly.expand`/`collect`) both work; polynomial long division exists as `caspoly.pdivmod` but is not reachable from any menu | PARTIAL |
 | `f7` | Solve simple inequalities involving the modulus function | `purecalc.t_modulus` solves the equation \|f(x)\| = k and graphs y = \|f(x)\|, which gives the boundary points, but the inequality itself is never stated | PARTIAL |
 | `g13` | Convert between cartesian and parametric forms | `purecalc.t_param_cartesian` converts parametric -> cartesian when x(t) inverts, and prints the sin^2+cos^2 route when it does not; the cartesian -> parametric direction is not implemented | PARTIAL |
-| `t15` | Use tan^2 + 1 = sec^2 and cot^2 + 1 = cosec^2 | The reference card prints both identities, but sec, cosec and cot still do not exist in the CAS (see `t13`) | PARTIAL |
+| `t15` | Use tan^2 + 1 = sec^2 and cot^2 + 1 = cosec^2 | `purecalc.t_exact_trig` prints both identities and the functions now exist, so either side can be evaluated or graphed; there is still no symbolic identity manipulation to *apply* them | PARTIAL |
 | `Mt16` | Identities for sin(A+-B), cos(A+-B), tan(A+-B) | `purecalc.t_exact_trig` now prints sin(A+B) and cos(A+B) on its reference card, but nothing expands or applies them symbolically | PARTIAL |
 | `t17` | Identities for sin 2A, cos 2A, tan 2A | The same reference card prints sin 2A and both forms of cos 2A; there is still no symbolic expansion | PARTIAL |
 | `*` (Trigonometry) | Solve right-angled triangles using trig ratios and Pythagoras | Trig values are evaluable in Calculate, but there is no triangle solver | PARTIAL |
@@ -359,7 +361,7 @@ These were verified by running the modules, not inferred:
 | `Pp5` | Construct a proof by induction generally (divisibility, de Moivre) | Nothing | MISSING |
 | `j11` | Represent and interpret loci on an Argand diagram: \|z-a\| = r, \|z-a\| = \|z-b\|, arg(z-a) = theta, and regions | `t_argand` plots isolated points only; no loci and no regions | MISSING |
 | `j13` | Apply de Moivre's theorem to trigonometric identities (cos n*theta, tan 4*theta) | No symbolic trig expansion in the CAS | MISSING |
-| `Pm6` | Find invariant points and invariant lines of a linear transformation | `matrix.t_invariant` exists in the working tree (uncommitted) and looks correct, but it is **not registered in `matrix.TOOLS`**, so it is unreachable from the menu | MISSING |
+| `Pm6` | Find invariant points and invariant lines of a linear transformation | `matrix.t_invariant` is committed and looks correct (invariant points from det(A-I), invariant lines from b m^2 + (a-d)m - c = 0), but it is **not registered in `matrix.TOOLS`**, so no user can reach it | MISSING |
 | `Pv14` | Find the intersection of a line and a plane | No tool; `vectors.py` has distances and angles only | MISSING |
 | `v9` | Form and use the equation of a line in 2-D and 3-D, in vector and cartesian form | `t_ptline`/`t_skew` consume a line as (point, direction) but nothing forms the equation from two points or converts to cartesian | MISSING |
 | `Pc1` | Evaluate improper integrals where a limit is infinite or the integrand is undefined at an endpoint | `cascalc.defint` is composite Simpson on a finite interval; it cannot take a limit | MISSING |
@@ -374,7 +376,7 @@ These were verified by running the modules, not inferred:
 | `j19` | Represent the complex roots of unity on an Argand diagram | `t_roots` lists them; plotting requires retyping each root into `t_argand` | PARTIAL |
 | `j20` | Apply complex numbers to geometrical problems (regular polygons) | Roots and moduli available; the geometry is manual | PARTIAL |
 | `m2` | Understand and use the zero and identity matrices | No built-in I or 0; the user types them in | PARTIAL |
-| `m4` | Find the matrix of a given 2-D transformation and vice versa; 3-D reflections in x=0/y=0/z=0 and rotations of multiples of 90 degrees about an axis | `matrix.t_transform` builds 2-D matrices; `matrix.t_transform3` covers the 3-D cases but is **not registered in `matrix.TOOLS`** (uncommitted work in progress). There is no matrix -> description direction either way | PARTIAL |
+| `m4` | Find the matrix of a given 2-D transformation and vice versa; 3-D reflections in x=0/y=0/z=0 and rotations of multiples of 90 degrees about an axis | `matrix.t_transform` builds 2-D matrices; `matrix.t_transform3` covers the 3-D cases but is **not registered in `matrix.TOOLS`**, so it is unreachable. There is no matrix -> description direction either way | PARTIAL |
 | `m5` | Successive transformations and matrix multiplication | `A*B` works, but the composed matrix is not described as a transformation | PARTIAL |
 | `m9` | The magnitude of a 3x3 determinant is the volume scale factor; the sign gives orientation | `t_det` computes a 3x3 determinant; only the 2-D tool mentions the area/scale interpretation, and orientation is never reported | PARTIAL |
 | `m15` | Find the determinant and inverse of a 3x3 matrix without a calculator, possibly with algebraic terms | Numeric 3x3 only; algebraic entries are not supported | PARTIAL |
@@ -875,17 +877,17 @@ mathematical content of each statement, not against the software requirement.
 
 ## Summary counts
 
-Per component. The two Minor papers are shown with their true statement counts
-(their content is a strict subset of the corresponding Major paper, so the
-audit tables above group them; the counts here are per statement).
+Per component, counting each specification statement once. The two Minor
+papers are shown with their true statement counts (their content is a strict
+subset of the corresponding Major paper, so the audit tables above group them).
 
 | Component | Statements | MISSING | PARTIAL | COVERED | N/A |
 |---|---:|---:|---:|---:|---:|
-| H640 Pure Mathematics | 154 | 34 | 39 | 56 | 25 |
-| H640 Statistics | 54 | 9 | 10 | 22 | 13 |
-| H640 Mechanics | 45 | 6 | 9 | 15 | 15 |
-| **H640 total** | **253** | **49** | **58** | **93** | **53** |
-| H645 Core Pure (Y420) | 99 | 13 | 26 | 44 | 16 |
+| H640 Pure Mathematics | 154 | 17 | 42 | 70 | 25 |
+| H640 Statistics | 54 | 5 | 10 | 26 | 13 |
+| H640 Mechanics | 45 | 5 | 7 | 18 | 15 |
+| **H640 total** | **253** | **27** | **59** | **114** | **53** |
+| H645 Core Pure (Y420) | 99 | 12 | 26 | 45 | 16 |
 | H645 Mechanics Major (Y421) | 89 | 27 | 20 | 28 | 14 |
 | H645 Statistics Major (Y422) | 72 | 21 | 18 | 12 | 21 |
 | H645 Mechanics Minor (Y431) | 49 | 7 | 12 | 21 | 9 |
@@ -894,18 +896,18 @@ audit tables above group them; the counts here are per statement).
 | H645 Numerical Methods (Y434) | 21 | 10 | 6 | 1 | 4 |
 | H645 Extra Pure (Y435) | 32 | 12 | 10 | 5 | 5 |
 | H645 Further Pure with Technology (Y436) | 32 | 18 | 5 | 5 | 4 |
-| **H645 total** | **477** | **138** | **117** | **125** | **97** |
-| **Grand total** | **730** | **187** | **175** | **218** | **150** |
+| **H645 total** | **477** | **137** | **117** | **126** | **97** |
+| **Grand total** | **730** | **164** | **176** | **240** | **150** |
 
 Because the Minor papers duplicate Major content, the number of **distinct**
-MISSING statements is **171** (187 minus the 7 Y431 and 9 Y432 duplicates).
+MISSING statements is **148** (164 minus the 7 Y431 and 9 Y432 duplicates).
 
 Percentages of the assessable (non-N/A) statements:
 
 | Component | Assessable | COVERED | PARTIAL | MISSING |
 |---|---:|---:|---:|---:|
-| H640 (all three areas) | 200 | 47% | 29% | 24% |
-| H645 Core Pure (Y420) | 83 | 53% | 31% | 16% |
+| H640 (all three areas) | 200 | 57% | 30% | 13% |
+| H645 Core Pure (Y420) | 83 | 54% | 31% | 15% |
 | H645 Mechanics Major (Y421) | 75 | 37% | 27% | 36% |
 | H645 Statistics Major (Y422) | 51 | 24% | 35% | 41% |
 | H645 Modelling with Algorithms (Y433) | 30 | 7% | 23% | 70% |
@@ -913,16 +915,18 @@ Percentages of the assessable (non-N/A) statements:
 | H645 Extra Pure (Y435) | 27 | 19% | 37% | 44% |
 | H645 Further Pure with Technology (Y436) | 28 | 18% | 18% | 64% |
 
-The shape of the result: H640 and Core Pure are in reasonable health; the
-Modelling with Algorithms, Numerical Methods and Further Pure with Technology
-options are largely unserved, and Statistics Major is missing two whole topics
-(continuous random variables, and correlation/association hypothesis testing).
+The shape of the result: H640 and Core Pure are in good health, and the H640
+gaps that remain are mostly small self-contained tools. Mechanics Major,
+Statistics Major, Modelling with Algorithms, Numerical Methods, Extra Pure and
+Further Pure with Technology are all still largely unserved, with Modelling
+with Algorithms the weakest (70% of its assessable content has nothing behind
+it, mostly linear programming and network flows).
 
 ---
 
 ## The MISSING list, ranked
 
-All 171 distinct MISSING statements, ordered by my judgement of how many exam
+All 148 distinct MISSING statements, ordered by my judgement of how many exam
 marks are at stake. The ordering weighs three things: how many candidates meet
 the topic (everyone sits H640; every Further Maths candidate sits Core Pure;
 option papers are each 1/4 of H645), how many marks the topic typically
@@ -933,213 +937,188 @@ assists).
 ### Tier 1 - highest value
 
 1. **H640 `t4`** Sine rule and cosine rule - appears in essentially every H640 pure paper, 4-8 marks, and a triangle solver is the cheapest tool in this whole list to write.
-2. **H640 `Mt16`** Compound angle identities sin(A+-B), cos(A+-B), tan(A+-B) - recurring 6+ mark questions, and they gate R-form, proof and equation solving.
-3. **H640 `t17`** Double angle identities - same frequency as `Mt16`, and additionally gate the integration of sin^2/cos^2 and half-angle substitutions.
-4. **H640 `c16`** Implicit differentiation - a 5-7 mark question in almost every series, and there is currently no route to it at all.
-5. **H640 `c32`** Solve first order differential equations by separating variables - a standard 6-8 mark question; the toolkit can integrate but has no DE path for H640.
-6. **H640 `t13`** sec, cosec and cot - not merely absent: `sec(x)` silently parses as `s*e*c*x`, so the toolkit currently returns confidently wrong answers. Correctness risk on top of mark loss.
-7. **Y420 `c14`** Particular integrals - without them `diffeq.t_second_order` can never finish a general solution; the 2nd-order DE question is typically 8-12 marks and is on every Core Pure paper.
-8. **H640 `a15`** Partial fractions - 4-5 marks in its own right, and the gateway to `c30`, `Ps2` and much of rational integration.
-9. **Y420 `j11`** Loci and regions on an Argand diagram - a recurring 6-10 mark Core Pure question; the toolkit plots isolated points only.
-10. **H640 `y3`** Find the initial velocity of a projectile - the projectile question is on H640/01 most years and the "find u and the angle" direction is the common one; `mech640.projectile` runs only forwards.
-11. **H640 `t11`** Arc length and sector area - recurring 3-5 marks, and among the easiest possible tools to add.
-12. **Y433 `L12`** The simplex algorithm - the single largest unserved block anywhere: with `L3`-`L16` it is roughly a third of Modelling with Algorithms.
-13. **Y433 `L8`** Solve a 2-D LP graphically - paired with `L7`; typically 8-12 marks of Y433 and a natural fit for the plotting code that already exists.
-14. **Y420 `c2`** Volumes of revolution - a recurring standalone Core Pure question worth 6-8 marks; `defint` already provides the numeric machinery.
-15. **Y422 `SR19`** Use a simple continuous random variable as a model - the head of an entire missing topic (`SR19`-`R26`) that carries perhaps 20+ marks of Statistics Major.
+2. **H640 `t19`** Use trigonometric identities to solve equations - the trig equation solver is currently locked to bare `sin x = k` over 0-360 degrees, so anything involving an identity is unreachable; recurring multi-mark question.
+3. **Y420 `c14`** Particular integrals - without them `diffeq.t_second_order` can never finish a general solution; the 2nd-order DE question is typically 8-12 marks and is on every Core Pure paper.
+4. **Y420 `j11`** Loci and regions on an Argand diagram - a recurring 6-10 mark Core Pure question; the toolkit plots isolated points only.
+5. **H640 `y3`** Find the initial velocity of a projectile - the projectile question is on H640/01 most years and the "find u and the angle" direction is the common one; `mech640.projectile` runs only forwards.
+6. **H640 `t11`** Arc length and sector area - recurring 3-5 marks, and among the easiest possible tools to add.
+7. **Y433 `L12`** The simplex algorithm - the single largest unserved block anywhere: with `L3`-`L16` it is roughly a third of Modelling with Algorithms.
+8. **Y433 `L8`** Solve a 2-D LP graphically - paired with `L7`; typically 8-12 marks of Y433, and the plotting primitives (`casutil.frame`/`axes`/`seg`) already exist.
+9. **Y420 `c2`** Volumes of revolution - a recurring standalone Core Pure question worth 6-8 marks; `defint` already provides the numeric machinery.
+10. **Y422 `SR19`** Use a simple continuous random variable as a model - the head of an entire missing topic (`SR19`-`R26`) that carries perhaps 20+ marks of Statistics Major.
+11. **H640 `Ma7`** Solve linear inequalities - recurring, and the base for `a8`/`a9`, which are currently only half-served.
+12. **Y420 `Pm6`** Invariant points and invariant lines - a recurring 5-8 mark matrices question. `matrix.t_invariant` is already written; it just needs adding to `TOOLS`.
+13. **Y433 `L7`** Graph inequalities in 2-D and identify the feasible region - the drawing half of the graphical LP question.
+14. **Y420 `Pv14`** Intersection of a line and a plane - a standard Core Pure vectors mark-earner.
 
 ### Tier 2 - high value
 
-16. **H640 `Ma7`** Solve linear inequalities - recurring, and the base for `a8`/`a9`, which are currently only half-served.
-17. **H640 `t19`** Use trigonometric identities to solve equations - the payoff topic for items 2 and 3; multi-mark.
-18. **Y420 `Ps2`** Sum a series using partial fractions (method of differences) - a recurring 5-8 mark Core Pure question.
-19. **Y420 `Pm6`** Invariant points and invariant lines - a recurring 5-8 mark matrices question.
-20. **Y433 `L7`** Graph inequalities in 2-D and identify the feasible region - the drawing half of the graphical LP question.
-21. **H640 `c21`** Find the constant of integration from a given point - small in itself but attached to almost every integration question.
-22. **Y420 `Pv14`** Intersection of a line and a plane - a standard Core Pure vectors mark-earner.
-23. **Y420 `v9`** Form the equation of a line in vector and cartesian form - the toolkit consumes lines but cannot build one; needed before most of the vectors topic.
-24. **H640 `Mf1`** Polynomial arithmetic (expand, collect, divide) - low marks directly, but it underpins factorising, curve sketching and partial fractions.
-25. **H640 `MD1`** Statistical diagrams: histogram, box plot, cumulative frequency, stem-and-leaf - a large slice of H640/02 that the toolkit does not touch at all.
-26. **Y422 `SH1`** Chi-squared test for association in a contingency table - a full hypothesis-test question in Statistics Major; `t_chi` cannot do the contingency case.
-27. **Y422 `Sb6`** Hypothesis test for correlation using the pmcc - the toolkit computes r but stops one step short of the marks.
-28. **Y422 `b9`** Hypothesis test using Spearman's rs - same pattern as 27.
-29. **Y434 `c4`** Error behaviour of the integration rules (ratio of differences, Simpson from midpoint and trapezium) - a core Numerical Methods technique that appears on every paper.
-30. **Y436 `c10`** Runge-Kutta methods for first order differential equations - a signature Y436 technique; only Euler exists.
+15. **Y420 `v9`** Form the equation of a line in vector and cartesian form - the toolkit consumes lines but cannot build one; needed before most of the vectors topic.
+16. **H640 `c21`** Find the constant of integration from a given point - small in itself but attached to almost every integration question (note `purecalc.t_separable` already does exactly this for differential equations, so the pattern exists).
+17. **Y422 `SH1`** Chi-squared test for association in a contingency table - a full hypothesis-test question in Statistics Major; `t_chi` cannot do the contingency case.
+18. **Y422 `Sb6`** Hypothesis test for correlation using the pmcc - the toolkit computes r but stops one step short of the marks.
+19. **Y422 `b9`** Hypothesis test using Spearman's rs - same pattern as 19.
+20. **Y434 `c4`** Error behaviour of the integration rules (ratio of differences, Simpson from midpoint and trapezium) - a core Numerical Methods technique that appears on every paper.
+21. **Y436 `c10`** Runge-Kutta methods for first order differential equations - a signature Y436 technique; only Euler exists.
+22. **H640 `g9`** Intersection of a line and a circle - a standard coordinate geometry question, and `pure640.t_simul` already has the machinery for the line-and-parabola case.
+23. **Y421 `Mi13`** Oblique impact and its modelling assumptions - the head of the `Mi13`-`i17` block, a full Mechanics Major question.
+24. **Y421 `i14`** Newton's Experimental Law for oblique impact.
+25. **Y421 `i15`** Oblique impact between a sphere and a surface.
+26. **Y421 `i16`** Oblique impact between two spheres.
+27. **Y421 `i17`** Loss of kinetic energy in an oblique impact.
+28. **H640 `E7`** Reduce y = a x^n and y = a b^x to linear form by taking logs - the log-linear regression question in H640/02, now that scatter and regression both exist.
+29. **H640 `t3`** Area of a triangle = 1/2 ab sin C - pairs with item 1 and costs almost nothing to add.
 
 ### Tier 3 - substantial
 
-31. **Y421 `Mi13`** Oblique impact and its modelling assumptions - the head of the `Mi13`-`i17` block, a full Mechanics Major question.
-32. **Y421 `i14`** Newton's Experimental Law for oblique impact.
-33. **Y421 `i15`** Oblique impact between a sphere and a surface.
-34. **Y421 `i16`** Oblique impact between two spheres.
-35. **Y421 `i17`** Loss of kinetic energy in an oblique impact.
-36. **Y422 `R20`** The meaning of a pdf, including piecewise pdfs - part of the missing continuous-rv topic.
-37. **Y422 `R24`** Cumulative distribution function - same topic.
-38. **Y422 `R26`** Use a cdf to find the median and quartiles - same topic, and directly examinable.
-39. **Y422 `R23`** Mode and median of a continuous random variable - same topic.
-40. **Y422 `R21`** Properties of a pdf - same topic.
-41. **Y422 `R29`** Linear combinations of independent Normal random variables - a standard multi-mark question.
-42. **Y433 `N12`** Maximum flow / minimum cut theorem - the head of the network-flow block, a full Y433 question.
-43. **Y433 `N10`** Model a transmission problem as a network with sources and sinks.
-44. **Y433 `N11`** Specify a cut and calculate its capacity.
-45. **Y433 `A7`** Quick sort - the specification names it explicitly and the module implements two other sorts instead.
-46. **Y420 `Pc1`** Improper integrals - a recognisable Core Pure question type.
-47. **Y420 `c8`** Recognise separable differential equations - pairs with H640 `c32`.
-48. **Y420 `j13`** Use de Moivre to derive trigonometric identities - a recurring Core Pure question.
-49. **Y421 `v6`** Range of a projectile on an inclined plane - a standard Mechanics Major question.
-50. **Y421 `v7`** Maximum range of a projectile.
-51. **Y421 `MG6`** Volume generated by rotating a region - shared machinery with item 14.
-52. **Y421 `G7`** Centre of mass of a solid of revolution by calculus.
-53. **Y421 `G9`** Centre of mass of a lamina or arc by calculus.
-54. **Y421 `d16`** Sliding versus toppling - a classic Mechanics Major discriminator.
-55. **Y421 `G5`** Centre of mass in equilibrium and toppling problems.
-56. **Y421 `G10`** Centre of mass in rigid-body equilibrium.
-57. **Y435 `m4`** Powers of a matrix by diagonalisation - the payoff of the whole Extra Pure eigenvalue topic.
-58. **Y435 `c4`** Stationary points of z = f(x, y) - the payoff of the multivariable calculus topic.
-59. **Y435 `s6`** First order non-homogeneous recurrence relations.
-60. **Y435 `s8`** Second order non-homogeneous recurrence relations.
-61. **Y434 `Nf1`** Newton's forward difference formula and difference tables - a whole Y434 topic.
-62. **Y434 `f2`** Construct the interpolating polynomial - the other half of that topic.
-63. **Y434 `U8`** Error analysis to produce an improved estimate (extrapolation) - a recurring Y434 technique.
-64. **Y434 `e5`** Relaxation applied to a fixed point iteration - directly named in the specification.
-65. **Y436 `c6`** Sketch a tangent field for a first order differential equation - a signature Y436 task.
-66. **Y436 `c9`** Concepts underlying Runge-Kutta - pairs with item 30.
-67. **Y436 `C8`** Arc length in cartesian, polar and parametric form.
-68. **Y436 `T9`** Pell's equation - explicitly named, and mechanical to implement.
-69. **Y436 `T6`** Euler's totient function - explicitly named, trivial to implement given the existing factoriser.
-70. **Y436 `T8`** Pythagorean triples - explicitly named.
+30. **Y422 `R20`** The meaning of a pdf, including piecewise pdfs - part of the missing continuous-rv topic.
+31. **Y422 `R24`** Cumulative distribution function - same topic.
+32. **Y422 `R26`** Use a cdf to find the median and quartiles - same topic, and directly examinable.
+33. **Y422 `R23`** Mode and median of a continuous random variable - same topic.
+34. **Y422 `R21`** Properties of a pdf - same topic.
+35. **Y422 `R29`** Linear combinations of independent Normal random variables - a standard multi-mark question.
+36. **Y433 `N12`** Maximum flow / minimum cut theorem - the head of the network-flow block, a full Y433 question.
+37. **Y433 `N10`** Model a transmission problem as a network with sources and sinks.
+38. **Y433 `N11`** Specify a cut and calculate its capacity.
+39. **Y433 `A7`** Quick sort - the specification names it explicitly and `algos.py` implements two other sorts instead.
+40. **Y420 `Pc1`** Improper integrals - a recognisable Core Pure question type.
+41. **Y420 `c8`** Recognise separable differential equations - the H640 solver `purecalc.t_separable` now exists, so this is a recognition/routing gap rather than a machinery gap.
+42. **Y420 `j13`** Use de Moivre to derive trigonometric identities - a recurring Core Pure question.
+43. **Y421 `v6`** Range of a projectile on an inclined plane - a standard Mechanics Major question.
+44. **Y421 `v7`** Maximum range of a projectile.
+45. **Y421 `MG6`** Volume generated by rotating a region - shared machinery with item 10.
+46. **Y421 `G7`** Centre of mass of a solid of revolution by calculus.
+47. **Y421 `G9`** Centre of mass of a lamina or arc by calculus.
+48. **Y421 `d16`** Sliding versus toppling - a classic Mechanics Major discriminator.
+49. **Y421 `G5`** Centre of mass in equilibrium and toppling problems.
+50. **Y421 `G10`** Centre of mass in rigid-body equilibrium.
+51. **Y435 `m4`** Powers of a matrix by diagonalisation - the payoff of the whole Extra Pure eigenvalue topic.
+52. **Y435 `c4`** Stationary points of z = f(x, y) - the payoff of the multivariable calculus topic.
+53. **Y435 `s6`** First order non-homogeneous recurrence relations.
+54. **Y435 `s8`** Second order non-homogeneous recurrence relations.
+55. **Y434 `Nf1`** Newton's forward difference formula and difference tables - a whole Y434 topic.
+56. **Y434 `f2`** Construct the interpolating polynomial - the other half of that topic.
+57. **Y434 `U8`** Error analysis to produce an improved estimate (extrapolation) - a recurring Y434 technique.
+58. **Y434 `e5`** Relaxation applied to a fixed point iteration - directly named in the specification.
+59. **Y436 `c6`** Sketch a tangent field for a first order differential equation - a signature Y436 task.
+60. **Y436 `c9`** Concepts underlying Runge-Kutta - pairs with item 22.
+61. **Y436 `C8`** Arc length in cartesian, polar and parametric form.
+62. **Y436 `T9`** Pell's equation - explicitly named, and mechanical to implement.
+63. **Y436 `T6`** Euler's totient function - explicitly named, trivial given the existing prime factoriser.
+64. **Y436 `T8`** Pythagorean triples - explicitly named.
+65. **H640 `c18`** Points of inflection - needs the second derivative that the CAS menu still will not produce.
+66. **H640 `g11`** Circle properties (semicircle, chord, tangent).
+67. **H640 `a10`** Manipulate surds - `sqrt(8)` still does not reduce.
+68. **H640 `a11`** Rationalise the denominator.
+69. **H640 `u5`** Venn diagrams for up to three events - a very common H640/02 question format, and the chart primitives now exist.
 
 ### Tier 4 - moderate
 
-71. **H640 `c28`** Integration by substitution in non-obvious cases - the tested failure on `x e^(x^2)` is a common exam integrand.
-72. **H640 `c18`** Points of inflection.
-73. **H640 `g9`** Intersection of a line and a circle - a standard coordinate geometry question.
-74. **H640 `g11`** Circle properties (semicircle, chord, tangent).
-75. **H640 `f5`** Inverse functions and their graphs.
-76. **H640 `f4`** Composite functions.
-77. **H640 `f7`** Inequalities involving the modulus function.
-78. **H640 `a10`** Manipulate surds.
-79. **H640 `a11`** Rationalise the denominator.
-80. **H640 `a16`** Simplify rational expressions.
-81. **H640 `E7`** Reduce y = a x^n and y = a b^x to linear form by taking logs - the log-linear regression question in H640/02.
-82. **H640 `t3`** Area of a triangle = 1/2 ab sin C - pairs with item 1 and costs almost nothing to add.
-83. **H640 `t12`** Small angle approximations.
-84. **H640 `t14`** Graphs of the reciprocal and inverse trigonometric functions.
-85. **H640 `t15`** tan^2 + 1 = sec^2 and cot^2 + 1 = cosec^2 - blocked behind item 6.
-86. **H640 `g13`** Convert between cartesian and parametric forms.
-87. **H640 `g14`** Circle in parametric form.
-88. **H640 `s7`** Generate a sequence from a kth-term formula or a recurrence.
-89. **H640 `s10`** Recognise increasing, decreasing and periodic sequences.
-90. **H640 `a9`** Express solutions of inequalities in set notation - blocked behind item 16.
-91. **H640 `a14`** Proportional relationships.
-92. **H640 `*`** (Algebra) Change the subject of a formula.
-93. **H640 `k4`** Draw and interpret kinematics graphs - recurring in H640/01, and area-under-graph is directly worth marks.
-94. **H640 `y4`** Eliminate time to get the path equation of a projectile.
-95. **H640 `k11`** Cartesian equation of the path of a particle.
-96. **H640 `Mk9`** 2-D kinematics language and relative position.
-97. **H640 `F8`** Closed polygon of forces.
-98. **H640 `D2`** Histogram area and frequency density.
-99. **H640 `D3`** Interpret a cumulative frequency diagram.
-100. **H640 `u5`** Venn diagrams for up to three events - a very common H640/02 question format.
-101. **H640 `*`** (Probability) Tree and sample space diagrams.
-102. **H640 `D4`** Describe frequency distributions and skew.
-103. **H640 `D7`** Recognise an outlier on a scatter diagram.
-104. **H640 `p24`** Sampling techniques - would need a random number source.
-105. **H640 `D14`** Data cleaning.
-106. **Y420 `Pp4`** Proof by induction for sequences, series and matrix powers - high marks, but the marks are for the written argument; a tool could only supply M^n and the numerical check.
-107. **Y420 `Pp5`** Proof by induction generally - same caveat.
-108. **Y420 `c18`** Coupled first order simultaneous differential equations.
-109. **Y421 `h7`** Energy principles with elastic strings (maximum extension).
-110. **Y421 `h5`** Equilibrium position of a mass on a spring.
-111. **Y421 `r6`** Tangential acceleration.
-112. **Y421 `d9`** Triangle of forces.
-113. **Y421 `d13`** Couples.
-114. **Y421 `G3`** Centres of mass of standard uniform bodies - a reference table would do it.
-115. **Y421 `Mv3`** Eliminate a parameter from parametric equations.
-116. **Y421 `v5`** Cartesian equation of a projectile path.
-117. **Y421 `v4`** Interpret the resulting equation (bounding parabola).
-118. **Y421 `v9`** Verify a solution of a differential equation of motion.
-119. **Y421 `v10`** Apply boundary or initial conditions.
-120. **Y421 `Mk1`** 2-D kinematics language and relative position.
-121. **Y421 `q3`** Determine units from dimensions.
-122. **Y421 `q4`** Change units.
-123. **Y422 `R17`** Geometric distribution probabilities - a named distribution with nothing implemented.
-124. **Y422 `R18`** Mean and variance of a geometric distribution.
-125. **Y422 `SH5`** Wilcoxon signed rank test - a named test with nothing implemented, and it needs its own critical-value table.
-126. **Y422 `I11`** Confidence interval for a paired mean difference.
-127. **Y422 `R27`** Mean of a linear combination of random variables.
-128. **Y422 `SR6`** Expectation of a linear combination.
-129. **Y422 `b15`** Relationship between the two regression lines.
-130. **Y422 `b2`** Scatter diagram.
-131. **Y422 `R31`** Normal probability plot.
-132. **Y422 `Sb16`** Interpret bivariate categorical data.
-133. **Y422 `Z2`** Simulation - needs a random number generator, which the toolkit lacks entirely.
-134. **Y433 `L4`** Slack variables.
-135. **Y433 `L14`** Two-stage simplex / big-M for >= constraints.
-136. **Y433 `L10`** Integer LP in two dimensions.
-137. **Y433 `L13`** Geometric basis of the simplex algorithm.
-138. **Y433 `L3`** Recognise standard form.
-139. **Y433 `L5`** Recognise when an integer solution is required.
-140. **Y433 `L6`** Formulate network problems as LPs.
-141. **Y433 `L9`** Post-optimal analysis.
-142. **Y433 `L11`** 3-D LP visualisation.
-143. **Y433 `L15`** Reformulate an equality constraint.
-144. **Y433 `L16`** Variables that may be negative.
-145. **Y433 `N13`** Explore network algorithms via LP.
-146. **Y433 `N7`** Order of Kruskal, Prim and Dijkstra.
-147. **Y433 `A11`** Count comparisons in bin packing.
-148. **Y434 `Ne1`** Staircase and cobweb diagrams - directly examinable and the plotting primitives already exist.
-149. **Y434 `U2`** Error in f(x) when x is in error.
-150. **Y434 `U3`** Effect of rearranging a calculation on the error.
-151. **Y434 `e3`** Relative computational efficiency of root-finding methods.
-152. **Y434 `c2`** Error in numerical differentiation.
-153. **Y435 `a5`** Subgroups - the natural next step for `t_group`, which already has the Cayley table.
-154. **Y435 `m5`** Cayley-Hamilton theorem.
-155. **Y435 `c6`** grad g at a point.
-156. **Y435 `c7`** Tangent plane and normal line.
-157. **Y435 `c2`** Contours and sections of a surface.
-158. **Y435 `a8`** Isomorphism between two groups.
-159. **Y435 `s4`** Verify a given solution of a recurrence relation.
-160. **Y435 `XS1`** Set notation - low marks, but currently nothing at all.
-161. **Y436 `C11`** Determine asymptotes, including oblique.
-162. **Y436 `C7`** Equations of chords, tangents and normals.
-163. **Y436 `C10`** Limits.
-164. **Y436 `C12`** Identify cusps from the limit of the gradient.
-165. **Y436 `C4`** Generalise properties of a family of curves.
-166. **Y436 `C9`** Envelope of a family of curves.
-167. **Y436 `Tc1`** Analytical solutions of differential equations with a parameter slider.
-168. **Y436 `c5`** Particular solutions and initial conditions for a differential equation.
-169. **Y436 `c4`** Verify a given solution of a differential equation.
-170. **Y436 `c2`** Dynamic tangent at a variable point.
-171. **Y436 `T10`** Other Diophantine equations - open-ended, so a general tool is unlikely to convert to marks.
+70. **H640 `a9`** Express solutions of inequalities in set notation - blocked behind item 12.
+71. **H640 `g14`** Circle in parametric form - the parametric tools now exist, so this is a preset away.
+72. **H640 `s7`** Generate a sequence from a kth-term formula or a recurrence.
+73. **H640 `s10`** Recognise increasing, decreasing and periodic sequences.
+74. **H640 `a14`** Proportional relationships.
+75. **H640 `*`** (Probability) Tree and sample space diagrams.
+76. **H640 `D4`** Describe frequency distributions and skew - the histogram and box plot now exist, so a skew comment is close.
+77. **H640 `p24`** Sampling techniques - would need a random number source, which the toolkit lacks entirely.
+78. **H640 `D14`** Data cleaning.
+79. **H640 `y4`** Eliminate time to get the path equation of a projectile.
+80. **H640 `k11`** Cartesian equation of the path of a particle.
+81. **H640 `Mk9`** 2-D kinematics language and relative position.
+82. **H640 `F8`** Closed polygon of forces - the chart primitives now exist for drawing it.
+83. **Y420 `Pp4`** Proof by induction for sequences, series and matrix powers - high marks, but they are for the written argument; a tool could only supply M^n and a numerical check.
+84. **Y420 `Pp5`** Proof by induction generally - same caveat.
+85. **Y420 `c18`** Coupled first order simultaneous differential equations.
+86. **Y421 `h7`** Energy principles with elastic strings (maximum extension).
+87. **Y421 `h5`** Equilibrium position of a mass on a spring.
+88. **Y421 `r6`** Tangential acceleration.
+89. **Y421 `d9`** Triangle of forces.
+90. **Y421 `d13`** Couples.
+91. **Y421 `G3`** Centres of mass of standard uniform bodies - a reference table would do it.
+92. **Y421 `Mv3`** Eliminate a parameter from parametric equations - `purecalc.t_param_cartesian` already does this for H640; it is not wired into the mechanics section.
+93. **Y421 `v5`** Cartesian equation of a projectile path.
+94. **Y421 `v4`** Interpret the resulting equation (bounding parabola).
+95. **Y421 `v9`** Verify a solution of a differential equation of motion.
+96. **Y421 `v10`** Apply boundary or initial conditions.
+97. **Y421 `Mk1`** 2-D kinematics language and relative position.
+98. **Y421 `q3`** Determine units from dimensions.
+99. **Y421 `q4`** Change units.
+100. **Y422 `R17`** Geometric distribution probabilities - a named distribution with nothing implemented.
+101. **Y422 `R18`** Mean and variance of a geometric distribution.
+102. **Y422 `SH5`** Wilcoxon signed rank test - a named test with nothing implemented, and it needs its own critical-value table.
+103. **Y422 `I11`** Confidence interval for a paired mean difference.
+104. **Y422 `R27`** Mean of a linear combination of random variables.
+105. **Y422 `SR6`** Expectation of a linear combination.
+106. **Y422 `b15`** Relationship between the two regression lines.
+107. **Y422 `b2`** Scatter diagram - note this now exists in `stat640` for H640; the FM statistics module `fmstat.py` has no plotting of its own.
+108. **Y422 `R31`** Normal probability plot.
+109. **Y422 `Sb16`** Interpret bivariate categorical data.
+110. **Y422 `Z2`** Simulation - needs a random number generator, which the toolkit lacks entirely.
+111. **Y433 `L4`** Slack variables.
+112. **Y433 `L14`** Two-stage simplex / big-M for >= constraints.
+113. **Y433 `L10`** Integer LP in two dimensions.
+114. **Y433 `L13`** Geometric basis of the simplex algorithm.
+115. **Y433 `L3`** Recognise standard form.
+116. **Y433 `L5`** Recognise when an integer solution is required.
+117. **Y433 `L6`** Formulate network problems as LPs.
+118. **Y433 `L9`** Post-optimal analysis.
+119. **Y433 `L11`** 3-D LP visualisation.
+120. **Y433 `L15`** Reformulate an equality constraint.
+121. **Y433 `L16`** Variables that may be negative.
+122. **Y433 `N13`** Explore network algorithms via LP.
+123. **Y433 `N7`** Order of Kruskal, Prim and Dijkstra.
+124. **Y433 `A11`** Count comparisons in bin packing.
+125. **Y434 `Ne1`** Staircase and cobweb diagrams - directly examinable, and the plotting primitives already exist.
+126. **Y434 `U2`** Error in f(x) when x is in error.
+127. **Y434 `U3`** Effect of rearranging a calculation on the error.
+128. **Y434 `e3`** Relative computational efficiency of root-finding methods.
+129. **Y434 `c2`** Error in numerical differentiation.
+130. **Y435 `a5`** Subgroups - the natural next step for `t_group`, which already has the Cayley table.
+131. **Y435 `m5`** Cayley-Hamilton theorem.
+132. **Y435 `c6`** grad g at a point.
+133. **Y435 `c7`** Tangent plane and normal line.
+134. **Y435 `c2`** Contours and sections of a surface.
+135. **Y435 `a8`** Isomorphism between two groups.
+136. **Y435 `s4`** Verify a given solution of a recurrence relation.
+137. **Y435 `XS1`** Set notation - low marks, but currently nothing at all.
+138. **Y436 `C11`** Determine asymptotes, including oblique.
+139. **Y436 `C7`** Equations of chords, tangents and normals - `purecalc` now produces tangents and normals for implicit and parametric curves, so this is mostly a wiring job.
+140. **Y436 `C10`** Limits.
+141. **Y436 `C12`** Identify cusps from the limit of the gradient.
+142. **Y436 `C4`** Generalise properties of a family of curves.
+143. **Y436 `C9`** Envelope of a family of curves.
+144. **Y436 `Tc1`** Analytical solutions of differential equations with a parameter slider.
+145. **Y436 `c5`** Particular solutions and initial conditions for a differential equation.
+146. **Y436 `c4`** Verify a given solution of a differential equation.
+147. **Y436 `c2`** Dynamic tangent at a variable point.
+148. **Y436 `T10`** Other Diophantine equations - open-ended, so a general tool is unlikely to convert to marks.
 
 ### A note on the PARTIALs
 
 Several `PARTIAL` verdicts are worth more marks than most of the tail of this
 list, because they sit one small step away from a complete answer:
 
+- `H640 t7` - the trig equation solver is locked to 0-360 degrees and to bare
+  `sin x = k` forms. Arbitrary intervals, radians and multiple angles (`sin 2x`)
+  would convert directly into marks, and would unblock MISSING item 2.
+- `H640 c7` - nothing solves `f'(x) = 0`, so stationary points, the single most
+  frequent calculus question type, still need three manual steps. `mech640`
+  already does exactly this for `v(t) = 0`, so the machinery exists.
 - `Y420 c10` - `diffeq.t_first_order` finds the integrating factor and then
   stops. Performing `int (IF * Q) dx` and applying an initial condition would
-  finish an 8-10 mark Core Pure question.
+  finish an 8-10 mark Core Pure question. `purecalc.t_separable` shows the
+  pattern to copy.
 - `Y420 c13` / `Pc15` - the complementary function is produced but the general
-  solution never is (see MISSING item 7), and SHM constants are never fitted.
-- `H640 t7` - the trig equation solver is locked to 0-360 degrees and to bare
-  `sin x = k` forms; arbitrary intervals, radians and multiple angles would
-  convert directly into marks.
-- `H640 c7` - nothing solves `f'(x) = 0`, so stationary points, the single most
-  frequent calculus question type, need three manual steps.
+  solution never is (see MISSING item 4), and the SHM constants are never fitted.
+- `Y420 m4` and `Pm6` - `matrix.t_transform3` and `matrix.t_invariant` are
+  written and sitting in the working tree unregistered. Adding two lines to
+  `matrix.TOOLS` closes one MISSING and upgrades one PARTIAL.
 - `Y433 N6` - Dijkstra returns final distances but not the labelling or the
   route, which is what the mark scheme asks for.
 - `Y422 H3` - the chi-squared statistic is computed with `df = cells - 1`
   always, which is silently wrong whenever parameters have been estimated.
 - `Y435 Xm1`/`m2`/`m3` - eigenvalues are 2x2 only; Extra Pure requires 3x3.
-- `Y420 m4` - the transformation builder is 2-D only; the specification names
-  specific 3-D reflections and rotations.
-
-
-
-
-
-
-
-
+- `H640 Mf1` / `a16` - `caspoly.pdivmod` exists but is not exposed, and
+  `caspoly.cancel` does not cancel common factors, so polynomial division and
+  rational simplification both stop short.

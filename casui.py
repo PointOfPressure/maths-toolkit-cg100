@@ -889,7 +889,7 @@ def cas_section():
                 break
             if op == 0:
                 try:
-                    show_math("d/dx =", caseng.simplify(caseng.diff(tree)))
+                    show_math("d/dx =", cascalc.tidy(caseng.diff(tree)))
                 except ValueError as e:
                     show_text("Differentiate", str(e) + " - there is no elementary derivative for this.", RED)
                 except:
@@ -902,14 +902,14 @@ def cas_section():
                     if r is None:
                         show_text("Integrate", "No elementary form - try the Definite integral for a numeric area.", RED)
                     else:
-                        show_math("Integral (+ C)", caseng.simplify(r))
+                        show_math("Integral (+ C)", cascalc.tidy(r))
                 except:
                     show_text("Too complex", "Nests too deep", RED)
             elif op == 3:
                 do_defint(tree)
             elif op == 4:
                 try:
-                    show_math("Simplified", caseng.simplify(tree))
+                    show_math("Simplified", cascalc.tidy(tree))
                 except:
                     show_text("Too complex", "Nests too deep", RED)
             elif op == 5:

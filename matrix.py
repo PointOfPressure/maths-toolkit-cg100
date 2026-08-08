@@ -485,6 +485,8 @@ TOOLS = [
     ('Solve A x = b', t_solve),
     ('Eigenvalues 2x2', t_eig),
     ('2D transform builder', t_transform),
+    ('3D transform builder', t_transform3),
+    ('Invariant points/lines', t_invariant),
 ]
 
 

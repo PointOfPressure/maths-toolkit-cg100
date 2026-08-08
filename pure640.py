@@ -415,13 +415,436 @@ def _trig_exact():
                             '45  |1/r2  1/r2   1', '60  |r3/2  1/2    r3', '90  | 1     0    undef',
                             '(r = square root)', 'r2 ~ 1.41421', 'r3 ~ 1.73205'])
 
+def _trig_general():
+    # The bare solver above is locked to 0..360 degrees and to sin x = k. This
+    # one takes any interval, either angle unit, and a multiple angle, which is
+    # what the equations on the paper actually look like: sin(2x - 30) = 0.5
+    # over 0 <= x <= 360 has four solutions and the naive route finds one.
+    labels = ['sin(px + q) = k', 'cos(px + q) = k', 'tan(px + q) = k']
+    f = casui.menu('Solve trig equation', labels)
+    if f == -1:
+        return
+    unit = casui.menu('Angle unit', ['degrees', 'radians'])
+    if unit == -1:
+        return
+    full = 360.0 if unit == 0 else 2.0 * math.pi
+    p = _asknum('p (coeff of x) [1]')
+    if p is None:
+        p = 1.0
+    if p == 0:
+        _show('Solve trig', ['p = 0 leaves no x to solve for.'])
+        return
+    q = _asknum('q (inside constant) [0]')
+    if q is None:
+        q = 0.0
+    k = _asknum('k (right-hand side)')
+    if k is None:
+        return
+    lo = _asknum('from x = [0]')
+    if lo is None:
+        lo = 0.0
+    hi = _asknum('to x = [' + _fn(full) + ']')
+    if hi is None:
+        hi = full
+    if hi < lo:
+        lo, hi = hi, lo
+    # principal value, in the chosen unit
+    try:
+        if f == 0:
+            base = math.asin(k)
+        elif f == 1:
+            base = math.acos(k)
+        else:
+            base = math.atan(k)
+    except:
+        _show('Solve trig', ['No solution: |k| must be at most 1',
+                             'for sin and cos.'])
+        return
+    if unit == 0:
+        base = casutil.deg(base)
+    # every angle A with the required value, as base + n*period or its partner
+    if f == 0:
+        partners = [base, full / 2.0 - base]
+        period = full
+    elif f == 1:
+        partners = [base, -base]
+        period = full
+    else:
+        partners = [base]
+        period = full / 2.0
+    sols = []
+    for a0 in partners:
+        # A = p x + q, so x = (A - q)/p; step A by the period both ways
+        n = -400
+        while n <= 400:
+            A = a0 + n * period
+            x = (A - q) / p
+            if lo - 1e-9 <= x <= hi + 1e-9:
+                r = round(x, 6)
+                dup = False
+                for e in sols:
+                    if abs(e - r) < 1e-6:
+                        dup = True
+                if not dup:
+                    sols.append(r)
+            n += 1
+    sols.sort()
+    nm = ('sin', 'cos', 'tan')[f]
+    unm = 'deg' if unit == 0 else 'rad'
+    lines = [nm + '(' + _fn(p) + 'x + ' + _fn(q) + ') = ' + _fn(k),
+             'for ' + _fn(lo) + ' <= x <= ' + _fn(hi) + ' ' + unm,
+             'principal value ' + _fn(base) + ' ' + unm,
+             'period in x is ' + _fn(period / (p if p > 0 else -p)) + ' ' + unm,
+             '------------------']
+    if not sols:
+        lines.append('no solutions in that interval.')
+    else:
+        for x in sols:
+            lines.append('x = ' + _fn(x) + ' ' + unm)
+        lines.append('')
+        lines.append(str(len(sols)) + ' solutions. A multiple angle')
+        lines.append('gives p times as many as the')
+        lines.append('plain equation would.')
+    _pages('Solve trig', lines)
+
+
+def _trig_compound():
+    _pages('Compound and double angles', [
+        'COMPOUND ANGLES',
+        ' sin(A+B) = sinA cosB + cosA sinB',
+        ' sin(A-B) = sinA cosB - cosA sinB',
+        ' cos(A+B) = cosA cosB - sinA sinB',
+        ' cos(A-B) = cosA cosB + sinA sinB',
+        ' tan(A+B) = (tanA+tanB)/(1-tanA tanB)',
+        ' tan(A-B) = (tanA-tanB)/(1+tanA tanB)',
+        '',
+        'DOUBLE ANGLES (put B = A)',
+        ' sin2A = 2 sinA cosA',
+        ' cos2A = cos^2 A - sin^2 A',
+        '       = 2cos^2 A - 1',
+        '       = 1 - 2sin^2 A',
+        ' tan2A = 2tanA / (1 - tan^2 A)',
+        '',
+        'REARRANGED, for integrating',
+        ' sin^2 A = (1 - cos2A)/2',
+        ' cos^2 A = (1 + cos2A)/2',
+        '',
+        'HALF ANGLE t = tan(A/2)',
+        ' sinA = 2t/(1+t^2)',
+        ' cosA = (1-t^2)/(1+t^2)',
+        ' tanA = 2t/(1-t^2)',
+        '',
+        'PYTHAGOREAN',
+        ' sin^2 + cos^2 = 1',
+        ' 1 + tan^2 = sec^2',
+        ' 1 + cot^2 = cosec^2',
+        '',
+        'SUM TO PRODUCT',
+        ' sinP + sinQ = 2 sin((P+Q)/2) cos((P-Q)/2)',
+        ' cosP + cosQ = 2 cos((P+Q)/2) cos((P-Q)/2)',
+        ' cosP - cosQ = -2 sin((P+Q)/2) sin((P-Q)/2)',
+    ])
+
+
+def _trig_expand():
+    # Evaluate a compound-angle expansion numerically, both ways, so the
+    # identity can be checked rather than taken on trust.
+    _show('Check an expansion', ['Enter A and B in degrees.',
+                                 'Both sides of each identity are',
+                                 'worked out separately and compared.'])
+    A = _asknum('A (deg)')
+    if A is None:
+        return
+    B = _asknum('B (deg)')
+    if B is None:
+        return
+    ra = casutil.rad(A)
+    rb = casutil.rad(B)
+    sa = math.sin(ra)
+    ca = math.cos(ra)
+    sb = math.sin(rb)
+    cb = math.cos(rb)
+    rows = [('sin(A+B)', math.sin(ra + rb), sa * cb + ca * sb),
+            ('sin(A-B)', math.sin(ra - rb), sa * cb - ca * sb),
+            ('cos(A+B)', math.cos(ra + rb), ca * cb - sa * sb),
+            ('cos(A-B)', math.cos(ra - rb), ca * cb + sa * sb),
+            ('sin(2A)', math.sin(2 * ra), 2 * sa * ca),
+            ('cos(2A)', math.cos(2 * ra), ca * ca - sa * sa)]
+    lines = ['A = ' + _fn(A) + ' deg, B = ' + _fn(B) + ' deg', '']
+    for nm, direct, expanded in rows:
+        lines.append(nm + ' = ' + _fn(direct, 6))
+        lines.append('  expansion  ' + _fn(expanded, 6) +
+                     ('  agrees' if abs(direct - expanded) < 1e-9 else '  DIFFERS'))
+    if abs(ca * cb) > 1e-12 and abs(1.0 - (sa / ca) * (sb / cb)) > 1e-12:
+        ta = sa / ca
+        tb = sb / cb
+        lines.append('tan(A+B) = ' + _fn(math.tan(ra + rb), 6))
+        lines.append('  expansion  ' + _fn((ta + tb) / (1.0 - ta * tb), 6))
+    _pages('Compound angles', lines)
+
+
 def t_trig():
-    labels = ['Solve sin/cos/tan', 'R-form a sin+b cos', 'Exact-value table']
+    labels = ['Solve sin/cos/tan (0-360)', 'Solve p x + q, any range',
+              'R-form a sin+b cos', 'Compound/double angles',
+              'Check an expansion', 'Exact-value table']
     while True:
         c = casui.menu('TRIG', labels)
         if c == -1:
             return
-        [_trig_solve, _trig_rform, _trig_exact][c]()
+        [_trig_solve, _trig_general, _trig_rform, _trig_compound,
+         _trig_expand, _trig_exact][c]()
+
+
+def t_triangle():
+    # Sine rule and cosine rule. The audit put this first on the whole missing
+    # list: it appears in essentially every H640 pure paper and there was no
+    # route to it at all. Angles in degrees; sides a, b, c face angles A, B, C.
+    labels = ['SSS - three sides', 'SAS - two sides + included angle',
+              'ASA - two angles + a side', 'SSA - two sides + non-included angle']
+    c = casui.menu('Solve a triangle', labels)
+    if c == -1:
+        return
+    A = None
+    B = None
+    C = None
+    a = None
+    b = None
+    cc = None
+    warn = None
+    if c == 0:
+        a = _asknum('side a')
+        b = _asknum('side b')
+        cc = _asknum('side c')
+        if a is None or b is None or cc is None:
+            return
+        if a <= 0 or b <= 0 or cc <= 0:
+            _show('Triangle', ['Sides must be positive.'])
+            return
+        if a + b <= cc or a + cc <= b or b + cc <= a:
+            _show('Triangle', ['These three lengths cannot form',
+                               'a triangle: the two shorter ones',
+                               'must add to more than the longest.'])
+            return
+        A = casutil.deg(casutil.acos_safe((b * b + cc * cc - a * a) / (2.0 * b * cc)))
+        B = casutil.deg(casutil.acos_safe((a * a + cc * cc - b * b) / (2.0 * a * cc)))
+        C = 180.0 - A - B
+    elif c == 1:
+        b = _asknum('side b')
+        cc = _asknum('side c')
+        A = _asknum('included angle A (deg)')
+        if b is None or cc is None or A is None:
+            return
+        if b <= 0 or cc <= 0 or A <= 0 or A >= 180:
+            _show('Triangle', ['Need positive sides and',
+                               '0 < A < 180.'])
+            return
+        a = math.sqrt(b * b + cc * cc - 2.0 * b * cc * math.cos(casutil.rad(A)))
+        B = casutil.deg(casutil.acos_safe((a * a + cc * cc - b * b) / (2.0 * a * cc)))
+        C = 180.0 - A - B
+    elif c == 2:
+        A = _asknum('angle A (deg)')
+        B = _asknum('angle B (deg)')
+        a = _asknum('side a (opposite A)')
+        if A is None or B is None or a is None:
+            return
+        if A <= 0 or B <= 0 or A + B >= 180 or a <= 0:
+            _show('Triangle', ['Need A > 0, B > 0, A + B < 180',
+                               'and a positive side.'])
+            return
+        C = 180.0 - A - B
+        k = a / math.sin(casutil.rad(A))
+        b = k * math.sin(casutil.rad(B))
+        cc = k * math.sin(casutil.rad(C))
+    else:
+        a = _asknum('side a')
+        b = _asknum('side b')
+        A = _asknum('angle A (deg), opposite a')
+        if a is None or b is None or A is None:
+            return
+        if a <= 0 or b <= 0 or A <= 0 or A >= 180:
+            _show('Triangle', ['Need positive sides and 0 < A < 180.'])
+            return
+        s = b * math.sin(casutil.rad(A)) / a
+        if s > 1.0 + 1e-12:
+            _show('Triangle', ['No triangle: sin B would have to',
+                               'be ' + _fn(s) + ', which is more than 1.'])
+            return
+        if s > 1.0:
+            s = 1.0
+        B = casutil.deg(math.asin(s))
+        # the ambiguous case: 180 - B may also work
+        B2 = 180.0 - B
+        if a < b and A + B2 < 180.0 and abs(B2 - B) > 1e-9:
+            warn = B2
+        C = 180.0 - A - B
+        cc = a * math.sin(casutil.rad(C)) / math.sin(casutil.rad(A))
+    area = 0.5 * a * b * math.sin(casutil.rad(C))
+    lines = ['a = ' + _fn(a) + '   A = ' + _fn(A) + ' deg',
+             'b = ' + _fn(b) + '   B = ' + _fn(B) + ' deg',
+             'c = ' + _fn(cc) + '   C = ' + _fn(C) + ' deg',
+             '',
+             'area = (1/2)ab sinC = ' + _fn(area),
+             'perimeter = ' + _fn(a + b + cc)]
+    if c == 0 or c == 1:
+        lines.append('')
+        lines.append('cosine rule: a^2 = b^2 + c^2 - 2bc cosA')
+    else:
+        lines.append('')
+        lines.append('sine rule: a/sinA = b/sinB = c/sinC')
+        lines.append('  common ratio = ' + _fn(a / math.sin(casutil.rad(A))))
+    if warn is not None:
+        C2 = 180.0 - A - warn
+        c2 = a * math.sin(casutil.rad(C2)) / math.sin(casutil.rad(A))
+        lines.append('')
+        lines.append('AMBIGUOUS CASE: a < b, so there is')
+        lines.append('a second triangle -')
+        lines.append('  B = ' + _fn(warn) + ' deg')
+        lines.append('  C = ' + _fn(C2) + ' deg')
+        lines.append('  c = ' + _fn(c2))
+        lines.append('Check the question for which one')
+        lines.append('is wanted.')
+    _pages('Triangle', lines)
+
+
+def t_arc_sector():
+    # Arc length and sector area. r theta and (1/2) r^2 theta need theta in
+    # RADIANS; the degree versions carry the pi/180. Mixing them up is the
+    # standard way to lose these marks.
+    _show('Arc and sector', ['For a sector of radius r and angle',
+                             'theta: arc = r theta and',
+                             'area = (1/2) r^2 theta,',
+                             'with theta IN RADIANS.'])
+    r = _asknum('radius r')
+    if r is None or r <= 0:
+        return
+    unit = casui.menu('Angle given in', ['radians', 'degrees'])
+    if unit == -1:
+        return
+    th = _asknum('angle theta')
+    if th is None:
+        return
+    rad = th if unit == 0 else casutil.rad(th)
+    degs = casutil.deg(rad) if unit == 0 else th
+    arc = r * rad
+    area = 0.5 * r * r * rad
+    chord = 2.0 * r * math.sin(rad / 2.0)
+    seg_area = 0.5 * r * r * (rad - math.sin(rad))
+    lines = ['r = ' + _fn(r),
+             'theta = ' + _fn(rad) + ' rad = ' + _fn(degs) + ' deg',
+             '',
+             'arc length  = r theta      = ' + _fn(arc),
+             'sector area = (1/2)r^2 th  = ' + _fn(area),
+             '',
+             'chord       = 2r sin(th/2) = ' + _fn(chord),
+             'segment area = (1/2)r^2(th - sin th)',
+             '             = ' + _fn(seg_area),
+             '',
+             'perimeter of the sector',
+             '  = arc + 2r = ' + _fn(arc + 2.0 * r)]
+    if unit == 1:
+        lines.append('')
+        lines.append('(the degrees were converted first -')
+        lines.append(' r theta only works in radians)')
+    _pages('Arc and sector', lines)
+
+
+def t_inequality():
+    # Linear and quadratic inequalities. The quadratic case is where the marks
+    # go: the solution set is between the roots or outside them depending on
+    # the sign of a and the direction, and getting that backwards is the
+    # standard error.
+    kind = casui.menu('Inequality', ['linear  ax + b  ? 0', 'quadratic ax^2+bx+c ? 0'])
+    if kind == -1:
+        return
+    rel = casui.menu('Direction', ['> 0', '>= 0', '< 0', '<= 0'])
+    if rel == -1:
+        return
+    sym = ('>', '>=', '<', '<=')[rel]
+    strict = (rel == 0 or rel == 2)
+    want_pos = (rel <= 1)
+    a = _asknum('a')
+    if a is None:
+        return
+    b = _asknum('b')
+    if b is None:
+        return
+    if kind == 0:
+        lines = [_fn(a) + 'x + ' + _fn(b) + ' ' + sym + ' 0']
+        if a == 0:
+            ok = (b > 0) if want_pos and strict else ((b >= 0) if want_pos else
+                                                      ((b < 0) if strict else (b <= 0)))
+            lines.append('a = 0, so this says ' + _fn(b) + ' ' + sym + ' 0,')
+            lines.append('which is ' + ('true for every x.' if ok else 'never true.'))
+            _pages('Inequality', lines)
+            return
+        root = -b / a
+        # dividing by a negative flips the inequality - the classic slip
+        flip = a < 0
+        eff = sym
+        if flip:
+            eff = ('<', '<=', '>', '>=')[rel]
+            lines.append('a < 0, so dividing by a FLIPS the sign')
+        lines.append('x ' + eff + ' ' + _fn(root))
+        _pages('Inequality', lines)
+        return
+    c = _asknum('c')
+    if c is None:
+        return
+    lines = [_fn(a) + 'x^2 + ' + _fn(b) + 'x + ' + _fn(c) + ' ' + sym + ' 0']
+    if a == 0:
+        lines.append('a = 0: this is linear, not quadratic.')
+        _pages('Inequality', lines)
+        return
+    disc = b * b - 4.0 * a * c
+    lines.append('discriminant = ' + _fn(disc))
+    lo = None
+    hi = None
+    if disc > 0:
+        rt = math.sqrt(disc)
+        lo = (-b - rt) / (2.0 * a)
+        hi = (-b + rt) / (2.0 * a)
+        if lo > hi:
+            lo, hi = hi, lo
+        lines.append('roots ' + _fn(lo) + ' and ' + _fn(hi))
+    elif abs(disc) < 1e-12:
+        lo = -b / (2.0 * a)
+        hi = lo
+        lines.append('one repeated root ' + _fn(lo))
+    else:
+        lines.append('no real roots: the curve never')
+        lines.append('crosses the axis.')
+    up = a > 0
+    lines.append('the parabola opens ' + ('upwards' if up else 'downwards'))
+    lines.append('')
+    inside_is_neg = up          # between the roots, an upward parabola is < 0
+    if lo is None:
+        always = (up == want_pos)
+        lines.append('so it is ' + ('always' if always else 'never') +
+                     ' ' + sym + ' 0:')
+        lines.append('  ' + ('every real x' if always else 'no solutions'))
+    elif abs(hi - lo) < 1e-12:
+        lines.append('the curve touches the axis at ' + _fn(lo) + '.')
+        if want_pos == up:
+            lines.append('  every x' + ('' if strict else '') +
+                         (' except x = ' + _fn(lo) if strict else ''))
+        else:
+            lines.append('  x = ' + _fn(lo) if not strict else '  no solutions')
+    else:
+        between = (want_pos != inside_is_neg)
+        oc = '<=' if not strict else '<'
+        if between:
+            lines.append('  ' + _fn(lo) + ' ' + oc + ' x ' + oc + ' ' + _fn(hi))
+            lines.append('  (between the roots)')
+        else:
+            gt = '>=' if not strict else '>'
+            lt = '<=' if not strict else '<'
+            lines.append('  x ' + lt + ' ' + _fn(lo) + '  or  x ' + gt + ' ' + _fn(hi))
+            lines.append('  (outside the roots)')
+    lines.append('')
+    lines.append('Sketch the parabola and shade the')
+    lines.append('part on the right side of the axis -')
+    lines.append('that is the check that never fails.')
+    _pages('Inequality', lines)
 
 # registry ------------------------------------------------------------------
 TOOLS = [
@@ -434,6 +857,9 @@ TOOLS = [
     ('Coord geometry', t_coord),
     ('Circle', t_circle),
     ('Trig tools', t_trig),
+    ('Solve a triangle', t_triangle),
+    ('Arc length & sector', t_arc_sector),
+    ('Inequalities', t_inequality),
 ]
 
 def run():

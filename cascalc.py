@@ -86,6 +86,18 @@ def _ratio(n):
             return (p, q) if q > 0 else (-p, -q)
     return None
 
+def _negexp(n):
+    # -n, kept in the exact shape _ratio can read: ('n', -v) or ('/', ('n', -p),
+    # ('n', q)). Wrapping in ('neg', ...) instead loses the exact fraction and
+    # the power rule falls back to a float, printing x^0.5/0.5 for 2 sqrt(x).
+    if n[0] == 'n':
+        return ('n', -n[1])
+    if n[0] == 'neg':
+        return n[1]
+    if n[0] == '/' and n[1][0] == 'n' and n[2][0] == 'n':
+        return ('/', ('n', -n[1][1]), n[2])
+    return ('neg', n)
+
 def _powrule(a, p, q, coef):
     # int (a)^(p/q) d(var) with a = coef*var + c, coef != 0 and p/q != -1:
     #   = q * a^((p+q)/q) / ((p+q) * coef)
@@ -382,6 +394,16 @@ def integ(n, var='x', depth=0):
                     return F if k == ('n', 1) else ('*', k, F)
         except:
             pass
+        # c/sqrt(u) and c/u^k are powers in disguise; the power rule already
+        # handles negative and fractional exponents, so rewrite and hand over.
+        if not has_var(a, var):
+            if b[0] == 'sqrt':
+                return integ(('*', a, ('^', b[1], ('/', ('n', -1), ('n', 2)))),
+                             var, depth)
+            if b[0] == '^':
+                e = _const(b[2], var)
+                if e is not None and e != 0:
+                    return integ(('*', a, ('^', b[1], _negexp(b[2]))), var, depth)
         return integ_rational(a, b, var, depth)
     if t == '^':
         a = n[1]; b = n[2]

@@ -261,6 +261,15 @@ def _s(node):
         if bn:
             if b[1] == 0: return ('n', 1)
             if b[1] == 1: return a
+            # sqrt(u)^2 is u - true wherever sqrt(u) is defined at all, and
+            # without it the volume-of-revolution integrand pi*sqrt(x)^2 has
+            # no symbolic integral
+            if a[0] == 'sqrt' and b[1] == 2:
+                return a[1]
+            # (u^p)^q folds when q is a whole number; for a fractional q it
+            # does not ((x^2)^(1/2) is |x|, not x), so that case is left alone
+            if a[0] == '^' and isinstance(b[1], int) and b[1] > 0 and a[2][0] == 'n':
+                return _s(('^', a[1], ('n', a[2][1] * b[1])))
             if an:
                 r = _fold_pow(a[1], b[1])
                 if r is not None:

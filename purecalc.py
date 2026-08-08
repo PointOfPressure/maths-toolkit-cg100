@@ -635,7 +635,414 @@ def t_separable():
                         lines.append(' form above)')
     _show('Separable', lines)
 
-# 11. SMALL-ANGLE APPROXIMATIONS --------------------------------------------
+# 11. STATIONARY POINTS -----------------------------------------------------
+def t_stationary():
+    # Solve f'(x) = 0 and classify each root with f''. This is the single most
+    # frequent calculus question and there was no route to it: the CAS could
+    # differentiate and could solve, but nothing joined the two.
+    f = _parse('f(x) =')
+    if f is None:
+        return
+    try:
+        d1 = caseng.simplify(caseng.diff(f, 'x'))
+        d2 = caseng.simplify(caseng.diff(d1, 'x'))
+    except:
+        _show('Stationary points', ['Cannot differentiate that.'])
+        return
+    lines = ['f(x)   = ' + _ts(f), "f'(x)  = " + caseng.tostr(cascalc.tidy(d1)),
+             "f''(x) = " + caseng.tostr(cascalc.tidy(d2)), '']
+    if d1 == ('n', 0):
+        lines.append("f'(x) = 0 everywhere: f is constant,")
+        lines.append('so every point is stationary.')
+        _show('Stationary points', lines)
+        return
+    roots = cascalc.solve(d1, 'x')
+    if not roots:
+        lines.append("f'(x) = 0 has no solution in the")
+        lines.append('search range -20 <= x <= 20, so')
+        lines.append('there are no stationary points there.')
+        _show('Stationary points', lines)
+        return
+    lines.append("f'(x) = 0 at:")
+    for r in roots:
+        yv = _safe(f, r)
+        s2 = _safe(d2, r)
+        pt = '  x = ' + _fn(r)
+        if yv is not None:
+            pt += ',  y = ' + _fn(yv)
+        lines.append(pt)
+        # The verdict comes from the sign of f' either side, not from f''.
+        # solve returns a root to about 1e-7, and at a degenerate point like
+        # x^3 that error alone makes f'' come out slightly negative - which
+        # reported a point of inflection as a maximum.
+        h = 0.01 * (1.0 + (r if r >= 0 else -r))
+        left = _safe(d1, r - h)
+        right = _safe(d1, r + h)
+        if s2 is not None:
+            lines.append("    f'' = " + _fn(s2))
+        if left is None or right is None:
+            lines.append("    cannot test either side")
+        elif left < 0 and right > 0:
+            lines.append("    f' goes - to +: MINIMUM")
+        elif left > 0 and right < 0:
+            lines.append("    f' goes + to -: MAXIMUM")
+        else:
+            lines.append("    f' keeps its sign: POINT OF")
+            lines.append('    INFLECTION (stationary)')
+    # non-stationary points of inflection are where f'' changes sign
+    infl = cascalc.solve(d2, 'x')
+    if infl:
+        lines.append('')
+        lines.append("f''(x) = 0 at:")
+        for r in infl:
+            left = _safe(d2, r - 0.01)
+            right = _safe(d2, r + 0.01)
+            note = ''
+            if left is not None and right is not None:
+                if (left < 0) != (right < 0):
+                    note = '  (f\'\' changes sign: inflection)'
+                else:
+                    note = '  (no sign change: not an inflection)'
+            lines.append('  x = ' + _fn(r) + note)
+    _show('Stationary points', lines)
+
+# 12. CONSTANT OF INTEGRATION -----------------------------------------------
+def t_constant():
+    # Integrate f'(x) and fix the constant from a point on the curve. Small on
+    # its own, but attached to almost every integration question.
+    _show('Find the curve', ["Enter f'(x) and one point the",
+                             'curve passes through. The constant',
+                             'of integration is then fixed.'])
+    d = _parse("f'(x) =")
+    if d is None:
+        return
+    F = cascalc.integ(d, 'x')
+    if F is None:
+        _show('Find the curve', ["f'(x) has no elementary integral,",
+                                 'so there is no formula for f(x).'])
+        return
+    F = cascalc.tidy(F)
+    x0 = _asknum('curve passes through x =')
+    if x0 is None:
+        return
+    y0 = _asknum('and y =')
+    if y0 is None:
+        return
+    base = _safe(F, x0)
+    if base is None:
+        _show('Find the curve', ['The integral is undefined at',
+                                 'x = ' + _fn(x0) + ', so that point cannot',
+                                 'fix the constant.'])
+        return
+    c = y0 - base
+    full = cascalc.tidy(('+', F, ('n', c)))
+    lines = ["f'(x) = " + _ts(d), '',
+             'integrating: f(x) = ' + caseng.tostr(F) + ' + C', '',
+             'at (' + _fn(x0) + ', ' + _fn(y0) + '):',
+             '  ' + _fn(y0) + ' = ' + _fn(base) + ' + C',
+             '  C = ' + _fn(c), '',
+             'f(x) = ' + caseng.tostr(full)]
+    chk = _safe(full, x0)
+    if chk is not None and abs(chk - y0) < 1e-6:
+        lines.append('')
+        lines.append('(checked: it passes through the point)')
+    v = _asknum('evaluate f at x = (or cancel)')
+    if v is not None:
+        r = _safe(full, v)
+        lines.append('')
+        lines.append('f(' + _fn(v) + ') = ' + ('undefined' if r is None else _fn(r)))
+    _show('Find the curve', lines)
+
+# 13. VOLUMES OF REVOLUTION AND MEAN VALUE ----------------------------------
+def _numint(tree, a, b, var='x'):
+    return cascalc.defint(tree, a, b, False, 400, var)
+
+def t_revolution():
+    _show('Volume of revolution', ['About the x-axis: V = pi int y^2 dx',
+                                   'About the y-axis: V = pi int x^2 dy',
+                                   'Enter the curve and the limits.'])
+    axis = casui.menu('Rotate about', ['the x-axis (y = f(x))',
+                                       'the y-axis (x = g(y))'])
+    if axis == -1:
+        return
+    var = 'x' if axis == 0 else 'y'
+    f = _parse(('y = f(x) =' if axis == 0 else 'x = g(y) ='))
+    if f is None:
+        return
+    a = _asknum(var + ' from')
+    if a is None:
+        return
+    b = _asknum(var + ' to')
+    if b is None:
+        return
+    if b < a:
+        a, b = b, a
+    sq = ('^', f, ('n', 2))
+    lines = [('y = ' if axis == 0 else 'x = ') + _ts(f),
+             'rotated about the ' + ('x' if axis == 0 else 'y') + '-axis',
+             'from ' + var + ' = ' + _fn(a) + ' to ' + _fn(b), '']
+    sym = cascalc.integ(caseng.simplify(sq), var)
+    if sym is not None:
+        sym = cascalc.tidy(sym)
+        lines.append('int ' + ('y^2 dx' if axis == 0 else 'x^2 dy') + ' =')
+        lines.append('  ' + caseng.tostr(sym))
+        hi = _safe(sym, b, {var: b})
+        lo = _safe(sym, a, {var: a})
+        if hi is not None and lo is not None:
+            val = hi - lo
+            lines.append('  evaluated: ' + _fn(val))
+            lines.append('')
+            lines.append('V = pi x ' + _fn(val))
+            lines.append('  = ' + _fn(math.pi * val))
+            _show('Volume of revolution', lines)
+            return
+    val = _numint(caseng.simplify(sq), a, b, var)
+    if val is None:
+        lines.append('Could not integrate over that range')
+        lines.append('(a singularity inside the limits?).')
+        _show('Volume of revolution', lines)
+        return
+    lines.append('int ' + ('y^2 dx' if axis == 0 else 'x^2 dy') + ' = ' +
+                 _fn(val) + '  (numerically)')
+    lines.append('')
+    lines.append('V = pi x ' + _fn(val) + ' = ' + _fn(math.pi * val))
+    _show('Volume of revolution', lines)
+
+def t_meanvalue():
+    _show('Mean value of a function', ['The mean of f over [a, b] is',
+                                       '  (1/(b-a)) int from a to b f dx.',
+                                       'It is the height of the rectangle',
+                                       'with the same area under it.'])
+    f = _parse('f(x) =')
+    if f is None:
+        return
+    a = _asknum('from x =')
+    if a is None:
+        return
+    b = _asknum('to x =')
+    if b is None:
+        return
+    if a == b:
+        _show('Mean value', ['a and b are equal, so there is',
+                             'no interval to average over.'])
+        return
+    if b < a:
+        a, b = b, a
+    area = None
+    sym = cascalc.integ(f, 'x')
+    exact = False
+    if sym is not None:
+        sym = cascalc.tidy(sym)
+        hi = _safe(sym, b)
+        lo = _safe(sym, a)
+        if hi is not None and lo is not None:
+            area = hi - lo
+            exact = True
+    if area is None:
+        area = _numint(f, a, b)
+    if area is None:
+        _show('Mean value', ['Could not integrate f over that',
+                             'interval.'])
+        return
+    mean = area / (b - a)
+    lines = ['f(x) = ' + _ts(f), 'on ' + _fn(a) + ' <= x <= ' + _fn(b), '']
+    if exact and sym is not None:
+        lines.append('int f dx = ' + caseng.tostr(sym))
+    lines.append('area under the curve = ' + _fn(area))
+    lines.append('width = ' + _fn(b - a))
+    lines.append('')
+    lines.append('mean value = ' + _fn(area) + ' / ' + _fn(b - a))
+    lines.append('           = ' + _fn(mean))
+    # where the function actually takes its mean value
+    hits = cascalc.solve(caseng.simplify(('-', f, ('n', mean))), 'x')
+    inside = []
+    for r in hits:
+        if a - 1e-9 <= r <= b + 1e-9:
+            inside.append(r)
+    if inside:
+        lines.append('')
+        lines.append('f equals its mean value at:')
+        for r in inside:
+            lines.append('  x = ' + _fn(r))
+    _show('Mean value', lines)
+
+def _graded(f, a, b, var='x'):
+    # Integral over [a, b] split into chunks that get much finer towards a.
+    # One Simpson pass over [1, 40000] has a step of 100, which for 1/x^2 is
+    # nonsense - it reported that a convergent integral diverges. Grading the
+    # sub-intervals cubically towards the awkward end keeps the step
+    # proportional to how fast the function is actually changing.
+    total = 0.0
+    n = 24
+    prev = a
+    i = 1
+    while i <= n:
+        u = float(i) / n
+        pt = a + (b - a) * u * u * u
+        part = cascalc.defint(f, prev, pt, False, 120, var)
+        if part is None:
+            return None
+        total += part
+        prev = pt
+        i += 1
+    return total
+
+def _graded_right(f, a, b, var='x'):
+    # the same, graded towards b
+    total = 0.0
+    n = 24
+    prev = b
+    i = 1
+    while i <= n:
+        u = float(i) / n
+        pt = b - (b - a) * u * u * u
+        part = cascalc.defint(f, pt, prev, False, 120, var)
+        if part is None:
+            return None
+        total += part
+        prev = pt
+        i += 1
+    return total
+
+def t_improper():
+    # An improper integral is a limit, not a number you can just evaluate.
+    # Where there is an antiderivative the limit is taken on it exactly;
+    # otherwise the partial integrals are computed and watched.
+    _show('Improper integral', ['Improper because a limit is infinite,',
+                                'or because f blows up at an end.',
+                                'The value is a LIMIT: the tool',
+                                'takes the limit and says whether',
+                                'it converges.'])
+    f = _parse('f(x) =')
+    if f is None:
+        return
+    kind = casui.menu('Which end is improper', ['upper limit is infinity',
+                                                'lower limit is -infinity',
+                                                'f blows up at the lower limit',
+                                                'f blows up at the upper limit'])
+    if kind == -1:
+        return
+    lines = ['f(x) = ' + _ts(f), '']
+    sym = cascalc.integ(f, 'x')
+    if sym is not None:
+        sym = cascalc.tidy(sym)
+        lines.append('int f dx = ' + caseng.tostr(sym))
+        lines.append('')
+    if kind <= 1:
+        a = _asknum('the finite limit is x =')
+        if a is None:
+            return
+        steps = []
+        t = 10.0
+        i = 0
+        while i < 7:
+            b = a + t if kind == 0 else a - t
+            if sym is not None:
+                hi = _safe(sym, b)
+                lo = _safe(sym, a)
+                v = None if (hi is None or lo is None) else (hi - lo)
+                if kind == 1 and v is not None:
+                    v = -v
+            elif kind == 0:
+                v = _graded(f, a, b)
+            else:
+                v = _graded_right(f, b, a)
+            steps.append((t, v))
+            t *= 10.0
+            i += 1
+        lines.append('partial integrals as the limit grows:')
+    else:
+        a = _asknum('lower limit a =')
+        if a is None:
+            return
+        b = _asknum('upper limit b =')
+        if b is None:
+            return
+        if b < a:
+            a, b = b, a
+        steps = []
+        eps = 0.1
+        i = 0
+        while i < 7:
+            if sym is not None:
+                if kind == 2:
+                    hi = _safe(sym, b)
+                    lo = _safe(sym, a + eps)
+                else:
+                    hi = _safe(sym, b - eps)
+                    lo = _safe(sym, a)
+                v = None if (hi is None or lo is None) else (hi - lo)
+            elif kind == 2:
+                v = _graded(f, a + eps, b)
+            else:
+                v = _graded_right(f, a, b - eps)
+            steps.append((eps, v))
+            eps /= 10.0
+            i += 1
+        lines.append('partial integrals as the gap closes:')
+    good = []
+    for t, v in steps:
+        lines.append('  ' + ('%-12s' % _fn(t, 8)) +
+                     ('failed' if v is None else _fn(v, 6)))
+        if v is not None:
+            good.append(v)
+    lines.append('')
+    if len(good) < 3:
+        lines.append('Not enough of the partial integrals')
+        lines.append('could be computed to decide.')
+    else:
+        # Judge convergence on how the SUCCESSIVE CHANGES behave, not on how
+        # big the last change is. int 1/sqrt(x) from 0 to 1 converges to 2, but
+        # slowly: the last step is still 0.0015, and an absolute threshold
+        # called it divergent. The differences shrink by a constant factor when
+        # it converges and stay put when it does not - which is also exactly
+        # how the tail is argued on paper.
+        diffs = []
+        i = 1
+        while i < len(good):
+            diffs.append(good[i] - good[i - 1])
+            i += 1
+        last = good[len(good) - 1]
+        d1 = diffs[len(diffs) - 1]
+        d0 = diffs[len(diffs) - 2]
+        ratio = None
+        if abs(d0) > 1e-15:
+            ratio = abs(d1 / d0)
+        settled = abs(d1) <= 1e-10 * (1.0 + (last if last >= 0 else -last))
+        if settled:
+            lines.append('The partial integrals stop changing.')
+            lines.append('It CONVERGES to about ' + _fn(last, 6))
+            lines.append('')
+            if sym is not None:
+                lines.append('Write it out as a limit of')
+                lines.append('[' + caseng.tostr(sym) + '] between the limits.')
+            else:
+                lines.append('This is numerical evidence, not a')
+                lines.append('proof - write the limit out properly.')
+            _show('Improper integral', lines)
+            return
+        if abs(last) > 1e8 or ratio is None or ratio > 0.9:
+            lines.append('The steps are not shrinking:')
+            lines.append('  last two changes ' + _fn(d0, 6) + ', ' + _fn(d1, 6))
+            lines.append('This integral DIVERGES - there is')
+            lines.append('no finite value.')
+        else:
+            # a geometric tail sums to d1*r/(1-r) beyond the last value
+            limit = last + d1 * ratio / (1.0 - ratio)
+            lines.append('The changes shrink by a factor of')
+            lines.append('about ' + _fn(ratio, 3) + ' each step, so the tail')
+            lines.append('is finite.')
+            lines.append('It CONVERGES to about ' + _fn(limit, 6))
+            lines.append('')
+            if sym is not None:
+                lines.append('Write it out as a limit of')
+                lines.append('[' + caseng.tostr(sym) + '] between the limits.')
+            else:
+                lines.append('This is numerical evidence, not a')
+                lines.append('proof - write the limit out properly.')
+    _show('Improper integral', lines)
+
+# 14. SMALL-ANGLE APPROXIMATIONS --------------------------------------------
 def t_small_angle():
     _show('Small angles', ['For small x IN RADIANS:',
                            '  sin x = x', '  tan x = x',
@@ -719,6 +1126,11 @@ TOOLS = [
     ('Implicit d/dx', t_implicit),
     ('Integration by substitution', t_substitution),
     ('Separation of variables', t_separable),
+    ('Stationary points', t_stationary),
+    ('Constant of integration', t_constant),
+    ('Volume of revolution', t_revolution),
+    ('Mean value of f', t_meanvalue),
+    ('Improper integral', t_improper),
     ('Small-angle approx', t_small_angle),
     ('Exact trig values', t_exact_trig),
 ]
