@@ -236,6 +236,8 @@ python3 stress.py      # smoke: 323 checks, 0 errors
 python3 devlint.py     # device compliance: 0 problems in 24 files
 ```
 
+All three run on every push and pull request via `.github/workflows/ci.yml`, along with a `compileall` pass over the whole repo. No dependencies beyond CPython.
+
 **`tests.py` - correctness.** Every check compares against a value worked out
 independently, so it catches wrong answers rather than only crashes. It covers
 the tokenizer and parser, simplification, the full differentiation rule set,
