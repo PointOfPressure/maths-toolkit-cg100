@@ -11,7 +11,7 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-466%20checks%2C%200%20failures-brightgreen)
+![tests](https://img.shields.io/badge/tests-572%20checks%2C%200%20failures-brightgreen)
 ![smoke](https://img.shields.io/badge/smoke-323%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
@@ -21,6 +21,31 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`, `stress.py`, `tests.py` and `devlint.py`). See [Installing on the calculator](#installing-on-the-calculator).
 2. In the calculator's Python app, run **`maths.py`**.
 3. Navigate with the arrow keys and OK; EXIT goes back. Type expressions on the normal keys; use ALPHA or the MENU picker for letters and symbols.
+
+### Keys
+
+| In a menu | |
+| --- | --- |
+| up / down | move the selection (wraps) |
+| **1-9** | jump straight to that entry |
+| left / right | first / last entry |
+| OK | choose |
+| EXIT | back; at the top menu, leave the app |
+
+| When typing an expression | |
+| --- | --- |
+| left / right | move the caret |
+| SHIFT + left / right | jump to the start / end of the line |
+| **up** | recall your last entry (instead of retyping it) |
+| down | clear the line |
+| DEL | delete backwards |
+| EXIT | clear the line; press again on an empty line to cancel |
+| ALPHA | letters printed on the keys |
+| **MENU** | the symbol picker - see below |
+
+**The MENU picker matters.** The keypad alone cannot reach a lot of the function set: there is no comma key (so `nCr`, `nPr` and `logb` cannot be typed), no `!` key, and the ALPHA layer has no `i` or `h` (so `asin`, `atan`, `sinh`, `tanh` and the rest of the inverse and hyperbolic names cannot be spelled out either). The picker is a two-page grid holding all of them plus `ans`, `=`, `pi`, `e` and the variables `y`, `f`, `g`, `h`, `k`. Arrow keys move, OK inserts, EXIT closes. `tests.py` asserts that every documented function stays reachable one way or the other.
+
+In **Calculus & Algebra** you enter `f(x)` once and then keep picking operations on it - differentiate, then integrate, then graph - without retyping. "New expression" or EXIT returns to the editor.
 
 ---
 
@@ -195,7 +220,7 @@ These walks recurse on expression depth, which is small, so they stay well under
 
 ### casui - the UI hub
 
-`casui.py` is the front end. It owns the key map decoded from the physical keyboard (code = row*10+col, with shift/alpha layers and a MENU picker for symbols that have no obvious key), the main menus, the on-screen input editor that drives the live `casrender` preview, the global angle mode, and the pixel-based, word-wrapped result screens. Text layout is calibrated to the measured 384x192 screen using hand-tuned proportional-font width tables (`char_w` / `text_w`), so lines wrap by real pixel width rather than character count. Result screens page rather than truncate: output longer than seven lines shows a page counter, any key advances and EXIT stops. A fault inside a section tool is caught and reported, so it returns to the menu instead of dropping the whole toolkit back to the Python shell.
+`casui.py` is the front end. It owns the key map decoded from the physical keyboard (code = row*10+col, with shift/alpha layers and a paged MENU picker carrying every token the keypad cannot reach - the digit-jump map is derived from the same key codes rather than guessed, and `tests.py` checks the two agree), the main menus, the on-screen input editor that drives the live `casrender` preview, the global angle mode (shown on the input screen, since it changes what `sin(30)` means), and the pixel-based, word-wrapped result screens. Text layout is calibrated to the measured 384x192 screen using hand-tuned proportional-font width tables (`char_w` / `text_w`), so lines wrap by real pixel width rather than character count. The edit line is windowed around the caret by `cursor_fit`, so moving back into a long expression keeps the caret on screen instead of scrolling it away. Result screens page rather than truncate: output longer than seven lines shows a page counter, any key advances and EXIT stops. A fault inside a section tool is caught and reported, so it returns to the menu instead of dropping the whole toolkit back to the Python shell.
 
 ### Files at a glance
 
@@ -232,7 +257,7 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 466 checks, 0 failures
+python3 tests.py       # correctness: 572 checks, 0 failures
 python3 stress.py      # smoke: 323 checks, 0 errors
 python3 devlint.py     # device compliance: 0 problems in 24 files
 ```
