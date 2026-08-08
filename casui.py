@@ -22,42 +22,52 @@ GREY  = (150, 150, 160)
 HL    = (225, 232, 250)
 RED   = (205, 60, 60)
 
-UP = 14; DOWN = 34; LEFT = 23; RIGHT = 25; OK = 24; EXE = 95
-EXITK = 13; DEL = 64; SHIFT = 31; MENU = 35; ALPHA = 32
-# Full key map decoded from the keyboard (codes follow a row*10+col grid).
+# Key codes are row*10+col. Taken from the key-code diagram in Casio's fx-CG100
+# manual, cross-referenced against the printed keypad; tests.py holds the same
+# table independently and asserts these maps agree with it. [ON] (row 1 col 1)
+# and [AC] (row 6 col 5) are assigned no code at all and cannot be read.
+HOME = 12; LINESTART = 13; UP = 14; LINEEND = 15; PAGEUP = 16
+SETTINGS = 21; EXITK = 22; LEFT = 23; OK = 24; RIGHT = 25; PAGEDOWN = 26
+SHIFT = 31; ALPHA = 32; VARIABLE = 33; DOWN = 34; MENU = 35; TOOLS = 36
+DEL = 64; FORMAT = 94; EXE = 95
 UNSHIFT = {
     91: '0', 81: '1', 82: '2', 83: '3', 71: '4', 72: '5', 73: '6',
     61: '7', 62: '8', 63: '9', 92: '.',
     84: '+', 85: '-', 74: '*', 75: '/', 44: '^', 55: '(', 56: ')',
     41: 'x', 33: 'x', 42: '/', 45: '^2', 46: 'exp(', 93: '*10^',
     52: 'sin(', 53: 'cos(', 54: 'tan(', 43: 'sqrt(',
+    51: ',',            # the comma has its own key - it was simply never bound
 }
-SHIFTED = {55: '=', 46: 'ln(', 45: 'log(', 61: 'pi'}
+# green SHIFT legends: sin^-1 / cos^-1 / tan^-1 sit above the trig keys, and
+# the power key's shifted form is a log to a given base
+SHIFTED = {
+    55: '=', 46: 'ln(', 45: 'log(', 61: 'pi',
+    52: 'asin(', 53: 'acos(', 54: 'atan(', 44: 'logb(',
+}
 # digit keys, for jumping straight to a numbered menu entry
 DIGITS = {81: 1, 82: 2, 83: 3, 71: 4, 72: 5, 73: 6, 61: 7, 62: 8, 63: 9, 91: 0}
-# ALPHA + key -> a letter variable (lowercase). Letters other than x are
-# treated as symbolic constants by the engine. Letters are printed on the keys.
+# ALPHA + key -> the orange letter printed on that key. This ran a whole row out
+# of step: 42 gave 'a' when the key is printed B, so every letter from B to F and
+# V to X came out as its neighbour, and A, G-L, U and Y had no key at all.
 ALPHADICT = {
-    42: 'a', 43: 'b', 44: 'c', 45: 'd', 46: 'e',
-    61: 'm', 62: 'n', 63: 'o', 71: 'p', 72: 'q', 73: 'r', 74: 's', 75: 't',
-    82: 'u', 83: 'v', 84: 'w', 91: 'z',
+    41: 'a', 42: 'b', 43: 'c', 44: 'd', 45: 'e', 46: 'f',
+    51: 'g', 52: 'h', 53: 'i', 54: 'j', 55: 'k', 56: 'l',
+    61: 'm', 62: 'n', 63: 'o',
+    71: 'p', 72: 'q', 73: 'r', 74: 's', 75: 't',
+    81: 'u', 82: 'v', 83: 'w', 84: 'x', 85: 'y',
+    91: 'z', 94: 'ans',
 }
-# MENU picker - a paged grid holding everything the physical keyboard cannot
-# reach. Without it a large part of the documented function set is untypeable:
-# there is no ',' key (so nCr, nPr and logb are impossible), no '!' key, and the
-# ALPHA layer has no 'i' or 'h' (so every inverse-trig and hyperbolic name is
-# impossible). tests.py asserts every documented token stays reachable.
+# CATALOG picker - a paged grid for the tokens the keypad genuinely has no key
+# for: factorial, abs, nCr/nPr and the six hyperbolic names. Everything else now
+# comes off a real key, so the picker stays down to a single page.
+# tests.py asserts every documented token stays reachable one way or another.
 PAL_COLS = 4
 PAL_ROWS = 3
 PAL_PER = PAL_COLS * PAL_ROWS
 EXTRAS = [
-    ',', '!', 'ans', '=',
-    'asin(', 'acos(', 'atan(', 'abs(',
-    'sinh(', 'cosh(', 'tanh(', 'y',
-
-    'nCr(', 'nPr(', 'logb(', 'pi',
-    'asinh(', 'acosh(', 'atanh(', 'e',
-    'f', 'g', 'h', 'k',
+    '!', 'abs(', 'nCr(', 'nPr(',
+    'sinh(', 'cosh(', 'tanh(', 'ans',
+    'asinh(', 'acosh(', 'atanh(', ',',
 ]
 
 # global angle mode for Calculate + CAS evaluate/graph/table (FM modules stay radians)
@@ -256,7 +266,7 @@ def draw_input(prompt, ex, cur, shift, alpha, palette, psel):
     hline(0, 383, 108, GREY)
     raw = "".join(ex[:cur]) + "|" + "".join(ex[cur:])
     draw_string(8, 120, cursor_fit(raw, len("".join(ex[:cur])), 368, "medium"), BLACK, "medium")
-    draw_string(6, 178, "OK run  DEL del  UP last  MENU symbols", GREY, "small")
+    draw_string(6, 178, "OK run  DEL del  UP last  CATALOG symbols", GREY, "small")
     if palette:
         draw_palette(psel)
     show_screen()
@@ -285,6 +295,10 @@ def input_expr(prompt):
                 psel = (psel - PAL_COLS) % len(EXTRAS)
             elif k == DOWN:
                 psel = (psel + PAL_COLS) % len(EXTRAS)
+            elif k == PAGEUP:
+                psel = (psel - PAL_PER) % len(EXTRAS)
+            elif k == PAGEDOWN:
+                psel = (psel + PAL_PER) % len(EXTRAS)
             elif k == OK or k == EXE:
                 ex.insert(cur, EXTRAS[psel]); cur += 1; palette = False
             elif k == MENU or k == EXITK:
@@ -299,11 +313,15 @@ def input_expr(prompt):
         elif k == MENU:
             palette = True; psel = 0
         elif k == LEFT:
-            cur = 0 if shift else (cur - 1 if cur > 0 else 0)
-            shift = False
+            if cur > 0:
+                cur -= 1
         elif k == RIGHT:
-            cur = len(ex) if shift else (cur + 1 if cur < len(ex) else cur)
-            shift = False
+            if cur < len(ex):
+                cur += 1
+        elif k == LINESTART:
+            cur = 0            # the key is printed |<-, so it does what it says
+        elif k == LINEEND:
+            cur = len(ex)      # and ->|
         elif k == UP:
             # recall the last entry instead of retyping a long expression
             if _last_expr:
@@ -386,10 +404,14 @@ def menu(title, opts):
             sel = (sel - 1) % len(opts)
         elif k == DOWN:
             sel = (sel + 1) % len(opts)
-        elif k == LEFT:
+        elif k == LEFT or k == LINESTART:
             sel = 0
-        elif k == RIGHT:
+        elif k == RIGHT or k == LINEEND:
             sel = len(opts) - 1
+        elif k == PAGEUP:
+            sel = sel - 7 if sel >= 7 else 0
+        elif k == PAGEDOWN:
+            sel = sel + 7 if sel + 7 < len(opts) else len(opts) - 1
         elif k == OK or k == EXE:
             wait_release()
             return sel
@@ -602,7 +624,7 @@ def do_eval(tree):
 # ---------- per-section help (shown once per session) ----------
 HELP = {
     "calc": "Everyday calculator. Type any sum and press OK for the answer. Works: + - * /, ^, brackets, sqrt, sin/cos/tan and asin/acos/atan, ln, log, exp, abs, n! (factorial), nCr(n,r), nPr(n,r), pi, e. Use 'ans' for your last answer. Switch DEG/RAD from the home menu (Angle mode).",
-    "cas": "Algebra & calculus on a function of x. Type e.g. x^2+3x or sin(x), press OK, then pick: d/dx, gradient at a point, integrate (products like x sin(x) and x ln(x) are done by parts), definite integral a..b, simplify, solve f(x)=0, evaluate, graph, or a table of values. Type letters other than x with ALPHA or the MENU picker. Evaluate/graph/table/solve follow the home-menu angle mode; calculus uses radians.",
+    "cas": "Algebra & calculus on a function of x. Type e.g. x^2+3x or sin(x), press OK, then pick: d/dx, gradient at a point, integrate (products like x sin(x) and x ln(x) are done by parts), definite integral a..b, simplify, solve f(x)=0, evaluate, graph, or a table of values. Type letters other than x with ALPHA; the CATALOG key gives the symbols with no key of their own. Evaluate/graph/table/solve follow the home-menu angle mode; calculus uses radians.",
     "vcplx": "Complex numbers a+bi. Enter the real then imaginary part. Tools: + - * /, modulus & argument, polar form, powers, nth roots, Argand.",
     "matrix": "Matrices up to 3x3. First Enter A (give the size, then each number). Then pick add, multiply, determinant, inverse, solve Ax=b, eigenvalues.",
     "vectors": "Vectors in 3-D. Enter components (use 0 for 2-D). Tools: magnitude, dot, angle, cross product, projection, distance to a line or plane.",

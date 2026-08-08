@@ -11,7 +11,7 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-572%20checks%2C%200%20failures-brightgreen)
+![tests](https://img.shields.io/badge/tests-736%20checks%2C%200%20failures-brightgreen)
 ![smoke](https://img.shields.io/badge/smoke-323%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
@@ -20,7 +20,7 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 
 1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`, `stress.py`, `tests.py` and `devlint.py`). See [Installing on the calculator](#installing-on-the-calculator).
 2. In the calculator's Python app, run **`maths.py`**.
-3. Navigate with the arrow keys and OK; EXIT goes back. Type expressions on the normal keys; use ALPHA or the MENU picker for letters and symbols.
+3. Navigate with the arrow keys and OK; the curved-arrow back key goes back. Type expressions on the normal keys; use ALPHA for letters and the CATALOG key for the few symbols with no key of their own.
 
 ### Keys
 
@@ -28,22 +28,26 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 | --- | --- |
 | up / down | move the selection (wraps) |
 | **1-9** | jump straight to that entry |
-| left / right | first / last entry |
-| OK | choose |
-| EXIT | back; at the top menu, leave the app |
+| page up / page down | move seven at a time |
+| `\|<-` / `->\|` | first / last entry |
+| OK or EXE | choose |
+| back (the curved arrow) | back; at the top menu, leave the app |
 
 | When typing an expression | |
 | --- | --- |
 | left / right | move the caret |
-| SHIFT + left / right | jump to the start / end of the line |
+| `\|<-` / `->\|` | jump to the start / end of the line |
 | **up** | recall your last entry (instead of retyping it) |
 | down | clear the line |
 | DEL | delete backwards |
-| EXIT | clear the line; press again on an empty line to cancel |
-| ALPHA | letters printed on the keys |
-| **MENU** | the symbol picker - see below |
+| back | clear the line; press again on an empty line to cancel |
+| ALPHA | the orange letter printed on the key (all of a-z) |
+| SHIFT | the green legend: `sin^-1`, `cos^-1`, `tan^-1`, `ln`, `log`, `pi`, `=`, and a log to a given base |
+| **CATALOG** (the book key) | the symbol picker - see below |
 
-**The MENU picker matters.** The keypad alone cannot reach a lot of the function set: there is no comma key (so `nCr`, `nPr` and `logb` cannot be typed), no `!` key, and the ALPHA layer has no `i` or `h` (so `asin`, `atan`, `sinh`, `tanh` and the rest of the inverse and hyperbolic names cannot be spelled out either). The picker is a two-page grid holding all of them plus `ans`, `=`, `pi`, `e` and the variables `y`, `f`, `g`, `h`, `k`. Arrow keys move, OK inserts, EXIT closes. `tests.py` asserts that every documented function stays reachable one way or the other.
+**The CATALOG picker** holds the handful of tokens the keypad has no key for at all: `!`, `abs(`, `nCr(`, `nPr(`, the three hyperbolics and their three inverses, plus `ans` and `,` for convenience. One page; arrows move, OK inserts, back closes. Everything else comes off a real key. `tests.py` asserts every documented function stays reachable one way or the other.
+
+> The key map in `casui.py` had drifted from the hardware. ALPHA ran a whole row out of step - key 42 produced `a` when the key is printed **B** - so 17 of the 26 letters came out as the wrong letter or had no key at all, and `i`, `h`, `g`-`l`, `u` and `y` were unreachable. "EXIT" was bound to code 13, which is the jump-to-line-start key rather than back. And the comma, which has its own key at code 51, was simply never bound, which is what made `nCr`, `nPr` and `logb` impossible to type. `tests.py` now carries the keypad table transcribed independently from Casio's key-code diagram and asserts every binding against it.
 
 In **Calculus & Algebra** you enter `f(x)` once and then keep picking operations on it - differentiate, then integrate, then graph - without retyping. "New expression" or EXIT returns to the editor.
 
@@ -68,7 +72,7 @@ The `Calculate` mode (`calc_section`) is a free-form expression calculator. Type
 
 ### Calculus & Algebra (CAS)
 
-The `Calculus & Algebra` mode (`cas_section`) works on a function of `x`. Type an expression (for example `x^2+3x` or `sin(x)`), press OK, then choose an operation from the menu. Variables other than `x` can be entered with ALPHA or the MENU picker. The differentiation, integration and simplify operations are fully symbolic; the rest are numeric and honour the home-menu angle mode.
+The `Calculus & Algebra` mode (`cas_section`) works on a function of `x`. Type an expression (for example `x^2+3x` or `sin(x)`), press OK, then choose an operation from the menu. Variables other than `x` can be entered with ALPHA (every letter a-z has a key). The differentiation, integration and simplify operations are fully symbolic; the rest are numeric and honour the home-menu angle mode.
 
 - **Differentiate (d/dx)** - symbolic derivative with respect to `x`, then simplified. Full rule set: sum, difference, product, quotient and power/chain rules, plus derivatives of sin, cos, tan, exp, ln, log, sqrt, asin, acos, atan, the hyperbolics sinh/cosh/tanh, the inverse hyperbolics asinh/acosh/atanh, and abs.
 - **Gradient at a point** (`do_gradient`) - numeric slope `f'(x)` at a value you supply, computed by a symmetric central difference whose step scales with the size of `x`.
@@ -220,7 +224,7 @@ These walks recurse on expression depth, which is small, so they stay well under
 
 ### casui - the UI hub
 
-`casui.py` is the front end. It owns the key map decoded from the physical keyboard (code = row*10+col, with shift/alpha layers and a paged MENU picker carrying every token the keypad cannot reach - the digit-jump map is derived from the same key codes rather than guessed, and `tests.py` checks the two agree), the main menus, the on-screen input editor that drives the live `casrender` preview, the global angle mode (shown on the input screen, since it changes what `sin(30)` means), and the pixel-based, word-wrapped result screens. Text layout is calibrated to the measured 384x192 screen using hand-tuned proportional-font width tables (`char_w` / `text_w`), so lines wrap by real pixel width rather than character count. The edit line is windowed around the caret by `cursor_fit`, so moving back into a long expression keeps the caret on screen instead of scrolling it away. Result screens page rather than truncate: output longer than seven lines shows a page counter, any key advances and EXIT stops. A fault inside a section tool is caught and reported, so it returns to the menu instead of dropping the whole toolkit back to the Python shell.
+`casui.py` is the front end. It owns the key map decoded from the physical keyboard (code = row*10+col, with shift/alpha layers and a CATALOG picker for the few tokens no key produces; `tests.py` holds Casio's keypad table independently and asserts every binding against it, including that no code is claimed by both a navigation key and a character key), the main menus, the on-screen input editor that drives the live `casrender` preview, the global angle mode (shown on the input screen, since it changes what `sin(30)` means), and the pixel-based, word-wrapped result screens. Text layout is calibrated to the measured 384x192 screen using hand-tuned proportional-font width tables (`char_w` / `text_w`), so lines wrap by real pixel width rather than character count. The edit line is windowed around the caret by `cursor_fit`, so moving back into a long expression keeps the caret on screen instead of scrolling it away. Result screens page rather than truncate: output longer than seven lines shows a page counter, any key advances and EXIT stops. A fault inside a section tool is caught and reported, so it returns to the menu instead of dropping the whole toolkit back to the Python shell.
 
 ### Files at a glance
 
@@ -257,7 +261,7 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 572 checks, 0 failures
+python3 tests.py       # correctness: 736 checks, 0 failures
 python3 stress.py      # smoke: 323 checks, 0 errors
 python3 devlint.py     # device compliance: 0 problems in 24 files
 ```
