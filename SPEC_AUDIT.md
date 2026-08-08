@@ -16,35 +16,63 @@ wording are as printed in the specifications. Items marked `*` in the Ref.
 column of the spec are unnumbered assumed-knowledge/GCSE statements; they are
 listed here with the code `*` and a bracketed topic.
 
+## Snapshot
+
+**This audit describes the working tree at 2026-08-09 00:09 (commit `d26de8f`
+plus uncommitted changes to `caseng.py`, `matrix.py` and `series.py`).**
+
+The repository was being actively developed while the audit was running. Over
+the course of it `purecalc.py` and `caspoly.py` appeared, `stat640.py` gained
+four charting tools, `mech640.py` gained three, `series.py` gained the method
+of differences, and the CAS menu gained Expand / Factorise / Collect /
+Partial fractions. Every verdict below was re-checked against the tree at the
+timestamp above; verdicts elsewhere in the file that would have read MISSING
+an hour earlier have been corrected. Re-run the checks before treating any
+individual row as current.
+
+Two functions exist in the working tree but are **not registered** in a
+`TOOLS` list, so they are unreachable from the menus and are audited as
+absent: `matrix.t_invariant` and `matrix.t_transform3`. Registering them would
+move Core Pure `Pm6` from MISSING and `m4` from PARTIAL.
+
 ## Method and conventions
 
 - **Toolkit capability** was read from the `TOOLS = [...]` registry and the
-  function bodies of `pure640.py`, `stat640.py`, `mech640.py`, `matrix.py`,
-  `vectors.py`, `vcplx.py`, `polyroots.py`, `series.py`, `hyper.py`,
-  `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`, `numeric.py`,
+  function bodies of `pure640.py`, `purecalc.py`, `stat640.py`, `mech640.py`,
+  `matrix.py`, `vectors.py`, `vcplx.py`, `polyroots.py`, `series.py`,
+  `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`, `numeric.py`,
   `algos.py`, `xpure.py`, `fpt.py`, plus the CAS (`caseng.simplify` /
-  `caseng.diff`, `cascalc.integ` / `cascalc.defint` / `cascalc.solve`) and the
-  `casui.cas_section` operations menu.
-- Where the label was ambiguous the CAS was **executed** against test inputs
+  `caseng.diff` / `caseng.invert` / `caseng.subst`, `caspoly.expand` /
+  `factor` / `collect` / `partial`, `cascalc.integ` / `defint` / `solve`) and
+  the `casui.cas_section` operations menu.
+- A function that exists but is not in a `TOOLS` list is treated as absent,
+  because the user cannot reach it.
+- Where the label was ambiguous the code was **executed** against test inputs
   rather than judged from its name. The findings that follow from that are
-  recorded in "CAS facts established by test" below.
+  recorded in "Facts established by test" below.
 - Verdicts: `COVERED` a tool does this; `PARTIAL` a tool touches it but leaves
   a real gap (the gap is stated); `MISSING` nothing does this; `N/A` not a
   calculator task.
 
-### CAS facts established by test
+### Facts established by test
 
 These were verified by running the modules, not inferred:
 
 | Behaviour | Result |
 |---|---|
-| `cascalc.solve` search window | real roots only, sampled over **[-20, 20]** (radian mode) or [-360, 360] (degree mode). `solve(x-100)` returns `[]`. |
+| `cascalc.solve` search window | real roots only, sampled over **[-20, 20]** (radian mode) or [-360, 360] (degree mode). `solve(x-100)` returns `[]`. This limit propagates into every tool that solves, including the modulus and inverse-function tools. |
+| `caspoly.expand` | works: `(2x-3)^2(x+1)` -> `4x^3-8x^2-3x+9`. |
+| `caspoly.factor` | works over the rationals: `x^3-6x^2+11x-6` -> `(x-1)(x-2)(x-3)`, `2x^2+x-1` -> `(x+1)(2x-1)`, `x^4-1` -> `(x-1)(x+1)(x^2+1)`. Returns `None` for `x^2+1`. |
+| `caspoly.partial` | works, including repeated factors: `(x+4)/((x+1)^2(x-2))` decomposes correctly. |
+| `caspoly.cancel` | does **not** cancel `(x^2-1)/(x-1)`. |
 | Integration by partial fractions | **works** for distinct linear factors: `(3x+1)/((x-1)(x+2))` -> `5/3 ln\|x+2\| + 4/3 ln\|x-1\|`. |
-| Reverse chain rule, non-linear inner function | **fails**: `x(1+x^2)^8` and `x e^(x^2)` both return `None`. Only linear inner functions and `k f'(x)/f(x)` work. |
-| Inverse-trig integral forms | `1/(x^2+1)` -> `atan(x)` works; `1/sqrt(1-x^2)`, `1/sqrt(x^2+1)`, `1/sqrt(x^2-1)` all return `None`. |
-| `caseng.simplify` | does **not** expand brackets, does **not** rationalise or reduce surds (`sqrt(8)` stays `sqrt(8)`), does **not** combine numeric fractions (`1/2+1/3` stays as-is), does **not** cancel `(x^2-1)/(x-1)`. |
+| Automatic reverse chain rule, non-linear inner function | **fails**: `cascalc.integ` returns `None` for `x(1+x^2)^8` and `x e^(x^2)`. |
+| `purecalc.t_substitution` | **succeeds** on exactly those integrands once the user supplies u: `x e^(x^2)`, u = x^2 -> `e^(x^2)/2`; `x(1+x^2)^8`, u = 1+x^2 -> `(1+x^2)^9/18`; and it verifies by differentiating back. |
+| Inverse-trig / inverse-hyperbolic integral forms | `1/(x^2+1)` -> `atan(x)` works; `1/sqrt(1-x^2)`, `1/sqrt(x^2+1)`, `1/sqrt(x^2-1)` and `tanh(x)` all return `None`. |
+| `caseng.simplify` | does **not** rationalise or reduce surds (`sqrt(8)` stays `sqrt(8)`) and does **not** combine numeric fractions (`1/2+1/3` stays as-is). |
+| `caseng.invert` | exact when the variable occurs once (`2x+3` -> `(x-3)/2`, `exp(x)+1` -> `ln(x-1)`); returns `None` for `(x-1)/(x+2)`. |
 | `sec`, `cosec`, `cot` | **not in the parser's function list**. `sec(x)` silently parses as the product `s*e*c*x` - a wrong-answer hazard, not just a gap. |
-| Second derivative | no `d2/dx2` operation; the CAS menu keeps the original `f(x)`, so the first derivative must be retyped by hand. |
+| Second derivative | no `d2/dx2` in the CAS menu (`purecalc.t_param_diff` does produce `d2y/dx2` for a parametric curve). |
 | `casutil.FACT_MAX` | 500. |
 
 ---

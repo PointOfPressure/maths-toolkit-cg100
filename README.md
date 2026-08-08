@@ -18,7 +18,7 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 
 ## Quick start
 
-1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`, `stress.py`, `tests.py` and `devlint.py`). See [Installing on the calculator](#installing-on-the-calculator).
+1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`, `stress.py`, `devlint.py` and any `tests*.py`). See [Installing on the calculator](#installing-on-the-calculator).
 2. In the calculator's Python app, run **`maths.py`**.
 3. Navigate with the arrow keys and OK; the curved-arrow back key goes back. Type expressions on the normal keys; use ALPHA for letters and the CATALOG key for the few symbols with no key of their own.
 
@@ -293,8 +293,12 @@ build lacks (`factorial`, `atan2`, the hyperbolics), annotations, walrus,
 a new dependency has to be added to `devlint.py` deliberately. `tests.py` runs
 it too, so a change that would only fail on real hardware fails on the PC first.
 
-`tests.py` and `devlint.py` are desktop-only (they use `ast` and `sys._getframe`)
-and must not be copied to the calculator.
+`tests.py`, the `tests_*.py` modules and `devlint.py` are desktop-only (they use
+`ast` and `sys._getframe`) and must not be copied to the calculator. `tests.py`
+picks up any `tests_*.py` file automatically: each defines
+`SECTIONS = [(label, function)]` and each function takes the harness object as
+its only argument, which is how several areas can be worked on at once without
+fighting over one file.
 
 `calib_screen.py`, `fontmetrics.py`, and `fontmetrics2.py` are one-off hardware probes that were run on the real device to measure its display. `calib_screen.py` walks black pixels off each edge to detect the screen size (found to be 384x192). `fontmetrics.py` measures per-character advance and glyph height for the small/medium/large fonts and how many characters fit across the 384px width. `fontmetrics2.py` measures proportional glyph widths (narrow `i`, normal `o`, wide `m`) plus a real-prose average. These are not part of the toolkit; they were used to calibrate the layout constants.
 

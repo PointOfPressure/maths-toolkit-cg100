@@ -1877,8 +1877,48 @@ TESTS = [
     ("devlint", test_devlint),
 ]
 
+# ---------------------------------------------------------- extra modules --
+# Test files named tests_*.py are picked up automatically. Each defines
+#   SECTIONS = [(label, function), ...]
+# and each function takes one argument: this harness, as an object carrying
+# check / close / truthy / raises / drive / has / num. Passing the harness in
+# rather than letting the extra file "import tests" matters - tests.py runs as
+# __main__, so importing it again would build a second copy of the module with
+# its own _inputs and _out lists, and drive() would feed one while the tools
+# read the other.
+class _Harness(object):
+    pass
+
+H = _Harness()
+H.check = check
+H.close = close
+H.truthy = truthy
+H.raises = raises
+H.drive = drive
+H.has = has
+H.num = num
+H.casui = casui
+H.caslex = caslex
+H.caseng = caseng
+H.cascalc = cascalc
+H.caspoly = caspoly
+H.casutil = casutil
+
+def _extra_tests():
+    out = []
+    names = []
+    for f in os.listdir(HERE):
+        if f.startswith("tests_") and f.endswith(".py"):
+            names.append(f[:-3])
+    names.sort()
+    for name in names:
+        mod = __import__(name)
+        for label, fn in getattr(mod, "SECTIONS", []):
+            out.append((label, (lambda g: (lambda: g(H)))(fn)))
+    return out
+
 def main():
-    for name, fn in TESTS:
+    for name, fn in TESTS + _extra_tests():
         before = len(FAILED)
         try:
             fn()
