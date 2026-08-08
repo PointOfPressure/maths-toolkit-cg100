@@ -13,6 +13,7 @@ import caslex
 import caseng
 import casrender
 import cascalc
+import caspoly
 
 # Every code the keypad can produce (page 142's diagram: 9 rows, cols 1-6, with
 # row 1 col 1 = [ON] and row 6 col 5 = [AC] carrying no code, and rows 7-9
@@ -647,7 +648,7 @@ def do_eval(tree):
 # ---------- per-section help (shown once per session) ----------
 HELP = {
     "calc": "Everyday calculator. Type any sum and press OK for the answer. Works: + - * /, ^, brackets, sqrt, sin/cos/tan and asin/acos/atan, ln, log, exp, abs, n! (factorial), nCr(n,r), nPr(n,r), pi, e. Use 'ans' for your last answer. Switch DEG/RAD from the home menu (Angle mode).",
-    "cas": "Algebra & calculus on a function of x. Type e.g. x^2+3x or sin(x), press OK, then pick: d/dx, gradient at a point, integrate (products like x sin(x) and x ln(x) are done by parts), definite integral a..b, simplify, solve f(x)=0, evaluate, graph, or a table of values. Type letters other than x with ALPHA; the CATALOG key gives the symbols with no key of their own. Evaluate/graph/table/solve follow the home-menu angle mode; calculus uses radians.",
+    "cas": "Algebra & calculus on a function of x. Type e.g. x^2+3x or sin(x), press OK, then pick: d/dx, gradient at a point, integrate (products like x sin(x) and x ln(x) are done by parts, and proper fractions like x/((x+1)(x-2)) by partial fractions), definite integral a..b, simplify, expand brackets, factorise, collect like terms, partial fractions (type it as one fraction), solve f(x)=0, evaluate, graph, or a table of values. Type letters other than x with ALPHA; the CATALOG key gives the symbols with no key of their own. Evaluate/graph/table/solve follow the home-menu angle mode; calculus uses radians.",
     "vcplx": "Complex numbers a+bi. Enter the real then imaginary part. Tools: + - * /, modulus & argument, polar form, powers, nth roots, Argand.",
     "matrix": "Matrices up to 3x3. First Enter A (give the size, then each number). Then pick add, multiply, determinant, inverse, solve Ax=b, eigenvalues.",
     "vectors": "Vectors in 3-D. Enter components (use 0 for 2-D). Tools: magnitude, dot, angle, cross product, projection, distance to a line or plane.",
@@ -829,6 +830,37 @@ def do_table(tree):
         i += 1
     result_screen("Table of values", lines)
 
+def do_partial(tree):
+    # Split a rational function into partial fractions. H640 Pure asks for
+    # denominators that are products of distinct linear factors or have a
+    # repeated linear factor; the engine also does an irreducible quadratic.
+    if tree[0] != '/':
+        show_text("Partial fractions",
+                  "Type this as one fraction, for example (3x+5)/((x-1)(x+2)).", RED)
+        return
+    try:
+        res = caspoly.partial(tree[1], tree[2])
+    except:
+        res = None
+    if res is None:
+        show_text("Partial fractions",
+                  "Cannot split this exactly. The top and bottom must both be "
+                  "polynomials with whole-number or fractional coefficients, and "
+                  "the bottom must factorise into linear or quadratic factors.", RED)
+        return
+    quot, terms = res
+    lines = []
+    if quot is not None:
+        lines.append("whole part:  " + caseng.tostr(quot))
+    if not terms:
+        lines.append("(divides exactly - no fractions left)")
+    for top, fac, power in terms:
+        den = caseng.tostr(fac)
+        if power > 1:
+            den = "(" + den + ")^" + str(power)
+        lines.append("  " + caseng.tostr(top) + "  /  " + den)
+    result_screen("Partial fractions", lines)
+
 # ---------- main ----------
 def cas_section():
     show_help("cas")
@@ -846,9 +878,11 @@ def cas_section():
         while True:
             op = menu("f(x) = " + s, ["Differentiate  d/dx", "Gradient at a point",
                                        "Integrate (+ C)", "Definite integral a..b",
-                                       "Simplify", "Solve  f(x)=0", "Evaluate at x",
+                                       "Simplify", "Expand brackets", "Factorise",
+                                       "Collect like terms", "Partial fractions",
+                                       "Solve  f(x)=0", "Evaluate at x",
                                        "Graph", "Table of values", "New expression"])
-            if op == -1 or op == 9:
+            if op == -1 or op == 13:
                 break
             if op == 0:
                 try:
@@ -876,12 +910,33 @@ def cas_section():
                 except:
                     show_text("Too complex", "Nests too deep", RED)
             elif op == 5:
-                do_solve(s)
+                try:
+                    show_math("Expanded", caspoly.expand(tree))
+                except:
+                    show_text("Too complex", "Nests too deep", RED)
             elif op == 6:
-                do_eval(tree)
+                try:
+                    r = caspoly.factor(tree)
+                    if r is None:
+                        show_text("Factorise", "This does not factorise over the rationals - it may still factorise with surds.", RED)
+                    else:
+                        show_math("Factorised", r)
+                except:
+                    show_text("Too complex", "Nests too deep", RED)
             elif op == 7:
-                graph(tree)
+                try:
+                    show_math("Collected", caspoly.collect(tree))
+                except:
+                    show_text("Too complex", "Nests too deep", RED)
             elif op == 8:
+                do_partial(tree)
+            elif op == 9:
+                do_solve(s)
+            elif op == 10:
+                do_eval(tree)
+            elif op == 11:
+                graph(tree)
+            elif op == 12:
                 do_table(tree)
 
 FM_CORE_LABELS = ["Complex numbers", "Matrices", "Vectors & 3-D", "Roots of polynomials",

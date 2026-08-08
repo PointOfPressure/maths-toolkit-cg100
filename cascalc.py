@@ -3,6 +3,7 @@
 # a numeric solver (grid scan + bisection) as the general fallback. Uses
 # caseng.evalf for all numeric work. Imported by cas.py.
 import caseng
+import caspoly
 
 def has_var(n, var):
     t = n[0]
@@ -218,6 +219,92 @@ def _byparts(a, b, var, depth):
         return None
     return ('-', ('*', u, v), w)
 
+# --- rational functions, via partial fractions ----------------------------
+def _int_piece(top, fac, power, var):
+    # integrate one partial-fraction term: numerator / factor^power, where the
+    # factor is monic and either linear or an irreducible quadratic
+    f = caspoly.poly(fac, var)
+    if f is None:
+        return None
+    if len(f) == 2:
+        # c / (x - r)^k
+        c = caspoly.ratof(top)
+        if c is None:
+            return None
+        if power == 1:
+            return caseng.simplify(('*', caspoly.ratnode(c), ('ln', ('abs', fac))))
+        # c/(x-r)^k integrates to -c / ((k-1)(x-r)^(k-1)); written as one
+        # quotient it reads as -8/(3(x-1)) instead of 8/3*-(x-1)^(-1)
+        cc = caspoly.rdiv(caspoly.rneg(c), (power - 1, 1))
+        if cc is None:
+            return None
+        den = ('^', fac, ('n', power - 1))
+        if cc[1] != 1:
+            den = ('*', ('n', cc[1]), den)
+        return caseng.simplify(('/', ('n', cc[0]), den))
+    if len(f) == 3 and power == 1:
+        # (Bx + C) / (x^2 + px + q) with q - p^2/4 > 0
+        p = f[1]
+        q = f[0]
+        num = caspoly.poly(top, var)
+        if num is None or len(num) > 2:
+            return None
+        C = num[0] if len(num) > 0 else caspoly.R0
+        B = num[1] if len(num) > 1 else caspoly.R0
+        half = (1, 2)
+        k = caspoly.rsub(q, caspoly.rmul(caspoly.rmul(p, p), (1, 4)))
+        if k is None or k[0] <= 0:
+            return None      # not irreducible after all; a real factorisation exists
+        # (B/2) ln(x^2+px+q)
+        out = None
+        if not caspoly.rzero(B):
+            out = ('*', caspoly.ratnode(caspoly.rmul(B, half)), ('ln', fac))
+        # (C - Bp/2) / sqrt(k) * atan((x + p/2)/sqrt(k))
+        rest = caspoly.rsub(C, caspoly.rmul(caspoly.rmul(B, p), half))
+        if not caspoly.rzero(rest):
+            root = ('sqrt', caspoly.ratnode(k))
+            shift = ('v', var)
+            hp = caspoly.rmul(p, half)
+            if not caspoly.rzero(hp):
+                shift = ('+', shift, caspoly.ratnode(hp))
+            piece = ('/', ('*', caspoly.ratnode(rest), ('atan', ('/', shift, root))), root)
+            out = piece if out is None else ('+', out, piece)
+        if out is None:
+            return ('n', 0)
+        return caseng.simplify(out)
+    return None
+
+def integ_rational(a, b, var, depth):
+    # N(x)/D(x): split into a polynomial part plus partial fractions and
+    # integrate each piece. This is what makes proper rational integrands work
+    # at all - x/((x+1)(x-2)), 1/(x^2-1), 1/(1+x^2) - and it is also the step
+    # that lets integration by parts finish x atan(x).
+    res = caspoly.partial(a, b, var)
+    if res is None:
+        return None
+    quot, terms = res
+    out = None
+    if quot is not None:
+        F = integ(quot, var, depth)
+        if F is None:
+            return None
+        out = F
+    for top, fac, power in terms:
+        F = _int_piece(top, fac, power, var)
+        if F is None:
+            return None
+        out = F if out is None else ('+', out, F)
+    return tidy(out)
+
+def tidy(node):
+    # Presentation pass for an answer that is about to be shown: fold constants,
+    # then gather like terms so a negative coefficient prints as a subtraction.
+    # Kept out of integ itself, which recurses - this runs once, at the end.
+    try:
+        return caspoly.collect(caseng.simplify(node))
+    except:
+        return caseng.simplify(node)
+
 def integ(n, var='x', depth=0):
     t = n[0]
     if t == 'n':
@@ -250,7 +337,14 @@ def integ(n, var='x', depth=0):
         if len(moving) == 1:
             F = integ(moving[0], var, depth)
         elif len(moving) == 2:
-            F = _cyclic(moving[0], moving[1], var)
+            if moving[0] == moving[1]:
+                # sin(x)*sin(x) is sin(x)^2; typing it either way has to give
+                # the same answer, so hand it to the power branch
+                F = integ(('^', moving[0], ('n', 2)), var, depth)
+            else:
+                F = None
+            if F is None:
+                F = _cyclic(moving[0], moving[1], var)
             if F is None:
                 F = _byparts(moving[0], moving[1], var, depth)
         else:
@@ -283,9 +377,23 @@ def integ(n, var='x', depth=0):
                     return F if k == ('n', 1) else ('*', k, F)
         except:
             pass
-        return None
+        return integ_rational(a, b, var, depth)
     if t == '^':
         a = n[1]; b = n[2]
+        # sin^2 and cos^2 have no elementary antiderivative term by term; the
+        # double-angle form is how the specification asks for them:
+        #   sin^2 u = (1 - cos 2u)/2 and cos^2 u = (1 + cos 2u)/2.
+        # tan^2 u = sec^2 u - 1 integrates to tan(u)/k - x the same way.
+        if b == ('n', 2) and a[0] in ('sin', 'cos', 'tan'):
+            lc = linear_coeff(a[1], var)
+            if lc is not None and lc[0] != 0:
+                k = lc[0]
+                dbl = ('+', ('*', ('n', 2 * k), ('v', var)), ('n', 2 * lc[1]))
+                if a[0] == 'tan':
+                    return ('-', ('/', ('tan', a[1]), ('n', k)), ('v', var))
+                half = ('/', ('v', var), ('n', 2))
+                wob = ('/', ('sin', dbl), ('n', 4 * k))
+                return ('-', half, wob) if a[0] == 'sin' else ('+', half, wob)
         # read the exponent through _const so x^-1, x^(2/3) and x^pi all work
         # (the exponent tree is ('neg', ('n', 1)) here, not ('n', -1))
         e = _const(b, var)
@@ -301,6 +409,10 @@ def integ(n, var='x', depth=0):
                     return _powrule(a, fr[0], fr[1], lc[0])
                 p = e + 1
                 return ('/', ('^', a, ('n', p)), ('n', p * lc[0]))
+            # a negative power of something that is not linear, e.g.
+            # (x^2+1)^-1, is a rational function - try partial fractions
+            if e < 0 and e == int(e):
+                return integ_rational(('n', 1), ('^', a, ('n', int(-e))), var, depth)
         return None
     arg = n[1]
     lc = linear_coeff(arg, var)

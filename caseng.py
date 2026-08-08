@@ -155,6 +155,16 @@ def _s(node):
             if t == 'log' and v == 1: return ('n', 0)
             if t == 'sqrt' and v == 0: return ('n', 0)
             if t == 'sqrt' and v == 1: return ('n', 1)
+            if t == 'sqrt' and isinstance(v, int) and 0 < v <= 1000000:
+                # fold only a perfect square: sqrt(4) is 2, but turning sqrt(2)
+                # into 1.414214 would throw away the exact answer
+                r = int(v ** 0.5)
+                while r * r > v:
+                    r -= 1
+                while (r + 1) * (r + 1) <= v:
+                    r += 1
+                if r * r == v:
+                    return ('n', r)
             if t == 'abs': return ('n', abs(v))
         return (t, a)
     if t == 'fact':
@@ -197,6 +207,10 @@ def _s(node):
         if (an and a[1] == 0) or (bn and b[1] == 0): return ('n', 0)
         if an and a[1] == 1: return b
         if bn and b[1] == 1: return a
+        # -1*X is -X: without this a partial-fraction numerator prints as
+        # "-1*x" where a student would write "-x"
+        if an and a[1] == -1: return _s(('neg', b))
+        if bn and b[1] == -1: return _s(('neg', a))
         if a == b: return ('^', a, ('n', 2))
         # x^p * x^q -> x^(p+q); integration by parts leans on this to close
         ba, ea = _basepow(a)
@@ -437,38 +451,41 @@ def _numstr(v):
     return str(r)
 
 def tostr(n):
-    return _str(n, 0)
+    return _str(n, 0, False)
 
-def _str(n, parent):
+def _str(n, parent, right):
     t = n[0]
     if t == 'n':
         s = _numstr(n[1])
-        # a bare negative literal needs brackets anywhere but the top level,
-        # otherwise (-8)^(1/3) prints as -8^(1/3), which reads as -(8^(1/3))
-        if parent > 0 and s[:1] == '-':
+        # A bare negative literal needs brackets when it is a right operand
+        # ("x+(-3)"), the operand of a unary minus, or the base of a power -
+        # otherwise (-8)^(1/3) would print as -8^(1/3), which reads as
+        # -(8^(1/3)). As a leading left operand it does not: "-1/2" is both
+        # correct and what a student would write, where "(-1)/2" is neither.
+        if (right or parent >= 3) and s[:1] == '-':
             return "(" + s + ")"
         return s
     if t == 'v':
         return n[1]
     if t in UFUNCS:
-        return t + "(" + _str(n[1], 0) + ")"
+        return t + "(" + _str(n[1], 0, False) + ")"
     if t == 'neg':
-        s = "-" + _str(n[1], 3)
+        s = "-" + _str(n[1], 3, False)
         return "(" + s + ")" if parent > 3 else s
     if t == 'fact':
-        return _str(n[1], 5) + "!"
+        return _str(n[1], 5, False) + "!"
     if t in BFUNCS:
         nm = 'nCr' if t == 'ncr' else ('nPr' if t == 'npr' else 'logb')
-        return nm + "(" + _str(n[1], 0) + "," + _str(n[2], 0) + ")"
+        return nm + "(" + _str(n[1], 0, False) + "," + _str(n[2], 0, False) + ")"
     p = OPPREC[t]
     if t == '^':
-        ls = _str(n[1], p + 1)
-        rs = _str(n[2], p)
+        ls = _str(n[1], p + 1, False)
+        rs = _str(n[2], p, True)
     elif t == '-' or t == '/':
-        ls = _str(n[1], p)
-        rs = _str(n[2], p + 1)
+        ls = _str(n[1], p, right)
+        rs = _str(n[2], p + 1, True)
     else:
-        ls = _str(n[1], p)
-        rs = _str(n[2], p)
+        ls = _str(n[1], p, right)
+        rs = _str(n[2], p, True)
     s = ls + t + rs
     return "(" + s + ")" if p < parent else s

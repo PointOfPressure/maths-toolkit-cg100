@@ -72,6 +72,7 @@ casui.hold_page = lambda *a, **k: True
 import caslex
 import caseng
 import cascalc
+import caspoly
 import casrender
 import casutil
 import devlint
@@ -299,6 +300,146 @@ def test_engine():
     close("tanh(400) saturates", ev("tanh(400)"), 1.0)
 
 
+# ============================================================ caspoly tests =
+def _p(e):
+    return caslex.parse(e)
+
+def _ex(e):
+    return caseng.tostr(caspoly.expand(_p(e)))
+
+def _co(e):
+    return caseng.tostr(caspoly.collect(_p(e)))
+
+def _fa(e):
+    r = caspoly.factor(_p(e))
+    return None if r is None else caseng.tostr(r)
+
+def _pf(n, d):
+    r = caspoly.partial(_p(n), _p(d))
+    if r is None:
+        return None
+    quot, terms = r
+    out = []
+    if quot is not None:
+        out.append(caseng.tostr(quot))
+    for top, fac, power in terms:
+        den = caseng.tostr(fac)
+        if power > 1:
+            den = "(" + den + ")^" + str(power)
+        out.append("(" + caseng.tostr(top) + ")/(" + den + ")")
+    return " + ".join(out)
+
+def test_polyalg():
+    # --- exact rationals: the whole point is that nothing is rounded ---
+    check("ratof 3", caspoly.ratof(_p("3")), (3, 1))
+    check("ratof -2/6 reduces", caspoly.ratof(_p("-2/6")), (-1, 3))
+    check("ratof 2^-3", caspoly.ratof(_p("2^-3")), (1, 8))
+    check("ratof of a decimal that is not exact", caspoly.ratof(_p("0.1")), None)
+    check("ratof of pi", caspoly.ratof(_p("pi")), None)
+
+    # --- expand ---
+    check("expand (x+1)^3", _ex("(x+1)^3"), "x^3+3*x^2+3*x+1")
+    check("expand (2x-1)(x+4)", _ex("(2x-1)(x+4)"), "2*x^2+7*x-4")
+    check("expand (x+2)(x-2)", _ex("(x+2)(x-2)"), "x^2-4")
+    check("expand (x-3)^2", _ex("(x-3)^2"), "x^2-6*x+9")
+    check("expand (x+1)^2(x-3)", _ex("(x+1)^2(x-3)"), "x^3-x^2-5*x-3")
+    check("expand (a+b)^2 in two letters", _ex("(a+b)^2"), "2*a*b+a^2+b^2")
+    check("expand splits over a constant denominator", _ex("(2x+4)/2"), "x+2")
+    # binomial coefficients, checked against Pascal's triangle
+    check("expand (x+1)^5", _ex("(x+1)^5"), "x^5+5*x^4+10*x^3+10*x^2+5*x+1")
+    check("expand (2x-3)^3", _ex("(2x-3)^3"), "8*x^3-36*x^2+54*x-27")
+
+    # --- collect ---
+    check("collect 3x+2x", _co("3x+2x"), "5*x")
+    check("collect cancels", _co("x+x^2-x"), "x^2")
+    check("collect to zero", _co("x-x"), "0")
+    check("collect keeps unlike terms apart", _co("2x+3y"), "2*x+3*y")
+    check("collect fractional coefficients", _co("x/2+x/3"), "5/6*x")
+    check("collect gathers a function of x", _co("2sin(x)+3sin(x)"), "5*sin(x)")
+    # a coefficient that is not exact must leave the expression alone rather
+    # than be quietly rounded
+    truthy("collect does not round 0.1x", "0.1" in _co("0.1x+0.2x") or
+           _co("0.1x+0.2x") == "0.3*x")
+
+    # --- factorise, against factorisations worked out by hand ---
+    check("factor x^2-5x+6", _fa("x^2-5x+6"), "(x-2)*(x-3)")
+    check("factor difference of two squares", _fa("x^2-4"), "(x-2)*(x+2)")
+    check("factor 2x^2+7x+3", _fa("2x^2+7x+3"), "(2*x+1)*(x+3)")
+    check("factor 6x^2-x-2", _fa("6x^2-x-2"), "(2*x+1)*(3*x-2)")
+    check("factor 4x^2-9", _fa("4x^2-9"), "(2*x-3)*(2*x+3)")
+    check("factor common factor out", _fa("2x^2+4x"), "2*x*(x+2)")
+    check("factor a cubic with three roots", _fa("x^3-6x^2+11x-6"),
+          "(x-1)*(x-2)*(x-3)")
+    check("factor a repeated root", _fa("x^2-2x+1"), "(x-1)^2")
+    # irreducible over the rationals: say so rather than invent surds
+    check("x^2+1 does not factorise", _fa("x^2+1"), None)
+    check("x^2-2 does not factorise over the rationals", _fa("x^2-2"), None)
+    # every factorisation must multiply back to what went in
+    for e in ("x^2-5x+6", "2x^2+7x+3", "6x^2-x-2", "x^3-6x^2+11x-6", "2x^2+4x"):
+        r = caspoly.factor(_p(e))
+        check("factor(" + e + ") multiplies back",
+              caseng.tostr(caspoly.expand(r)), caseng.tostr(caspoly.expand(_p(e))))
+
+    # --- partial fractions, against decompositions worked out by hand ---
+    # 1/(x^2-1) = (1/2)/(x-1) - (1/2)/(x+1)
+    check("partial 1/(x^2-1)", _pf("1", "x^2-1"), "(1/2)/(x-1) + (-1/2)/(x+1)")
+    # x/((x+1)(x-2)): cover up x=-1 gives 1/3, x=2 gives 2/3
+    check("partial x/((x+1)(x-2))", _pf("x", "(x+1)(x-2)"),
+          "(1/3)/(x+1) + (2/3)/(x-2)")
+    # repeated factor: 3x+5 = A(x-1)(x+2) + B(x+2) + C(x-1)^2
+    #   x=1 -> B=8/3, x=-2 -> C=-1/9, x^2 coefficient -> A=1/9
+    check("partial with a repeated factor", _pf("3x+5", "(x-1)^2(x+2)"),
+          "(1/9)/(x-1) + (8/3)/((x-1)^2) + (-1/9)/(x+2)")
+    # irreducible quadratic factor: 1/(x(x^2+1)) = 1/x - x/(x^2+1)
+    check("partial with a quadratic factor", _pf("1", "x(x^2+1)"),
+          "(1)/(x) + (-x)/(x^2+1)")
+    # improper: the polynomial part has to be divided out first
+    check("partial improper divides out", _pf("x^2", "x^2+1"),
+          "1 + (-1)/(x^2+1)")
+    check("partial of a non-polynomial", _pf("sin(x)", "x+1"), None)
+
+    # every decomposition must add back up to the original fraction
+    for n, d in (("1", "x^2-1"), ("x", "(x+1)(x-2)"), ("3x+5", "(x-1)^2(x+2)"),
+                 ("2x+3", "(x+1)(x+2)"), ("x^2", "x^2+1")):
+        r = caspoly.partial(_p(n), _p(d))
+        quot, terms = r
+        for xv in (0.37, 1.63, -3.1, 4.9):
+            try:
+                want = caseng.evalf(_p(n), xv) / caseng.evalf(_p(d), xv)
+            except:
+                continue
+            got = caseng.evalf(quot, xv) if quot is not None else 0.0
+            bad = False
+            for top, fac, power in terms:
+                try:
+                    got += caseng.evalf(top, xv) / (caseng.evalf(fac, xv) ** power)
+                except:
+                    bad = True
+            if bad:
+                continue
+            close("partial " + n + "/" + d + " sums back at x=" + str(xv),
+                  got, want, 1e-9)
+
+def test_cas_algebra_ui():
+    # the new operations, driven through the CAS menu the way a student gets
+    # to them: pick the expression, then the operation, then read the screen
+    out = drive(casui.cas_section, ["(x+1)^3"], [5, -1, -1])
+    has("expand through the UI", out, "x^3+3*x^2+3*x+1")
+    out = drive(casui.cas_section, ["x^2-5x+6"], [6, -1, -1])
+    has("factorise through the UI", out, "(x-2)*(x-3)")
+    out = drive(casui.cas_section, ["3x+2x"], [7, -1, -1])
+    has("collect through the UI", out, "5*x")
+    out = drive(casui.cas_section, ["(3x+5)/((x-1)^2(x+2))"], [8, -1, -1])
+    has("partial fractions through the UI", out, "(x-1)^2")
+    has("partial fractions numerator", out, "8/3")
+    # something that will not factorise must say so, not print a wrong answer
+    out = drive(casui.cas_section, ["x^2+1"], [6, -1, -1])
+    has("irreducible is reported", out, "does not factorise")
+    # partial fractions on something that is not a fraction
+    out = drive(casui.cas_section, ["x^2+1"], [8, -1, -1])
+    has("partial fractions needs a fraction", out, "one fraction")
+
+
 # =========================================================== cascalc tests =
 def test_calculus():
     # linear_coeff must be structural. Sampling at x = 0, 1, 2 accepted this
@@ -339,10 +480,26 @@ def test_calculus():
     check("int 2x/(x^2+1)", isym("2x/(x^2+1)"), "ln(x^2+1)")
     check("int cot", isym("cos(x)/sin(x)"), "ln(sin(x))")
     check("int x/(x^2+4)", isym("x/(x^2+4)"), "1/2*ln(x^2+4)")
-    # still out of reach: these need trig identities or partial fractions, and
-    # None is the signal for the UI to offer the numeric definite integral
-    check("int sin^2 unsupported", isym("sin(x)*sin(x)"), None)
-    check("int x atan(x) unsupported", isym("x*atan(x)"), None)
+    # trig identity rewriting: sin^2 and cos^2 have no term-by-term
+    # antiderivative, so they go through the double-angle form the
+    # specification asks for. Typing it as a product must give the same answer.
+    check("int sin^2", isym("sin(x)^2"), "x/2-sin(2*x)/4")
+    check("int sin(x)*sin(x)", isym("sin(x)*sin(x)"), "x/2-sin(2*x)/4")
+    check("int cos^2", isym("cos(x)^2"), "x/2+sin(2*x)/4")
+    check("int cos^2(3x)", isym("cos(3x)^2"), "x/2+sin(6*x)/12")
+    check("int tan^2", isym("tan(x)^2"), "tan(x)-x")
+
+    # partial fractions - proper rational integrands, and the improper case
+    # where a polynomial has to be divided out first
+    check("int 1/(x^2-1)", isym("1/(x^2-1)"),
+          "ln(abs(x-1))/2-ln(abs(x+1))/2")
+    check("int 1/(1+x^2) is arctan", isym("1/(1+x^2)"), "atan(x)")
+    check("int 1/(x^2+4)", isym("1/(x^2+4)"), "atan(x/2)/2")
+    check("int x^2/(x^2+1) divides out first", isym("x^2/(x^2+1)"),
+          "x-atan(x)")
+    # x atan(x) used to be unreachable: by parts leaves x^2/(1+x^2), which is
+    # an improper rational function and needed partial fractions to finish
+    truthy("int x atan(x) now closes", isym("x*atan(x)") is not None)
     truthy("by-parts depth is capped", cascalc.BYPARTS_MAX <= 4)
 
     # every symbolic integral must agree with the numeric one
@@ -1277,6 +1434,8 @@ TESTS = [
     ("lexer", test_lexer),
     ("engine", test_engine),
     ("calculus", test_calculus),
+    ("polynomial algebra", test_polyalg),
+    ("CAS algebra UI", test_cas_algebra_ui),
     ("render", test_render),
     ("ui format", test_ui_format),
     ("keymap vs hardware", test_keymap_matches_hardware),

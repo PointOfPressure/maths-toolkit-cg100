@@ -16,7 +16,7 @@ import sys
 # probes plus the test harnesses are desktop-only.
 DEVICE_FILES = [
     "maths.py", "casui.py", "casutil.py", "caslex.py", "caseng.py",
-    "casrender.py", "cascalc.py",
+    "casrender.py", "cascalc.py", "caspoly.py",
     "vcplx.py", "matrix.py", "vectors.py", "polyroots.py", "series.py",
     "hyper.py", "polar.py", "diffeq.py", "fmmech.py", "fmstat.py",
     "numeric.py", "algos.py", "xpure.py", "fpt.py",
