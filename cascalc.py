@@ -109,7 +109,116 @@ def linear_coeff(arg, var):
         b = int(bi)
     return (a, b)
 
-def integ(n, var='x'):
+# --- integration by parts -------------------------------------------------
+# int u dv = u v - int v du. The handheld's call stack is the binding limit
+# here, not the algebra: integ already recurses on tree depth and each by-parts
+# level nests another integ inside it, so the depth is capped. Three levels
+# covers x^3 f(x), which is past anything the specification asks for.
+BYPARTS_MAX = 3
+
+def _liate(n, var):
+    # LIATE ordering - the lower score becomes u, the factor we differentiate.
+    # Logs and inverse trig simplify when differentiated, polynomials drop a
+    # degree, and trig/exponentials are the ones worth integrating instead.
+    t = n[0]
+    if t in ('ln', 'log', 'logb'):
+        return 0
+    if t in ('asin', 'acos', 'atan', 'asinh', 'acosh', 'atanh'):
+        return 1
+    if t == 'n' or t == 'v':
+        return 2
+    if t == '^':
+        return 2 if not has_var(n[2], var) else 6
+    if t in ('sin', 'cos', 'tan'):
+        return 3
+    if t in ('exp', 'sinh', 'cosh'):
+        return 4
+    return 6  # not a factor we know how to split
+
+def _cyclic(a, b, var):
+    # int e^(px+q) sin(rx+s) dx and the cos form. Repeated by-parts cycles here
+    # forever and never closes, so use the standard closed form:
+    #   int e^(px) sin(rx) dx = e^(px)(p sin rx - r cos rx) / (p^2 + r^2)
+    #   int e^(px) cos(rx) dx = e^(px)(p cos rx + r sin rx) / (p^2 + r^2)
+    for E, T in ((a, b), (b, a)):
+        if E[0] != 'exp' or T[0] not in ('sin', 'cos'):
+            continue
+        le = linear_coeff(E[1], var)
+        lt = linear_coeff(T[1], var)
+        if le is None or lt is None or le[0] == 0 or lt[0] == 0:
+            continue
+        p = le[0]
+        r = lt[0]
+        den = p * p + r * r
+        if T[0] == 'sin':
+            inner = ('-', ('*', ('n', p), ('sin', T[1])), ('*', ('n', r), ('cos', T[1])))
+        else:
+            inner = ('+', ('*', ('n', p), ('cos', T[1])), ('*', ('n', r), ('sin', T[1])))
+        return ('/', ('*', E, inner), ('n', den))
+    return None
+
+def _flatten(n, out):
+    # flatten a product/negation chain into a factor list, returning the sign
+    if n[0] == '*':
+        return _flatten(n[1], out) * _flatten(n[2], out)
+    if n[0] == 'neg':
+        return -_flatten(n[1], out)
+    out.append(n)
+    return 1
+
+def _prod(v, du):
+    # v * du gathered into a single quotient. Left as a plain product, an
+    # intermediate like (x^2/2) * (1/x) never meets the rule that would cancel
+    # it, and by parts stalls one step short of closing.
+    nums = []
+    dens = []
+    for part in (v, du):
+        p = part
+        while p[0] == '/':
+            dens.append(p[2])
+            p = p[1]
+        nums.append(p)
+    node = ('*', nums[0], nums[1])
+    den = None
+    for d in dens:
+        den = d if den is None else ('*', den, d)
+    if den is not None:
+        node = ('/', node, den)
+    return caseng.simplify(node)
+
+def _byparts(a, b, var, depth):
+    if depth >= BYPARTS_MAX:
+        return None
+    u, dv = (a, b) if _liate(a, var) <= _liate(b, var) else (b, a)
+    if _liate(u, var) >= 6:
+        return None
+    v = integ(dv, var, depth + 1)
+    if v is None:
+        return None
+    try:
+        du = caseng.simplify(caseng.diff(u, var))
+        rest = _prod(v, du)
+    except:
+        return None
+    if rest == ('n', 0):
+        return ('*', u, v)
+    # If what is left is a constant multiple of the integrand we started with,
+    # by parts will cycle forever. Solve for it instead: I = uv - kI, so
+    # I = uv/(1+k). This is what closes int sin(x)cos(x) dx.
+    try:
+        k = caseng.simplify(('/', rest, ('*', a, b)))
+        if not has_var(k, var):
+            den = caseng.simplify(('+', ('n', 1), k))
+            if den != ('n', 0):
+                return ('/', ('*', u, v), den)
+    except:
+        pass
+    w = integ(rest, var, depth + 1)
+    if w is None:
+        return None
+    return ('-', ('*', u, v), w)
+
+def integ(n, var='x', depth=0):
     t = n[0]
     if t == 'n':
         return ('*', n, ('v', var))
@@ -118,27 +227,44 @@ def integ(n, var='x'):
             return ('/', ('^', ('v', var), ('n', 2)), ('n', 2))
         return ('*', n, ('v', var))
     if t == '+':
-        a = integ(n[1], var); b = integ(n[2], var)
+        a = integ(n[1], var, depth); b = integ(n[2], var, depth)
         return ('+', a, b) if a is not None and b is not None else None
     if t == '-':
-        a = integ(n[1], var); b = integ(n[2], var)
+        a = integ(n[1], var, depth); b = integ(n[2], var, depth)
         return ('-', a, b) if a is not None and b is not None else None
     if t == 'neg':
-        a = integ(n[1], var)
+        a = integ(n[1], var, depth)
         return ('neg', a) if a is not None else None
     if t == '*':
-        a = n[1]; b = n[2]
-        if not has_var(a, var):
-            ib = integ(b, var)
-            return ('*', a, ib) if ib is not None else None
-        if not has_var(b, var):
-            ia = integ(a, var)
-            return ('*', b, ia) if ia is not None else None
-        return None
+        # Flatten first: after one round of by parts an integrand looks like
+        # -cos(x) * (2*x), where neither side is constant but only two of the
+        # three factors actually involve the variable.
+        parts = []
+        sign = _flatten(n, parts)
+        consts = []
+        moving = []
+        for p in parts:
+            (consts if not has_var(p, var) else moving).append(p)
+        if len(moving) == 0:
+            return None      # wholly constant; handled by the 'n'/'v' cases
+        if len(moving) == 1:
+            F = integ(moving[0], var, depth)
+        elif len(moving) == 2:
+            F = _cyclic(moving[0], moving[1], var)
+            if F is None:
+                F = _byparts(moving[0], moving[1], var, depth)
+        else:
+            return None
+        if F is None:
+            return None
+        k = ('n', sign)
+        for c in consts:
+            k = ('*', k, c)
+        return F if k == ('n', 1) else ('*', k, F)
     if t == '/':
         a = n[1]; b = n[2]
         if not has_var(b, var):
-            ia = integ(a, var)
+            ia = integ(a, var, depth)
             return ('/', ia, b) if ia is not None else None
         # c / (px+q) -> c ln(px+q) / p  (covers 1/x, 3/x, 1/(2x+1), ...)
         if not has_var(a, var):
@@ -146,6 +272,17 @@ def integ(n, var='x'):
             if lc is not None and lc[0] != 0:
                 F = ('*', a, ('ln', b))
                 return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
+        # k f'(x) / f(x) -> k ln f(x). Tested by dividing the numerator by the
+        # derivative of the denominator and asking whether the variable is gone.
+        try:
+            db = caseng.simplify(caseng.diff(b, var))
+            if db != ('n', 0):
+                k = caseng.simplify(('/', a, db))
+                if not has_var(k, var):
+                    F = ('ln', b)
+                    return F if k == ('n', 1) else ('*', k, F)
+        except:
+            pass
         return None
     if t == '^':
         a = n[1]; b = n[2]
@@ -187,6 +324,10 @@ def integ(n, var='x'):
         # int ln u du = u ln u - u
         F = ('-', ('*', arg, ('ln', arg)), arg)
     else:
+        # a lone log or inverse-trig function integrates by parts against dv = 1,
+        # which is how int atan(x) dx reaches x atan(x) - ln(1+x^2)/2
+        if _liate(n, var) <= 1:
+            return _byparts(n, ('n', 1), var, depth)
         return None
     return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
 

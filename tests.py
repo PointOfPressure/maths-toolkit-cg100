@@ -235,6 +235,12 @@ def test_engine():
     check("simplify 6/3", sstr("6/3"), "2")
     check("simplify 2^-3", sstr("2^-3"), "1/8")   # exact, not 0.125
     check("simplify x/(-1)", sstr("x/(0-1)"), "-x")
+    # combining like powers is what lets integration by parts close
+    check("simplify x^2*x^3", sstr("x^2*x^3"), "x^5")
+    check("simplify x*x^3", sstr("x*x^3"), "x^4")
+    check("simplify x^3/x", sstr("x^3/x"), "x^2")
+    check("simplify x^2/(2x)", sstr("x^2/(2x)"), "x/2")
+    check("simplify x/(2x)", sstr("x/(2x)"), "1/2")
 
     # a fractional power of a negative is complex: leave it symbolic, do not
     # fold a complex number into the tree
@@ -311,12 +317,39 @@ def test_calculus():
     check("int x^(2/3)", isym("x^(2/3)"), "3/5*x^(5/3)")
     check("int sin(x)", isym("sin(x)"), "-cos(x)")
     check("int 5", isym("5"), "5*x")
-    check("int by parts unsupported", isym("x*sin(x)"), None)
+
+    # integration by parts
+    check("int x ln(x)", isym("x*ln(x)"), "ln(x)*x^2/2-x^2/4")
+    check("int x^2 ln(x)", isym("x^2*ln(x)"), "ln(x)*x^3/3-x^3/9")
+    check("int atan(x)", isym("atan(x)"), "atan(x)*x-1/2*ln(1+x^2)")
+    truthy("int x sin(x) closes", isym("x*sin(x)") is not None)
+    truthy("int x^2 sin(x) closes", isym("x^2*sin(x)") is not None)
+    truthy("int x^3 exp(x) closes", isym("x^3*exp(x)") is not None)
+    # exp x trig cycles forever under repeated parts - closed form instead
+    check("int exp(x)sin(x)", isym("exp(x)*sin(x)"), "exp(x)*(sin(x)-cos(x))/2")
+    check("int exp(2x)cos(3x)", isym("exp(2x)*cos(3x)"), "exp(2*x)*(2*cos(3*x)+3*sin(3*x))/13")
+    # the integrand reappears: solve I = uv - kI rather than recurse
+    check("int sin(x)cos(x)", isym("sin(x)*cos(x)"), "sin(x)^2/2")
+    check("int exp(x)exp(x)", isym("exp(x)*exp(x)"), "exp(x)^2/2")
+    # f'/f -> ln f
+    check("int 2x/(x^2+1)", isym("2x/(x^2+1)"), "ln(x^2+1)")
+    check("int cot", isym("cos(x)/sin(x)"), "ln(sin(x))")
+    check("int x/(x^2+4)", isym("x/(x^2+4)"), "1/2*ln(x^2+4)")
+    # still out of reach: these need trig identities or partial fractions, and
+    # None is the signal for the UI to offer the numeric definite integral
+    check("int sin^2 unsupported", isym("sin(x)*sin(x)"), None)
+    check("int x atan(x) unsupported", isym("x*atan(x)"), None)
+    truthy("by-parts depth is capped", cascalc.BYPARTS_MAX <= 4)
 
     # every symbolic integral must agree with the numeric one
     for e in ["x^2", "1/x", "sqrt(x)", "ln(x)", "tan(x)", "1/(2x+1)",
               "exp(-x)", "x^(2/3)", "cos(3x)", "(2x+1)^3", "sqrt(2x+1)",
-              "sinh(x)", "cosh(3x)", "x^5", "3/x"]:
+              "sinh(x)", "cosh(3x)", "x^5", "3/x",
+              "x*sin(x)", "x*cos(x)", "x*exp(x)", "x^2*sin(x)", "x^2*exp(x)",
+              "x*ln(x)", "x^2*ln(x)", "atan(x)", "exp(x)*sin(x)",
+              "exp(2x)*cos(3x)", "sin(x)*cos(x)", "x^3*exp(x)",
+              "x*sin(2x+1)", "x*cos(3x)", "x*exp(2x)", "2x/(x^2+1)",
+              "cos(x)/sin(x)", "x/(x^2+4)", "x*sqrt(x)"]:
         t = caslex.parse(e)
         F = cascalc.integ(t)
         a, b = 0.35, 0.9
@@ -997,6 +1030,12 @@ def test_recursion_budget():
     truthy("diff stays shallow", under(lambda: caseng.diff(t)))
     truthy("evalf stays shallow", under(lambda: caseng.evalf(t, 1.0)))
     truthy("tostr stays shallow", under(lambda: caseng.tostr(t)))
+    # integration by parts nests integ inside itself, so it is the deepest
+    # thing the engine does - it has to fit in the same budget
+    for e in ["x^3*exp(x)", "x^2*sin(x)", "x*ln(x)", "atan(x)",
+              "sin(x)*cos(x)", "x*sin(2x+1)", "exp(2x)*cos(3x)"]:
+        tr = caslex.parse(e)
+        truthy("integ stays shallow: " + e, under(lambda tr=tr: cascalc.integ(tr)))
 
 def test_devlint():
     import os
