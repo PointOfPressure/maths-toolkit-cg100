@@ -1,42 +1,14 @@
 import math
 import casui
 import caslex
-import caseng
+import casutil
 import cascalc
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _fn(x):
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-def _cstr(re, im):
-    a = round(re, 4)
-    b = round(im, 4)
-    if a == int(a):
-        a = int(a)
-    if b == int(b):
-        b = int(b)
-    if b == 0:
-        return str(a)
-    if b < 0:
-        return str(a) + ' - ' + str(-b) + 'i'
-    return str(a) + ' + ' + str(b) + 'i'
+_asknum = casutil.asknum
+_fn = casutil.fmt
+_show = casutil.show
+_cstr = casutil.fmtc
+_binom = casutil.ncr
 
 def _ask_coeffs(prompts):
     out = []
@@ -123,16 +95,6 @@ def t_numeric_roots():
         lines.append('x = ' + _fn(r))
     _show('NUMERIC ROOTS', lines)
 
-def _binom(n, k):
-    if k < 0 or k > n:
-        return 0
-    res = 1
-    j = 0
-    while j < k:
-        res = res * (n - j) // (j + 1)
-        j += 1
-    return res
-
 def t_shift_roots():
     deg = _asknum('degree (1-4):')
     if deg is None:
@@ -177,9 +139,4 @@ def t_shift_roots():
 TOOLS = [('Vieta quadratic', t_vieta_quad), ('Vieta cubic', t_vieta_cubic), ('Vieta quartic', t_vieta_quartic), ('Quadratic roots', t_quad_roots), ('Numeric roots (x)', t_numeric_roots), ('Shift roots by k', t_shift_roots)]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('ROOTS OF POLYNOMIALS', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('ROOTS OF POLYNOMIALS', TOOLS)

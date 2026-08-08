@@ -2,37 +2,19 @@ import math
 import casui
 import caslex
 import caseng
+import casutil
 import cascalc
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _askexpr(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    return caslex.parse(s)
-
-def _fn(x):
-    r = round(x, 4)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
+_asknum = casutil.asknum
+_askexpr = casutil.askexpr
+_fn = casutil.fmt
+_show = casutil.show
 
 def t_first_order():
-    P = _askexpr('P(x):')
+    s = casui.input_expr('P(x):')
+    if s is None:
+        return                      # cancelled - say nothing
+    P = caslex.parse(s)
     if P is None:
         _show('FIRST ORDER LINEAR', ['Could not read P(x).'])
         return
@@ -119,9 +101,4 @@ def t_damping():
 TOOLS = [('First-order linear (IF)', t_first_order), ('Second-order const-coeff', t_second_order), ('SHM recogniser', t_shm), ('Damping classifier', t_damping)]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('DIFFERENTIAL EQUATIONS', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('DIFFERENTIAL EQUATIONS', TOOLS)

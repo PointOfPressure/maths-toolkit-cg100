@@ -1,49 +1,11 @@
 import math
-import casui
-import caslex
-import caseng
+import casutil
 
-def _asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
-    try:
-        return caseng.evalf(t, 0.0)
-    except:
-        return None
-
-def _askg():
-    v = _asknum('g =? (def 9.8)')
-    if v is None:
-        return 9.8
-    return v
-
-def _fn(x):
-    try:
-        r = round(x, 4)
-    except:
-        return str(x)
-    if r == int(r):
-        return str(int(r))
-    return str(r)
-
-def _show(title, lines):
-    casui.result_screen(title, lines)
-
-def _getlist(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    out = []
-    for p in s.replace(',', ' ').split():
-        try:
-            out.append(float(p))
-        except:
-            return None
-    return out
+_asknum = casutil.asknum
+_askg = casutil.askg
+_fn = casutil.fmt
+_show = casutil.show
+_getlist = casutil.asklist
 
 # ---------- momentum & impulse ----------
 def t_momentum():
@@ -291,9 +253,4 @@ TOOLS = [
 ]
 
 def run():
-    labels = [t[0] for t in TOOLS]
-    while True:
-        c = casui.menu('Mechanics (FM)', labels)
-        if c == -1:
-            return
-        TOOLS[c][1]()
+    casutil.run_tools('Mechanics (FM)', TOOLS)

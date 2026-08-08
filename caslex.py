@@ -36,8 +36,21 @@ def tokenize(s):
                         break  # a second '.' starts a new token (2.3.4 -> 2.3, .4)
                     dot += 1
                 j += 1
+            # scientific notation: 1e3, 2.5e-3, 6.02e+23. Only consumed when a
+            # digit really follows the e (and optional sign), so "2e" and "3exp(x)"
+            # still read as 2*e and 3*exp(x) with e = Euler's number.
+            expo = 0
+            if j < n and (s[j] == 'e' or s[j] == 'E'):
+                k = j + 1
+                if k < n and (s[k] == '+' or s[k] == '-'):
+                    k += 1
+                if k < n and s[k] in "0123456789":
+                    while k < n and s[k] in "0123456789":
+                        k += 1
+                    j = k
+                    expo = 1
             txt = s[i:j]
-            if dot:
+            if dot or expo:
                 try:
                     toks.append(('num', float(txt)))
                 except:
@@ -88,12 +101,12 @@ def tokenize(s):
     return _implicit(toks)
 
 def _implicit(toks):
-    # insert '*' where multiplication is implied: 2x, 2(x), )(, x sin(...
+    # insert '*' where multiplication is implied: 2x, 2(x), )(, x sin(..., 3!x
     out = []
     prev = None
     for t in toks:
         if prev is not None:
-            lend = prev[0] in ('num', 'var', 'rp')
+            lend = prev[0] in ('num', 'var', 'rp', 'post')
             rstart = t[0] in ('num', 'var', 'fn', 'lp')
             if lend and rstart:
                 out.append(('op', '*'))
@@ -134,20 +147,26 @@ def parse(s):
                 rpn.append(ops.pop())
         elif k == 'op':
             o1 = t[1]
-            while ops and ops[-1][0] == 'op':
-                o2 = ops[-1][1]
-                if PREC[o2] > PREC[o1] or (PREC[o2] == PREC[o1] and not RIGHT.get(o1, False)):
-                    rpn.append(ops.pop())
-                else:
-                    break
+            # A prefix unary minus binds only what follows it, so it must never
+            # pop a pending operator: "2^-3" has to keep '^' on the stack until
+            # its right operand (-3) has been built. Popping here made every
+            # "a^-b" fail to parse.
+            if o1 != 'u':
+                while ops and ops[-1][0] == 'op':
+                    o2 = ops[-1][1]
+                    if PREC[o2] > PREC[o1] or (PREC[o2] == PREC[o1] and not RIGHT.get(o1, False)):
+                        rpn.append(ops.pop())
+                    else:
+                        break
             ops.append(t)
         elif k == 'lp':
             ops.append(t)
         elif k == 'rp':
             while ops and ops[-1][0] != 'lp':
                 rpn.append(ops.pop())
-            if ops and ops[-1][0] == 'lp':
-                ops.pop()
+            if not ops:
+                return None  # ')' with no matching '(' - malformed
+            ops.pop()  # discard the 'lp'
             if ops and ops[-1][0] == 'fn':
                 rpn.append(ops.pop())
     while ops:

@@ -42,6 +42,12 @@ def strw(s, size):
 def numstr(v):
     if isinstance(v, int):
         return str(v)
+    if v != v:
+        return "undefined"       # int() raises on nan/inf and would kill the redraw
+    if v > 1.7e308:
+        return "inf"
+    if v < -1.7e308:
+        return "-inf"
     r = round(v, 6)
     if r == int(r):
         return str(int(r))
@@ -98,7 +104,9 @@ def build(n, lvl):
         return ('row', [('atom', '-', sz), cb])
     if t == '^':
         bb = build(n[1], lvl)
-        if n[1][0] in ('+', '-', '*', '/', 'neg'):
+        # a '^' base needs brackets too: (x^2)^3 drawn bare reads as x^(2^3).
+        # So does a negative literal: (-8)^2 drawn bare reads as -(8^2).
+        if n[1][0] in ('+', '-', '*', '/', 'neg', '^') or (n[1][0] == 'n' and n[1][1] < 0):
             bb = ('paren', bb, sz)
         return ('sup', bb, build(n[2], lvl + 1), sz)
     if t == '/':
@@ -141,7 +149,21 @@ def build(n, lvl):
         return ('row', [ab, ('atom', ' - ', sz), bb])
     return ('atom', '?', sz)
 
+# measure() is called once per box by its parent's measure AND again by its
+# parent's draw, so an un-cached walk costs O(size x depth) per redraw - and the
+# input preview redraws on every keystroke. Cache by box identity; the cache is
+# cleared for each build because a discarded box tree can have its ids reused.
+_MCACHE = {}
+
 def measure(b):
+    key = id(b)
+    v = _MCACHE.get(key)
+    if v is None:
+        v = _measure(b)
+        _MCACHE[key] = v
+    return v
+
+def _measure(b):
     k = b[0]
     if k == 'atom':
         return (strw(b[1], b[2]), ASC[b[2]], DESC[b[2]])
@@ -298,11 +320,14 @@ def render(node, x0, y0, x1, y1, color):
     box = None
     w = a = d = 0
     for lvl in (0, 1):
+        _MCACHE.clear()
         box = build(node, lvl)
         w, a, d = measure(box)
         if w <= (x1 - x0) and (a + d) <= (y1 - y0):
             x = x0 + ((x1 - x0) - w) // 2
             cy = (y0 + y1) // 2
             draw(box, x, cy + (a - d) // 2)
+            _MCACHE.clear()
             return True
+    _MCACHE.clear()
     return False
