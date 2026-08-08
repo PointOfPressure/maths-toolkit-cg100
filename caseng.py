@@ -105,6 +105,12 @@ def _fold_pow(a, b):
         return None
     return ('n', r)
 
+def _basepow(n):
+    # view a node as (base, numeric exponent) so like powers can be combined
+    if n[0] == '^' and n[2][0] == 'n':
+        return (n[1], n[2][1])
+    return (n, 1)
+
 def _fold_div(a, b):
     if isinstance(a, int) and isinstance(b, int) and b != 0:
         g = gcd(a, b)
@@ -192,6 +198,11 @@ def _s(node):
         if an and a[1] == 1: return b
         if bn and b[1] == 1: return a
         if a == b: return ('^', a, ('n', 2))
+        # x^p * x^q -> x^(p+q); integration by parts leans on this to close
+        ba, ea = _basepow(a)
+        bb, eb = _basepow(b)
+        if ba == bb and ba[0] != 'n':
+            return _s(('^', ba, ('n', ea + eb)))
         if bn and not an: return ('*', b, a)  # constant to the front
         return ('*', a, b)
     if t == '/':
@@ -203,6 +214,15 @@ def _s(node):
             if r is not None:
                 return r
         if a == b: return ('n', 1)
+        # x^p / x^q -> x^(p-q)
+        ba, ea = _basepow(a)
+        bb, eb = _basepow(b)
+        if ba == bb and ba[0] != 'n':
+            return _s(('^', ba, ('n', ea - eb)))
+        # A/(k*B) -> (A/B)/k: lifting the constant out of a denominator is what
+        # lets x^2/(2x) reach the power rule above and collapse to x/2
+        if b[0] == '*' and b[1][0] == 'n' and b[1][1] != 0:
+            return _s(('/', _s(('/', a, b[2])), b[1]))
         if bn and b[1] != 0:
             # (k*X)/m -> (k/m)*X, so an integral's constant lands in lowest terms
             if a[0] == '*' and a[1][0] == 'n':

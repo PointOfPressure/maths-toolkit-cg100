@@ -517,7 +517,7 @@ def do_eval(tree):
 # ---------- per-section help (shown once per session) ----------
 HELP = {
     "calc": "Everyday calculator. Type any sum and press OK for the answer. Works: + - * /, ^, brackets, sqrt, sin/cos/tan and asin/acos/atan, ln, log, exp, abs, n! (factorial), nCr(n,r), nPr(n,r), pi, e. Use 'ans' for your last answer. Switch DEG/RAD from the home menu (Angle mode).",
-    "cas": "Algebra & calculus on a function of x. Type e.g. x^2+3x or sin(x), press OK, then pick: d/dx, gradient at a point, integrate, definite integral a..b, simplify, solve f(x)=0, evaluate, graph, or a table of values. Type letters other than x with ALPHA or the MENU picker. Evaluate/graph/table/solve follow the home-menu angle mode; calculus uses radians.",
+    "cas": "Algebra & calculus on a function of x. Type e.g. x^2+3x or sin(x), press OK, then pick: d/dx, gradient at a point, integrate (products like x sin(x) and x ln(x) are done by parts), definite integral a..b, simplify, solve f(x)=0, evaluate, graph, or a table of values. Type letters other than x with ALPHA or the MENU picker. Evaluate/graph/table/solve follow the home-menu angle mode; calculus uses radians.",
     "vcplx": "Complex numbers a+bi. Enter the real then imaginary part. Tools: + - * /, modulus & argument, polar form, powers, nth roots, Argand.",
     "matrix": "Matrices up to 3x3. First Enter A (give the size, then each number). Then pick add, multiply, determinant, inverse, solve Ax=b, eigenvalues.",
     "vectors": "Vectors in 3-D. Enter components (use 0 for 2-D). Tools: magnitude, dot, angle, cross product, projection, distance to a line or plane.",
