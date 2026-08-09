@@ -29,7 +29,7 @@ jobs:
       - name: correctness
         run: python tests.py
 
-      # every tool in all 17 sections is reachable and does not raise
+      # every tool in all 18 sections is reachable and does not raise
       - name: smoke
         run: python stress.py
 

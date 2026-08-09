@@ -72,13 +72,17 @@ The `Calculate` mode (`calc_section`) is a free-form expression calculator. Type
 
 ### Calculus & Algebra (CAS)
 
-The `Calculus & Algebra` mode (`cas_section`) works on a function of `x`. Type an expression (for example `x^2+3x` or `sin(x)`), press OK, then choose an operation from the menu. Variables other than `x` can be entered with ALPHA (every letter a-z has a key). The differentiation, integration and simplify operations are fully symbolic; the rest are numeric and honour the home-menu angle mode.
+The `Calculus & Algebra` mode (`cas_section`) works on a function of `x`. Type an expression (for example `x^2+3x` or `sin(x)`), press OK, then choose an operation from the menu. Variables other than `x` can be entered with ALPHA (every letter a-z has a key). Differentiation, integration, simplify, expand, factorise, collect and partial fractions are fully symbolic; the rest are numeric and honour the home-menu angle mode.
 
 - **Differentiate (d/dx)** - symbolic derivative with respect to `x`, then simplified. Full rule set: sum, difference, product, quotient and power/chain rules, plus derivatives of sin, cos, tan, exp, ln, log, sqrt, asin, acos, atan, the hyperbolics sinh/cosh/tanh, the inverse hyperbolics asinh/acosh/atanh, and abs.
 - **Gradient at a point** (`do_gradient`) - numeric slope `f'(x)` at a value you supply, computed by a symmetric central difference whose step scales with the size of `x`.
-- **Integrate (+ C)** - symbolic indefinite integral, simplified and shown with the constant of integration. Covers powers (including negative and rational exponents), `1/x` and `c/(px+q)` as logarithms, anything of the form `f'(x)/f(x)`, and `sin`, `cos`, `tan`, `exp`, `sqrt`, `ln`, `sinh` and `cosh`, each also with a linear argument. **Integration by parts** handles the products: `x sin x`, `x^2 e^x`, `x ln x`, `x^3 e^x`, `atan x` and so on, including the two that would otherwise cycle forever - `e^(ax) sin(bx)` and `sin x cos x`. If there is no elementary form it says so and points you to the definite integral for a numeric area.
+- **Integrate (+ C)** - symbolic indefinite integral, simplified and shown with the constant of integration. Covers powers (including negative and rational exponents), `c/sqrt(u)` and `c/u^k` recognised as powers in disguise, `1/x` and `c/(px+q)` as logarithms (all logarithmic antiderivatives carry the modulus, so `int 1/x dx` is `ln|x|`), anything of the form `f'(x)/f(x)`, and `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`, `exp`, `sqrt`, `ln`, `sinh`, `cosh` and `sech^2`, each also with a linear argument. `sin^2` and `cos^2` go through the double-angle form and `tan^2` through `sec^2 - 1`. **Integration by parts** handles the products: `x sin x`, `x^2 e^x`, `x ln x`, `x^3 e^x`, `atan x` and so on, including the two that would otherwise cycle forever - `e^(ax) sin(bx)` and `sin x cos x`. **Partial fractions** handle proper rational integrands (`1/(x^2-1)`, `x/((x+1)(x-2))`, `1/(x^2+4)`), and an improper one is divided out first, so `x^2/(x^2+1)` gives `x - atan x`. If there is no elementary form it says so and points you to the definite integral for a numeric area.
 - **Definite integral a..b** (`do_defint`) - numeric area between two limits you enter.
-- **Simplify** - applies the engine's local algebraic simplification rules (folds constants, removes `*1`, `+0`, `^1`, `^0`, combines like terms, reduces fractions to lowest terms, etc.).
+- **Simplify** - applies the engine's local algebraic simplification rules (folds constants, removes `*1`, `+0`, `^1`, `^0`, reduces fractions to lowest terms, folds `exp(ln u)` to `u` and `sqrt` of a perfect square, and cancels the factors a quotient shares top and bottom).
+- **Expand brackets** - multiplies out products and integer powers, multivariate, then gathers like terms: `(x+1)^3` becomes `x^3+3x^2+3x+1` and `(2x-1)(x+4)` becomes `2x^2+7x-4`.
+- **Factorise** - the rational root theorem over the monic form, with denominators cleared back into the factors, so `2x^2+7x+3` factorises as `(2x+1)(x+3)` rather than the equally true but useless `2(x+1/2)(x+3)`. Something irreducible over the rationals says so instead of inventing a factorisation.
+- **Collect like terms** - gathers by a canonical monomial key, so it folds `3x+2x` and also `2sin(x)+3sin(x)`.
+- **Partial fractions** - long division for the improper case, then an exact rational solve against the ansatz. Handles distinct linear factors, repeated linear factors and an irreducible quadratic. All of this arithmetic is in exact rationals; if a coefficient cannot be written exactly the route is abandoned rather than rounded, because a decomposition correct to 6 dp is not an answer anyone can write down.
 - **Solve f(x)=0** (`do_solve`) - finds real roots over a search range, including roots the curve only touches without crossing (such as `x^2` or `(x-1)^2`). Accepts either an expression (solved against zero) or a full equation with `=` (the two sides are subtracted first). Roots are listed in order; if none are found in range it says so.
 - **Evaluate at x** (`do_eval`) - asks for a value of `x` and prints `f(x)`, formatted with the same smart number rules as Calculate.
 - **Graph** - plots `y = f(x)` over `-12 <= x <= 12` with axes, joining consecutive samples into a continuous curve. The y-axis autoscales to the sampled values, trimming the extreme 5% at each end so a single asymptote (as in `1/x` or `tan x`) cannot squash the rest of the curve into one pixel row. The x and y ranges are printed along the bottom.
@@ -101,20 +105,21 @@ The expression parser (`caslex.py`) and engine (`caseng.py`) accept the followin
 **Functions**
 - `sqrt(...)` - square root.
 - Trig: `sin`, `cos`, `tan` (take degrees or radians per the angle mode).
-- Inverse trig: `asin`, `acos`, `atan` (return degrees or radians per the angle mode).
+- Reciprocal trig: `sec`, `cosec`, `cot`. `cot` is evaluated as `cos/sin` rather than `1/tan`, because `tan` is infinite at `pi/2` where `cot` is simply 0, and all three raise a domain error at an asymptote rather than handing back 1.6e16.
+- Inverse trig: `asin`, `acos`, `atan`, also spelled `arcsin`, `arccos`, `arctan` (return degrees or radians per the angle mode).
 - `ln` (natural log), `log` (base 10), `exp` (e^x).
 - `logb(a, b)` - logarithm of `b` to base `a`.
 - `abs(...)` - absolute value.
 - `n!` - factorial, entered as a postfix `!` (iterative, capped to keep the device responsive).
 - `nCr(n, r)` and `nPr(n, r)` - combinations and permutations.
-- Hyperbolics: `sinh`, `cosh`, `tanh`.
-- Inverse hyperbolics: `asinh`, `acosh`, `atanh`.
+- Hyperbolics: `sinh`, `cosh`, `tanh`, and the reciprocals `sech`, `cosech`, `coth`.
+- Inverse hyperbolics: `asinh`, `acosh`, `atanh`, also spelled `arsinh`/`arcosh`/`artanh` as `arcsinh`, `arccosh`, `arctanh`.
 
 **Constants and memory**
 - `pi` (3.141592653589793) and `e` (2.718281828459045).
 - `ans` - the last Calculate result.
 
-Function names are matched longest-first (so `asinh` beats `asin` beats `sin`), and any single letter other than `x` is treated as a symbolic variable.
+Function names are matched longest-first (so `cosech` beats `cosec` beats `cos`, and `asinh` beats `asin` beats `sin`), and any single letter other than `x` is treated as a symbolic variable. That ordering is asserted rather than assumed: before `sec`, `cosec` and `cot` existed as tokens, `sec(x)` fell through to the single-letter rule and parsed as `s*e*c*x`, and `cosec(x)` parsed as `cos(e*c*x)` - a perfectly well-formed tree for a completely different function.
 
 ---
 
