@@ -107,6 +107,19 @@ def _fold_pow(a, b):
         return None
     return ('n', r)
 
+def _sqrt_split(v):
+    # v = a*a*b with b square-free: sqrt(v) = a sqrt(b). Trial division to the
+    # square root of v, which for the sizes a student types is instant.
+    a = 1
+    b = v
+    d = 2
+    while d * d <= b:
+        while b % (d * d) == 0:
+            b //= d * d
+            a *= d
+        d += 1 if d == 2 else 2
+    return (a, b)
+
 def _basepow(n):
     # view a node as (base, numeric exponent) so like powers can be combined
     if n[0] == '^' and n[2][0] == 'n':
@@ -169,15 +182,17 @@ def _s(node):
             if t == 'sqrt' and v == 0: return ('n', 0)
             if t == 'sqrt' and v == 1: return ('n', 1)
             if t == 'sqrt' and isinstance(v, int) and 0 < v <= 1000000:
-                # fold only a perfect square: sqrt(4) is 2, but turning sqrt(2)
-                # into 1.414214 would throw away the exact answer
-                r = int(v ** 0.5)
-                while r * r > v:
-                    r -= 1
-                while (r + 1) * (r + 1) <= v:
-                    r += 1
-                if r * r == v:
-                    return ('n', r)
+                # Pull the largest square factor out: sqrt(8) is 2 sqrt(2), and
+                # sqrt(4) is 2 as a special case of it. Never turn sqrt(2) into
+                # 1.414214 - "give your answer in exact form" is most of the
+                # marks on an H640 surd question.
+                # deliberately not named a/b: `a` is the simplified argument
+                # node in this scope, and shadowing it returned ('sqrt', 1)
+                sq_out, sq_in = _sqrt_split(v)
+                if sq_in == 1:
+                    return ('n', sq_out)
+                if sq_out != 1:
+                    return ('*', ('n', sq_out), ('sqrt', ('n', sq_in)))
             if t == 'abs': return ('n', abs(v))
         return (t, a)
     if t == 'fact':
@@ -230,7 +245,9 @@ def _s(node):
         # "-1*x" where a student would write "-x"
         if an and a[1] == -1: return _s(('neg', b))
         if bn and b[1] == -1: return _s(('neg', a))
-        if a == b: return ('^', a, ('n', 2))
+        # re-simplified, so sqrt(3)*sqrt(3) folds to 3 via the sqrt(u)^2 rule
+        # rather than stopping at sqrt(3)^2
+        if a == b: return _s(('^', a, ('n', 2)))
         # x^p * x^q -> x^(p+q); integration by parts leans on this to close
         ba, ea = _basepow(a)
         bb, eb = _basepow(b)

@@ -2461,6 +2461,96 @@ def test_proof():
     has("induction card", o, "PROOF BY INDUCTION")
     has("what not to write", o, "WHAT NOT TO WRITE")
 
+def test_surds_and_circle():
+    import pure640
+    # sqrt(72) = sqrt(36 x 2) = 6 sqrt(2)
+    o = drive(pure640.t_surds, ["72"], [0])
+    has("square factor pulled out", o, "= 6sqrt(2)")
+    has("the factorisation is shown", o, "sqrt(36 x 2)")
+    # sqrt(2) has no square factor and must be left alone
+    o = drive(pure640.t_surds, ["2"], [0])
+    has("already simplest", o, "already in simplest form")
+    # 3sqrt(8) + 2sqrt(50) = 6sqrt(2) + 10sqrt(2) = 16sqrt(2)
+    o = drive(pure640.t_surds, ["3", "8", "2", "50"], [1])
+    has("first simplified", o, "3sqrt(8) = 6sqrt(2)")
+    has("second simplified", o, "2sqrt(50) = 10sqrt(2)")
+    has("like surds collected", o, "= 16sqrt(2)")
+    num("decimal agrees", o, "decimal check: ", 16.0 * math.sqrt(2.0), 1e-5)
+    # sqrt(2) and sqrt(3) are unlike and must NOT be collected
+    o = drive(pure640.t_surds, ["1", "2", "1", "3"], [1])
+    has("unlike surds not collected", o, "does NOT")
+    # 6/(3+sqrt2): conjugate 3-sqrt2, bottom 9-2 = 7, so (18-6sqrt2)/7
+    o = drive(pure640.t_surds, ["6", "3", "1", "2"], [3])
+    has("conjugate named", o, "CONJUGATE 3 - sqrt(2)")
+    has("denominator rationalised", o, "= 7")
+    has("exact fraction form", o, "= (18 - 6sqrt(2)) / 7")
+    num("rationalised value", o, "decimal check: ", 6.0 / (3.0 + math.sqrt(2.0)), 1e-5)
+    # 2 sqrt(3) x 5 sqrt(6) = 10 sqrt(18) = 30 sqrt(2)
+    o = drive(pure640.t_surds, ["2", "3", "5", "6"], [2])
+    has("product simplified", o, "= 30sqrt(2)")
+
+    # x^2+y^2=25 meets y=x+1 where 2x^2+2x-24=0, i.e. x = 3 and x = -4
+    o = drive(pure640.t_linecircle, ["0", "0", "5", "1", "1"], [0])
+    has("substituted quadratic", o, "2x^2 + 2x - 24 = 0")
+    num("discriminant", o, "discriminant = ", 196.0)
+    has("first intersection", o, "(3, 4)")
+    has("second intersection", o, "(-4, -3)")
+    num("chord length", o, "chord length = ", math.sqrt(98.0), 1e-3)
+    # y = x + sqrt2 is a tangent to the unit circle
+    o = drive(pure640.t_linecircle, ["0", "0", "1", "1", str(math.sqrt(2))], [0])
+    has("tangent detected", o, "TANGENT")
+    has("perpendicularity checked", o, "confirms tangent perp to radius")
+    # a line too far away misses entirely, and the distance says why
+    o = drive(pure640.t_linecircle, ["0", "0", "1", "0", "5"], [0])
+    has("miss detected", o, "misses the circle")
+    num("distance to the line", o, "= |ma - b + c| / sqrt(1+m^2) = ", 5.0, 1e-6)
+    # vertical line x = 3 cuts x^2+y^2=25 at y = +/-4
+    o = drive(pure640.t_linecircle, ["0", "0", "5", "3"], [1])
+    has("vertical intersection up", o, "(3, 4)")
+    has("vertical intersection down", o, "(3, -4)")
+
+    # u(n) = 1/n is decreasing and converges to 0
+    o = drive(pure640.t_sequence, ["1/n", "1", "12"], [0])
+    has("terms listed", o, "u(3) = 0.333333")
+    has("decreasing", o, "DECREASING")
+    # u(n+1) = 1/(1-u) from 2 cycles 2, -1, 0.5 with period 3
+    o = drive(pure640.t_sequence, ["1/(1-x)", "2", "9"], [1])
+    has("periodic detected", o, "PERIODIC with period 3")
+    # u(n) = 2n+1 is increasing
+    o = drive(pure640.t_sequence, ["2n+1", "1", "8"], [0])
+    has("increasing", o, "INCREASING")
+    # u(n+1) = u/2 from 8 converges to 0
+    o = drive(pure640.t_sequence, ["x/2", "8", "40"], [1])
+    has("convergent", o, "CONVERGENT")
+
+def test_surd_engine():
+    # sqrt of an integer pulls out its largest square factor. Exact form is
+    # most of the marks on an H640 surd question, so sqrt(2) must never become
+    # 1.414214 - and sqrt(8) must not stay as sqrt(8) either.
+    def sq(e):
+        return caseng.tostr(caseng.simplify(caslex.parse(e)))
+    check("sqrt(8)", sq("sqrt(8)"), "2*sqrt(2)")
+    check("sqrt(12)", sq("sqrt(12)"), "2*sqrt(3)")
+    check("sqrt(50)", sq("sqrt(50)"), "5*sqrt(2)")
+    check("sqrt(72)", sq("sqrt(72)"), "6*sqrt(2)")
+    check("sqrt(98)", sq("sqrt(98)"), "7*sqrt(2)")
+    check("sqrt(45)", sq("sqrt(45)"), "3*sqrt(5)")
+    check("a perfect square still folds", sq("sqrt(4)"), "2")
+    check("sqrt(2) is left exact", sq("sqrt(2)"), "sqrt(2)")
+    check("sqrt(3) is left exact", sq("sqrt(3)"), "sqrt(3)")
+    check("a symbolic argument is untouched", sq("sqrt(x)"), "sqrt(x)")
+    # sqrt(u)*sqrt(u) folds to u, which needs the product rule to re-simplify
+    check("sqrt(3) squared", sq("sqrt(3)*sqrt(3)"), "3")
+    check("sqrt(x) squared", sq("sqrt(x)*sqrt(x)"), "x")
+    # and the presentation pass gathers the constants
+    check("2 sqrt(8) collects",
+          caseng.tostr(cascalc.tidy(caslex.parse("2*sqrt(8)"))), "4*sqrt(2)")
+    # the extraction must never change a value
+    for n in (2, 3, 8, 12, 18, 20, 45, 50, 72, 98, 128, 300, 1000):
+        e = caslex.parse("sqrt(" + str(n) + ")")
+        close("sqrt(" + str(n) + ") keeps its value",
+              caseng.evalf(caseng.simplify(e), 0.0), math.sqrt(n), 1e-12)
+
 def test_binom_cdf_recurrence():
     # binom_cdf used to call binom_pmf once per term, and binom_pmf is itself
     # O(k), so the whole thing was O(k^2): binom_cdf(5000, 0.3, 1500) took most
@@ -2795,6 +2885,8 @@ TESTS = [
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
+    ("surds and line-circle", test_surds_and_circle),
+    ("surd extraction", test_surd_engine),
     ("binomial cdf recurrence", test_binom_cdf_recurrence),
     ("engine invariants", test_engine_invariants),
     ("screen layout", test_screen_layout),

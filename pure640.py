@@ -5,6 +5,8 @@
 # ASCII only, no f-strings, iterative only, hand-built atan2.
 import math
 import casui
+import caslex
+import caseng
 import casutil
 
 _asknum = casutil.asknum
@@ -846,6 +848,384 @@ def t_inequality():
     lines.append('that is the check that never fails.')
     _pages('Inequality', lines)
 
+
+def _signed(v):
+    # "+ 3" or "- 3", so a quadratic never prints "+ -24"
+    return ('- ' + _fn(-v)) if v < 0 else ('+ ' + _fn(v))
+
+
+def _sqsplit(v):
+    # v = a*a*b with b square-free
+    a = 1
+    b = int(v)
+    d = 2
+    while d * d <= b:
+        while b % (d * d) == 0:
+            b //= d * d
+            a *= d
+        d += 1 if d == 2 else 2
+    return (a, b)
+
+
+def _surdstr(a, b):
+    # a*sqrt(b) written the way it goes on paper
+    if b == 1:
+        return _fn(a)
+    if a == 1:
+        return 'sqrt(' + str(b) + ')'
+    if a == -1:
+        return '-sqrt(' + str(b) + ')'
+    return _fn(a) + 'sqrt(' + str(b) + ')'
+
+
+def t_surds():
+    # Manipulating surds, and rationalising a denominator. These are exact-form
+    # marks, and the CAS holds numbers as floats with exact folding only for
+    # integers and fractions, so sqrt(8) reaching 2 sqrt(2) needs its own route.
+    what = casui.menu('Surds', ['Simplify sqrt(n)',
+                                'a sqrt(m) +/- b sqrt(n)',
+                                'Multiply two surds',
+                                'Rationalise  k/(p + q sqrt(n))'])
+    if what == -1:
+        return
+    if what == 0:
+        n = _askint('n in sqrt(n)', 0, 10 ** 12)
+        if n is None:
+            return
+        a, b = _sqsplit(n)
+        lines = ['sqrt(' + str(n) + ')']
+        if b == 1:
+            lines.append('  = ' + str(a) + '   (a perfect square)')
+        elif a == 1:
+            lines.append('  = sqrt(' + str(n) + ')  already in simplest form')
+            lines.append('  (' + str(n) + ' has no square factor)')
+        else:
+            lines.append('  = sqrt(' + str(a * a) + ' x ' + str(b) + ')')
+            lines.append('  = ' + str(a) + 'sqrt(' + str(b) + ')')
+        lines.append('')
+        lines.append('decimal check: ' + _fn(math.sqrt(n), 6))
+        _pages('Surds', lines)
+        return
+    if what == 1:
+        a = _asknum('a (coeff of the first surd)')
+        if a is None:
+            return
+        m = _askint('m in sqrt(m)', 0, 10 ** 12)
+        if m is None:
+            return
+        b = _asknum('b (coeff of the second)')
+        if b is None:
+            return
+        n = _askint('n in sqrt(n)', 0, 10 ** 12)
+        if n is None:
+            return
+        pa, ra = _sqsplit(m)
+        pb, rb = _sqsplit(n)
+        lines = [_surdstr(a, m) + '  +  ' + _surdstr(b, n), '',
+                 'simplify each first:',
+                 '  ' + _surdstr(a, m) + ' = ' + _surdstr(a * pa, ra),
+                 '  ' + _surdstr(b, n) + ' = ' + _surdstr(b * pb, rb), '']
+        if ra == rb:
+            lines.append('Like surds (both sqrt(' + str(ra) + ')), so add')
+            lines.append('the coefficients:')
+            lines.append('  = ' + _surdstr(a * pa + b * pb, ra))
+        else:
+            lines.append('sqrt(' + str(ra) + ') and sqrt(' + str(rb) + ') are')
+            lines.append('different surds, so this does NOT')
+            lines.append('collect - leave it as')
+            lines.append('  ' + _surdstr(a * pa, ra) + ' + ' + _surdstr(b * pb, rb))
+        lines.append('')
+        lines.append('decimal check: ' +
+                     _fn(a * math.sqrt(m) + b * math.sqrt(n), 6))
+        _pages('Surds', lines)
+        return
+    if what == 2:
+        a = _asknum('a in a sqrt(m)')
+        if a is None:
+            return
+        m = _askint('m', 0, 10 ** 12)
+        if m is None:
+            return
+        b = _asknum('b in b sqrt(n)')
+        if b is None:
+            return
+        n = _askint('n', 0, 10 ** 12)
+        if n is None:
+            return
+        prod = m * n
+        pa, ra = _sqsplit(prod)
+        lines = [_surdstr(a, m) + ' x ' + _surdstr(b, n), '',
+                 'sqrt(m) sqrt(n) = sqrt(mn):',
+                 '  = ' + _fn(a * b) + ' sqrt(' + str(prod) + ')',
+                 '  = ' + _surdstr(a * b * pa, ra), '',
+                 'decimal check: ' +
+                 _fn(a * b * math.sqrt(prod), 6)]
+        _pages('Surds', lines)
+        return
+    # rationalise k / (p + q sqrt(n))
+    k = _asknum('k (numerator)')
+    if k is None:
+        return
+    p = _asknum('p (rational part of the bottom)')
+    if p is None:
+        return
+    q = _asknum('q (coeff of the surd)')
+    if q is None:
+        return
+    n = _askint('n in sqrt(n)', 0, 10 ** 12)
+    if n is None:
+        return
+    den = p * p - q * q * n
+    lines = [_fn(k) + ' / (' + _fn(p) + ' + ' + _surdstr(q, n) + ')', '',
+             'Multiply top and bottom by the',
+             'CONJUGATE ' + _fn(p) + ' - ' + _surdstr(q, n) + '.',
+             'The bottom becomes p^2 - q^2 n, which',
+             'has no surd in it - that is the point.', '',
+             '  bottom = ' + _fn(p) + '^2 - ' + _fn(q) + '^2 x ' + str(n) +
+             ' = ' + _fn(den)]
+    if abs(den) < 1e-12:
+        lines.append('')
+        lines.append('That is zero, so the original')
+        lines.append('expression is undefined.')
+        _pages('Surds', lines)
+        return
+    lines.append('  top    = ' + _fn(k) + '(' + _fn(p) + ' - ' + _surdstr(q, n) + ')')
+    lines.append('')
+    # the fraction form is what goes on the paper; the decimals are the check
+    num1 = k * p
+    num2 = k * q
+    lines.append('  = (' + _fn(num1) + ' - ' + _surdstr(num2, n) + ') / ' + _fn(den))
+    g = casutil.gcd(int(round(num1)), casutil.gcd(int(round(num2)), int(round(den)))) \
+        if (abs(num1 - round(num1)) < 1e-9 and abs(num2 - round(num2)) < 1e-9
+            and abs(den - round(den)) < 1e-9) else 1
+    if g > 1:
+        lines.append('  = (' + _fn(num1 / g) + ' - ' + _surdstr(num2 / g, n) +
+                     ') / ' + _fn(den / g) + '   (divided by ' + str(g) + ')')
+    lines.append('  = ' + _fn(num1 / den) + ' - ' + _surdstr(num2 / den, n))
+    lines.append('')
+    lines.append('decimal check: ' +
+                 _fn(k / (p + q * math.sqrt(n)), 6))
+    _pages('Surds', lines)
+
+
+def t_linecircle():
+    # Where a line meets a circle. Simultaneous eqns already substitutes a line
+    # into a parabola and reads the discriminant; this is the same routine with
+    # a circle, and it is on every H640 paper.
+    _show('Line and circle', ['Circle (x-a)^2 + (y-b)^2 = r^2',
+                              'Line   y = m x + c',
+                              'Substitute and read the discriminant:',
+                              'two points, a tangent, or no meeting.'])
+    a = _asknum('circle centre a')
+    if a is None:
+        return
+    b = _asknum('circle centre b')
+    if b is None:
+        return
+    r = _asknum('radius r')
+    if r is None or r <= 0:
+        _show('Line and circle', ['The radius must be positive.'])
+        return
+    vert = casui.menu('The line is', ['y = m x + c', 'vertical, x = k'])
+    if vert == -1:
+        return
+    lines = ['circle (x-' + _fn(a) + ')^2 + (y-' + _fn(b) + ')^2 = ' + _fn(r * r)]
+    if vert == 1:
+        k = _asknum('k in x = k')
+        if k is None:
+            return
+        lines.append('line x = ' + _fn(k))
+        d = r * r - (k - a) * (k - a)
+        lines.append('')
+        lines.append('(y-' + _fn(b) + ')^2 = ' + _fn(d))
+        if d < -1e-12:
+            lines.append('negative, so the line MISSES the circle')
+        elif d < 1e-12:
+            lines.append('zero: TANGENT at (' + _fn(k) + ', ' + _fn(b) + ')')
+        else:
+            s = math.sqrt(d)
+            lines.append('two points:')
+            lines.append('  (' + _fn(k) + ', ' + _fn(b + s) + ')')
+            lines.append('  (' + _fn(k) + ', ' + _fn(b - s) + ')')
+        _pages('Line and circle', lines)
+        return
+    m = _asknum('m (gradient)')
+    if m is None:
+        return
+    c = _asknum('c (intercept)')
+    if c is None:
+        return
+    lines.append('line y = ' + _fn(m) + 'x + ' + _fn(c))
+    # (x-a)^2 + (mx + c - b)^2 = r^2
+    A = 1.0 + m * m
+    B = -2.0 * a + 2.0 * m * (c - b)
+    C = a * a + (c - b) * (c - b) - r * r
+    disc = B * B - 4.0 * A * C
+    lines.append('')
+    lines.append('substituting gives')
+    lines.append('  ' + _fn(A) + 'x^2 ' + _signed(B) + 'x ' + _signed(C) + ' = 0')
+    lines.append('  discriminant = ' + _fn(disc))
+    lines.append('')
+    if disc < -1e-9:
+        lines.append('NEGATIVE: the line misses the circle.')
+        d = abs(m * a - b + c) / math.sqrt(1.0 + m * m)
+        lines.append('distance from the centre to the line')
+        lines.append('  = |ma - b + c| / sqrt(1+m^2) = ' + _fn(d))
+        lines.append('which is more than r = ' + _fn(r) + '.')
+    elif disc < 1e-9:
+        x = -B / (2.0 * A)
+        lines.append('ZERO: the line is a TANGENT, touching at')
+        lines.append('  (' + _fn(x) + ', ' + _fn(m * x + c) + ')')
+        lines.append('')
+        lines.append('the radius to that point has gradient')
+        if abs(x - a) > 1e-12:
+            lines.append('  ' + _fn((m * x + c - b) / (x - a)) +
+                         ', and m x that = ' +
+                         _fn(m * (m * x + c - b) / (x - a)))
+            lines.append('  (-1 confirms tangent perp to radius)')
+    else:
+        rt = math.sqrt(disc)
+        x1 = (-B + rt) / (2.0 * A)
+        x2 = (-B - rt) / (2.0 * A)
+        y1 = m * x1 + c
+        y2 = m * x2 + c
+        lines.append('POSITIVE: two points of intersection')
+        lines.append('  (' + _fn(x1) + ', ' + _fn(y1) + ')')
+        lines.append('  (' + _fn(x2) + ', ' + _fn(y2) + ')')
+        lines.append('')
+        lines.append('chord length = ' +
+                     _fn(math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)))
+        lines.append('midpoint (' + _fn((x1 + x2) / 2.0) + ', ' +
+                     _fn((y1 + y2) / 2.0) + ')')
+    _pages('Line and circle', lines)
+
+
+def t_sequence():
+    # Generate a sequence from a kth-term formula or a recurrence, then say what
+    # it does: increasing, decreasing, periodic, convergent, divergent.
+    how = casui.menu('Sequence given by', ['a formula for u(n)',
+                                           'a recurrence u(n+1) = f(u(n))'])
+    if how == -1:
+        return
+    terms = []
+    lines = []
+    if how == 0:
+        t = casui.input_expr('u(n) = (type n)')
+        if t is None:
+            return
+        tree = caslex.parse(t)
+        if tree is None:
+            _show('Sequence', ['Could not read that.'])
+            return
+        start = _askint('first n [1]', -1000, 1000)
+        if start is None:
+            start = 1
+        count = _askint('how many terms [12]', 1, 60)
+        if count is None:
+            count = 12
+        lines.append('u(n) = ' + caseng.tostr(caseng.simplify(tree)))
+        i = 0
+        while i < count:
+            nv = float(start + i)
+            try:
+                v = caseng.evalf(tree, nv, False, {'n': nv})
+            except:
+                v = None
+            if v is None or v != v:
+                lines.append('u(' + str(start + i) + ') undefined')
+                terms = []
+                break
+            terms.append(v)
+            i += 1
+    else:
+        t = casui.input_expr('u(n+1) = f(u(n)), type u(n) as x')
+        if t is None:
+            return
+        tree = caslex.parse(t)
+        if tree is None:
+            _show('Sequence', ['Could not read that.'])
+            return
+        u0 = _asknum('first term u(1)')
+        if u0 is None:
+            return
+        count = _askint('how many terms [12]', 1, 60)
+        if count is None:
+            count = 12
+        lines.append('u(n+1) = ' + caseng.tostr(caseng.simplify(tree)))
+        lines.append('u(1) = ' + _fn(u0))
+        start = 1
+        v = u0
+        terms.append(v)
+        i = 1
+        while i < count:
+            try:
+                v = caseng.evalf(tree, v)
+            except:
+                v = None
+            if v is None or v != v or v > 1e300 or v < -1e300:
+                lines.append('term ' + str(i + 1) + ' overflowed or is undefined')
+                break
+            terms.append(v)
+            i += 1
+    if not terms:
+        _pages('Sequence', lines)
+        return
+    lines.append('')
+    i = 0
+    while i < len(terms):
+        lines.append('  u(' + str(start + i) + ') = ' + _fn(terms[i], 6))
+        i += 1
+    lines.append('')
+    # --- behaviour
+    up = True
+    down = True
+    i = 1
+    while i < len(terms):
+        if terms[i] <= terms[i - 1] + 1e-12:
+            up = False
+        if terms[i] >= terms[i - 1] - 1e-12:
+            down = False
+        i += 1
+    period = 0
+    i = 1
+    while i < len(terms) and not period:
+        if abs(terms[i] - terms[0]) < 1e-9:
+            # confirm the whole block repeats, not just one coincidence
+            ok = True
+            j = 0
+            while j + i < len(terms):
+                if abs(terms[j + i] - terms[j]) > 1e-9:
+                    ok = False
+                    break
+                j += 1
+            if ok and j > 0:
+                period = i
+        i += 1
+    if period:
+        lines.append('PERIODIC with period ' + str(period) + '.')
+        lines.append('The terms repeat in blocks of ' + str(period) + '.')
+    elif up:
+        lines.append('INCREASING: every term is bigger than')
+        lines.append('the one before.')
+    elif down:
+        lines.append('DECREASING: every term is smaller than')
+        lines.append('the one before.')
+    else:
+        lines.append('Neither increasing nor decreasing')
+        lines.append('throughout - the terms go up and down.')
+    if len(terms) >= 4:
+        d1 = terms[len(terms) - 1] - terms[len(terms) - 2]
+        d0 = terms[len(terms) - 2] - terms[len(terms) - 3]
+        last = terms[len(terms) - 1]
+        if abs(d1) < 1e-7 * (1.0 + abs(last)):
+            lines.append('')
+            lines.append('CONVERGENT: settling on about ' + _fn(last, 6) + '.')
+        elif abs(d0) > 1e-12 and abs(d1 / d0) > 1.05 and abs(last) > 1e6:
+            lines.append('')
+            lines.append('DIVERGENT: the terms are growing without')
+            lines.append('bound.')
+    _pages('Sequence', lines)
+
 # registry ------------------------------------------------------------------
 TOOLS = [
     ('Quadratic solver', t_quadratic),
@@ -860,6 +1240,9 @@ TOOLS = [
     ('Solve a triangle', t_triangle),
     ('Arc length & sector', t_arc_sector),
     ('Inequalities', t_inequality),
+    ('Surds & rationalising', t_surds),
+    ('Line meets circle', t_linecircle),
+    ('Sequences & behaviour', t_sequence),
 ]
 
 def run():
