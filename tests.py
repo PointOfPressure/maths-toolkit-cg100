@@ -1276,7 +1276,7 @@ def test_pure640():
     has("circle centre", o, 'centre (2,-3)')
     num("circle r", o, 'radius = ', 3.0)
 
-    o = drive(pure640.t_trig, ['3', '4'], menus=[2])
+    o = drive(pure640.t_trig, ['3', '4'], menus=[3])
     num("rform R", o, 'R = ', 5.0)
     num("rform alpha", o, 'alpha = ', 53.1301, 1e-3)
 
@@ -2461,6 +2461,57 @@ def test_proof():
     has("induction card", o, "PROOF BY INDUCTION")
     has("what not to write", o, "WHAT NOT TO WRITE")
 
+def test_trig_by_identity():
+    import pure640
+    # 2sin^2 x + sin x - 1 = 0 over 0..360. Let u = sin x: 2u^2+u-1 = 0,
+    # so u = 1/2 or u = -1, giving x = 30, 150, 270.
+    o = drive(pure640._trig_identity, ["2", "1", "-1", "0", "360"], [0, 0])
+    has("quadratic in u", o, "2u^2 + u - 1 = 0")
+    has("first root", o, "sin x = 0.5")
+    has("second root", o, "sin x = -1")
+    has("solution 30", o, "x = 30 deg")
+    has("solution 150", o, "x = 150 deg")
+    has("solution 270", o, "x = 270 deg")
+    has("three solutions", o, "(3 solutions)")
+    has("checked in the original", o, "all satisfy it")
+
+    # 2cos^2 x + 3 sin x - 3 = 0 needs cos^2 = 1 - sin^2 first:
+    # -2s^2 + 3s - 1 = 0, so s = 1/2 or 1, giving x = 30, 90, 150.
+    o = drive(pure640._trig_identity, ["2", "3", "-3", "0", "360"], [4, 0])
+    has("identity used", o, "use cos^2 x = 1 - sin^2 x")
+    has("transformed quadratic", o, "-2sin^2 x + 3sin x - 1 = 0")
+    has("solutions listed", o, "30, 90, 150")
+    has("still checked in the ORIGINAL", o, "all satisfy it")
+
+    # a root outside [-1,1] has to be discarded, not solved
+    o = drive(pure640._trig_identity, ["1", "-3", "0", "0", "360"], [0, 0])
+    has("impossible root discarded", o, "cannot exceed 1")
+    has("the other root still solved", o, "0, 180, 360")
+
+    # tan^2 x = 1 over 0..180 gives 45 and 135, and tan is unbounded so no
+    # root is ever discarded for being too big
+    o = drive(pure640._trig_identity, ["1", "0", "-1", "0", "180"], [2, 0])
+    has("tan solution 45", o, "x = 45 deg")
+    has("tan solution 135", o, "x = 135 deg")
+    has("two solutions", o, "(2 solutions)")
+
+    # a negative discriminant means no real u and therefore no x
+    o = drive(pure640._trig_identity, ["1", "0", "1", "0", "360"], [0, 0])
+    has("no real u", o, "NO SOLUTION")
+
+    # radians: 2sin^2 x - 1 = 0 over 0..2pi gives pi/4, 3pi/4, 5pi/4, 7pi/4
+    o = drive(pure640._trig_identity,
+              ["2", "0", "-1", "0", str(2 * math.pi)], [0, 1])
+    has("radian solution pi/4", o, "x = 0.7854")
+    has("radian solution 7pi/4", o, "x = 5.4978")
+    has("four solutions", o, "(4 solutions)")
+
+    # sec^2 x = 1 + tan^2 x: sec^2 x - 3 tan x + 1 = 0 becomes
+    # tan^2 x - 3 tan x + 2 = 0, so tan x = 1 or 2
+    o = drive(pure640._trig_identity, ["1", "-3", "1", "0", "180"], [5, 0])
+    has("sec identity used", o, "use sec^2 x = 1 + tan^2 x")
+    has("tan = 1 solution", o, "x = 45 deg")
+
 def test_shm_fit():
     import diffeq
     # w = 2, x(0) = 3, v(0) = 8. Then C = 3 and D = v/w = 4, so the amplitude
@@ -3029,6 +3080,7 @@ TESTS = [
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
+    ("trig equations by identity", test_trig_by_identity),
     ("SHM amplitude and phase", test_shm_fit),
     ("inequality region sketch", test_inequality_region),
     ("coupled differential equations", test_coupled_des),

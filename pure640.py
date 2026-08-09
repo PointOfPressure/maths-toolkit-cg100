@@ -417,6 +417,226 @@ def _trig_exact():
                             '45  |1/r2  1/r2   1', '60  |r3/2  1/2    r3', '90  | 1     0    undef',
                             '(r = square root)', 'r2 ~ 1.41421', 'r3 ~ 1.73205'])
 
+def _trig_roots(f, k, lo, hi, full):
+    # every x in [lo, hi] with sin/cos/tan(x) = k, in the unit implied by
+    # `full` (360 for degrees, 2pi for radians). Shared by the plain solver and
+    # the identity-based one so they cannot disagree about the second solution.
+    try:
+        if f == 0:
+            base = math.asin(k)
+        elif f == 1:
+            base = math.acos(k)
+        else:
+            base = math.atan(k)
+    except:
+        return None
+    if full > 100.0:
+        base = casutil.deg(base)
+    if f == 0:
+        partners = [base, full / 2.0 - base]
+        period = full
+    elif f == 1:
+        partners = [base, -base]
+        period = full
+    else:
+        partners = [base]
+        period = full / 2.0
+    sols = []
+    for a0 in partners:
+        n = -400
+        while n <= 400:
+            x = a0 + n * period
+            if lo - 1e-9 <= x <= hi + 1e-9:
+                r = round(x, 6)
+                dup = False
+                for e in sols:
+                    if abs(e - r) < 1e-6:
+                        dup = True
+                        break
+                if not dup:
+                    sols.append(r)
+            n += 1
+    sols.sort()
+    return sols
+
+
+_IDFORMS = [
+    ('a sin^2 x + b sin x + c = 0', 0, None),
+    ('a cos^2 x + b cos x + c = 0', 1, None),
+    ('a tan^2 x + b tan x + c = 0', 2, None),
+    ('a sin^2 x + b cos x + c = 0', 1, 'sin2'),
+    ('a cos^2 x + b sin x + c = 0', 0, 'cos2'),
+    ('a sec^2 x + b tan x + c = 0', 2, 'sec2'),
+]
+
+
+def _trig_identity():
+    # Equations that need an identity BEFORE they become a quadratic. This is
+    # the technique H640 t19 is about, and the plain solver cannot touch them:
+    # it only handles sin x = k.
+    _show('Trig equations by identity', [
+        'These become quadratics once you use',
+        '  sin^2 x = 1 - cos^2 x',
+        '  cos^2 x = 1 - sin^2 x',
+        '  sec^2 x = 1 + tan^2 x',
+        'Pick the shape of your equation.'])
+    labels = []
+    for name, f, ident in _IDFORMS:
+        labels.append(name)
+    pick = casui.menu('Which form', labels)
+    if pick == -1:
+        return
+    name, f, ident = _IDFORMS[pick]
+    unit = casui.menu('Angle unit', ['degrees', 'radians'])
+    if unit == -1:
+        return
+    full = 360.0 if unit == 0 else 2.0 * math.pi
+    unm = 'deg' if unit == 0 else 'rad'
+    a = _asknum('a')
+    if a is None:
+        return
+    b = _asknum('b')
+    if b is None:
+        return
+    c = _asknum('c')
+    if c is None:
+        return
+    lo = _asknum('from x = [0]')
+    if lo is None:
+        lo = 0.0
+    hi = _asknum('to x = [' + _fn(full) + ']')
+    if hi is None:
+        hi = full
+    if hi < lo:
+        lo, hi = hi, lo
+    # build the heading from the coefficients rather than patching the template
+    # string, which produced "+ + 1 sin x"
+    parts = name.split(' ')
+    sq = parts[1]                      # "sin^2" / "cos^2" / "tan^2" / "sec^2"
+    lin = parts[5]                     # "sin" / "cos" / "tan"
+    lines = [_lead(a, sq + ' x') + ' ' + _signed(b, lin + ' x') + ' ' +
+             _signed(c) + ' = 0',
+             'for ' + _fn(lo) + ' <= x <= ' + _fn(hi) + ' ' + unm, '']
+    # apply the identity to get a quadratic in ONE function
+    A = a
+    B = b
+    C = c
+    fname = ('sin', 'cos', 'tan')[f]
+    if ident == 'sin2':
+        # a(1 - cos^2) + b cos + c = 0  ->  -a cos^2 + b cos + (a + c) = 0
+        lines.append('use sin^2 x = 1 - cos^2 x:')
+        A = -a
+        C = a + c
+    elif ident == 'cos2':
+        lines.append('use cos^2 x = 1 - sin^2 x:')
+        A = -a
+        C = a + c
+    elif ident == 'sec2':
+        # a(1 + tan^2) + b tan + c = 0  ->  a tan^2 + b tan + (a + c) = 0
+        lines.append('use sec^2 x = 1 + tan^2 x:')
+        C = a + c
+    lines.append('  ' + _lead(A, fname + '^2 x') + ' ' +
+                 _signed(B, fname + ' x') + ' ' + _signed(C) + ' = 0')
+    lines.append('')
+    lines.append('let u = ' + fname + ' x:')
+    lines.append('  ' + _lead(A, 'u^2') + ' ' + _signed(B, 'u') + ' ' +
+                 _signed(C) + ' = 0')
+    roots = []
+    if abs(A) < 1e-12:
+        if abs(B) < 1e-12:
+            lines.append('')
+            lines.append('a and b are both 0, so this is not an')
+            lines.append('equation in x.')
+            _pages('Trig by identity', lines)
+            return
+        roots = [-C / B]
+        lines.append('  (linear) u = ' + _fn(roots[0]))
+    else:
+        disc = B * B - 4.0 * A * C
+        lines.append('  discriminant = ' + _fn(disc))
+        if disc < -1e-12:
+            lines.append('')
+            lines.append('Negative, so there is no real u and')
+            lines.append('therefore NO SOLUTION for x.')
+            _pages('Trig by identity', lines)
+            return
+        if disc < 0:
+            disc = 0.0
+        rt = math.sqrt(disc)
+        roots = [(-B + rt) / (2.0 * A)]
+        if rt > 1e-12:
+            roots.append((-B - rt) / (2.0 * A))
+    lines.append('')
+    allsols = []
+    for u in roots:
+        lines.append(fname + ' x = ' + _fn(u))
+        if f != 2 and (u > 1.0 + 1e-12 or u < -1.0 - 1e-12):
+            lines.append('  |' + fname + ' x| cannot exceed 1, so this')
+            lines.append('  root gives no solutions - discard it.')
+            continue
+        uu = u
+        if f != 2:
+            if uu > 1.0:
+                uu = 1.0
+            if uu < -1.0:
+                uu = -1.0
+        sols = _trig_roots(f, uu, lo, hi, full)
+        if not sols:
+            lines.append('  no x in the interval')
+            continue
+        for x in sols:
+            lines.append('  x = ' + _fn(x) + ' ' + unm)
+            dup = False
+            for e in allsols:
+                if abs(e - x) < 1e-6:
+                    dup = True
+                    break
+            if not dup:
+                allsols.append(x)
+    allsols.sort()
+    lines.append('')
+    if allsols:
+        lines.append('ALL SOLUTIONS in order:')
+        row = ''
+        for x in allsols:
+            piece = _fn(x)
+            if len(row) + len(piece) > 30:
+                lines.append('  ' + row)
+                row = ''
+            row = (row + ', ' + piece) if row else piece
+        if row:
+            lines.append('  ' + row)
+        lines.append('(' + str(len(allsols)) + ' solutions)')
+        # independent check: substitute each back into the ORIGINAL equation
+        bad = 0
+        for x in allsols:
+            r = x if unit == 1 else casutil.rad(x)
+            sv = math.sin(r)
+            cv = math.cos(r)
+            if f == 2 and abs(cv) < 1e-9:
+                continue
+            tv = sv / cv if abs(cv) > 1e-12 else 0.0
+            if ident == 'sin2':
+                val = a * sv * sv + b * cv + c
+            elif ident == 'cos2':
+                val = a * cv * cv + b * sv + c
+            elif ident == 'sec2':
+                val = a / (cv * cv) + b * tv + c
+            elif f == 0:
+                val = a * sv * sv + b * sv + c
+            elif f == 1:
+                val = a * cv * cv + b * cv + c
+            else:
+                val = a * tv * tv + b * tv + c
+            if abs(val) > 1e-6:
+                bad += 1
+        lines.append('checked back in the original: ' +
+                     ('all satisfy it' if bad == 0 else str(bad) + ' DO NOT'))
+    else:
+        lines.append('No solutions in that interval.')
+    _pages('Trig by identity', lines)
+
+
 def _trig_general():
     # The bare solver above is locked to 0..360 degrees and to sin x = k. This
     # one takes any interval, either angle unit, and a multiple angle, which is
@@ -587,14 +807,15 @@ def _trig_expand():
 
 def t_trig():
     labels = ['Solve sin/cos/tan (0-360)', 'Solve p x + q, any range',
-              'R-form a sin+b cos', 'Compound/double angles',
-              'Check an expansion', 'Exact-value table']
+              'Solve using an identity', 'R-form a sin+b cos',
+              'Compound/double angles', 'Check an expansion',
+              'Exact-value table']
     while True:
         c = casui.menu('TRIG', labels)
         if c == -1:
             return
-        [_trig_solve, _trig_general, _trig_rform, _trig_compound,
-         _trig_expand, _trig_exact][c]()
+        [_trig_solve, _trig_general, _trig_identity, _trig_rform,
+         _trig_compound, _trig_expand, _trig_exact][c]()
 
 
 def t_triangle():
@@ -907,9 +1128,22 @@ def _draw_quad_region(a, b, c, lo, hi, rel, strict, want_pos, up):
     casutil.chart_hold(note)
 
 
-def _signed(v):
-    # "+ 3" or "- 3", so a quadratic never prints "+ -24"
-    return ('- ' + _fn(-v)) if v < 0 else ('+ ' + _fn(v))
+def _signed(v, body=''):
+    # "+ 3x" / "- 3x" / "+ x", so nothing prints "+ -24" or "+ 1x"
+    m = -v if v < 0 else v
+    sgn = '- ' if v < 0 else '+ '
+    if body and abs(m - 1.0) < 1e-12:
+        return sgn + body
+    return sgn + _fn(m) + body
+
+
+def _lead(v, body):
+    # the first term of an expression: "3x", "-x", "x"
+    if abs(v - 1.0) < 1e-12:
+        return body
+    if abs(v + 1.0) < 1e-12:
+        return '-' + body
+    return _fn(v) + body
 
 
 def _sqsplit(v):
