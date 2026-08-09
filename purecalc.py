@@ -18,6 +18,8 @@ _asknum = casutil.asknum
 _askexpr = casutil.askexpr
 _fn = casutil.fmt
 _show = casutil.show
+_w = casutil.w             # working: hidden when the Working setting is off
+_warn = casutil.warn       # a caveat on the answer: always shown
 
 def _ts(tree):
     return caseng.tostr(cascalc.tidy(tree))
@@ -61,13 +63,13 @@ def t_composite():
         return
     fg = _tidy(caseng.subst(f, 'x', g))
     gf = _tidy(caseng.subst(g, 'x', f))
-    lines = ['f(x) = ' + _ts(f), 'g(x) = ' + _ts(g), '',
+    lines = [_w('f(x) = ' + _ts(f)), _w('g(x) = ' + _ts(g)), '',
              'fg(x) = f(g(x))', '  = ' + caseng.tostr(fg), '',
              'gf(x) = g(f(x))', '  = ' + caseng.tostr(gf)]
     if caseng.tostr(fg) != caseng.tostr(gf):
         lines.append('')
-        lines.append('fg and gf are different,')
-        lines.append('as they usually are.')
+        lines.append(_w('fg and gf are different,'))
+        lines.append(_w('as they usually are.'))
     v = _asknum('check at x = (or cancel)')
     if v is not None:
         a = _safe(fg, v)
@@ -87,7 +89,7 @@ def t_inverse():
     f = _parse('f(x) =')
     if f is None:
         return
-    lines = ['f(x) = ' + _ts(f)]
+    lines = [_w('f(x) = ' + _ts(f))]
     inv = caseng.invert(f, 'x', 'x')
     if inv is not None:
         inv = caseng.simplify(inv)
@@ -104,16 +106,16 @@ def t_inverse():
             if back is None or abs(back - a) > 1e-6:
                 ok = False
         lines.append('')
-        lines.append('check f(f-inv(x)) = x: ' + ('yes' if ok else 'not everywhere'))
+        lines.append(_warn('check f(f-inv(x)) = x: ' + ('yes' if ok else 'not everywhere')))
         if not ok:
-            lines.append('(the inverse only holds on the')
-            lines.append(' part of the domain where f is')
-            lines.append(' one-to-one - state that domain)')
+            lines.append(_warn('(the inverse only holds on the'))
+            lines.append(_warn(' part of the domain where f is'))
+            lines.append(_warn(' one-to-one - state that domain)'))
     else:
         lines.append('')
-        lines.append('No exact inverse by undoing steps')
-        lines.append('(x appears more than once, or f is')
-        lines.append('not one-to-one). Solving instead.')
+        lines.append(_warn('No exact inverse by undoing steps'))
+        lines.append(_warn('(x appears more than once, or f is'))
+        lines.append(_warn('not one-to-one). Solving instead.'))
     v = _asknum('f-inverse of y = (or cancel)')
     if v is not None:
         if inv is not None:
@@ -129,8 +131,8 @@ def t_inverse():
                 for r in roots:
                     lines.append('  x = ' + _fn(r))
                 if len(roots) > 1:
-                    lines.append('more than one x gives this y,')
-                    lines.append('so f has no inverse here.')
+                    lines.append(_warn('more than one x gives this y,'))
+                    lines.append(_warn('so f has no inverse here.'))
             else:
                 lines.append('no x found with f(x) = ' + _fn(v))
     _show('Inverse', lines)
@@ -174,7 +176,7 @@ def t_domain_range():
             if hi is None or v > hi:
                 hi = v
         i += 1
-    lines = ['f(x) = ' + _ts(f), 'on ' + _fn(a) + ' <= x <= ' + _fn(b), '']
+    lines = [_w('f(x) = ' + _ts(f)), _w('on ' + _fn(a) + ' <= x <= ' + _fn(b)), '']
     if lo is None:
         lines.append('f is undefined everywhere on')
         lines.append('this interval.')
@@ -187,21 +189,21 @@ def t_domain_range():
     if bad == 0:
         lines.append('domain: the whole interval')
     else:
-        lines.append('undefined at ' + str(bad) + ' of ' + str(n + 1) + ' sample')
-        lines.append('points - exclude those x values.')
+        lines.append(_warn('undefined at ' + str(bad) + ' of ' + str(n + 1) + ' sample'))
+        lines.append(_warn('points - exclude those x values.'))
         j = 0
         shown = 0
         while j <= n and shown < 4:
             if vals[j] is None:
-                lines.append('  near x = ' + _fn(a + (b - a) * j / float(n)))
+                lines.append(_warn('  near x = ' + _fn(a + (b - a) * j / float(n))))
                 shown += 1
                 while j <= n and vals[j] is None:
                     j += 1
             j += 1
     lines.append('')
     lines.append('range reached: ' + _fn(lo) + ' to ' + _fn(hi))
-    lines.append('(sampled, so a sharp spike between')
-    lines.append(' samples could be missed)')
+    lines.append(_warn('(sampled, so a sharp spike between'))
+    lines.append(_warn(' samples could be missed)'))
     _show('Domain and range', lines)
 
 # 4. MODULUS FUNCTION -------------------------------------------------------
@@ -216,7 +218,7 @@ def t_modulus():
     k = _asknum('solve |f(x)| = k, k =')
     if k is None:
         return
-    lines = ['|' + _ts(f) + '| = ' + _fn(k)]
+    lines = [_w('|' + _ts(f) + '| = ' + _fn(k))]
     if k < 0:
         lines.append('')
         lines.append('A modulus is never negative,')
@@ -235,12 +237,12 @@ def t_modulus():
     roots.sort()
     lines.append('')
     if roots:
-        lines.append('from f(x) = ' + _fn(k) + ' and f(x) = ' + _fn(-k) + ':')
+        lines.append(_w('from f(x) = ' + _fn(k) + ' and f(x) = ' + _fn(-k) + ':'))
         for r in roots:
             lines.append('  x = ' + _fn(r))
     else:
-        lines.append('no solutions found in the search')
-        lines.append('range -20 <= x <= 20.')
+        lines.append(_warn('no solutions found in the search'))
+        lines.append(_warn('range -20 <= x <= 20.'))
     _show('Modulus', lines)
     casui.graph(caseng.simplify(('abs', f)))
 
@@ -272,7 +274,7 @@ def t_transform():
     inner = ('+', ('*', ('n', b), ('v', 'x')), ('n', c))
     g = ('+', ('*', ('n', a), caseng.subst(f, 'x', inner)), ('n', d))
     g = caseng.simplify(g)
-    lines = ['f(x) = ' + _ts(f), '', 'y = ' + _fn(a) + ' f(' + _fn(b) + 'x + ' + _fn(c) + ') + ' + _fn(d),
+    lines = [_w('f(x) = ' + _ts(f)), '', 'y = ' + _fn(a) + ' f(' + _fn(b) + 'x + ' + _fn(c) + ') + ' + _fn(d),
              '  = ' + caseng.tostr(g), '', 'in words, in this order:']
     if b != 1:
         lines.append('  stretch x by scale factor ' + _fn(1.0 / b))
@@ -310,16 +312,16 @@ def t_param_diff():
                              'vertical tangent everywhere.'])
         return
     grad = _tidy(('/', dy, dx))
-    lines = ['x(t) = ' + caseng.tostr(x), 'y(t) = ' + caseng.tostr(y), '',
-             'dx/dt = ' + caseng.tostr(dx), 'dy/dt = ' + caseng.tostr(dy), '',
+    lines = [_w('x(t) = ' + caseng.tostr(x)), _w('y(t) = ' + caseng.tostr(y)), '',
+             _w('dx/dt = ' + caseng.tostr(dx)), _w('dy/dt = ' + caseng.tostr(dy)), '',
              'dy/dx = ' + caseng.tostr(grad)]
     try:
         second = _tidy(('/', caseng.simplify(caseng.diff(grad, 't')), dx))
         lines.append('')
         lines.append('d2y/dx2 = ' + caseng.tostr(second))
-        lines.append('(note: divide by dx/dt, NOT by')
-        lines.append(' (dx/dt) squared and not again')
-        lines.append(' with respect to x)')
+        lines.append(_w('(note: divide by dx/dt, NOT by'))
+        lines.append(_w(' (dx/dt) squared and not again'))
+        lines.append(_w(' with respect to x)'))
     except:
         second = None
     tv = _asknum('at t = (or cancel)')
@@ -359,21 +361,21 @@ def t_param_cartesian():
     y = _parse('y(t) =')
     if y is None:
         return
-    lines = ['x(t) = ' + caseng.tostr(x), 'y(t) = ' + caseng.tostr(y), '']
+    lines = [_w('x(t) = ' + caseng.tostr(x)), _w('y(t) = ' + caseng.tostr(y)), '']
     tofx = caseng.invert(x, 't', 'x')
     if tofx is not None:
         cart = caseng.simplify(caseng.subst(y, 't', tofx))
-        lines.append('t = ' + caseng.tostr(caseng.simplify(tofx)))
+        lines.append(_w('t = ' + caseng.tostr(caseng.simplify(tofx))))
         lines.append('')
         lines.append('y = ' + caseng.tostr(cart))
     else:
         # the identity route: for x = a cos t, y = b sin t there is no single
         # inverse, but cos^2 + sin^2 = 1 gives the Cartesian form
-        lines.append('x(t) cannot be undone for t on its')
-        lines.append('own. If x and y are a cos t and')
-        lines.append('b sin t, use cos^2 t + sin^2 t = 1:')
-        lines.append('  (x/a)^2 + (y/b)^2 = 1')
-        lines.append('For sec/tan use sec^2 - tan^2 = 1.')
+        lines.append(_warn('x(t) cannot be undone for t on its own.'))
+        lines.append(_w('If x and y are a cos t and'))
+        lines.append(_w('b sin t, use cos^2 t + sin^2 t = 1:'))
+        lines.append(_w('  (x/a)^2 + (y/b)^2 = 1'))
+        lines.append(_w('For sec/tan use sec^2 - tan^2 = 1.'))
     lo = _asknum('sketch: t from [0]')
     if lo is None:
         lo = 0.0
@@ -456,8 +458,8 @@ def t_implicit():
                            'CAS section instead.'])
         return
     grad = _tidy(('neg', ('/', Fx, Fy)))
-    lines = ['F = ' + caseng.tostr(caseng.simplify(F)) + ' = 0', '',
-             'dF/dx = ' + caseng.tostr(Fx), 'dF/dy = ' + caseng.tostr(Fy), '',
+    lines = [_w('F = ' + caseng.tostr(caseng.simplify(F)) + ' = 0'), '',
+             _w('dF/dx = ' + caseng.tostr(Fx)), _w('dF/dy = ' + caseng.tostr(Fy)), '',
              'dy/dx = ' + caseng.tostr(grad)]
     xv = _asknum('at x = (or cancel)')
     if xv is not None:
@@ -469,8 +471,8 @@ def t_implicit():
             lines.append('')
             lines.append('at (' + _fn(xv) + ', ' + _fn(yv) + '):')
             if chk is not None and abs(chk) > 1e-6:
-                lines.append('  WARNING: F = ' + _fn(chk) + ', not 0,')
-                lines.append('  so this point is not on the curve.')
+                lines.append(_warn('  WARNING: F = ' + _fn(chk) + ', not 0,'))
+                lines.append(_warn('  so this point is not on the curve.'))
             if gv is None:
                 lines.append('  dy/dx undefined (dF/dy = 0):')
                 lines.append('  the tangent is vertical here.')
@@ -505,8 +507,9 @@ def t_substitution():
         _show('Substitution', ['g\'(x) = 0, so u is constant',
                                'and the substitution cannot help.'])
         return
-    lines = ['integrand: ' + _ts(f), 'u = ' + _ts(g), 'du/dx = ' + caseng.tostr(dg),
-             'so dx = du / (' + caseng.tostr(dg) + ')', '']
+    lines = [_w('integrand: ' + _ts(f)), _w('u = ' + _ts(g)),
+             _w('du/dx = ' + caseng.tostr(dg)),
+             _w('so dx = du / (' + caseng.tostr(dg) + ')'), '']
     try:
         h = caspoly.cancel(caseng.simplify(('/', f, dg)))
     except:
@@ -514,18 +517,18 @@ def t_substitution():
         return
     gs = caseng.simplify(g)
     inu = caspoly.cancel(caseng.subst_tree(h, gs, ('v', 'u')))
-    lines.append('f(x)/g\'(x) = ' + caseng.tostr(h))
+    lines.append(_w('f(x)/g\'(x) = ' + caseng.tostr(h)))
     if caseng.count_var(inu, 'x'):
         lines.append('')
-        lines.append('After substituting u there is still')
-        lines.append('an x left, so this substitution')
-        lines.append('does not clear the integral.')
-        lines.append('Try a different u, or write g(x)')
-        lines.append('in the integrand exactly as you')
-        lines.append('typed it for u.')
+        lines.append(_warn('After substituting u there is still'))
+        lines.append(_warn('an x left, so this substitution'))
+        lines.append(_warn('does not clear the integral.'))
+        lines.append(_w('Try a different u, or write g(x)'))
+        lines.append(_w('in the integrand exactly as you'))
+        lines.append(_w('typed it for u.'))
         _show('Substitution', lines)
         return
-    lines.append('in terms of u: ' + caseng.tostr(inu))
+    lines.append(_w('in terms of u: ' + caseng.tostr(inu)))
     F = cascalc.integ(inu, 'u')
     if F is None:
         lines.append('')
@@ -535,10 +538,10 @@ def t_substitution():
         return
     F = cascalc.tidy(F)
     lines.append('')
-    lines.append('integral in u = ' + caseng.tostr(F) + ' + C')
+    lines.append(_w('integral in u = ' + caseng.tostr(F) + ' + C'))
     back = cascalc.tidy(caseng.subst(F, 'u', g))
     lines.append('')
-    lines.append('back-substituting u = ' + caseng.tostr(gs) + ':')
+    lines.append(_w('back-substituting u = ' + caseng.tostr(gs) + ':'))
     lines.append('  ' + caseng.tostr(back) + ' + C')
     # differentiate the answer as a check the student can repeat
     try:
@@ -552,7 +555,8 @@ def t_substitution():
             if abs(a - b) > 1e-6 * (1.0 + abs(b)):
                 agree = False
         lines.append('')
-        lines.append('check by differentiating back: ' + ('agrees' if agree else 'DISAGREES'))
+        lines.append(_warn('check by differentiating back: ' +
+                           ('agrees' if agree else 'DISAGREES')))
     except:
         pass
     _show('Substitution', lines)
@@ -578,7 +582,7 @@ def t_separable():
         return
     B = cascalc.integ(f, 'x')
     A = cascalc.integ(caseng.simplify(('/', ('n', 1), g)), 'y')
-    lines = ['dy/dx = (' + _ts(f) + ')(' + _ts(g) + ')', '']
+    lines = [_w('dy/dx = (' + _ts(f) + ')(' + _ts(g) + ')'), '']
     if A is None or B is None:
         lines.append('One side has no elementary')
         lines.append('integral, so there is no formula')
@@ -588,10 +592,10 @@ def t_separable():
         return
     A = cascalc.tidy(A)
     B = cascalc.tidy(B)
-    lines.append('separate:  dy/g(y) = f(x) dx')
+    lines.append(_w('separate:  dy/g(y) = f(x) dx'))
     lines.append('')
-    lines.append('integral 1/g(y) dy = ' + caseng.tostr(A))
-    lines.append('integral f(x) dx   = ' + caseng.tostr(B))
+    lines.append(_w('integral 1/g(y) dy = ' + caseng.tostr(A)))
+    lines.append(_w('integral f(x) dx   = ' + caseng.tostr(B)))
     lines.append('')
     lines.append('general solution (implicit):')
     lines.append('  ' + caseng.tostr(A) + ' = ' + caseng.tostr(B) + ' + C')
@@ -603,8 +607,8 @@ def t_separable():
             b0 = _safe(B, x0)
             if a0 is None or b0 is None:
                 lines.append('')
-                lines.append('That point is outside the domain')
-                lines.append('of one of the integrals.')
+                lines.append(_warn('That point is outside the domain'))
+                lines.append(_warn('of one of the integrals.'))
             else:
                 C = a0 - b0
                 lines.append('')
@@ -616,8 +620,8 @@ def t_separable():
                 # sign, and the check below confirms the branch is the right one.
                 Aplain = caseng.strip_abs(A)
                 if Aplain != A:
-                    lines.append('  (y keeps the sign it has at the')
-                    lines.append('   initial point, so the modulus goes)')
+                    lines.append(_warn('  (y keeps the sign it has at the'))
+                    lines.append(_warn('   initial point, so the modulus goes)'))
                 inv = caseng.invert(Aplain, 'y', 'w')
                 if inv is not None:
                     rhs = caseng.simplify(('+', B, ('n', C)))
@@ -627,12 +631,12 @@ def t_separable():
                     # check it satisfies the equation at the given point
                     yv = _safe(expl, x0)
                     if yv is not None and abs(yv - y0) < 1e-6:
-                        lines.append('(checked: it passes through the')
-                        lines.append(' initial point)')
+                        lines.append(_warn('(checked: it passes through the'))
+                        lines.append(_warn(' initial point)'))
                     else:
-                        lines.append('(WARNING: this does not pass through')
-                        lines.append(' the initial point - use the implicit')
-                        lines.append(' form above)')
+                        lines.append(_warn('(WARNING: this does not pass through'))
+                        lines.append(_warn(' the initial point - use the implicit'))
+                        lines.append(_warn(' form above)'))
     _show('Separable', lines)
 
 # 11. STATIONARY POINTS -----------------------------------------------------
@@ -649,8 +653,8 @@ def t_stationary():
     except:
         _show('Stationary points', ['Cannot differentiate that.'])
         return
-    lines = ['f(x)   = ' + _ts(f), "f'(x)  = " + caseng.tostr(cascalc.tidy(d1)),
-             "f''(x) = " + caseng.tostr(cascalc.tidy(d2)), '']
+    lines = [_w('f(x)   = ' + _ts(f)), _w("f'(x)  = " + caseng.tostr(cascalc.tidy(d1))),
+             _w("f''(x) = " + caseng.tostr(cascalc.tidy(d2))), '']
     if d1 == ('n', 0):
         lines.append("f'(x) = 0 everywhere: f is constant,")
         lines.append('so every point is stationary.')
@@ -658,9 +662,9 @@ def t_stationary():
         return
     roots = cascalc.solve(d1, 'x')
     if not roots:
-        lines.append("f'(x) = 0 has no solution in the")
-        lines.append('search range -20 <= x <= 20, so')
-        lines.append('there are no stationary points there.')
+        lines.append(_warn("f'(x) = 0 has no solution in the"))
+        lines.append(_warn('search range -20 <= x <= 20, so'))
+        lines.append(_warn('there are no stationary points there.'))
         _show('Stationary points', lines)
         return
     lines.append("f'(x) = 0 at:")
@@ -679,9 +683,9 @@ def t_stationary():
         left = _safe(d1, r - h)
         right = _safe(d1, r + h)
         if s2 is not None:
-            lines.append("    f'' = " + _fn(s2))
+            lines.append(_w("    f'' = " + _fn(s2)))
         if left is None or right is None:
-            lines.append("    cannot test either side")
+            lines.append(_warn("    cannot test either side"))
         elif left < 0 and right > 0:
             lines.append("    f' goes - to +: MINIMUM")
         elif left > 0 and right < 0:
@@ -736,16 +740,16 @@ def t_constant():
         return
     c = y0 - base
     full = cascalc.tidy(('+', F, ('n', c)))
-    lines = ["f'(x) = " + _ts(d), '',
-             'integrating: f(x) = ' + caseng.tostr(F) + ' + C', '',
-             'at (' + _fn(x0) + ', ' + _fn(y0) + '):',
-             '  ' + _fn(y0) + ' = ' + _fn(base) + ' + C',
+    lines = [_w("f'(x) = " + _ts(d)), '',
+             _w('integrating: f(x) = ' + caseng.tostr(F) + ' + C'), '',
+             _w('at (' + _fn(x0) + ', ' + _fn(y0) + '):'),
+             _w('  ' + _fn(y0) + ' = ' + _fn(base) + ' + C'),
              '  C = ' + _fn(c), '',
              'f(x) = ' + caseng.tostr(full)]
     chk = _safe(full, x0)
     if chk is not None and abs(chk - y0) < 1e-6:
         lines.append('')
-        lines.append('(checked: it passes through the point)')
+        lines.append(_warn('(checked: it passes through the point)'))
     v = _asknum('evaluate f at x = (or cancel)')
     if v is not None:
         r = _safe(full, v)
@@ -778,19 +782,19 @@ def t_revolution():
     if b < a:
         a, b = b, a
     sq = ('^', f, ('n', 2))
-    lines = [('y = ' if axis == 0 else 'x = ') + _ts(f),
-             'rotated about the ' + ('x' if axis == 0 else 'y') + '-axis',
-             'from ' + var + ' = ' + _fn(a) + ' to ' + _fn(b), '']
+    lines = [_w(('y = ' if axis == 0 else 'x = ') + _ts(f)),
+             _w('rotated about the ' + ('x' if axis == 0 else 'y') + '-axis'),
+             _w('from ' + var + ' = ' + _fn(a) + ' to ' + _fn(b)), '']
     sym = cascalc.integ(caseng.simplify(sq), var)
     if sym is not None:
         sym = cascalc.tidy(sym)
-        lines.append('int ' + ('y^2 dx' if axis == 0 else 'x^2 dy') + ' =')
-        lines.append('  ' + caseng.tostr(sym))
+        lines.append(_w('int ' + ('y^2 dx' if axis == 0 else 'x^2 dy') + ' ='))
+        lines.append(_w('  ' + caseng.tostr(sym)))
         hi = _safe(sym, b, {var: b})
         lo = _safe(sym, a, {var: a})
         if hi is not None and lo is not None:
             val = hi - lo
-            lines.append('  evaluated: ' + _fn(val))
+            lines.append(_w('  evaluated: ' + _fn(val)))
             lines.append('')
             lines.append('V = pi x ' + _fn(val))
             lines.append('  = ' + _fn(math.pi * val))
@@ -798,12 +802,12 @@ def t_revolution():
             return
     val = _numint(caseng.simplify(sq), a, b, var)
     if val is None:
-        lines.append('Could not integrate over that range')
-        lines.append('(a singularity inside the limits?).')
+        lines.append(_warn('Could not integrate over that range'))
+        lines.append(_warn('(a singularity inside the limits?).'))
         _show('Volume of revolution', lines)
         return
-    lines.append('int ' + ('y^2 dx' if axis == 0 else 'x^2 dy') + ' = ' +
-                 _fn(val) + '  (numerically)')
+    lines.append(_w('int ' + ('y^2 dx' if axis == 0 else 'x^2 dy') + ' = ' +
+                    _fn(val) + '  (numerically)'))
     lines.append('')
     lines.append('V = pi x ' + _fn(val) + ' = ' + _fn(math.pi * val))
     _show('Volume of revolution', lines)
@@ -845,11 +849,11 @@ def t_meanvalue():
                              'interval.'])
         return
     mean = area / (b - a)
-    lines = ['f(x) = ' + _ts(f), 'on ' + _fn(a) + ' <= x <= ' + _fn(b), '']
+    lines = [_w('f(x) = ' + _ts(f)), _w('on ' + _fn(a) + ' <= x <= ' + _fn(b)), '']
     if exact and sym is not None:
-        lines.append('int f dx = ' + caseng.tostr(sym))
-    lines.append('area under the curve = ' + _fn(area))
-    lines.append('width = ' + _fn(b - a))
+        lines.append(_w('int f dx = ' + caseng.tostr(sym)))
+    lines.append(_w('area under the curve = ' + _fn(area)))
+    lines.append(_w('width = ' + _fn(b - a)))
     lines.append('')
     lines.append('mean value = ' + _fn(area) + ' / ' + _fn(b - a))
     lines.append('           = ' + _fn(mean))
@@ -922,11 +926,11 @@ def t_improper():
                                                 'f blows up at the upper limit'])
     if kind == -1:
         return
-    lines = ['f(x) = ' + _ts(f), '']
+    lines = [_w('f(x) = ' + _ts(f)), '']
     sym = cascalc.integ(f, 'x')
     if sym is not None:
         sym = cascalc.tidy(sym)
-        lines.append('int f dx = ' + caseng.tostr(sym))
+        lines.append(_w('int f dx = ' + caseng.tostr(sym)))
         lines.append('')
     if kind <= 1:
         a = _asknum('the finite limit is x =')
@@ -950,7 +954,7 @@ def t_improper():
             steps.append((t, v))
             t *= 10.0
             i += 1
-        lines.append('partial integrals as the limit grows:')
+        lines.append(_w('partial integrals as the limit grows:'))
     else:
         a = _asknum('lower limit a =')
         if a is None:
@@ -979,17 +983,17 @@ def t_improper():
             steps.append((eps, v))
             eps /= 10.0
             i += 1
-        lines.append('partial integrals as the gap closes:')
+        lines.append(_w('partial integrals as the gap closes:'))
     good = []
     for t, v in steps:
-        lines.append('  ' + ('%-12s' % _fn(t, 8)) +
-                     ('failed' if v is None else _fn(v, 6)))
+        lines.append(_w('  ' + ('%-12s' % _fn(t, 8)) +
+                        ('failed' if v is None else _fn(v, 6))))
         if v is not None:
             good.append(v)
     lines.append('')
     if len(good) < 3:
-        lines.append('Not enough of the partial integrals')
-        lines.append('could be computed to decide.')
+        lines.append(_warn('Not enough of the partial integrals'))
+        lines.append(_warn('could be computed to decide.'))
     else:
         # Judge convergence on how the SUCCESSIVE CHANGES behave, not on how
         # big the last change is. int 1/sqrt(x) from 0 to 1 converges to 2, but
@@ -1010,36 +1014,36 @@ def t_improper():
             ratio = abs(d1 / d0)
         settled = abs(d1) <= 1e-10 * (1.0 + (last if last >= 0 else -last))
         if settled:
-            lines.append('The partial integrals stop changing.')
+            lines.append(_w('The partial integrals stop changing.'))
             lines.append('It CONVERGES to about ' + _fn(last, 6))
             lines.append('')
             if sym is not None:
-                lines.append('Write it out as a limit of')
-                lines.append('[' + caseng.tostr(sym) + '] between the limits.')
+                lines.append(_w('Write it out as a limit of'))
+                lines.append(_w('[' + caseng.tostr(sym) + '] between the limits.'))
             else:
-                lines.append('This is numerical evidence, not a')
-                lines.append('proof - write the limit out properly.')
+                lines.append(_warn('This is numerical evidence, not a'))
+                lines.append(_warn('proof - write the limit out properly.'))
             _show('Improper integral', lines)
             return
         if abs(last) > 1e8 or ratio is None or ratio > 0.9:
-            lines.append('The steps are not shrinking:')
-            lines.append('  last two changes ' + _fn(d0, 6) + ', ' + _fn(d1, 6))
+            lines.append(_w('The steps are not shrinking:'))
+            lines.append(_w('  last two changes ' + _fn(d0, 6) + ', ' + _fn(d1, 6)))
             lines.append('This integral DIVERGES - there is')
             lines.append('no finite value.')
         else:
             # a geometric tail sums to d1*r/(1-r) beyond the last value
             limit = last + d1 * ratio / (1.0 - ratio)
-            lines.append('The changes shrink by a factor of')
-            lines.append('about ' + _fn(ratio, 3) + ' each step, so the tail')
-            lines.append('is finite.')
+            lines.append(_w('The changes shrink by a factor of'))
+            lines.append(_w('about ' + _fn(ratio, 3) + ' each step, so the tail'))
+            lines.append(_w('is finite.'))
             lines.append('It CONVERGES to about ' + _fn(limit, 6))
             lines.append('')
             if sym is not None:
-                lines.append('Write it out as a limit of')
-                lines.append('[' + caseng.tostr(sym) + '] between the limits.')
+                lines.append(_w('Write it out as a limit of'))
+                lines.append(_w('[' + caseng.tostr(sym) + '] between the limits.'))
             else:
-                lines.append('This is numerical evidence, not a')
-                lines.append('proof - write the limit out properly.')
+                lines.append(_warn('This is numerical evidence, not a'))
+                lines.append(_warn('proof - write the limit out properly.'))
     _show('Improper integral', lines)
 
 # 14. SMALL-ANGLE APPROXIMATIONS --------------------------------------------
@@ -1052,7 +1056,7 @@ def t_small_angle():
     x = _asknum('x in radians =')
     if x is None:
         return
-    lines = ['x = ' + _fn(x) + ' rad', '']
+    lines = [_w('x = ' + _fn(x) + ' rad'), '']
     for name, exact, approx in (('sin x', math.sin(x), x),
                                 ('tan x', math.tan(x) if abs(math.cos(x)) > 1e-12 else None, x),
                                 ('cos x', math.cos(x), 1.0 - x * x / 2.0)):
@@ -1070,14 +1074,14 @@ def t_small_angle():
             lines.append('  error  ' + _fn(err, 9))
     lines.append('')
     if abs(x) <= 0.1:
-        lines.append('|x| <= 0.1: the approximations are')
-        lines.append('good to about 0.2%.')
+        lines.append(_warn('|x| <= 0.1: the approximations are'))
+        lines.append(_warn('good to about 0.2%.'))
     elif abs(x) <= 0.5:
-        lines.append('|x| <= 0.5: usable but the error is')
-        lines.append('becoming visible.')
+        lines.append(_warn('|x| <= 0.5: usable but the error is'))
+        lines.append(_warn('becoming visible.'))
     else:
-        lines.append('|x| > 0.5 is not a small angle -')
-        lines.append('do not use these here.')
+        lines.append(_warn('|x| > 0.5 is not a small angle -'))
+        lines.append(_warn('do not use these here.'))
     _show('Small angles', lines)
 
 # 12. EXACT TRIG VALUES -----------------------------------------------------

@@ -6,6 +6,8 @@ _asknum = casutil.asknum
 _getlist = casutil.asklist
 _show = casutil.show
 _pages = casutil.show      # result_screen pages by itself now
+_w = casutil.w             # working: hidden when the Working setting is off
+_warn = casutil.warn       # a caveat on the answer: always shown
 _fact = casutil.fact
 _ncr = casutil.ncr
 _bpmf = casutil.binom_pmf
@@ -110,7 +112,7 @@ def t_summary():
     lines.append('s (n-1) sd = ' + _fn(sds))
     lines.append('sd (n) = ' + _fn(sdp))
     lines.append('var (n) = ' + _fn(varp))
-    lines.append('fences ' + _fn(lf) + ' .. ' + _fn(uf))
+    lines.append(_w('fences ' + _fn(lf) + ' .. ' + _fn(uf)))
     outs = []
     for v in srt:
         if v < lf or v > uf:
@@ -160,7 +162,7 @@ def t_boxplot():
     lines.append('median = ' + _fn(med))
     lines.append('Q3 = ' + _fn(q3))
     lines.append('IQR = ' + _fn(iqr))
-    lines.append('fences ' + _fn(lf) + ' .. ' + _fn(uf))
+    lines.append(_w('fences ' + _fn(lf) + ' .. ' + _fn(uf)))
     lines.append('whisker lo = ' + _fn(wlo) + '  whisker hi = ' + _fn(whi))
     outstr = []
     j = 0
@@ -218,7 +220,7 @@ def t_freq():
     varp = ss / nf
     lines = []
     lines.append('N = ' + _fn(nf))
-    lines.append('sum fx = ' + _fn(sx))
+    lines.append(_w('sum fx = ' + _fn(sx)))
     lines.append('mean = ' + _fn(mean))
     lines.append('Sxx = ' + _fn(ss))
     if nf > 1:
@@ -278,7 +280,7 @@ def t_hist():
         tot += fs[i]
         i += 1
     lines = []
-    lines.append('n classes = ' + str(n))
+    lines.append(_w('n classes = ' + str(n)))
     lines.append('total freq = ' + _fn(tot))
     i = 0
     while i < n:
@@ -338,7 +340,7 @@ def t_cumfreq():
     q1 = _cf_interp(bnds, cf, tot * 0.25)
     q3 = _cf_interp(bnds, cf, tot * 0.75)
     lines = []
-    lines.append('n classes = ' + str(n))
+    lines.append(_w('n classes = ' + str(n)))
     lines.append('total freq = ' + _fn(tot))
     i = 0
     while i < n:
@@ -392,9 +394,9 @@ def t_drv():
         i += 1
     varx = ex2 - ex * ex
     lines = []
-    lines.append('sum p = ' + _fn(tp))
+    lines.append(_w('sum p = ' + _fn(tp)))
     if abs(tp - 1.0) > 0.001:
-        lines.append('WARN: sum p not 1')
+        lines.append(_warn('WARN: sum p not 1'))
     lines.append('E[X] = ' + _fn(ex))
     lines.append('E[X^2] = ' + _fn(ex2))
     lines.append('Var[X] = ' + _fn(varx))
@@ -419,7 +421,7 @@ def t_binom():
     pk = _bpmf(ni, p, ki)
     cum = _bcdf(ni, p, ki)
     lines = []
-    lines.append('B(' + str(ni) + ', ' + _fn(p) + ')')
+    lines.append(_w('B(' + str(ni) + ', ' + _fn(p) + ')'))
     lines.append('mean np = ' + _fn(ni * p))
     lines.append('var npq = ' + _fn(ni * p * (1.0 - p)))
     lines.append('P(X=' + str(ki) + ') = ' + _fn(pk))
@@ -443,9 +445,9 @@ def t_normal():
     zb = (b - mu) / sd
     pr = _phi(zb) - _phi(za)
     lines = []
-    lines.append('N(' + _fn(mu) + ', sd ' + _fn(sd) + ')')
-    lines.append('z(a) = ' + _fn(za))
-    lines.append('z(b) = ' + _fn(zb))
+    lines.append(_w('N(' + _fn(mu) + ', sd ' + _fn(sd) + ')'))
+    lines.append(_w('z(a) = ' + _fn(za)))
+    lines.append(_w('z(b) = ' + _fn(zb)))
     lines.append('P(a<X<b) = ' + _fn(pr))
     lines.append('P(X<b) = ' + _fn(_phi(zb)))
     lines.append('P(X>a) = ' + _fn(1.0 - _phi(za)))
@@ -463,8 +465,8 @@ def t_invnorm():
     z = _inv_phi(p)
     x = mu + z * sd
     lines = []
-    lines.append('p = ' + _fn(p))
-    lines.append('z = ' + _fn(z))
+    lines.append(_w('p = ' + _fn(p)))
+    lines.append(_w('z = ' + _fn(z)))
     lines.append('x = ' + _fn(x))
     _show('Inverse Normal', lines)
 
@@ -490,13 +492,13 @@ def t_htbinom():
     lo = _bcdf(ni, p0, xi)
     up = 1.0 - _bcdf(ni, p0, xi - 1)
     lines = []
-    lines.append('B(' + str(ni) + ', ' + _fn(p0) + ') x=' + str(xi))
+    lines.append(_w('B(' + str(ni) + ', ' + _fn(p0) + ') x=' + str(xi)))
     if ti == 1:
         c = 0
         while c <= ni and _bcdf(ni, p0, c) <= a:
             c += 1
         cr = c - 1
-        lines.append('lower 1-tail a=' + _fn(a))
+        lines.append(_w('lower 1-tail a=' + _fn(a)))
         lines.append('p-value = ' + _fn(lo))
         if cr < 0:
             lines.append('CR: none')
@@ -508,7 +510,7 @@ def t_htbinom():
         while c >= 0 and (1.0 - _bcdf(ni, p0, c - 1)) <= a:
             c -= 1
         cr = c + 1
-        lines.append('upper 1-tail a=' + _fn(a))
+        lines.append(_w('upper 1-tail a=' + _fn(a)))
         lines.append('p-value = ' + _fn(up))
         if cr > ni:
             lines.append('CR: none')
@@ -528,7 +530,7 @@ def t_htbinom():
         while cu >= 0 and (1.0 - _bcdf(ni, p0, cu - 1)) <= ah:
             cu -= 1
         cu += 1
-        lines.append('two-tail a=' + _fn(a))
+        lines.append(_w('two-tail a=' + _fn(a)))
         lines.append('p-value = ' + _fn(pv))
         s = 'CR: '
         if cl < 0:
@@ -568,7 +570,7 @@ def t_htmean():
     pu = 1.0 - _phi(z)
     lines = []
     lines.append('test z = ' + _fn(z))
-    lines.append('SE = ' + _fn(se))
+    lines.append(_w('SE = ' + _fn(se)))
     if ti == 1:
         zc = _inv_phi(a)
         lines.append('p-value = ' + _fn(pl))
@@ -634,7 +636,7 @@ def t_regress():
     a, b, r = res
     n = len(xs)
     lines = []
-    lines.append('n = ' + str(n))
+    lines.append(_w('n = ' + str(n)))
     lines.append('r = ' + _fn(r))
     lines.append('b (grad) = ' + _fn(b))
     lines.append('a (intercept) = ' + _fn(a))
@@ -645,7 +647,7 @@ def t_regress():
     _show('PMCC + regression', lines)
     px = _asknum('predict at x (blank skip):')
     if px is not None:
-        _show('Prediction', ['x = ' + _fn(px), 'y = ' + _fn(a + b * px)])
+        _show('Prediction', [_w('x = ' + _fn(px)), 'y = ' + _fn(a + b * px)])
 
 def t_scatter():
     xs = _getlist('X values:')
@@ -663,7 +665,7 @@ def t_scatter():
     a, b, r = res
     n = len(xs)
     lines = []
-    lines.append('n = ' + str(n))
+    lines.append(_w('n = ' + str(n)))
     lines.append('r = ' + _fn(r))
     lines.append('b (grad) = ' + _fn(b))
     lines.append('a (intercept) = ' + _fn(a))
@@ -700,7 +702,7 @@ def t_prob():
     else:
         lines.append('P(B|A) undef')
     indep = pa * pb
-    lines.append('P(A)P(B) = ' + _fn(indep))
+    lines.append(_w('P(A)P(B) = ' + _fn(indep)))
     if abs(indep - pab) < 0.0001:
         lines.append('independent: YES')
     else:
@@ -866,9 +868,9 @@ def t_stratsamp():
         base[bi] += 1
         exact[bi] = base[bi] * 1.0   # do not win the same place twice
         left -= 1
-    lines = ['population N = ' + _fn(tot),
-             'sample n = ' + str(want),
-             'n_i = n * N_i / N']
+    lines = [_w('population N = ' + _fn(tot)),
+             _w('sample n = ' + str(want)),
+             _w('n_i = n * N_i / N')]
     i = 0
     while i < len(ns):
         lines.append('stratum ' + str(i + 1) + ': N=' + _fn(ns[i]) +
@@ -879,12 +881,12 @@ def t_stratsamp():
     while i < len(base):
         chk += base[i]
         i += 1
-    lines.append('total allocated = ' + str(chk))
+    lines.append(_warn('total allocated = ' + str(chk)))
     lines.append('sampling fraction = ' + _fn(want / tot))
     k = tot / want
-    lines.append('systematic would use')
-    lines.append(' k = N/n = ' + _fn(k))
-    lines.append(' random start 1..' + str(int(k)) if k >= 1 else ' k < 1')
+    lines.append(_w('systematic would use'))
+    lines.append(_w(' k = N/n = ' + _fn(k)))
+    lines.append(_w(' random start 1..' + str(int(k)) if k >= 1 else ' k < 1'))
     _pages('Stratified sample', lines)
 
 def t_tree():
@@ -908,21 +910,21 @@ def t_tree():
     nanb = pna * (1.0 - pbna)
     pb = ab + nab                 # add ACROSS the branches that end in B
     pnb = anb + nanb
-    lines = ['P(A) = ' + _fn(pa) + '  P(A\') = ' + _fn(pna),
-             'multiply along a branch:',
+    lines = [_w('P(A) = ' + _fn(pa) + '  P(A\') = ' + _fn(pna)),
+             _w('multiply along a branch:'),
              'P(A and B)   = ' + _fn(ab),
              "P(A and B')  = " + _fn(anb),
              "P(A' and B)  = " + _fn(nab),
              "P(A' and B') = " + _fn(nanb),
-             'these four sum to ' + _fn(ab + anb + nab + nanb),
-             'add across branches:',
+             _warn('these four sum to ' + _fn(ab + anb + nab + nanb)),
+             _w('add across branches:'),
              'P(B) = ' + _fn(pb),
              "P(B') = " + _fn(pnb)]
     # the reverse conditional, which is what Bayes is for
-    lines.append('reverse by Bayes:')
-    lines.append('P(A|B) = P(A and B)/P(B)')
+    lines.append(_w('reverse by Bayes:'))
+    lines.append(_w('P(A|B) = P(A and B)/P(B)'))
     if pb > 0:
-        lines.append('P(A|B) = ' + _fn(ab) + '/' + _fn(pb))
+        lines.append(_w('P(A|B) = ' + _fn(ab) + '/' + _fn(pb)))
         lines.append('P(A|B) = ' + _fn(ab / pb))
         lines.append("P(A'|B) = " + _fn(nab / pb))
     else:
@@ -932,7 +934,7 @@ def t_tree():
     if pa > 0 and pb > 0:
         if abs(ab - pa * pb) < 1e-9:
             lines.append('A and B are INDEPENDENT')
-            lines.append(' (P(B|A) = P(B))')
+            lines.append(_w(' (P(B|A) = P(B))'))
         else:
             lines.append('A and B are NOT independent')
     _pages('Tree diagram', lines)
@@ -1009,18 +1011,18 @@ def _venn_negatives(names, vals):
     return bad
 
 def _venn_reject(title, tot, inside, bad, hint):
-    lines = ['THESE FIGURES DO NOT ADD UP.',
-             'No diagram drawn: it would be',
-             'a wrong diagram.',
-             'stated total = ' + _fn(tot),
-             'the events need at least',
-             '  ' + _fn(inside) + ' between them',
-             'impossible region(s):']
+    lines = [_warn('THESE FIGURES DO NOT ADD UP.'),
+             _warn('No diagram drawn: it would be'),
+             _warn('a wrong diagram.'),
+             _w('stated total = ' + _fn(tot)),
+             _w('the events need at least'),
+             _w('  ' + _fn(inside) + ' between them'),
+             _warn('impossible region(s):')]
     i = 0
     while i < len(bad):
-        lines.append('  ' + bad[i])
+        lines.append(_warn('  ' + bad[i]))
         i += 1
-    lines.append(hint)
+    lines.append(_w(hint))
     _show(title, lines)
 
 def _indep_line(nm, pab, pa, pb):
@@ -1060,13 +1062,13 @@ def _venn2():
     pa = na / tot
     pb = nb / tot
     pab = nab / tot
-    lines = ['total = ' + _fn(tot),
+    lines = [_w('total = ' + _fn(tot)),
              'REGIONS (they sum to the total)',
              'n(A only) = ' + _fn(aonly),
              'n(A and B) = ' + _fn(nab),
              'n(B only) = ' + _fn(bonly),
              'n(neither) = ' + _fn(none),
-             'regions sum = ' + _fn(aonly + nab + bonly + none),
+             _warn('regions sum = ' + _fn(aonly + nab + bonly + none)),
              'PROBABILITIES',
              'P(A) = ' + _fn(pa),
              'P(B) = ' + _fn(pb),
@@ -1083,13 +1085,13 @@ def _venn2():
         lines.append('P(B|A) = ' + _fn(pab / pa))
     else:
         lines.append('P(B|A) undefined: P(A) = 0')
-    lines.append('P(A)P(B) = ' + _fn(pa * pb))
+    lines.append(_w('P(A)P(B) = ' + _fn(pa * pb)))
     lines.append(_indep_line('A,B', pab, pa, pb))
     if nab <= 1e-12:
         lines.append('mutually exclusive: YES')
     else:
         lines.append('mutually exclusive: NO')
-        lines.append(' (the overlap is not empty)')
+        lines.append(_w(' (the overlap is not empty)'))
     _show('Venn 2 events', lines)
     fr = _venn_frame()
     casui.clear_screen()
@@ -1153,7 +1155,7 @@ def _venn3():
     pac = nac / tot
     pbc = nbc / tot
     pabc = nabc / tot
-    lines = ['total = ' + _fn(tot),
+    lines = [_w('total = ' + _fn(tot)),
              'THE EIGHT REGIONS',
              'n(A only) = ' + _fn(ra),
              'n(B only) = ' + _fn(rb),
@@ -1163,8 +1165,8 @@ def _venn3():
              'n(B and C only) = ' + _fn(rbc),
              'n(all three) = ' + _fn(rabc),
              'n(none) = ' + _fn(rnone),
-             'regions sum = ' +
-             _fn(ra + rb + rc + rab + rac + rbc + rabc + rnone),
+             _warn('regions sum = ' +
+                   _fn(ra + rb + rc + rab + rac + rbc + rabc + rnone)),
              'PROBABILITIES',
              'P(A) = ' + _fn(pa),
              'P(B) = ' + _fn(pb),
@@ -1186,7 +1188,7 @@ def _venn3():
         lines.append('P(B|A) = ' + _fn(pab / pa))
     else:
         lines.append('P(B|A) undefined: P(A) = 0')
-    lines.append('P(A)P(B) = ' + _fn(pa * pb))
+    lines.append(_w('P(A)P(B) = ' + _fn(pa * pb)))
     lines.append(_indep_line('A,B', pab, pa, pb))
     lines.append(_indep_line('A,C', pac, pa, pc))
     lines.append(_indep_line('B,C', pbc, pb, pc))
@@ -1194,7 +1196,7 @@ def _venn3():
         lines.append('mutually exclusive: YES')
     else:
         lines.append('mutually exclusive: NO')
-        lines.append(' (some overlap is not empty)')
+        lines.append(_w(' (some overlap is not empty)'))
     _show('Venn 3 events', lines)
     fr = _venn_frame()
     casui.clear_screen()
@@ -1281,31 +1283,31 @@ def t_loglin():
         return
     tx, ty, ia, grad, r = res
     a = math.exp(ia)
-    lines = ['points n = ' + str(len(xs))]
+    lines = [_w('points n = ' + str(len(xs)))]
     if kind == 0:
-        lines.append('model y = a x^n')
-        lines.append('ln y = ln a + n ln x')
-        lines.append('so plot ln y against ln x')
-        lines.append('gradient = ' + _fn(grad))
-        lines.append('intercept = ' + _fn(ia))
+        lines.append(_w('model y = a x^n'))
+        lines.append(_w('ln y = ln a + n ln x'))
+        lines.append(_w('so plot ln y against ln x'))
+        lines.append(_w('gradient = ' + _fn(grad)))
+        lines.append(_w('intercept = ' + _fn(ia)))
         lines.append('power n = gradient = ' + _fn(grad))
         lines.append('a = e^intercept = ' + _fn(a))
         lines.append('model: y = ' + _fn(a) + ' x^' + _fn(grad))
     else:
         b = math.exp(grad)
-        lines.append('model y = a b^x')
-        lines.append('ln y = ln a + x ln b')
-        lines.append('so plot ln y against x')
-        lines.append('gradient = ' + _fn(grad))
-        lines.append('intercept = ' + _fn(ia))
+        lines.append(_w('model y = a b^x'))
+        lines.append(_w('ln y = ln a + x ln b'))
+        lines.append(_w('so plot ln y against x'))
+        lines.append(_w('gradient = ' + _fn(grad)))
+        lines.append(_w('intercept = ' + _fn(ia)))
         lines.append('base b = e^gradient = ' + _fn(b))
         lines.append('a = e^intercept = ' + _fn(a))
         lines.append('model: y = ' + _fn(a) + ' * ' + _fn(b) + '^x')
     lines.append('r = ' + _fn(r))
-    lines.append('r measures how well the')
-    lines.append('STRAIGHTENED points lie on a')
-    lines.append('line. It is NOT the fit of the')
-    lines.append('original curve to the raw data.')
+    lines.append(_warn('r measures how well the'))
+    lines.append(_warn('STRAIGHTENED points lie on a'))
+    lines.append(_warn('line. It is NOT the fit of the'))
+    lines.append(_warn('original curve to the raw data.'))
     _show('Reduce to linear form', lines)
     xlo, xhi = casutil.nice_range(tx)
     ylo, yhi = casutil.nice_range(ty)
@@ -1332,7 +1334,7 @@ def t_loglin():
         py = a * math.exp(grad * math.log(px))
     else:
         py = a * math.exp(grad * px)
-    _show('Prediction', ['x = ' + _fn(px), 'y = ' + _fn(py)])
+    _show('Prediction', [_w('x = ' + _fn(px)), 'y = ' + _fn(py)])
 
 # -------------------------------------------- shape of a distribution ------
 def _merge_pairs(xs, fs):
@@ -1468,27 +1470,27 @@ def t_shape():
         i += 1
     peaks = _peak_count(freq)
     lines = ['N = ' + _fn(nf),
-             'distinct values = ' + str(len(vals)),
+             _w('distinct values = ' + str(len(vals))),
              'mean = ' + _fn(mean),
              'median = ' + _fn(med),
              'mode(s) = ' + ' '.join(modes),
              'Sxx = ' + _fn(ss),
              'sd (n) = ' + _fn(sdp)]
     if flat and len(vals) > 1:
-        lines.append('peaks = 0')
+        lines.append(_w('peaks = 0'))
         lines.append('modality: uniform (flat)')
     else:
-        lines.append('peaks = ' + str(peaks))
+        lines.append(_w('peaks = ' + str(peaks)))
         if peaks <= 1:
             lines.append('modality: unimodal')
         elif peaks == 2:
             lines.append('modality: bimodal')
         else:
             lines.append('modality: multimodal')
-    lines.append('mean - median = ' + _fn(mean - med))
+    lines.append(_w('mean - median = ' + _fn(mean - med)))
     if sdp <= 0:
-        lines.append('sd = 0: every value is the')
-        lines.append('same, so there is no shape.')
+        lines.append(_warn('sd = 0: every value is the'))
+        lines.append(_warn('same, so there is no shape.'))
         _show('Distribution shape', lines)
         return
     # Pearson's second coefficient of skewness. Positive means the mean is
@@ -1496,11 +1498,11 @@ def t_shape():
     psk = 3.0 * (mean - med) / sdp
     msk = (s3 / nf) / (sdp * sdp * sdp)
     lines.append('Pearson skew = ' + _fn(psk))
-    lines.append(' = 3(mean-median)/sd(n)')
+    lines.append(_w(' = 3(mean-median)/sd(n)'))
     lines.append('moment skew = ' + _fn(msk))
     if abs(psk) < 0.1:
         lines.append('skewness: symmetric')
-        lines.append(' (mean and median agree)')
+        lines.append(_w(' (mean and median agree)'))
     elif psk > 0:
         lines.append('skewness: POSITIVE skew')
         lines.append(' tail to the RIGHT,')

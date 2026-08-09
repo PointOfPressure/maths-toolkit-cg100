@@ -13,6 +13,8 @@ _atan2 = casutil.atan2
 _deg = casutil.deg
 _rad = casutil.rad
 _show = casutil.show
+_w = casutil.w             # working: hidden when the Working setting is off
+_warn = casutil.warn       # a caveat on the answer: always shown
 
 
 def suvat():
@@ -90,8 +92,8 @@ def suvat():
     lines.append('t = ' + (_fn(t) if t is not None else '?'))
     if rooted[0]:
         # v^2 = u^2 + 2as gives +/- the root; only the positive one is shown
-        lines.append('(sqrt step: positive root')
-        lines.append(' taken - check direction)')
+        lines.append(_warn('(sqrt step: positive root'))
+        lines.append(_warn(' taken - check direction)'))
     _show('SUVAT result', lines)
 
 
@@ -110,7 +112,9 @@ def projectile():
     tof = 2.0 * u * math.sin(a) / g
     hmax = (u * math.sin(a)) ** 2 / (2.0 * g)
     rng = u * u * math.sin(2.0 * a) / g
-    l1 = ['Time of flight = ' + _fn(tof) + ' s', 'Max height = ' + _fn(hmax) + ' m', 'Range = ' + _fn(rng) + ' m', 'ux = ' + _fn(u * math.cos(a)), 'uy = ' + _fn(u * math.sin(a))]
+    l1 = ['Time of flight = ' + _fn(tof) + ' s', 'Max height = ' + _fn(hmax) + ' m',
+          'Range = ' + _fn(rng) + ' m', _w('ux = ' + _fn(u * math.cos(a))),
+          _w('uy = ' + _fn(u * math.sin(a)))]
     _show('Projectile', l1)
     t = _askopt('time t (blank skip)=')
     if t is None:
@@ -142,7 +146,9 @@ def resultant():
     y = f1 * math.sin(_rad(a1)) + f2 * math.sin(_rad(a2))
     mag = math.sqrt(x * x + y * y)
     dirn = _deg(_atan2(y, x))
-    _show('Resultant force', ['Rx = ' + _fn(x), 'Ry = ' + _fn(y), 'Magnitude = ' + _fn(mag), 'Direction = ' + _fn(dirn) + ' deg'])
+    _show('Resultant force', [_w('Rx = ' + _fn(x)), _w('Ry = ' + _fn(y)),
+                              'Magnitude = ' + _fn(mag),
+                              'Direction = ' + _fn(dirn) + ' deg'])
 
 
 def resolve():
@@ -153,7 +159,8 @@ def resolve():
     if ad is None:
         return
     a = _rad(ad)
-    _show('Resolve force', ['Fx = ' + _fn(f * math.cos(a)), 'Fy = ' + _fn(f * math.sin(a)), '(horiz comp = F cos)', '(vert comp = F sin)'])
+    _show('Resolve force', ['Fx = ' + _fn(f * math.cos(a)), 'Fy = ' + _fn(f * math.sin(a)),
+                            _w('(horiz comp = F cos)'), _w('(vert comp = F sin)')])
 
 
 def equilibrium():
@@ -178,7 +185,8 @@ def equilibrium():
         return
     res = math.sqrt(sx * sx + sy * sy)
     eq = 'YES (in equilibrium)' if res < 0.001 else 'NO'
-    _show('Equilibrium', ['Sum Fx = ' + _fn(sx), 'Sum Fy = ' + _fn(sy), 'Resultant = ' + _fn(res), 'Equilibrium: ' + eq])
+    _show('Equilibrium', [_w('Sum Fx = ' + _fn(sx)), _w('Sum Fy = ' + _fn(sy)),
+                          'Resultant = ' + _fn(res), 'Equilibrium: ' + eq])
 
 
 def newton2():
@@ -215,7 +223,7 @@ def friction_max():
     r = _asknum('R (normal reac N)=')
     if r is None:
         return
-    _show('Max friction', ['F_max = mu R', 'F_max = ' + _fn(mu * r) + ' N'])
+    _show('Max friction', [_w('F_max = mu R'), 'F_max = ' + _fn(mu * r) + ' N'])
 
 
 def friction_horiz():
@@ -234,7 +242,7 @@ def friction_horiz():
         return
     rr = m * g
     fmax = mu * rr
-    lines = ['R = ' + _fn(rr) + ' N', 'F_max = ' + _fn(fmax) + ' N']
+    lines = [_w('R = ' + _fn(rr) + ' N'), _w('F_max = ' + _fn(fmax) + ' N')]
     if p <= fmax:
         lines.append('P <= F_max: static.')
         lines.append('Friction = ' + _fn(p) + ' N')
@@ -266,7 +274,8 @@ def friction_incline():
     drive = w * math.sin(a)
     rr = w * math.cos(a)
     fmax = mu * rr
-    lines = ['Weight = ' + _fn(w) + ' N', 'Along: mg sin = ' + _fn(drive), 'R = mg cos = ' + _fn(rr), 'F_max = ' + _fn(fmax)]
+    lines = [_w('Weight = ' + _fn(w) + ' N'), _w('Along: mg sin = ' + _fn(drive)),
+             _w('R = mg cos = ' + _fn(rr)), _w('F_max = ' + _fn(fmax))]
     if drive <= fmax:
         lines.append('Stays at rest.')
         lines.append('a = 0 m/s^2')
@@ -292,7 +301,7 @@ def pulley():
         return
     a = (m1 - m2) * g / tot
     tens = 2.0 * m1 * m2 * g / tot
-    lines = ['a = (m1-m2)g/(m1+m2)', 'a = ' + _fn(abs(a)) + ' m/s^2']
+    lines = [_w('a = (m1-m2)g/(m1+m2)'), 'a = ' + _fn(abs(a)) + ' m/s^2']
     if a > 0:
         lines.append('m1 accelerates down.')
     elif a < 0:
@@ -329,7 +338,7 @@ def moments():
         rr = -smom / dr
         lines.append('Reaction at d=' + _fn(dr) + ':')
         lines.append('R = ' + _fn(rr) + ' N')
-        lines.append('(balances moments)')
+        lines.append(_w('(balances moments)'))
     else:
         if abs(smom) < 0.001:
             lines.append('Moments balance.')
@@ -424,7 +433,7 @@ def kinematics():
             base = _tvalue(S, 0.0)
             c = 0.0 if base is None else s0 - base
             s = cascalc.tidy(('+', S, ('n', c)))
-            lines.append('s(0) = ' + _fn(s0) + ' fixes the constant')
+            lines.append(_w('s(0) = ' + _fn(s0) + ' fixes the constant'))
     else:
         a = tree
         V = cascalc.integ(a, 't')
@@ -446,12 +455,12 @@ def kinematics():
             base = _tvalue(S, 0.0)
             c2 = 0.0 if base is None else s0 - base
             s = cascalc.tidy(('+', S, ('n', c2)))
-        lines.append('v(0) = ' + _fn(v0) + ' fixes the constant')
+        lines.append(_w('v(0) = ' + _fn(v0) + ' fixes the constant'))
     out = []
     if s is not None:
         out.append('s(t) = ' + caseng.tostr(s))
     else:
-        out.append('s(t): no elementary integral')
+        out.append(_warn('s(t): no elementary integral'))
     if v is not None:
         out.append('v(t) = ' + caseng.tostr(v))
     if a is not None:
@@ -476,13 +485,13 @@ def kinematics():
                     if sv is not None:
                         extra = '   s = ' + _fn(sv)
                 out.append('  t = ' + _fn(r) + extra)
-            out.append('(these are the turning points of s,')
-            out.append(' so distance travelled and')
-            out.append(' displacement differ after them)')
+            out.append(_warn('(these are the turning points of s,'))
+            out.append(_warn(' so distance travelled and'))
+            out.append(_warn(' displacement differ after them)'))
         else:
-            out.append('v is never 0 for t >= 0 in the')
-            out.append('search range, so the motion does')
-            out.append('not reverse.')
+            out.append(_warn('v is never 0 for t >= 0 in the'))
+            out.append(_warn('search range, so the motion does'))
+            out.append(_warn('not reverse.'))
     tv = _asknum('values at t = (or cancel)')
     if tv is not None:
         out.append('')
@@ -537,25 +546,25 @@ def distance_travelled():
     if not ok:
         _show('Distance', ['Could not integrate v over that', 'interval.'])
         return
-    lines = ['v(t) = ' + caseng.tostr(caseng.simplify(v)),
-             'from t = ' + _fn(t0) + ' to t = ' + _fn(t1), '']
+    lines = [_w('v(t) = ' + caseng.tostr(caseng.simplify(v))),
+             _w('from t = ' + _fn(t0) + ' to t = ' + _fn(t1)), '']
     if turns:
-        lines.append('v = 0 inside the interval at:')
+        lines.append(_w('v = 0 inside the interval at:'))
         for r in turns:
-            lines.append('  t = ' + _fn(r))
-        lines.append('so the motion reverses - split the')
-        lines.append('integral there:')
+            lines.append(_w('  t = ' + _fn(r)))
+        lines.append(_w('so the motion reverses - split the'))
+        lines.append(_w('integral there:'))
         for a0, b0, seg in parts:
-            lines.append('  ' + _fn(a0) + ' to ' + _fn(b0) + ':  ' + _fn(seg))
+            lines.append(_w('  ' + _fn(a0) + ' to ' + _fn(b0) + ':  ' + _fn(seg)))
         lines.append('')
     lines.append('displacement = ' + _fn(disp))
     lines.append('distance     = ' + _fn(dist))
     if abs(dist - abs(disp)) > 1e-6:
         lines.append('')
-        lines.append('They differ because v changes sign.')
+        lines.append(_warn('They differ because v changes sign.'))
     else:
         lines.append('')
-        lines.append('Same, because v keeps one sign.')
+        lines.append(_warn('Same, because v keeps one sign.'))
     _show('Distance', lines)
 
 def connected():
@@ -594,22 +603,22 @@ def connected():
     # components of weight along each plane, friction always opposes motion
     drive = m1 * g * s1 - m2 * g * s2
     fric = mu1 * m1 * g * c1 + mu2 * m2 * g * c2
-    lines = ['g = ' + _fn(g),
-             'mass 1: ' + _fn(m1) + ' kg at ' + _fn(a1) + ' deg, mu = ' + _fn(mu1),
-             'mass 2: ' + _fn(m2) + ' kg at ' + _fn(a2) + ' deg, mu = ' + _fn(mu2),
+    lines = [_w('g = ' + _fn(g)),
+             _w('mass 1: ' + _fn(m1) + ' kg at ' + _fn(a1) + ' deg, mu = ' + _fn(mu1)),
+             _w('mass 2: ' + _fn(m2) + ' kg at ' + _fn(a2) + ' deg, mu = ' + _fn(mu2)),
              '',
-             'driving force along the string:',
-             '  m1 g sin' + _fn(a1) + ' - m2 g sin' + _fn(a2) + ' = ' + _fn(drive),
-             'maximum total friction:',
-             '  mu1 m1 g cos' + _fn(a1) + ' + mu2 m2 g cos' + _fn(a2) + ' = ' + _fn(fric)]
+             _w('driving force along the string:'),
+             _w('  m1 g sin' + _fn(a1) + ' - m2 g sin' + _fn(a2) + ' = ' + _fn(drive)),
+             _w('maximum total friction:'),
+             _w('  mu1 m1 g cos' + _fn(a1) + ' + mu2 m2 g cos' + _fn(a2) + ' = ' + _fn(fric))]
     if abs(drive) <= fric + 1e-9:
         lines.append('')
         lines.append('|driving| <= friction, so the')
         lines.append('system stays at rest. Friction')
         lines.append('takes the value that balances it,')
         lines.append('which is ' + _fn(abs(drive)) + ' N, not its maximum.')
-        lines.append('Tension is then indeterminate from')
-        lines.append('these equations alone.')
+        lines.append(_warn('Tension is then indeterminate from'))
+        lines.append(_warn('these equations alone.'))
         _show('Connected particles', lines)
         return
     sgn = 1.0 if drive > 0 else -1.0
@@ -618,17 +627,17 @@ def connected():
     f2 = mu2 * m2 * g * c2
     T = m2 * a + m2 * g * s2 + f2 if sgn > 0 else m1 * a + m1 * g * s1 + mu1 * m1 * g * c1
     lines.append('')
-    lines.append('acceleration a = (|drive| - friction)')
-    lines.append('                 / (m1 + m2)')
+    lines.append(_w('acceleration a = (|drive| - friction)'))
+    lines.append(_w('                 / (m1 + m2)'))
     lines.append('a = ' + _fn(a) + ' m/s^2')
     lines.append('mass ' + ('1' if sgn > 0 else '2') + ' accelerates down its plane.')
     lines.append('tension T = ' + _fn(T) + ' N')
     lines.append('')
     lines.append('')
-    lines.append('(T is the same throughout a light')
-    lines.append(' inextensible string over a smooth')
-    lines.append(' pulley - that is what makes one')
-    lines.append(' equation per mass enough)')
+    lines.append(_w('(T is the same throughout a light'))
+    lines.append(_w(' inextensible string over a smooth'))
+    lines.append(_w(' pulley - that is what makes one'))
+    lines.append(_w(' equation per mass enough)'))
     _show('Connected particles', lines)
 
 def projectile_inverse():
@@ -648,7 +657,7 @@ def projectile_inverse():
     if g <= 0:
         _show('Find the launch', ['g must be positive.'])
         return
-    lines = ['g = ' + _fn(g)]
+    lines = [_w('g = ' + _fn(g))]
     if which == 0:
         R = _asknum('range R (m)')
         if R is None:
@@ -662,16 +671,16 @@ def projectile_inverse():
                                       'for these values.'])
             return
         u = math.sqrt(R * g / s2)
-        lines.append('R = u^2 sin(2a) / g')
-        lines.append('u = sqrt(Rg / sin 2a)')
+        lines.append(_w('R = u^2 sin(2a) / g'))
+        lines.append(_w('u = sqrt(Rg / sin 2a)'))
         lines.append('u = ' + _fn(u) + ' m/s at ' + _fn(ad) + ' deg')
         lines.append('')
         other = 90.0 - ad
         if abs(other - ad) > 1e-9:
-            lines.append('NOTE: ' + _fn(other) + ' deg gives the same range')
-            lines.append('with the same speed - sin2a is equal')
-            lines.append('for a and 90 - a. The higher angle is')
-            lines.append('the slower, higher trajectory.')
+            lines.append(_warn('NOTE: ' + _fn(other) + ' deg gives the same range'))
+            lines.append(_warn('with the same speed - sin2a is equal'))
+            lines.append(_warn('for a and 90 - a. The higher angle is'))
+            lines.append(_warn('the slower, higher trajectory.'))
     elif which == 1:
         H = _asknum('max height H (m)')
         if H is None or H < 0:
@@ -685,8 +694,8 @@ def projectile_inverse():
                                       'rises, so H = 0 for every u.'])
             return
         u = math.sqrt(2.0 * g * H) / sa
-        lines.append('H = (u sin a)^2 / (2g)')
-        lines.append('u = sqrt(2gH) / sin a')
+        lines.append(_w('H = (u sin a)^2 / (2g)'))
+        lines.append(_w('u = sqrt(2gH) / sin a'))
         lines.append('u = ' + _fn(u) + ' m/s at ' + _fn(ad) + ' deg')
     elif which == 2:
         x = _asknum('horizontal distance x (m)')
@@ -703,9 +712,9 @@ def projectile_inverse():
         uy = (y + 0.5 * g * t * t) / t
         u = math.sqrt(ux * ux + uy * uy)
         ang = _deg(_atan2(uy, ux))
-        lines.append('x = ux t          so ux = x/t = ' + _fn(ux))
-        lines.append('y = uy t - gt^2/2 so uy = (y + gt^2/2)/t')
-        lines.append('                        = ' + _fn(uy))
+        lines.append(_w('x = ux t          so ux = x/t = ' + _fn(ux)))
+        lines.append(_w('y = uy t - gt^2/2 so uy = (y + gt^2/2)/t'))
+        lines.append(_w('                        = ' + _fn(uy)))
         lines.append('')
         lines.append('u = sqrt(ux^2 + uy^2) = ' + _fn(u) + ' m/s')
         lines.append('angle = ' + _fn(ang) + ' deg above the horizontal')
@@ -725,10 +734,10 @@ def projectile_inverse():
         B = -x
         C = y + A
         disc = B * B - 4.0 * A * C
-        lines.append('y = x tan a - gx^2(1 + tan^2 a)/(2u^2)')
-        lines.append('is a quadratic in tan a:')
-        lines.append('  ' + _fn(A) + ' T^2 + ' + _fn(B) + ' T + ' + _fn(C) + ' = 0')
-        lines.append('discriminant = ' + _fn(disc))
+        lines.append(_w('y = x tan a - gx^2(1 + tan^2 a)/(2u^2)'))
+        lines.append(_w('is a quadratic in tan a:'))
+        lines.append(_w('  ' + _fn(A) + ' T^2 + ' + _fn(B) + ' T + ' + _fn(C) + ' = 0'))
+        lines.append(_w('discriminant = ' + _fn(disc)))
         if disc < -1e-12:
             lines.append('')
             lines.append('Negative: at ' + _fn(u) + ' m/s the target is')
@@ -750,7 +759,7 @@ def projectile_inverse():
                 lines.append('TWO angles reach the target:')
                 lines.append('  high ball ' + _fn(a1) + ' deg')
                 lines.append('  low ball  ' + _fn(a2) + ' deg')
-                lines.append('(the low one gets there sooner)')
+                lines.append(_w('(the low one gets there sooner)'))
     else:
         R = _asknum('range R (m)')
         if R is None:
@@ -763,9 +772,9 @@ def projectile_inverse():
         uy = g * T / 2.0            # returns to launch height, so uy = gT/2
         u = math.sqrt(ux * ux + uy * uy)
         ang = _deg(_atan2(uy, ux))
-        lines.append('back at launch height, so T = 2 uy/g')
-        lines.append('uy = gT/2 = ' + _fn(uy))
-        lines.append('ux = R/T  = ' + _fn(ux))
+        lines.append(_w('back at launch height, so T = 2 uy/g'))
+        lines.append(_w('uy = gT/2 = ' + _fn(uy)))
+        lines.append(_w('ux = R/T  = ' + _fn(ux)))
         lines.append('')
         lines.append('u = ' + _fn(u) + ' m/s at ' + _fn(ang) + ' deg')
     _show('Find the launch', lines)

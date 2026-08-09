@@ -19,6 +19,8 @@ _asknum = casutil.asknum
 _askint = casutil.askint
 _fn = casutil.fmt
 _show = casutil.show
+_w = casutil.w             # working: hidden when the Working setting is off
+_warn = casutil.warn       # a caveat on the answer: always shown
 
 
 def _parse(prompt):
@@ -59,18 +61,18 @@ def t_induction_sum():
     S = _parse('claimed S(n) =')
     if S is None:
         return
-    lines = ['u(r) = ' + caseng.tostr(caseng.simplify(u)),
-             'S(n) = ' + caseng.tostr(caseng.simplify(S)), '']
+    lines = [_w('u(r) = ' + caseng.tostr(caseng.simplify(u))),
+             _w('S(n) = ' + caseng.tostr(caseng.simplify(S))), '']
     # --- base case
     u1 = _at(u, 1.0)
     s1 = _at(S, 1.0)
-    lines.append('BASE CASE n = 1')
+    lines.append(_w('BASE CASE n = 1'))
     if u1 is None or s1 is None:
-        lines.append('  cannot evaluate at n = 1')
+        lines.append(_warn('  cannot evaluate at n = 1'))
         _show('Induction', lines)
         return
     ok_base = abs(u1 - s1) < 1e-9
-    lines.append('  u(1) = ' + _fn(u1) + ',  S(1) = ' + _fn(s1))
+    lines.append(_w('  u(1) = ' + _fn(u1) + ',  S(1) = ' + _fn(s1)))
     lines.append('  ' + ('TRUE - the base case holds' if ok_base
                          else 'FALSE - S(1) is not u(1), so the'))
     if not ok_base:
@@ -83,9 +85,9 @@ def t_induction_sum():
     diff = caspoly.expand(('-', Sk1, S))
     want = caspoly.expand(uk1)
     lines.append('')
-    lines.append('INDUCTIVE STEP')
-    lines.append('  S(k+1) - S(k) = ' + caseng.tostr(diff))
-    lines.append('  u(k+1)        = ' + caseng.tostr(want))
+    lines.append(_w('INDUCTIVE STEP'))
+    lines.append(_w('  S(k+1) - S(k) = ' + caseng.tostr(diff)))
+    lines.append(_w('  u(k+1)        = ' + caseng.tostr(want)))
     same = caseng.tostr(diff) == caseng.tostr(want)
     if not same:
         # the printed forms can differ while the functions agree; test values
@@ -100,18 +102,18 @@ def t_induction_sum():
                 break
     lines.append('')
     if same:
-        lines.append('  These are equal, so the step holds.')
+        lines.append(_w('  These are equal, so the step holds.'))
         lines.append('')
         lines.append('PROVED for all n >= 1 by induction.')
         lines.append('')
-        lines.append('Write it out as: true for n = 1; assume')
-        lines.append('true for n = k; then S(k+1) = S(k) +')
-        lines.append('u(k+1), which simplifies to the formula')
-        lines.append('with k+1 in place of k; so true for all n.')
+        lines.append(_w('Write it out as: true for n = 1; assume'))
+        lines.append(_w('true for n = k; then S(k+1) = S(k) +'))
+        lines.append(_w('u(k+1), which simplifies to the formula'))
+        lines.append(_w('with k+1 in place of k; so true for all n.'))
     else:
-        lines.append('  These are NOT equal, so the claimed')
-        lines.append('  S(n) is wrong. Check it against a few')
-        lines.append('  values before trying to prove it.')
+        lines.append(_warn('  These are NOT equal, so the claimed'))
+        lines.append(_warn('  S(n) is wrong. Check it against a few'))
+        lines.append(_warn('  values before trying to prove it.'))
         acc = 0.0
         i = 1
         rows = []
@@ -126,7 +128,7 @@ def t_induction_sum():
         if rows:
             lines.append('')
             for r in rows:
-                lines.append(r)
+                lines.append(_w(r))
     _show('Induction: a sum', lines)
 
 
@@ -148,8 +150,8 @@ def t_induction_divis():
     d = _askint('divisor d', 2, 100000)
     if d is None:
         return
-    lines = ['f(n) = ' + caseng.tostr(caseng.simplify(f)), 'claim: ' + str(d) +
-             ' divides f(n) for all n >= 1', '']
+    lines = [_w('f(n) = ' + caseng.tostr(caseng.simplify(f))),
+             _w('claim: ' + str(d) + ' divides f(n) for all n >= 1'), '']
     # base case and a numeric sweep
     bad = None
     rows = []
@@ -160,9 +162,9 @@ def t_induction_divis():
             break
         r = int(round(v))
         if abs(v - r) > 1e-6:
-            lines.append('f(' + str(i) + ') = ' + _fn(v) + ' is not a whole')
-            lines.append('number, so divisibility is not the')
-            lines.append('right question here.')
+            lines.append(_warn('f(' + str(i) + ') = ' + _fn(v) + ' is not a whole'))
+            lines.append(_warn('number, so divisibility is not the'))
+            lines.append(_warn('right question here.'))
             _show('Induction', lines)
             return
         rem = r % d
@@ -171,7 +173,7 @@ def t_induction_divis():
             bad = i
         i += 1
     for r in rows[:6]:
-        lines.append(r)
+        lines.append(_w(r))
     lines.append('')
     if bad is not None:
         lines.append('f(' + str(bad) + ') is NOT divisible by ' + str(d) + '.')
@@ -180,8 +182,8 @@ def t_induction_divis():
         lines.append('one. No induction needed.')
         _show('Induction: divisibility', lines)
         return
-    lines.append('Base case holds, and so do the first')
-    lines.append(str(len(rows)) + ' values. Now the step.')
+    lines.append(_w('Base case holds, and so do the first'))
+    lines.append(_w(str(len(rows)) + ' values. Now the step.'))
     m = _askint('multiplier m in f(k+1) - m f(k)', -1000, 1000)
     if m is None:
         _show('Induction: divisibility', lines)
@@ -189,8 +191,8 @@ def t_induction_divis():
     fk1 = caseng.subst(f, 'n', ('+', ('v', 'n'), ('n', 1)))
     rest = caspoly.expand(('-', fk1, ('*', ('n', m), f)))
     lines.append('')
-    lines.append('f(k+1) - ' + str(m) + ' f(k) =')
-    lines.append('  ' + caseng.tostr(rest))
+    lines.append(_w('f(k+1) - ' + str(m) + ' f(k) ='))
+    lines.append(_w('  ' + caseng.tostr(rest)))
     okstep = True
     for kv in (1.0, 2.0, 3.0, 4.0, 5.0):
         v = _at(rest, kv)
@@ -202,17 +204,19 @@ def t_induction_divis():
             break
     lines.append('')
     if okstep:
-        lines.append('and that is divisible by ' + str(d) + ' too.')
+        lines.append(_w('and that is divisible by ' + str(d) + ' too.'))
         lines.append('')
-        lines.append('So f(k+1) = ' + str(m) + ' f(k) + (a multiple of ' + str(d) + ').')
-        lines.append('If ' + str(d) + ' divides f(k) it divides both')
-        lines.append('terms, hence f(k+1). PROVED by induction.')
+        lines.append(_w('So f(k+1) = ' + str(m) + ' f(k) + (a multiple of ' +
+                        str(d) + ').'))
+        lines.append(_w('If ' + str(d) + ' divides f(k) it divides both'))
+        lines.append(_w('terms, hence f(k+1).'))
+        lines.append('PROVED by induction.')
     else:
-        lines.append('but that is NOT always divisible by ' +
-                     str(d) + '.')
-        lines.append('Try a different multiplier m - the usual')
-        lines.append('choice is the base of the exponential')
-        lines.append('term in f(n).')
+        lines.append(_warn('but that is NOT always divisible by ' +
+                           str(d) + '.'))
+        lines.append(_w('Try a different multiplier m - the usual'))
+        lines.append(_w('choice is the base of the exponential'))
+        lines.append(_w('term in f(n).'))
     _show('Induction: divisibility', lines)
 
 
@@ -251,17 +255,17 @@ def t_induction_matrix():
             j += 1
         F.append(row)
         i += 1
-    lines = ['M = [ ' + _fn(m[0][0]) + '  ' + _fn(m[0][1]) + ' ]',
-             '    [ ' + _fn(m[1][0]) + '  ' + _fn(m[1][1]) + ' ]', '',
-             'claimed M^n =']
+    lines = [_w('M = [ ' + _fn(m[0][0]) + '  ' + _fn(m[0][1]) + ' ]'),
+             _w('    [ ' + _fn(m[1][0]) + '  ' + _fn(m[1][1]) + ' ]'), '',
+             _w('claimed M^n =')]
     i = 0
     while i < 2:
-        lines.append('  [ ' + caseng.tostr(caseng.simplify(F[i][0])) + '  ' +
-                     caseng.tostr(caseng.simplify(F[i][1])) + ' ]')
+        lines.append(_w('  [ ' + caseng.tostr(caseng.simplify(F[i][0])) + '  ' +
+                        caseng.tostr(caseng.simplify(F[i][1])) + ' ]'))
         i += 1
     lines.append('')
     # base case: the formula at n = 1 must be M itself
-    lines.append('BASE CASE n = 1')
+    lines.append(_w('BASE CASE n = 1'))
     okbase = True
     i = 0
     while i < 2:
@@ -280,7 +284,7 @@ def t_induction_matrix():
         return
     # step: M * F(k) must equal F(k+1), checked at several k
     lines.append('')
-    lines.append('INDUCTIVE STEP  M * F(k) = F(k+1)?')
+    lines.append(_w('INDUCTIVE STEP  M * F(k) = F(k+1)?'))
     okstep = True
     for kv in (1.0, 2.0, 3.0, 5.0, 8.0):
         a = []
@@ -316,7 +320,7 @@ def t_induction_matrix():
                 j += 1
             i += 1
     if okstep:
-        lines.append('  holds at k = 1, 2, 3, 5 and 8.')
+        lines.append(_warn('  holds at k = 1, 2, 3, 5 and 8.'))
         lines.append('')
         lines.append('PROVED by induction (write the step out')
         lines.append('as M^(k+1) = M * M^k and multiply).')
@@ -353,8 +357,8 @@ def t_counterexample():
         d = _askint('divisor d', 2, 100000)
         if d is None:
             return
-    lines = ['f(n) = ' + caseng.tostr(caseng.simplify(f)),
-             'tested for n = ' + str(lo) + ' to ' + str(hi), '']
+    lines = [_w('f(n) = ' + caseng.tostr(caseng.simplify(f))),
+             _w('tested for n = ' + str(lo) + ' to ' + str(hi)), '']
     found = None
     detail = ''
     n = lo
@@ -398,17 +402,17 @@ def t_counterexample():
     if found is None:
         lines.append('No counterexample in that range.')
         lines.append('')
-        lines.append('That is NOT a proof. Checking cases')
-        lines.append('never proves a statement about all n -')
-        lines.append('it only fails to disprove it. Widen the')
-        lines.append('range, or prove it properly.')
+        lines.append(_warn('That is NOT a proof. Checking cases'))
+        lines.append(_warn('never proves a statement about all n -'))
+        lines.append(_warn('it only fails to disprove it. Widen the'))
+        lines.append(_warn('range, or prove it properly.'))
     else:
         lines.append('COUNTEREXAMPLE at n = ' + str(found))
         lines.append('  ' + detail)
         lines.append('')
-        lines.append('One counterexample is a complete')
-        lines.append('disproof. Write it out: "when n = ' + str(found) + ',')
-        lines.append('f(n) = ..., so the statement is false."')
+        lines.append(_w('One counterexample is a complete'))
+        lines.append(_w('disproof. Write it out: "when n = ' + str(found) + ','))
+        lines.append(_w('f(n) = ..., so the statement is false."'))
     _show('Counterexample', lines)
 
 

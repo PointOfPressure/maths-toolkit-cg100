@@ -15,6 +15,8 @@ _fn = casutil.fmt
 _fc = casutil.fmtc
 _show = casutil.show
 _pages = casutil.show      # result_screen pages by itself now
+_w = casutil.w             # working: hidden when the Working setting is off
+_warn = casutil.warn       # a caveat on the answer: always shown
 _atan2 = casutil.atan2
 _nCr = casutil.ncr
 
@@ -33,12 +35,13 @@ def t_quadratic():
         if b == 0:
             _show('Quadratic', ['a = b = 0:', 'not an equation in x.'])
             return
-        _show('Linear bx+c=0', ['b=' + _fn(b) + ' c=' + _fn(c), 'x = ' + _fn(-c / b)])
+        _show('Linear bx+c=0', [_w('b=' + _fn(b) + ' c=' + _fn(c)), 'x = ' + _fn(-c / b)])
         return
     disc = b * b - 4 * a * c
     h = -b / (2.0 * a)
     k = c - b * b / (4.0 * a)
-    lines = ['a=' + _fn(a) + ' b=' + _fn(b), 'c=' + _fn(c), 'disc b^2-4ac = ' + _fn(disc)]
+    lines = [_w('a=' + _fn(a) + ' b=' + _fn(b)), _w('c=' + _fn(c)),
+             _w('disc b^2-4ac = ' + _fn(disc))]
     if disc > 0:
         rt = math.sqrt(disc)
         lines += ['two real roots:', 'x = ' + _fn((-b + rt) / (2.0 * a)), 'x = ' + _fn((-b - rt) / (2.0 * a))]
@@ -63,11 +66,11 @@ def _simul_linear():
     a1, b1, c1, a2, b2, c2 = vs
     det = a1 * b2 - a2 * b1
     if det == 0:
-        _show('Two linear eqns', ['a1 b2 - a2 b1 = 0', 'no unique solution', '(parallel/same line).'])
+        _show('Two linear eqns', [_w('a1 b2 - a2 b1 = 0'), 'no unique solution', '(parallel/same line).'])
         return
     x = (c1 * b2 - c2 * b1) / det
     y = (a1 * c2 - a2 * c1) / det
-    _show('Two linear eqns', ['by elimination:', 'x = ' + _fn(x), 'y = ' + _fn(y)])
+    _show('Two linear eqns', [_w('by elimination:'), 'x = ' + _fn(x), 'y = ' + _fn(y)])
 
 def _simul_linquad():
     _show('Linear + quadratic', ['line  y = m x + c', 'curve y = p x^2+q x+r', 'solve by substitution.'])
@@ -84,13 +87,13 @@ def _simul_linquad():
     C = r - c
     if A == 0:
         if B == 0:
-            _show('Linear + quad', ['reduces to 0 = ' + _fn(C), 'no/all intersections.'])
+            _show('Linear + quad', [_w('reduces to 0 = ' + _fn(C)), 'no/all intersections.'])
             return
         x = -C / B
         _show('Linear + quad', ['one intersection:', '(' + _fn(x) + ',' + _fn(m * x + c) + ')'])
         return
     disc = B * B - 4 * A * C
-    lines = ['p x^2+(q-m)x+(r-c)=0', 'disc = ' + _fn(disc)]
+    lines = [_w('p x^2+(q-m)x+(r-c)=0'), _w('disc = ' + _fn(disc))]
     if disc < 0:
         lines += ['disc < 0: line and', 'curve do not meet.']
     elif disc == 0:
@@ -128,8 +131,9 @@ def t_arith():
         return
     un = a + (n - 1) * d
     sn = n / 2.0 * (2 * a + (n - 1) * d)
-    _show('Arithmetic', ['a=' + _fn(a) + ' d=' + _fn(d), 'n=' + str(n), 'Un = a+(n-1)d',
-                         'Un = ' + _fn(un), 'Sn = n/2(2a+(n-1)d)', 'Sn = ' + _fn(sn)])
+    _show('Arithmetic', [_w('a=' + _fn(a) + ' d=' + _fn(d)), _w('n=' + str(n)),
+                         _w('Un = a+(n-1)d'), 'Un = ' + _fn(un),
+                         _w('Sn = n/2(2a+(n-1)d)'), 'Sn = ' + _fn(sn)])
 
 # 4. GEOMETRIC SEQUENCE / SERIES --------------------------------------------
 def t_geo():
@@ -148,10 +152,10 @@ def t_geo():
         sn = a * n
     else:
         sn = a * (1 - r ** n) / (1 - r)
-    lines = ['a=' + _fn(a) + ' r=' + _fn(r), 'n=' + str(n), 'Un = a r^(n-1)', 'Un = ' + _fn(un),
-             'Sn = a(1-r^n)/(1-r)', 'Sn = ' + _fn(sn)]
+    lines = [_w('a=' + _fn(a) + ' r=' + _fn(r)), _w('n=' + str(n)), _w('Un = a r^(n-1)'),
+             'Un = ' + _fn(un), _w('Sn = a(1-r^n)/(1-r)'), 'Sn = ' + _fn(sn)]
     if abs(r) < 1:
-        lines += ['|r|<1: S(inf)=a/(1-r)', 'S(inf) = ' + _fn(a / (1 - r))]
+        lines += [_w('|r|<1: S(inf)=a/(1-r)'), 'S(inf) = ' + _fn(a / (1 - r))]
     else:
         lines.append('|r|>=1: no sum to inf')
     _pages('Geometric', lines)
@@ -171,7 +175,8 @@ def _binom_int():
     if n > 30:
         _show('(a+bx)^n', ['n too large to list', '(use one-coeff tool).'])
         return
-    lines = ['(a + b x)^' + str(n), 'a=' + _fn(a) + ' b=' + _fn(b), '------------------']
+    lines = [_w('(a + b x)^' + str(n)), _w('a=' + _fn(a) + ' b=' + _fn(b)),
+             _w('------------------')]
     r = 0
     while r <= n:
         term = _nCr(n, r) * (a ** (n - r)) * (b ** r)
@@ -189,7 +194,7 @@ def _binom_real():
         return
     if k > 30:
         k = 30
-    lines = ['(1 + x)^' + _fn(n), 'valid for |x| < 1', '------------------']
+    lines = [_w('(1 + x)^' + _fn(n)), _warn('valid for |x| < 1'), _w('------------------')]
     coef = 1.0
     r = 0
     while r < k:
@@ -217,11 +222,12 @@ def _binom_coeff():
     if k is None:
         return
     if k < 0 or k > n:
-        _show('Term coeff', ['k outside 0..n:', 'coeff of x^' + str(k) + ' = 0'])
+        _show('Term coeff', [_w('k outside 0..n:'), 'coeff of x^' + str(k) + ' = 0'])
         return
     ncr = _nCr(n, k)
     coef = ncr * (a ** (n - k)) * (b ** k)
-    _show('Term coeff', ['term in (a+bx)^' + str(n), 'nCr(' + str(n) + ',' + str(k) + ') = ' + str(ncr),
+    _show('Term coeff', [_w('term in (a+bx)^' + str(n)),
+                         _w('nCr(' + str(n) + ',' + str(k) + ') = ' + str(ncr)),
                          'coeff of x^' + str(k) + ':', '  ' + _fn(coef)])
 
 def t_binom():
@@ -243,7 +249,7 @@ def _log_solve():
     if a <= 0 or a == 1 or b <= 0:
         _show('Solve a^x=b', ['need a>0, a!=1, b>0.'])
         return
-    _show('Solve a^x=b', ['a=' + _fn(a) + '  b=' + _fn(b), 'x = log b / log a',
+    _show('Solve a^x=b', [_w('a=' + _fn(a) + '  b=' + _fn(b)), _w('x = log b / log a'),
                           'x = ' + _fn(math.log(b) / math.log(a))])
 
 def _log_eval():
@@ -256,7 +262,8 @@ def _log_eval():
     if c <= 0 or c == 1 or v <= 0:
         _show('log base c', ['need c>0, c!=1, v>0.'])
         return
-    _show('log base c of v', ['c=' + _fn(c) + '  v=' + _fn(v), 'log_c v = ln v / ln c',
+    _show('log base c of v', [_w('c=' + _fn(c) + '  v=' + _fn(v)),
+                              _w('log_c v = ln v / ln c'),
                               '= ' + _fn(math.log(v) / math.log(c))])
 
 def _log_laws():
@@ -319,7 +326,7 @@ def _circle_from_cr():
     D = -2 * a
     E = -2 * b
     F = a * a + b * b - r * r
-    _pages('Centre+r -> eqn', ['centre (' + _fn(a) + ',' + _fn(b) + ')', 'radius ' + _fn(r),
+    _pages('Centre+r -> eqn', [_w('centre (' + _fn(a) + ',' + _fn(b) + ')'), _w('radius ' + _fn(r)),
                                '(x-(' + _fn(a) + '))^2 +', '(y-(' + _fn(b) + '))^2 = ' + _fn(r * r),
                                'x^2+y^2 +(' + _fn(D) + ')x', ' +(' + _fn(E) + ')y +(' + _fn(F) + ')=0'])
 
@@ -340,7 +347,7 @@ def _circle_from_eqn():
     if r2 < 0:
         _show('Circle from eqn', ['r^2 = ' + _fn(r2), 'negative: not a', 'real circle.'])
         return
-    _show('Circle from eqn', ['centre (' + _fn(cx) + ',' + _fn(cy) + ')', 'r^2 = ' + _fn(r2),
+    _show('Circle from eqn', ['centre (' + _fn(cx) + ',' + _fn(cy) + ')', _w('r^2 = ' + _fn(r2)),
                               'radius = ' + _fn(math.sqrt(r2))])
 
 def _circle_3pts():
@@ -368,8 +375,8 @@ def _circle_3pts():
     b2 = 2.0 * (y3 - y1)
     c2 = x3 * x3 - x1 * x1 + y3 * y3 - y1 * y1
     det = a1 * b2 - a2 * b1
-    lines = ['A(' + _fn(x1) + ', ' + _fn(y1) + ')  B(' + _fn(x2) + ', ' +
-             _fn(y2) + ')  C(' + _fn(x3) + ', ' + _fn(y3) + ')', '']
+    lines = [_w('A(' + _fn(x1) + ', ' + _fn(y1) + ')  B(' + _fn(x2) + ', ' +
+                _fn(y2) + ')  C(' + _fn(x3) + ', ' + _fn(y3) + ')'), '']
     if abs(det) < 1e-12:
         lines.append('The three points are COLLINEAR, so no')
         lines.append('circle passes through all of them.')
@@ -390,7 +397,7 @@ def _circle_3pts():
         if abs(d - r) > 1e-6:
             ok = False
     lines.append('')
-    lines.append('all three points on the circle: ' + ('yes' if ok else 'NO'))
+    lines.append(_warn('all three points on the circle: ' + ('yes' if ok else 'NO')))
     # angle in a semicircle: is any chord a diameter?
     for i in range(3):
         j = (i + 1) % 3
@@ -399,9 +406,9 @@ def _circle_3pts():
         dy = pts[j][1] - pts[k][1]
         if abs(math.sqrt(dx * dx + dy * dy) - 2.0 * r) < 1e-9:
             lines.append('')
-            lines.append('One chord is a DIAMETER, so the angle')
-            lines.append('at the third point is 90 degrees -')
-            lines.append('the angle in a semicircle.')
+            lines.append(_w('One chord is a DIAMETER, so the angle'))
+            lines.append(_w('at the third point is 90 degrees -'))
+            lines.append(_w('the angle in a semicircle.'))
             break
     _pages('Circle through 3 points', lines)
 
@@ -424,9 +431,9 @@ def _circle_tangent():
     if py is None:
         return
     r = math.sqrt((px - cx) ** 2 + (py - cy) ** 2)
-    lines = ['centre (' + _fn(cx) + ', ' + _fn(cy) + ')',
-             'point  (' + _fn(px) + ', ' + _fn(py) + ')',
-             'radius = ' + _fn(r), '']
+    lines = [_w('centre (' + _fn(cx) + ', ' + _fn(cy) + ')'),
+             _w('point  (' + _fn(px) + ', ' + _fn(py) + ')'),
+             _w('radius = ' + _fn(r)), '']
     if r < 1e-12:
         lines.append('The point IS the centre, so there is')
         lines.append('no radius and no tangent.')
@@ -443,14 +450,14 @@ def _circle_tangent():
     else:
         mr = dy / dx
         mt = -1.0 / mr
-        lines.append('radius gradient  = ' + _fn(mr))
-        lines.append('tangent gradient = -1/that = ' + _fn(mt))
+        lines.append(_w('radius gradient  = ' + _fn(mr)))
+        lines.append(_w('tangent gradient = -1/that = ' + _fn(mt)))
         lines.append('')
         lines.append('y - ' + _fn(py) + ' = ' + _fn(mt) + '(x - ' + _fn(px) + ')')
         lines.append('y = ' + _fn(mt) + 'x + ' + _fn(py - mt * px))
         lines.append('')
-        lines.append('check: ' + _fn(mr) + ' x ' + _fn(mt) + ' = ' +
-                     _fn(mr * mt) + ' (should be -1)')
+        lines.append(_warn('check: ' + _fn(mr) + ' x ' + _fn(mt) + ' = ' +
+                           _fn(mr * mt) + ' (should be -1)'))
     _pages('Tangent to a circle', lines)
 
 
@@ -472,9 +479,9 @@ def _circle_param():
         return
     lines = ['x = ' + _fn(cx) + ' + ' + _fn(r) + ' cos t',
              'y = ' + _fn(cy) + ' + ' + _fn(r) + ' sin t', '',
-             'eliminating t with cos^2 + sin^2 = 1:',
-             '  ((x-' + _fn(cx) + ')/' + _fn(r) + ')^2 + ((y-' + _fn(cy) +
-             ')/' + _fn(r) + ')^2 = 1',
+             _w('eliminating t with cos^2 + sin^2 = 1:'),
+             _w('  ((x-' + _fn(cx) + ')/' + _fn(r) + ')^2 + ((y-' + _fn(cy) +
+                ')/' + _fn(r) + ')^2 = 1'),
              '  (x-' + _fn(cx) + ')^2 + (y-' + _fn(cy) + ')^2 = ' + _fn(r * r),
              '', 'so it is the circle centre (' + _fn(cx) + ', ' + _fn(cy) +
              '), radius ' + _fn(r) + '.']
@@ -489,8 +496,8 @@ def _circle_param():
         if abs(math.sin(t)) > 1e-12:
             lines.append('  dy/dx = -cot t = ' +
                          _fn(-math.cos(t) / math.sin(t)))
-            lines.append('  (perpendicular to the radius, as')
-            lines.append('   it must be)')
+            lines.append(_w('  (perpendicular to the radius, as'))
+            lines.append(_w('   it must be)'))
         else:
             lines.append('  dx/dt = 0 here: the tangent is vertical')
     _pages('Parametric circle', lines)
@@ -533,30 +540,30 @@ def t_proportion():
             return
         n = (math.log(y2) - math.log(y1)) / (math.log(x2) - math.log(x1))
         k = y1 / (x1 ** n)
-        lines = ['(' + _fn(x1) + ', ' + _fn(y1) + ') and (' + _fn(x2) + ', ' +
-                 _fn(y2) + ')', '',
-                 'y = k x^n, so log y = log k + n log x:',
-                 '  n = (log y2 - log y1)/(log x2 - log x1)',
-                 '    = ' + _fn(n, 6),
-                 '  k = y1 / x1^n = ' + _fn(k, 6), '',
+        lines = [_w('(' + _fn(x1) + ', ' + _fn(y1) + ') and (' + _fn(x2) + ', ' +
+                    _fn(y2) + ')'), '',
+                 _w('y = k x^n, so log y = log k + n log x:'),
+                 _w('  n = (log y2 - log y1)/(log x2 - log x1)'),
+                 _w('    = ' + _fn(n, 6)),
+                 _w('  k = y1 / x1^n = ' + _fn(k, 6)), '',
                  'y = ' + _fn(k, 6) + ' x^' + _fn(n, 6)]
     elif kind == 0:
         if abs(x1) < 1e-12:
             _show('Proportion', ['x = 0 gives no information about k.'])
             return
         k = y1 / x1
-        lines = ['y = k x with (' + _fn(x1) + ', ' + _fn(y1) + ')',
-                 '  k = y/x = ' + _fn(k, 6), '',
+        lines = [_w('y = k x with (' + _fn(x1) + ', ' + _fn(y1) + ')'),
+                 _w('  k = y/x = ' + _fn(k, 6)), '',
                  'y = ' + _fn(k, 6) + ' x', '',
-                 'doubling x doubles y; the graph is a',
-                 'straight line through the origin.']
+                 _w('doubling x doubles y; the graph is a'),
+                 _w('straight line through the origin.')]
     else:
         k = y1 * x1
-        lines = ['y = k/x with (' + _fn(x1) + ', ' + _fn(y1) + ')',
-                 '  k = xy = ' + _fn(k, 6), '',
+        lines = [_w('y = k/x with (' + _fn(x1) + ', ' + _fn(y1) + ')'),
+                 _w('  k = xy = ' + _fn(k, 6)), '',
                  'y = ' + _fn(k, 6) + ' / x', '',
-                 'doubling x halves y; xy is constant,',
-                 'and the graph is a hyperbola.']
+                 _w('doubling x halves y; xy is constant,'),
+                 _w('and the graph is a hyperbola.')]
     xq = _asknum('predict y when x = (or cancel)')
     if xq is not None:
         try:
@@ -646,7 +653,7 @@ def _trig_solve():
         if x not in sols:
             sols.append(x)
     sols.sort()
-    lines = ['k = ' + _fn(k), 'range 0..360 deg', '------------------']
+    lines = [_w('k = ' + _fn(k)), _w('range 0..360 deg'), _w('------------------')]
     if not sols:
         lines.append('no solutions in range.')
     else:
@@ -665,8 +672,9 @@ def _trig_rform():
     R = math.sqrt(a * a + b * b)
     # R sin(x+alpha)=R sin x cos al + R cos x sin al; match a=R cos al, b=R sin al
     alpha = casutil.deg(_atan2(b, a))
-    _pages('R-form', ['a=' + _fn(a) + '  b=' + _fn(b), 'R = sqrt(a^2+b^2)', 'R = ' + _fn(R),
-                      '= R sin(x + alpha)', 'tan alpha = b/a', 'alpha = ' + _fn(alpha) + ' deg',
+    _pages('R-form', [_w('a=' + _fn(a) + '  b=' + _fn(b)), _w('R = sqrt(a^2+b^2)'),
+                      'R = ' + _fn(R), '= R sin(x + alpha)', _w('tan alpha = b/a'),
+                      'alpha = ' + _fn(alpha) + ' deg',
                       '(rad = ' + _fn(casutil.rad(alpha)) + ')'])
 
 def _trig_exact():
@@ -771,9 +779,9 @@ def _trig_identity():
     parts = name.split(' ')
     sq = parts[1]                      # "sin^2" / "cos^2" / "tan^2" / "sec^2"
     lin = parts[5]                     # "sin" / "cos" / "tan"
-    lines = [_lead(a, sq + ' x') + ' ' + _signed(b, lin + ' x') + ' ' +
-             _signed(c) + ' = 0',
-             'for ' + _fn(lo) + ' <= x <= ' + _fn(hi) + ' ' + unm, '']
+    lines = [_w(_lead(a, sq + ' x') + ' ' + _signed(b, lin + ' x') + ' ' +
+                _signed(c) + ' = 0'),
+             _w('for ' + _fn(lo) + ' <= x <= ' + _fn(hi) + ' ' + unm), '']
     # apply the identity to get a quadratic in ONE function
     A = a
     B = b
@@ -781,23 +789,23 @@ def _trig_identity():
     fname = ('sin', 'cos', 'tan')[f]
     if ident == 'sin2':
         # a(1 - cos^2) + b cos + c = 0  ->  -a cos^2 + b cos + (a + c) = 0
-        lines.append('use sin^2 x = 1 - cos^2 x:')
+        lines.append(_w('use sin^2 x = 1 - cos^2 x:'))
         A = -a
         C = a + c
     elif ident == 'cos2':
-        lines.append('use cos^2 x = 1 - sin^2 x:')
+        lines.append(_w('use cos^2 x = 1 - sin^2 x:'))
         A = -a
         C = a + c
     elif ident == 'sec2':
         # a(1 + tan^2) + b tan + c = 0  ->  a tan^2 + b tan + (a + c) = 0
-        lines.append('use sec^2 x = 1 + tan^2 x:')
+        lines.append(_w('use sec^2 x = 1 + tan^2 x:'))
         C = a + c
-    lines.append('  ' + _lead(A, fname + '^2 x') + ' ' +
-                 _signed(B, fname + ' x') + ' ' + _signed(C) + ' = 0')
+    lines.append(_w('  ' + _lead(A, fname + '^2 x') + ' ' +
+                    _signed(B, fname + ' x') + ' ' + _signed(C) + ' = 0'))
     lines.append('')
-    lines.append('let u = ' + fname + ' x:')
-    lines.append('  ' + _lead(A, 'u^2') + ' ' + _signed(B, 'u') + ' ' +
-                 _signed(C) + ' = 0')
+    lines.append(_w('let u = ' + fname + ' x:'))
+    lines.append(_w('  ' + _lead(A, 'u^2') + ' ' + _signed(B, 'u') + ' ' +
+                    _signed(C) + ' = 0'))
     roots = []
     if abs(A) < 1e-12:
         if abs(B) < 1e-12:
@@ -807,10 +815,10 @@ def _trig_identity():
             _pages('Trig by identity', lines)
             return
         roots = [-C / B]
-        lines.append('  (linear) u = ' + _fn(roots[0]))
+        lines.append(_w('  (linear) u = ' + _fn(roots[0])))
     else:
         disc = B * B - 4.0 * A * C
-        lines.append('  discriminant = ' + _fn(disc))
+        lines.append(_w('  discriminant = ' + _fn(disc)))
         if disc < -1e-12:
             lines.append('')
             lines.append('Negative, so there is no real u and')
@@ -826,10 +834,10 @@ def _trig_identity():
     lines.append('')
     allsols = []
     for u in roots:
-        lines.append(fname + ' x = ' + _fn(u))
+        lines.append(_w(fname + ' x = ' + _fn(u)))
         if f != 2 and (u > 1.0 + 1e-12 or u < -1.0 - 1e-12):
-            lines.append('  |' + fname + ' x| cannot exceed 1, so this')
-            lines.append('  root gives no solutions - discard it.')
+            lines.append(_warn('  |' + fname + ' x| cannot exceed 1, so this'))
+            lines.append(_warn('  root gives no solutions - discard it.'))
             continue
         uu = u
         if f != 2:
@@ -839,10 +847,10 @@ def _trig_identity():
                 uu = -1.0
         sols = _trig_roots(f, uu, lo, hi, full)
         if not sols:
-            lines.append('  no x in the interval')
+            lines.append(_w('  no x in the interval'))
             continue
         for x in sols:
-            lines.append('  x = ' + _fn(x) + ' ' + unm)
+            lines.append(_w('  x = ' + _fn(x) + ' ' + unm))
             dup = False
             for e in allsols:
                 if abs(e - x) < 1e-6:
@@ -887,8 +895,8 @@ def _trig_identity():
                 val = a * tv * tv + b * tv + c
             if abs(val) > 1e-6:
                 bad += 1
-        lines.append('checked back in the original: ' +
-                     ('all satisfy it' if bad == 0 else str(bad) + ' DO NOT'))
+        lines.append(_warn('checked back in the original: ' +
+                           ('all satisfy it' if bad == 0 else str(bad) + ' DO NOT')))
     else:
         lines.append('No solutions in that interval.')
     _pages('Trig by identity', lines)
@@ -970,20 +978,20 @@ def _trig_general():
     sols.sort()
     nm = ('sin', 'cos', 'tan')[f]
     unm = 'deg' if unit == 0 else 'rad'
-    lines = [nm + '(' + _fn(p) + 'x + ' + _fn(q) + ') = ' + _fn(k),
-             'for ' + _fn(lo) + ' <= x <= ' + _fn(hi) + ' ' + unm,
-             'principal value ' + _fn(base) + ' ' + unm,
-             'period in x is ' + _fn(period / (p if p > 0 else -p)) + ' ' + unm,
-             '------------------']
+    lines = [_w(nm + '(' + _fn(p) + 'x + ' + _fn(q) + ') = ' + _fn(k)),
+             _w('for ' + _fn(lo) + ' <= x <= ' + _fn(hi) + ' ' + unm),
+             _w('principal value ' + _fn(base) + ' ' + unm),
+             _w('period in x is ' + _fn(period / (p if p > 0 else -p)) + ' ' + unm),
+             _w('------------------')]
     if not sols:
         lines.append('no solutions in that interval.')
     else:
         for x in sols:
             lines.append('x = ' + _fn(x) + ' ' + unm)
         lines.append('')
-        lines.append(str(len(sols)) + ' solutions. A multiple angle')
-        lines.append('gives p times as many as the')
-        lines.append('plain equation would.')
+        lines.append(str(len(sols)) + ' solutions.')
+        lines.append(_w('A multiple angle gives p times as many'))
+        lines.append(_w('as the plain equation would.'))
     _pages('Solve trig', lines)
 
 
@@ -1049,16 +1057,16 @@ def _trig_expand():
             ('cos(A-B)', math.cos(ra - rb), ca * cb + sa * sb),
             ('sin(2A)', math.sin(2 * ra), 2 * sa * ca),
             ('cos(2A)', math.cos(2 * ra), ca * ca - sa * sa)]
-    lines = ['A = ' + _fn(A) + ' deg, B = ' + _fn(B) + ' deg', '']
+    lines = [_w('A = ' + _fn(A) + ' deg, B = ' + _fn(B) + ' deg'), '']
     for nm, direct, expanded in rows:
         lines.append(nm + ' = ' + _fn(direct, 6))
-        lines.append('  expansion  ' + _fn(expanded, 6) +
-                     ('  agrees' if abs(direct - expanded) < 1e-9 else '  DIFFERS'))
+        lines.append(_warn('  expansion  ' + _fn(expanded, 6) +
+                           ('  agrees' if abs(direct - expanded) < 1e-9 else '  DIFFERS')))
     if abs(ca * cb) > 1e-12 and abs(1.0 - (sa / ca) * (sb / cb)) > 1e-12:
         ta = sa / ca
         tb = sb / cb
         lines.append('tan(A+B) = ' + _fn(math.tan(ra + rb), 6))
-        lines.append('  expansion  ' + _fn((ta + tb) / (1.0 - ta * tb), 6))
+        lines.append(_warn('  expansion  ' + _fn((ta + tb) / (1.0 - ta * tb), 6)))
     _pages('Compound angles', lines)
 
 
@@ -1167,22 +1175,22 @@ def t_triangle():
              'perimeter = ' + _fn(a + b + cc)]
     if c == 0 or c == 1:
         lines.append('')
-        lines.append('cosine rule: a^2 = b^2 + c^2 - 2bc cosA')
+        lines.append(_w('cosine rule: a^2 = b^2 + c^2 - 2bc cosA'))
     else:
         lines.append('')
-        lines.append('sine rule: a/sinA = b/sinB = c/sinC')
-        lines.append('  common ratio = ' + _fn(a / math.sin(casutil.rad(A))))
+        lines.append(_w('sine rule: a/sinA = b/sinB = c/sinC'))
+        lines.append(_w('  common ratio = ' + _fn(a / math.sin(casutil.rad(A)))))
     if warn is not None:
         C2 = 180.0 - A - warn
         c2 = a * math.sin(casutil.rad(C2)) / math.sin(casutil.rad(A))
         lines.append('')
-        lines.append('AMBIGUOUS CASE: a < b, so there is')
-        lines.append('a second triangle -')
-        lines.append('  B = ' + _fn(warn) + ' deg')
-        lines.append('  C = ' + _fn(C2) + ' deg')
-        lines.append('  c = ' + _fn(c2))
-        lines.append('Check the question for which one')
-        lines.append('is wanted.')
+        lines.append(_warn('AMBIGUOUS CASE: a < b, so there is'))
+        lines.append(_warn('a second triangle -'))
+        lines.append(_warn('  B = ' + _fn(warn) + ' deg'))
+        lines.append(_warn('  C = ' + _fn(C2) + ' deg'))
+        lines.append(_warn('  c = ' + _fn(c2)))
+        lines.append(_warn('Check the question for which one'))
+        lines.append(_warn('is wanted.'))
     _pages('Triangle', lines)
 
 
@@ -1209,8 +1217,8 @@ def t_arc_sector():
     area = 0.5 * r * r * rad
     chord = 2.0 * r * math.sin(rad / 2.0)
     seg_area = 0.5 * r * r * (rad - math.sin(rad))
-    lines = ['r = ' + _fn(r),
-             'theta = ' + _fn(rad) + ' rad = ' + _fn(degs) + ' deg',
+    lines = [_w('r = ' + _fn(r)),
+             _w('theta = ' + _fn(rad) + ' rad = ' + _fn(degs) + ' deg'),
              '',
              'arc length  = r theta      = ' + _fn(arc),
              'sector area = (1/2)r^2 th  = ' + _fn(area),
@@ -1223,8 +1231,8 @@ def t_arc_sector():
              '  = arc + 2r = ' + _fn(arc + 2.0 * r)]
     if unit == 1:
         lines.append('')
-        lines.append('(the degrees were converted first -')
-        lines.append(' r theta only works in radians)')
+        lines.append(_w('(the degrees were converted first -'))
+        lines.append(_w(' r theta only works in radians)'))
     _pages('Arc and sector', lines)
 
 
@@ -1249,7 +1257,7 @@ def t_inequality():
     if b is None:
         return
     if kind == 0:
-        lines = [_fn(a) + 'x + ' + _fn(b) + ' ' + sym + ' 0']
+        lines = [_w(_fn(a) + 'x + ' + _fn(b) + ' ' + sym + ' 0')]
         if a == 0:
             ok = (b > 0) if want_pos and strict else ((b >= 0) if want_pos else
                                                       ((b < 0) if strict else (b <= 0)))
@@ -1263,20 +1271,20 @@ def t_inequality():
         eff = sym
         if flip:
             eff = ('<', '<=', '>', '>=')[rel]
-            lines.append('a < 0, so dividing by a FLIPS the sign')
+            lines.append(_w('a < 0, so dividing by a FLIPS the sign'))
         lines.append('x ' + eff + ' ' + _fn(root))
         _pages('Inequality', lines)
         return
     c = _asknum('c')
     if c is None:
         return
-    lines = [_fn(a) + 'x^2 + ' + _fn(b) + 'x + ' + _fn(c) + ' ' + sym + ' 0']
+    lines = [_w(_fn(a) + 'x^2 + ' + _fn(b) + 'x + ' + _fn(c) + ' ' + sym + ' 0')]
     if a == 0:
         lines.append('a = 0: this is linear, not quadratic.')
         _pages('Inequality', lines)
         return
     disc = b * b - 4.0 * a * c
-    lines.append('discriminant = ' + _fn(disc))
+    lines.append(_w('discriminant = ' + _fn(disc)))
     lo = None
     hi = None
     if disc > 0:
@@ -1285,16 +1293,16 @@ def t_inequality():
         hi = (-b + rt) / (2.0 * a)
         if lo > hi:
             lo, hi = hi, lo
-        lines.append('roots ' + _fn(lo) + ' and ' + _fn(hi))
+        lines.append(_w('roots ' + _fn(lo) + ' and ' + _fn(hi)))
     elif abs(disc) < 1e-12:
         lo = -b / (2.0 * a)
         hi = lo
-        lines.append('one repeated root ' + _fn(lo))
+        lines.append(_w('one repeated root ' + _fn(lo)))
     else:
-        lines.append('no real roots: the curve never')
-        lines.append('crosses the axis.')
+        lines.append(_w('no real roots: the curve never'))
+        lines.append(_w('crosses the axis.'))
     up = a > 0
-    lines.append('the parabola opens ' + ('upwards' if up else 'downwards'))
+    lines.append(_w('the parabola opens ' + ('upwards' if up else 'downwards')))
     lines.append('')
     inside_is_neg = up          # between the roots, an upward parabola is < 0
     if lo is None:
@@ -1303,7 +1311,7 @@ def t_inequality():
                      ' ' + sym + ' 0:')
         lines.append('  ' + ('every real x' if always else 'no solutions'))
     elif abs(hi - lo) < 1e-12:
-        lines.append('the curve touches the axis at ' + _fn(lo) + '.')
+        lines.append(_w('the curve touches the axis at ' + _fn(lo) + '.'))
         if want_pos == up:
             lines.append('  every x' + ('' if strict else '') +
                          (' except x = ' + _fn(lo) if strict else ''))
@@ -1314,12 +1322,12 @@ def t_inequality():
         oc = '<=' if not strict else '<'
         if between:
             lines.append('  ' + _fn(lo) + ' ' + oc + ' x ' + oc + ' ' + _fn(hi))
-            lines.append('  (between the roots)')
+            lines.append(_w('  (between the roots)'))
         else:
             gt = '>=' if not strict else '>'
             lt = '<=' if not strict else '<'
             lines.append('  x ' + lt + ' ' + _fn(lo) + '  or  x ' + gt + ' ' + _fn(hi))
-            lines.append('  (outside the roots)')
+            lines.append(_w('  (outside the roots)'))
     lines.append('')
     lines.append('The sketch follows: the curve, and the')
     lines.append('part of the x-axis that satisfies it.')
@@ -1442,17 +1450,17 @@ def t_surds():
         if n is None:
             return
         a, b = _sqsplit(n)
-        lines = ['sqrt(' + str(n) + ')']
+        lines = [_w('sqrt(' + str(n) + ')')]
         if b == 1:
             lines.append('  = ' + str(a) + '   (a perfect square)')
         elif a == 1:
             lines.append('  = sqrt(' + str(n) + ')  already in simplest form')
-            lines.append('  (' + str(n) + ' has no square factor)')
+            lines.append(_w('  (' + str(n) + ' has no square factor)'))
         else:
-            lines.append('  = sqrt(' + str(a * a) + ' x ' + str(b) + ')')
+            lines.append(_w('  = sqrt(' + str(a * a) + ' x ' + str(b) + ')'))
             lines.append('  = ' + str(a) + 'sqrt(' + str(b) + ')')
         lines.append('')
-        lines.append('decimal check: ' + _fn(math.sqrt(n), 6))
+        lines.append(_w('decimal check: ' + _fn(math.sqrt(n), 6)))
         _pages('Surds', lines)
         return
     if what == 1:
@@ -1470,22 +1478,22 @@ def t_surds():
             return
         pa, ra = _sqsplit(m)
         pb, rb = _sqsplit(n)
-        lines = [_surdstr(a, m) + '  +  ' + _surdstr(b, n), '',
-                 'simplify each first:',
-                 '  ' + _surdstr(a, m) + ' = ' + _surdstr(a * pa, ra),
-                 '  ' + _surdstr(b, n) + ' = ' + _surdstr(b * pb, rb), '']
+        lines = [_w(_surdstr(a, m) + '  +  ' + _surdstr(b, n)), '',
+                 _w('simplify each first:'),
+                 _w('  ' + _surdstr(a, m) + ' = ' + _surdstr(a * pa, ra)),
+                 _w('  ' + _surdstr(b, n) + ' = ' + _surdstr(b * pb, rb)), '']
         if ra == rb:
-            lines.append('Like surds (both sqrt(' + str(ra) + ')), so add')
-            lines.append('the coefficients:')
+            lines.append(_w('Like surds (both sqrt(' + str(ra) + ')), so add'))
+            lines.append(_w('the coefficients:'))
             lines.append('  = ' + _surdstr(a * pa + b * pb, ra))
         else:
-            lines.append('sqrt(' + str(ra) + ') and sqrt(' + str(rb) + ') are')
-            lines.append('different surds, so this does NOT')
-            lines.append('collect - leave it as')
+            lines.append(_warn('sqrt(' + str(ra) + ') and sqrt(' + str(rb) + ') are'))
+            lines.append(_warn('different surds, so this does NOT'))
+            lines.append(_warn('collect - leave it as'))
             lines.append('  ' + _surdstr(a * pa, ra) + ' + ' + _surdstr(b * pb, rb))
         lines.append('')
-        lines.append('decimal check: ' +
-                     _fn(a * math.sqrt(m) + b * math.sqrt(n), 6))
+        lines.append(_w('decimal check: ' +
+                        _fn(a * math.sqrt(m) + b * math.sqrt(n), 6)))
         _pages('Surds', lines)
         return
     if what == 2:
@@ -1503,12 +1511,12 @@ def t_surds():
             return
         prod = m * n
         pa, ra = _sqsplit(prod)
-        lines = [_surdstr(a, m) + ' x ' + _surdstr(b, n), '',
-                 'sqrt(m) sqrt(n) = sqrt(mn):',
-                 '  = ' + _fn(a * b) + ' sqrt(' + str(prod) + ')',
+        lines = [_w(_surdstr(a, m) + ' x ' + _surdstr(b, n)), '',
+                 _w('sqrt(m) sqrt(n) = sqrt(mn):'),
+                 _w('  = ' + _fn(a * b) + ' sqrt(' + str(prod) + ')'),
                  '  = ' + _surdstr(a * b * pa, ra), '',
-                 'decimal check: ' +
-                 _fn(a * b * math.sqrt(prod), 6)]
+                 _w('decimal check: ' +
+                    _fn(a * b * math.sqrt(prod), 6))]
         _pages('Surds', lines)
         return
     # rationalise k / (p + q sqrt(n))
@@ -1525,20 +1533,20 @@ def t_surds():
     if n is None:
         return
     den = p * p - q * q * n
-    lines = [_fn(k) + ' / (' + _fn(p) + ' + ' + _surdstr(q, n) + ')', '',
-             'Multiply top and bottom by the',
-             'CONJUGATE ' + _fn(p) + ' - ' + _surdstr(q, n) + '.',
-             'The bottom becomes p^2 - q^2 n, which',
-             'has no surd in it - that is the point.', '',
-             '  bottom = ' + _fn(p) + '^2 - ' + _fn(q) + '^2 x ' + str(n) +
-             ' = ' + _fn(den)]
+    lines = [_w(_fn(k) + ' / (' + _fn(p) + ' + ' + _surdstr(q, n) + ')'), '',
+             _w('Multiply top and bottom by the'),
+             _w('CONJUGATE ' + _fn(p) + ' - ' + _surdstr(q, n) + '.'),
+             _w('The bottom becomes p^2 - q^2 n, which'),
+             _w('has no surd in it - that is the point.'), '',
+             _w('  bottom = ' + _fn(p) + '^2 - ' + _fn(q) + '^2 x ' + str(n) +
+                ' = ' + _fn(den))]
     if abs(den) < 1e-12:
         lines.append('')
-        lines.append('That is zero, so the original')
-        lines.append('expression is undefined.')
+        lines.append('The bottom comes out zero, so the')
+        lines.append('original expression is undefined.')
         _pages('Surds', lines)
         return
-    lines.append('  top    = ' + _fn(k) + '(' + _fn(p) + ' - ' + _surdstr(q, n) + ')')
+    lines.append(_w('  top    = ' + _fn(k) + '(' + _fn(p) + ' - ' + _surdstr(q, n) + ')'))
     lines.append('')
     # the fraction form is what goes on the paper; the decimals are the check
     num1 = k * p
@@ -1552,8 +1560,8 @@ def t_surds():
                      ') / ' + _fn(den / g) + '   (divided by ' + str(g) + ')')
     lines.append('  = ' + _fn(num1 / den) + ' - ' + _surdstr(num2 / den, n))
     lines.append('')
-    lines.append('decimal check: ' +
-                 _fn(k / (p + q * math.sqrt(n)), 6))
+    lines.append(_w('decimal check: ' +
+                    _fn(k / (p + q * math.sqrt(n)), 6)))
     _pages('Surds', lines)
 
 
@@ -1578,15 +1586,15 @@ def t_linecircle():
     vert = casui.menu('The line is', ['y = m x + c', 'vertical, x = k'])
     if vert == -1:
         return
-    lines = ['circle (x-' + _fn(a) + ')^2 + (y-' + _fn(b) + ')^2 = ' + _fn(r * r)]
+    lines = [_w('circle (x-' + _fn(a) + ')^2 + (y-' + _fn(b) + ')^2 = ' + _fn(r * r))]
     if vert == 1:
         k = _asknum('k in x = k')
         if k is None:
             return
-        lines.append('line x = ' + _fn(k))
+        lines.append(_w('line x = ' + _fn(k)))
         d = r * r - (k - a) * (k - a)
         lines.append('')
-        lines.append('(y-' + _fn(b) + ')^2 = ' + _fn(d))
+        lines.append(_w('(y-' + _fn(b) + ')^2 = ' + _fn(d)))
         if d < -1e-12:
             lines.append('negative, so the line MISSES the circle')
         elif d < 1e-12:
@@ -1604,34 +1612,34 @@ def t_linecircle():
     c = _asknum('c (intercept)')
     if c is None:
         return
-    lines.append('line y = ' + _fn(m) + 'x + ' + _fn(c))
+    lines.append(_w('line y = ' + _fn(m) + 'x + ' + _fn(c)))
     # (x-a)^2 + (mx + c - b)^2 = r^2
     A = 1.0 + m * m
     B = -2.0 * a + 2.0 * m * (c - b)
     C = a * a + (c - b) * (c - b) - r * r
     disc = B * B - 4.0 * A * C
     lines.append('')
-    lines.append('substituting gives')
-    lines.append('  ' + _fn(A) + 'x^2 ' + _signed(B) + 'x ' + _signed(C) + ' = 0')
-    lines.append('  discriminant = ' + _fn(disc))
+    lines.append(_w('substituting gives'))
+    lines.append(_w('  ' + _fn(A) + 'x^2 ' + _signed(B) + 'x ' + _signed(C) + ' = 0'))
+    lines.append(_w('  discriminant = ' + _fn(disc)))
     lines.append('')
     if disc < -1e-9:
         lines.append('NEGATIVE: the line misses the circle.')
         d = abs(m * a - b + c) / math.sqrt(1.0 + m * m)
-        lines.append('distance from the centre to the line')
-        lines.append('  = |ma - b + c| / sqrt(1+m^2) = ' + _fn(d))
-        lines.append('which is more than r = ' + _fn(r) + '.')
+        lines.append(_w('distance from the centre to the line'))
+        lines.append(_w('  = |ma - b + c| / sqrt(1+m^2) = ' + _fn(d)))
+        lines.append(_w('which is more than r = ' + _fn(r) + '.'))
     elif disc < 1e-9:
         x = -B / (2.0 * A)
         lines.append('ZERO: the line is a TANGENT, touching at')
         lines.append('  (' + _fn(x) + ', ' + _fn(m * x + c) + ')')
         lines.append('')
-        lines.append('the radius to that point has gradient')
+        lines.append(_w('the radius to that point has gradient'))
         if abs(x - a) > 1e-12:
-            lines.append('  ' + _fn((m * x + c - b) / (x - a)) +
-                         ', and m x that = ' +
-                         _fn(m * (m * x + c - b) / (x - a)))
-            lines.append('  (-1 confirms tangent perp to radius)')
+            lines.append(_w('  ' + _fn((m * x + c - b) / (x - a)) +
+                            ', and m x that = ' +
+                            _fn(m * (m * x + c - b) / (x - a))))
+            lines.append(_w('  (-1 confirms tangent perp to radius)'))
     else:
         rt = math.sqrt(disc)
         x1 = (-B + rt) / (2.0 * A)
@@ -1672,7 +1680,7 @@ def t_sequence():
         count = _askint('how many terms [12]', 1, 60)
         if count is None:
             count = 12
-        lines.append('u(n) = ' + caseng.tostr(caseng.simplify(tree)))
+        lines.append(_w('u(n) = ' + caseng.tostr(caseng.simplify(tree))))
         i = 0
         while i < count:
             nv = float(start + i)
@@ -1700,8 +1708,8 @@ def t_sequence():
         count = _askint('how many terms [12]', 1, 60)
         if count is None:
             count = 12
-        lines.append('u(n+1) = ' + caseng.tostr(caseng.simplify(tree)))
-        lines.append('u(1) = ' + _fn(u0))
+        lines.append(_w('u(n+1) = ' + caseng.tostr(caseng.simplify(tree))))
+        lines.append(_w('u(1) = ' + _fn(u0)))
         start = 1
         v = u0
         terms.append(v)
@@ -1712,7 +1720,7 @@ def t_sequence():
             except:
                 v = None
             if v is None or v != v or v > 1e300 or v < -1e300:
-                lines.append('term ' + str(i + 1) + ' overflowed or is undefined')
+                lines.append(_warn('term ' + str(i + 1) + ' overflowed or is undefined'))
                 break
             terms.append(v)
             i += 1
@@ -1752,7 +1760,7 @@ def t_sequence():
         i += 1
     if period:
         lines.append('PERIODIC with period ' + str(period) + '.')
-        lines.append('The terms repeat in blocks of ' + str(period) + '.')
+        lines.append(_w('The terms repeat in blocks of ' + str(period) + '.'))
     elif up:
         lines.append('INCREASING: every term is bigger than')
         lines.append('the one before.')
