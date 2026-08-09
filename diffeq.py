@@ -173,15 +173,16 @@ def t_damping():
         lines.append('return, no overshoot.')
     _show('DAMPING CLASSIFIER', lines)
 
-def _ex(k):
-    # e^(kx) written the way it is on paper: e^x, e^(-x), e^(2x)
+def _ex(k, v='x'):
+    # e^(kv) written the way it is on paper. The variable matters: the coupled
+    # system is in t, and printing e^(3x) there is simply the wrong equation.
     if abs(k - 1.0) < 1e-12:
-        return 'e^x'
+        return 'e^' + v
     if abs(k + 1.0) < 1e-12:
-        return 'e^(-x)'
+        return 'e^(-' + v + ')'
     if abs(k) < 1e-12:
         return '1'
-    return 'e^(' + _fn(k) + 'x)'
+    return 'e^(' + _fn(k) + v + ')'
 
 
 def _coefstr(c, body, sep=' '):
@@ -227,6 +228,24 @@ def _cf_lines(a, b):
     return (['m = ' + _fn(m) + ' (repeated)',
              'CF: y = (A + Bx)' + ('' if abs(m) < 1e-12 else ' ' + _ex(m))],
             [m, m])
+
+
+def _sgn(v, body=''):
+    # "+ 3x" / "- 3x" / "+ x", so nothing prints "+ -3x" or "+ 1x"
+    m = -v if v < 0 else v
+    s = '- ' if v < 0 else '+ '
+    if body and abs(m - 1.0) < 1e-12:
+        return s + body.strip()
+    return s + _fn(m) + body
+
+
+def _coef(v, body):
+    # "x", "-x", "3x" - a coefficient of 1 is not written
+    if abs(v - 1.0) < 1e-12:
+        return body
+    if abs(v + 1.0) < 1e-12:
+        return '-' + body
+    return _fn(v) + body
 
 
 def _trigstr(P, Q, w):
@@ -473,9 +492,191 @@ def t_particular():
     _show('PARTICULAR INTEGRAL', lines)
 
 
+def t_coupled():
+    # Coupled first order simultaneous DEs:
+    #     dx/dt = a x + b y
+    #     dy/dt = c x + d y
+    # Differentiating the first and substituting the second eliminates y:
+    #     x'' - (a+d) x' + (ad - bc) x = 0
+    # so the auxiliary equation is m^2 - (trace)m + (det) = 0 and its roots are
+    # the eigenvalues of the matrix. That is the whole method, and it is the
+    # only Core Pure statement the toolkit had nothing for.
+    _show('Coupled equations', ["dx/dt = a x + b y",
+                                "dy/dt = c x + d y",
+                                'Differentiate the first and substitute',
+                                'the second to eliminate y. What is left',
+                                "is x'' - (a+d)x' + (ad-bc)x = 0."])
+    a = _asknum('a (x in dx/dt)')
+    if a is None:
+        return
+    b = _asknum('b (y in dx/dt)')
+    if b is None:
+        return
+    c = _asknum('c (x in dy/dt)')
+    if c is None:
+        return
+    d = _asknum('d (y in dy/dt)')
+    if d is None:
+        return
+    tr = a + d
+    det = a * d - b * c
+    lines = ["dx/dt = " + _coef(a, "x") + " " + _sgn(b, "y"),
+             "dy/dt = " + _coef(c, "x") + " " + _sgn(d, "y"), '',
+             "eliminating y gives",
+             "  x'' " + _sgn(-tr, "x'") + " " + _sgn(det, "x") + " = 0",
+             'auxiliary  m^2 ' + _sgn(-tr, 'm') + ' ' + _sgn(det) + ' = 0',
+             '(trace and determinant of the matrix,',
+             ' so m1 and m2 are its eigenvalues)', '']
+    if abs(b) < 1e-12:
+        lines.append('b = 0, so the system is already')
+        lines.append('triangular: solve dx/dt = ' + _fn(a) + 'x first,')
+        lines.append('  x = A e^(' + _fn(a) + 't)')
+        lines.append('then put that into dy/dt and use the')
+        lines.append('integrating factor tool.')
+        _show('Coupled equations', lines)
+        return
+    disc = tr * tr - 4.0 * det
+    lines.append('discriminant = ' + _fn(disc))
+    lines.append('')
+    kind = 0
+    if disc > 1e-9:
+        rt = math.sqrt(disc)
+        m1 = (tr + rt) / 2.0
+        m2 = (tr - rt) / 2.0
+        lines.append('m = ' + _fn(m1) + ' and ' + _fn(m2))
+        lines.append('  x = A ' + _ex(m1, 't') + ' + B ' + _ex(m2, 't'))
+        lines.append('')
+        lines.append('y = (dx/dt - ' + _coef(a, 'x') + ') / ' + _fn(b) + ', so')
+        lines.append('  y = ' + _coef((m1 - a) / b, 'A ') + _ex(m1, 't') +
+                     ' ' + _sgn((m2 - a) / b, 'B ') + _ex(m2, 't'))
+        kind = 1
+    elif disc < -1e-9:
+        p = tr / 2.0
+        q = math.sqrt(-disc) / 2.0
+        lines.append('m = ' + _fn(p) + ' +/- ' + _fn(q) + 'i')
+        head = '' if abs(p) < 1e-12 else _ex(p, 't') + ' '
+        lines.append('  x = ' + head + '(A cos ' + _fn(q) + 't + B sin ' + _fn(q) + 't)')
+        lines.append('')
+        lines.append("y = (dx/dt - " + _coef(a, "x") + ") / " + _fn(b) + ':')
+        lines.append('  differentiate x, subtract ' + _fn(a) + 'x,')
+        lines.append('  divide by ' + _fn(b) + '. The result is another')
+        lines.append('  combination of the same cos and sin.')
+        lines.append('  Spiral: it ' +
+                     ('grows' if p > 1e-12 else
+                      ('decays' if p < -1e-12 else 'is a closed orbit')) + '.')
+        kind = 2
+    else:
+        m = tr / 2.0
+        lines.append('m = ' + _fn(m) + ' (repeated)')
+        lines.append('  x = (A + B t) ' + _ex(m, 't'))
+        lines.append('')
+        lines.append('y = (dx/dt - ' + _coef(a, 'x') + ') / ' + _fn(b))
+        kind = 3
+    x0 = _asknum('x(0) = (or cancel)')
+    if x0 is None:
+        _show('Coupled equations', lines)
+        return
+    y0 = _asknum('y(0) =')
+    if y0 is None:
+        _show('Coupled equations', lines)
+        return
+    # x'(0) comes straight from the first equation
+    xp0 = a * x0 + b * y0
+    lines.append('')
+    lines.append('at t = 0:  x = ' + _fn(x0) + ', y = ' + _fn(y0))
+    lines.append("  dx/dt(0) = " + _coef(a, "x") + " " + _sgn(b, "y") +
+                 " = " + _fn(xp0))
+    A = None
+    B = None
+    if kind == 1:
+        rt = math.sqrt(disc)
+        m1 = (tr + rt) / 2.0
+        m2 = (tr - rt) / 2.0
+        # A + B = x0 ; m1 A + m2 B = xp0
+        A = (xp0 - m2 * x0) / (m1 - m2)
+        B = x0 - A
+        lines.append('  A + B = ' + _fn(x0))
+        lines.append('  ' + _coef(m1, 'A') + ' ' + _sgn(m2, 'B') + ' = ' + _fn(xp0))
+        lines.append('  A = ' + _fn(A) + ', B = ' + _fn(B))
+        lines.append('')
+        lines.append('  x = ' + _coef(A, _ex(m1, 't')) + ' ' +
+                     _sgn(B, ' ' + _ex(m2, 't')))
+        lines.append('  y = ' + _coef(A * (m1 - a) / b, _ex(m1, 't')) + ' ' +
+                     _sgn(B * (m2 - a) / b, ' ' + _ex(m2, 't')))
+    elif kind == 2:
+        p = tr / 2.0
+        q = math.sqrt(-disc) / 2.0
+        # x = e^(pt)(A cos qt + B sin qt); x(0) = A ; x'(0) = pA + qB
+        A = x0
+        B = (xp0 - p * A) / q
+        lines.append('  A = x(0) = ' + _fn(A))
+        lines.append("  x'(0) = pA + qB, so B = " + _fn(B))
+    else:
+        m = tr / 2.0
+        A = x0
+        B = xp0 - m * A
+        lines.append('  A = x(0) = ' + _fn(A))
+        lines.append("  x'(0) = mA + B, so B = " + _fn(B))
+    # check the constants really do reproduce the initial conditions
+    lines.append('')
+    lines.append('(check at t = 0: x = ' + _fn(_coupled_x(kind, tr, disc, A, B, 0.0)) +
+                 ', y = ' +
+                 _fn(_coupled_y(kind, tr, disc, A, B, 0.0, a, b)) + ')')
+    lines.append('')
+    lines.append('Long-run behaviour:')
+    if kind == 2:
+        p = tr / 2.0
+        lines.append('  oscillates; amplitude ' +
+                     ('grows' if p > 1e-12 else
+                      ('decays to 0' if p < -1e-12 else 'stays constant')))
+    else:
+        big = tr / 2.0 + (math.sqrt(disc) / 2.0 if disc > 0 else 0.0)
+        lines.append('  dominated by e^(' + _fn(big) + 't), so both x and y ' +
+                     ('grow without bound' if big > 1e-12 else
+                      ('decay to 0' if big < -1e-12 else 'tend to a constant')))
+    _show('Coupled equations', lines)
+
+
+def _coupled_x(kind, tr, disc, A, B, t):
+    if kind == 1:
+        rt = math.sqrt(disc)
+        m1 = (tr + rt) / 2.0
+        m2 = (tr - rt) / 2.0
+        return A * math.exp(m1 * t) + B * math.exp(m2 * t)
+    if kind == 2:
+        p = tr / 2.0
+        q = math.sqrt(-disc) / 2.0
+        return math.exp(p * t) * (A * math.cos(q * t) + B * math.sin(q * t))
+    m = tr / 2.0
+    return (A + B * t) * math.exp(m * t)
+
+
+def _coupled_xp(kind, tr, disc, A, B, t):
+    # dx/dt, by hand rather than numerically - it is needed for y
+    if kind == 1:
+        rt = math.sqrt(disc)
+        m1 = (tr + rt) / 2.0
+        m2 = (tr - rt) / 2.0
+        return A * m1 * math.exp(m1 * t) + B * m2 * math.exp(m2 * t)
+    if kind == 2:
+        p = tr / 2.0
+        q = math.sqrt(-disc) / 2.0
+        e = math.exp(p * t)
+        return (e * (p * (A * math.cos(q * t) + B * math.sin(q * t))
+                     + q * (-A * math.sin(q * t) + B * math.cos(q * t))))
+    m = tr / 2.0
+    return math.exp(m * t) * (B + m * (A + B * t))
+
+
+def _coupled_y(kind, tr, disc, A, B, t, a, b):
+    return (_coupled_xp(kind, tr, disc, A, B, t) -
+            a * _coupled_x(kind, tr, disc, A, B, t)) / b
+
+
 TOOLS = [('First-order linear (IF)', t_first_order),
          ('Second-order const-coeff', t_second_order),
          ('Particular integral', t_particular),
+         ('Coupled dx/dt, dy/dt', t_coupled),
          ('SHM recogniser', t_shm),
          ('Damping classifier', t_damping)]
 

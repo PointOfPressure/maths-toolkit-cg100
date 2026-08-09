@@ -2461,6 +2461,82 @@ def test_proof():
     has("induction card", o, "PROOF BY INDUCTION")
     has("what not to write", o, "WHAT NOT TO WRITE")
 
+def test_coupled_des():
+    import diffeq
+    # dx/dt = x + y, dy/dt = 4x + y. Trace 2, det 1-4 = -3, so the auxiliary
+    # equation is m^2 - 2m - 3 = 0 with roots 3 and -1 (the eigenvalues).
+    # Through x(0)=1, y(0)=0: A+B=1 and 3A-B=1, so A=B=1/2 and
+    # x = (e^3t + e^-t)/2, y = e^3t - e^-t.
+    o = drive(diffeq.t_coupled, ["1", "1", "4", "1", "1", "0"])
+    has("second-order equation formed", o, "x'' - 2x' - 3x = 0")
+    has("auxiliary equation", o, "m^2 - 2m - 3 = 0")
+    has("roots are the eigenvalues", o, "m = 3 and -1")
+    has("general x", o, "x = A e^(3t) + B e^(-t)")
+    has("constants fitted", o, "A = 0.5, B = 0.5")
+    has("particular x", o, "x = 0.5e^(3t) + 0.5 e^(-t)")
+    has("particular y", o, "y = e^(3t) - e^(-t)")
+    has("checked at t=0", o, "check at t = 0: x = 1, y = 0")
+    # the variable is t, not x - printing e^(3x) here is the wrong equation
+    truthy("the exponential is in t", not [ln for ln in o if "e^(3x)" in ln])
+
+    # dx/dt = -y, dy/dt = x is a rotation: trace 0, det 1, m = +/- i,
+    # so it is a closed orbit and x = cos t through (1, 0)
+    o = drive(diffeq.t_coupled, ["0", "-1", "1", "0", "1", "0"])
+    has("complex roots", o, "m = 0 +/- 1i")
+    has("closed orbit named", o, "closed orbit")
+    has("amplitude constant", o, "amplitude stays constant")
+
+    # dx/dt = 3x - y, dy/dt = x + y: trace 4, det 4, m = 2 repeated
+    o = drive(diffeq.t_coupled, ["3", "-1", "1", "1", "1", "1"])
+    has("repeated root", o, "m = 2 (repeated)")
+    has("general form has the t factor", o, "x = (A + B t) e^(2t)")
+
+    # b = 0 makes the system triangular, and there is no y to eliminate
+    o = drive(diffeq.t_coupled, ["2", "0", "1", "3", None])
+    has("triangular case", o, "already")
+
+    # THE property that matters: whatever closed form the tool builds, it must
+    # satisfy BOTH original equations. Checked through the module's own
+    # solution helpers at several t, for all three root cases.
+    for a, b, c, d, x0, y0, label in ((1.0, 1.0, 4.0, 1.0, 1.0, 0.0, "distinct real"),
+                                      (0.0, -1.0, 1.0, 0.0, 1.0, 0.0, "complex"),
+                                      (3.0, -1.0, 1.0, 1.0, 1.0, 1.0, "repeated"),
+                                      (-1.0, 2.0, -3.0, 4.0, 2.0, -1.0, "decaying")):
+        tr = a + d
+        det = a * d - b * c
+        disc = tr * tr - 4.0 * det
+        kind = 1 if disc > 1e-9 else (2 if disc < -1e-9 else 3)
+        xp0 = a * x0 + b * y0
+        if kind == 1:
+            rt = math.sqrt(disc)
+            m1 = (tr + rt) / 2.0
+            m2 = (tr - rt) / 2.0
+            A = (xp0 - m2 * x0) / (m1 - m2)
+            B = x0 - A
+        elif kind == 2:
+            p = tr / 2.0
+            q = math.sqrt(-disc) / 2.0
+            A = x0
+            B = (xp0 - p * A) / q
+        else:
+            m = tr / 2.0
+            A = x0
+            B = xp0 - m * A
+        # initial conditions
+        close(label + ": x(0)", diffeq._coupled_x(kind, tr, disc, A, B, 0.0), x0, 1e-9)
+        close(label + ": y(0)", diffeq._coupled_y(kind, tr, disc, A, B, 0.0, a, b), y0, 1e-9)
+        # and both differential equations, by central difference
+        for tv in (0.13, 0.4, 0.9):
+            h = 1e-6
+            xs = diffeq._coupled_x(kind, tr, disc, A, B, tv)
+            ys = diffeq._coupled_y(kind, tr, disc, A, B, tv, a, b)
+            dx = (diffeq._coupled_x(kind, tr, disc, A, B, tv + h) -
+                  diffeq._coupled_x(kind, tr, disc, A, B, tv - h)) / (2 * h)
+            dy = (diffeq._coupled_y(kind, tr, disc, A, B, tv + h, a, b) -
+                  diffeq._coupled_y(kind, tr, disc, A, B, tv - h, a, b)) / (2 * h)
+            close(label + ": dx/dt = ax+by at t=" + str(tv), dx, a * xs + b * ys, 1e-4)
+            close(label + ": dy/dt = cx+dy at t=" + str(tv), dy, c * xs + d * ys, 1e-4)
+
 def test_surds_and_circle():
     import pure640
     # sqrt(72) = sqrt(36 x 2) = 6 sqrt(2)
@@ -2885,6 +2961,7 @@ TESTS = [
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
+    ("coupled differential equations", test_coupled_des),
     ("surds and line-circle", test_surds_and_circle),
     ("surd extraction", test_surd_engine),
     ("binomial cdf recurrence", test_binom_cdf_recurrence),

@@ -154,7 +154,7 @@ Reached via `Maths Toolkit > Further Maths > Core Pure (compulsory)`.
 | Series & Maclaurin | Further Maths > Core Pure > Series & Maclaurin | Sum of r, Sum of r^2, Sum of r^3, Maclaurin of f(x), Approx + error, Method of differences, Reference card |
 | Hyperbolic functions | Further Maths > Core Pure > Hyperbolic functions | Evaluate sinh, Evaluate cosh, Evaluate tanh, All three at x, arsinh (inverse), arcosh (inverse), artanh (inverse), Reference card |
 | Polar coordinates | Further Maths > Core Pure > Polar coordinates | (r,theta) -> (x,y), (x,y) -> (r,theta), Plot polar curve, Preset curves, Polar area |
-| Differential equations | Further Maths > Core Pure > Differential equations | First-order linear (IF), Second-order const-coeff, Particular integral, SHM recogniser, Damping classifier |
+| Differential equations | Further Maths > Core Pure > Differential equations | First-order linear (IF), Second-order const-coeff, Particular integral, Coupled dx/dt, dy/dt, SHM recogniser, Damping classifier |
 
 The Matrices `2D transform builder` opens a further sub-menu (`Rotation`, `Reflect x-axis`, `Reflect y-axis`, `Reflect y=x`, `Enlargement`, `Stretch`, `Shear`). The Polar `Preset curves` tool offers `Cardioid 1+cos`, `Rose cos(2x)`, `Circle r=3`.
 
