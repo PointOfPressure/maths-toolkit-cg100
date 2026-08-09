@@ -129,7 +129,7 @@ Every tool below is reached by launching the toolkit and choosing the menu path 
 
 ### A-Level Maths (H640)
 
-Reached via `Maths Toolkit > A-Level Maths`, then `Pure: algebra & trig`, `Pure: functions & calculus`, `Statistics`, or `Mechanics`. Pure is split in two because one menu of nearly thirty entries is worse than two of fifteen.
+Reached via `Maths Toolkit > A-Level Maths`, then `Pure: algebra & trig`, `Pure: functions & calculus`, `Statistics`, `Mechanics`, or `Proof`. Pure is split in two because one menu of nearly thirty entries is worse than two of fifteen.
 
 | Section | Menu path | Tools provided |
 | --- | --- | --- |
@@ -137,6 +137,7 @@ Reached via `Maths Toolkit > A-Level Maths`, then `Pure: algebra & trig`, `Pure:
 | Pure: functions & calculus | A-Level Maths > Pure: functions & calculus | Composite fg(x), Inverse function, Domain & range, Modulus \|f(x)\|, Graph transformations, Parametric d/dx, Parametric -> Cartesian, Implicit d/dx, Integration by substitution, Separation of variables, Stationary points, Constant of integration, Volume of revolution, Mean value of f, Improper integral, Small-angle approx, Exact trig values |
 | Statistics | A-Level Maths > Statistics | Summary stats, Freq table mean/var, Discrete RV E,Var, Binomial B(n,p), Normal P(a<X<b), Inverse Normal, HT binomial prop, HT Normal mean z, PMCC + regression, Probability rules, Tree diagram + Bayes, Sampling methods, Stratified sample, Factorial / nCr, Box plot, Histogram, Cumulative freq, Scatter + regression |
 | Mechanics | A-Level Maths > Mechanics | SUVAT solver, Projectiles, Resultant of forces, Resolve a force, Equilibrium check, Newton II F=ma, Friction F=mu R, Friction horiz plane, Friction incline, Pulley (connected), Moments / reactions, Projectile: find the launch, Variable acceleration, Distance vs displacement, Connected particles |
+| Proof | A-Level Maths > Proof  (also Further Maths > Core Pure > Proof & induction) | Induction: a sum, Induction: divisibility, Induction: M^n, Disprove by counterexample, Proof methods reference |
 
 Some Pure and Mechanics entries open their own sub-menus: `Simultaneous eqns` offers `Two linear` and `Linear + quadratic`; `Binomial expansion` offers `(a+bx)^n list terms`, `(1+x)^n real n`, `one coeff of x^k`; `Logarithms` offers `Solve a^x = b`, `log base c of v`, `Log-law reference`; `Circle` offers `Centre+r -> equation` and `Equation -> centre+r`; `Trig tools` offers `Solve sin/cos/tan`, `R-form a sin+b cos`, `Exact-value table`. Calculus (differentiation, integration, definite integrals, graphing, tables) is not in these modules; it lives in the `Calculus & Algebra` CAS section off the main menu.
 

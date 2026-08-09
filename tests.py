@@ -2384,6 +2384,83 @@ def _agree(label, f, g, xs, tol=1e-9):
             return False
     return True
 
+
+def test_proof():
+    import proof
+    # sum r = n(n+1)/2 is true, and the inductive step S(k+1)-S(k) = k+1
+    # is an identity the engine can settle
+    o = drive(proof.t_induction_sum, ["n", "n(n+1)/2"])
+    has("base case holds", o, "TRUE - the base case holds")
+    has("step is the right difference", o, "S(k+1) - S(k) = n+1")
+    has("and equals u(k+1)", o, "u(k+1)        = n+1")
+    has("proved", o, "PROVED for all n >= 1 by induction")
+    # sum r^2 against the WRONG formula n(n+1)/2: base case still passes
+    # (both are 1 at n=1), which is exactly why the step has to be checked
+    o = drive(proof.t_induction_sum, ["n^2", "n(n+1)/2"])
+    has("wrong formula still passes the base case", o, "TRUE - the base case holds")
+    has("but fails the step", o, "These are NOT equal")
+    has("and the values are shown", o, "n=3  sum=14  S(n)=6")
+    # sum r^3 = (n(n+1)/2)^2 is true
+    o = drive(proof.t_induction_sum, ["n^3", "(n(n+1)/2)^2"])
+    has("cube sum proved", o, "PROVED for all n >= 1")
+    # a formula whose base case is wrong is rejected before the step
+    o = drive(proof.t_induction_sum, ["n", "n(n+1)/2+1"])
+    has("bad base case caught", o, "FALSE - S(1) is not u(1)")
+
+    # 3 divides 4^n - 1. f(k+1) - 4 f(k) = 3, which is divisible by 3.
+    o = drive(proof.t_induction_divis, ["4^n-1", "3", "4"])
+    has("first values divide", o, "f(1) = 3,  remainder 0")
+    has("the remainder is a multiple", o, "divisible by 3 too")
+    has("divisibility proved", o, "PROVED by induction")
+    # 6 divides n^3 - n (true: three consecutive integers)
+    o = drive(proof.t_induction_divis, ["n^3-n", "6", "1"])
+    has("n^3-n divisible by 6", o, "f(2) = 6,  remainder 0")
+    # a false divisibility claim is disproved from the values, not "proved"
+    o = drive(proof.t_induction_divis, ["4^n-1", "5", None])
+    has("false claim disproved", o, "NOT divisible by 5")
+    has("no induction needed", o, "No induction needed")
+    # The multiplier is a presentation choice, not an arithmetic one: when the
+    # claim is true, f(k+1) - m f(k) is divisible for EVERY integer m, because
+    # both terms are. So assert the symbolic remainder is shown correctly
+    # rather than pretending a "wrong" m can be caught here.
+    o = drive(proof.t_induction_divis, ["4^n-1", "3", "4"])
+    has("remainder shown symbolically", o, "4^(n+1)-4*4^n+3")
+
+    # M = [[1,1],[0,1]] has M^n = [[1,n],[0,1]]
+    o = drive(proof.t_induction_matrix,
+              ["1", "1", "0", "1", "1", "n", "0", "1"])
+    has("matrix base case", o, "formula at n=1 is M: TRUE")
+    has("matrix induction proved", o, "PROVED by induction")
+    # the same M with a wrong claim M^n = [[1,n^2],[0,1]]
+    o = drive(proof.t_induction_matrix,
+              ["1", "1", "0", "1", "1", "n^2", "0", "1"])
+    has("wrong matrix formula caught", o, "FAILS - M * F(k) is not F(k+1)")
+    # a formula that is not M at n = 1 is rejected first
+    o = drive(proof.t_induction_matrix,
+              ["2", "0", "0", "2", "2^n", "0", "0", "1"])
+    has("matrix base case fails", o, "formula at n=1 is NOT M: FALSE")
+
+    # Euler's polynomial n^2+n+41 is prime for n = 0..39 and composite at
+    # n = 40, where it is 41^2 - the classic counterexample
+    o = drive(proof.t_counterexample, ["n^2+n+41", "1", "60"], [0])
+    has("counterexample found at 40", o, "COUNTEREXAMPLE at n = 40")
+    has("and factorised", o, "1681 = 41 x 41")
+    # searching a range that contains no counterexample must NOT claim a proof
+    o = drive(proof.t_counterexample, ["n^2+n+41", "1", "30"], [0])
+    has("no counterexample in range", o, "No counterexample in that range")
+    has("and says that is not a proof", o, "That is NOT a proof")
+    # n^2 - n + 1 > 0 for all n, so no counterexample; 2n - 10 fails at n <= 5
+    o = drive(proof.t_counterexample, ["2n-10", "1", "20"], [1])
+    has("positivity counterexample", o, "COUNTEREXAMPLE at n = 1")
+
+    o = drive(proof.t_methods, [])
+    has("contradiction card", o, "PROOF BY CONTRADICTION")
+    has("root 2 worked example", o, "root 2 is irrational")
+    has("infinitely many primes", o, "infinitely many primes")
+    has("counterexample card", o, "DISPROOF BY COUNTEREXAMPLE")
+    has("induction card", o, "PROOF BY INDUCTION")
+    has("what not to write", o, "WHAT NOT TO WRITE")
+
 def test_engine_invariants():
     # Four properties that must hold for EVERY expression, rather than for the
     # particular answers asserted elsewhere. Named answers catch a wrong rule;
@@ -2444,6 +2521,7 @@ README_ROWS = [
     ("Pure: functions & calculus", "purecalc"),
     ("Statistics", "stat640"),
     ("Mechanics", "mech640"),
+    ("Proof", "proof"),
     ("Complex numbers", "vcplx"),
     ("Matrices", "matrix"),
     ("Vectors & 3-D", "vectors"),
@@ -2569,6 +2647,7 @@ TESTS = [
     ("fpt", test_fpt),
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
+    ("proof and induction", test_proof),
     ("engine invariants", test_engine_invariants),
     ("every tool is registered", test_every_tool_is_registered),
     ("README matches TOOLS", test_readme_matches_tools),

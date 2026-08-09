@@ -668,6 +668,7 @@ HELP = {
     "pure640": "Pure (A-Level). Quadratics, simultaneous equations, sequences & series, binomial, logs, coordinate geometry & circles, trig and R-form.",
     "stat640": "Statistics (A-Level). Summary stats, frequency tables, discrete random variables, binomial & Normal, hypothesis tests, PMCC & regression.",
     "purecalc": "Pure functions and calculus techniques. Composite fg(x) and inverse functions, domain and range, the modulus function, graph transformations, parametric and implicit differentiation, integration by substitution (you choose u), small-angle approximations and the exact trig values. Type t as t and y as y with ALPHA.",
+    "proof": "Proof. A calculator cannot write a proof, but it can check the step you are about to claim. Induction for sums, divisibility and M^n: it verifies the base case and then the inductive step symbolically. Disproof by counterexample searches a range for one. Plus a reference card for direct proof, exhaustion, contradiction and induction.",
     "mech640": "Mechanics (A-Level). SUVAT (enter any 3 of u,v,a,s,t), projectiles, forces & resolving, friction on slopes, pulleys, moments.",
 }
 _helped = []
@@ -942,10 +943,14 @@ def cas_section():
             elif op == 12:
                 do_table(tree)
 
+# proof.py appears in both menus on purpose: induction is Core Pure, but
+# contradiction and disproof by counterexample are H640, and a student should
+# not have to know which paper a proof technique belongs to in order to find it.
 FM_CORE_LABELS = ["Complex numbers", "Matrices", "Vectors & 3-D", "Roots of polynomials",
                   "Series & Maclaurin", "Hyperbolic functions", "Polar coordinates",
-                  "Differential equations"]
-FM_CORE_MODS = ["vcplx", "matrix", "vectors", "polyroots", "series", "hyper", "polar", "diffeq"]
+                  "Differential equations", "Proof & induction"]
+FM_CORE_MODS = ["vcplx", "matrix", "vectors", "polyroots", "series", "hyper", "polar",
+                "diffeq", "proof"]
 FM_OPT_LABELS = ["Mechanics (FM)", "Statistics (FM)", "Numerical Methods",
                  "Modelling w/ Algorithms", "Extra Pure", "Further Pure w/ Tech"]
 FM_OPT_MODS = ["fmmech", "fmstat", "numeric", "algos", "xpure", "fpt"]
@@ -975,8 +980,8 @@ def fm_section():
             _submenu("FM OPTIONS", FM_OPT_LABELS, FM_OPT_MODS)
 
 MATHS_LABELS = ["Pure: algebra & trig", "Pure: functions & calculus",
-                "Statistics", "Mechanics"]
-MATHS_MODS = ["pure640", "purecalc", "stat640", "mech640"]
+                "Statistics", "Mechanics", "Proof"]
+MATHS_MODS = ["pure640", "purecalc", "stat640", "mech640", "proof"]
 
 def maths_section():
     _submenu("A-LEVEL MATHS", MATHS_LABELS, MATHS_MODS)
