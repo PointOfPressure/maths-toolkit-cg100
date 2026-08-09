@@ -1066,9 +1066,15 @@ def test_keymap_matches_hardware():
     # used to sample getkey() once at import and call the result idle, which
     # broke whenever a key was still held at import - and the key that launches
     # the script always is.
+    # MEASURED ON HARDWARE 2026-08-09: hwcheck.py reported the idle return as
+    # None, not 0. readkey() survives that only because it tests membership of
+    # KEYCODES rather than comparing against a presumed idle value - `None in
+    # KEYCODES` is False, so None reads as "no key". Any rewrite that goes back
+    # to `k == 0` would hang the whole UI on the real device, so None is pinned
+    # here as an idle value in its own right.
     real = casui.getkey
     try:
-        for code in (0, 11, 65, 96, 99, -1, 255):
+        for code in (None, 0, 11, 65, 96, 99, -1, 255):
             casui.getkey = (lambda c: (lambda: c))(code)
             check("readkey treats " + str(code) + " as idle", casui.readkey(), 0)
         for code in (22, 72, 95):
@@ -1893,10 +1899,13 @@ def _depth():
     return n
 
 def test_recursion_budget():
-    # The handheld's MicroPython dies at roughly 38 nested calls. CPython frames
-    # are not identical to MicroPython's, but capping the interpreter here still
-    # catches any change that starts recursing on input length instead of on
-    # expression nesting.
+    # MEASURED ON HARDWARE 2026-08-09: the handheld's MicroPython refuses a 93rd
+    # frame, so the real ceiling is 92 - not the ~38 this file and the README
+    # asserted from guesswork for months. The budget stays at 38 anyway. It is a
+    # deliberate 2.4x margin, not the device figure: CPython frames are not
+    # MicroPython frames, section modules add their own call depth on top of the
+    # engine, and the property being defended is that nothing recurses on INPUT
+    # LENGTH. Raising this to 92 would weaken the test for no gain.
     BUDGET = 38
     deep = "((((((((((x+1))))))))))"
     long_flat = "+".join(["x"] * 400)          # long but shallow

@@ -12,10 +12,12 @@
 # by Casio at all, so getkey cannot see them - that is why the toolkit quits on
 # EXIT rather than AC.
 #
-# This probe assumes getkey() returns 0 with nothing held (the manual does not
-# say). If the code display keeps changing with no key down, that assumption is
-# wrong and the idle value is whatever it keeps reporting. casui.py itself does
-# not depend on it - see casui.KEYCODES.
+# This probe used to assume getkey() returns 0 with nothing held. It does not
+# always: on real hardware it has been seen returning None, and `None == 0` is
+# False, so the old loop fell straight through to `k // 10` on None. It now
+# applies casui.readkey()'s rule instead - a real code is row*10+col with row
+# 1-9 and col 1-6, and anything else is "no key" whatever its value - while
+# still reporting codes casui.KEYCODES does not know, which is the whole point.
 #
 # Not part of the toolkit; a sibling of calib_screen.py and fontmetrics.py.
 from casioplot import *
@@ -37,6 +39,20 @@ NAMED = [
     ("TOOLS", casui.TOOLS), ("SETTINGS", casui.SETTINGS),
     ("FORMAT", casui.FORMAT),
 ]
+
+def readraw():
+    # the code held now, or None for idle. Deliberately WIDER than
+    # casui.KEYCODES so a code the toolkit does not know still gets reported.
+    k = getkey()
+    if k is None:
+        return None
+    if k < 11 or k > 96:
+        return None
+    c = k % 10
+    if c < 1 or c > 6:
+        return None
+    return k
+
 
 def roles(k):
     out = []
@@ -95,10 +111,10 @@ def main():
     while True:
         # raw getkey on purpose: casui.readkey() filters to the codes we believe
         # exist, and catching a code we do not is the whole point of the probe.
-        k = getkey()
-        if k == 0:
+        k = readraw()
+        if k is None:
             continue
-        while getkey() != 0:
+        while readraw() is not None:
             pass                      # wait for release
         if k == casui.EXITK and last == casui.EXITK:
             clear_screen()

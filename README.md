@@ -11,7 +11,7 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-6731%20checks%2C%200%20failures-brightgreen)
+![tests](https://img.shields.io/badge/tests-6732%20checks%2C%200%20failures-brightgreen)
 ![smoke](https://img.shields.io/badge/smoke-443%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
@@ -225,7 +225,7 @@ Of the 730 content statements, 9 are not covered: 6 are not calculator tasks or 
 
 ## How it works (architecture)
 
-The CAS is a small pipeline of single-purpose modules. A typed string becomes a tuple expression tree, the engine transforms that tree (simplify / differentiate / evaluate / print), and a separate typesetter draws it as real 2D maths on the screen. Every module is built around one hard constraint: stock MicroPython 1.9.4 on the fx-CG100 dies at roughly a 38-frame call-stack ceiling, so the parser is iterative and the tree walks are kept shallow (depth = expression nesting, never input length).
+The CAS is a small pipeline of single-purpose modules. A typed string becomes a tuple expression tree, the engine transforms that tree (simplify / differentiate / evaluate / print), and a separate typesetter draws it as real 2D maths on the screen. Every module is built around one hard constraint: stock MicroPython 1.9.4 on the fx-CG100 dies at a **92-frame** call-stack ceiling (measured on hardware by `hwcheck.py`), so the parser is iterative and the tree walks are kept shallow (depth = expression nesting, never input length). The tests hold the engine to a stricter 38 frames on purpose, which leaves 2.4x headroom.
 
 ```
 keys -> caslex.tokenize -> caslex.parse -> tuple tree
@@ -268,7 +268,7 @@ These walks recurse on expression depth, which is small, so they stay well under
 ### cascalc - integration and solving
 
 - `integ` does symbolic integration: linearity over `+ - neg`, constant factor pull-out, the power rule (with exact rational exponents, so `x^(2/3)` integrates to `3/5 x^(5/3)` rather than a decimal), the `-1` case as a logarithm, `c/(px+q) -> c ln(px+q)/p`, `f'(x)/f(x) -> ln f(x)` (decided by dividing the numerator by the derivative of the denominator and asking whether the variable has gone), and a table covering `sin`, `cos`, `exp`, `tan`, `sqrt`, `ln`, `sinh` and `cosh` - each of which also accepts a linear argument by substitution. Anything it cannot integrate returns `None`, which is the signal for the UI to fall back to numerics.
-- **Integration by parts** (`_byparts`) applies `int u dv = uv - int v du`, picking `u` by LIATE. Two things make it terminate on a handheld. Products are flattened first, so `-cos(x) * (2*x)` is seen as a constant and two moving factors rather than as an opaque pair. And when the remaining integral turns out to be a constant multiple `k` of the one we started with - which is what happens to `sin x cos x`, where naive recursion never closes - it solves `I = uv - kI` for `I` instead of recursing. `e^(ax) sin(bx)` and its cosine form are handled by a direct closed form because their `k` is negative and the general trick is less accurate there. Depth is capped at `BYPARTS_MAX = 3`; the deepest real case measured is 8 stack frames against the device's ~38-frame ceiling, and `tests.py` asserts it.
+- **Integration by parts** (`_byparts`) applies `int u dv = uv - int v du`, picking `u` by LIATE. Two things make it terminate on a handheld. Products are flattened first, so `-cos(x) * (2*x)` is seen as a constant and two moving factors rather than as an opaque pair. And when the remaining integral turns out to be a constant multiple `k` of the one we started with - which is what happens to `sin x cos x`, where naive recursion never closes - it solves `I = uv - kI` for `I` instead of recursing. `e^(ax) sin(bx)` and its cosine form are handled by a direct closed form because their `k` is negative and the general trick is less accurate there. Depth is capped at `BYPARTS_MAX = 3`; the deepest real case measured is 8 stack frames against the device's measured 92-frame ceiling, and `tests.py` asserts it against a stricter 38.
 - `linear_coeff` decides whether an argument is `a*var + b` **structurally**, by walking the tree. It used to sample the argument at `x = 0, 1, 2` and compare, which accepted anything that happened to agree with a straight line at those three points - `x^3-3x^2+3x` among them - so every integral built on that substitution came out silently wrong. `has_var` decides which factor is constant.
 - `defint` is a numeric definite integral by composite Simpson's rule (even panel count, evaluated through `evalf`), returning `None` on a domain error or a non-finite total (a singularity inside the interval is reported rather than printed as junk).
 - `solve` finds numeric roots of `tree == 0` over a computed grid of 800 samples (a wider window in degree mode for the 360 period). Sign changes are refined by bisection; a grid point that is a local minimum of `|f|` without a sign change is refined by ternary search, which is what finds roots the curve only touches, such as `x^2` or `(x-1)^2`. A constant expression returns no roots rather than one per grid point, duplicates within a tolerance are dropped, and the list is capped at `MAXROOTS`.
@@ -316,7 +316,7 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 6731 checks, 0 failures
+python3 tests.py       # correctness: 6732 checks, 0 failures
 python3 stress.py      # smoke: 443 checks, 0 errors
 python3 devlint.py     # device compliance: 0 problems in 32 files
 ```
@@ -331,7 +331,7 @@ against Simpson's rule over the same interval), root finding, the typesetter,
 the UI's number formatting and word wrap, all of `casutil`, and every section
 module driven through its real entry points with scripted key input - so what
 is asserted is what a student would see on screen. It finishes with a
-recursion-depth guard that caps the interpreter at the handheld's ~38-frame
+recursion-depth guard that caps the interpreter well under the handheld's measured 92-frame
 ceiling and confirms the engine still runs inside it.
 
 **`stress.py` - smoke.** Stubs the UI (canned input, no-op drawing, auto-exiting
@@ -401,9 +401,9 @@ the `casioplot` chapter is pages 141-143.
 | Key codes are `row*10+col` | **Confirmed** | Page 142 prints the grid: 9 rows, columns 1-6, with row 1 col 1 (`[ON]`) and row 6 col 5 (`[AC]`) greyed out as codeless, and rows 7-9 stopping at column 5. 48 readable keys. The manual's worked example holds the `5` key and prints `72`, which anchors the grid to the physical keypad. |
 | Which key each code is | **Confirmed** | The page-142 diagram is a blank keypad outline, so the codes were matched to the printed keytops against a full-resolution photograph of the fx-CG100 front panel. Every binding in `casui.py` agrees: the cursor cross is 14/23/25/34 around `OK` 24, `EXIT` is the back-arrow at 22 (13 is jump-to-line-start), and the ALPHA letters run A-F on 41-46, G-L on 51-56, M-O on 61-63, P-T on 71-75, U-Y on 81-85, Z on 91, with `Ans` on 94. `tests.py` holds that table independently and asserts `casui` matches it. |
 | `getkey()` cost | **Measured by a third party on OS 2.10** | A [TI-Planet thread on the 2.10 update](https://tiplanet.org/forum/viewtopic.php?t=27228) timed it: `getkey()` returns in about **0 ms when a key is held and about 8.3 ms when none is**, independent of which key. That is why the UI's polling loops need no artificial delay - an idle `while True: k = readkey()` self-throttles to roughly 120 polls a second, and a held key is read instantly. It also means a drawing loop that polls every frame pays 8 ms a frame while the user is not touching anything, so the toolkit polls only where it is actually waiting. |
-| `getkey()` idle value | **No longer relied on** | The manual documents `getkey()` as *"returns the key code of the calculator key pressed at the time this function is executed"* and its example polls it in a bare `while True`, so it is non-blocking - but it never states the idle return. The toolkit no longer needs to know: `casui.KEYCODES` is the set of codes the keypad can produce and `casui.readkey()` reports anything else as "no key". This also fixed a real bug - the old code sampled `getkey()` once at import and called that the idle value, but the key that launches the script is still held at import, which made that key unreadable for the whole session. |
+| `getkey()` idle value | **Measured as `None` - and not relied on, which is why the toolkit works** | The manual documents `getkey()` as *"returns the key code of the calculator key pressed at the time this function is executed"* and its example polls it in a bare `while True`, so it is non-blocking - but it never states the idle return. `hwcheck.py` on hardware reported **`None`**, not `0`. That vindicates the decision not to depend on it: `casui.KEYCODES` is the set of codes the keypad can produce and `casui.readkey()` reports anything else as "no key", so `None` falls through as idle and the UI runs. Code written the obvious way - `while getkey() != 0` - cannot ever exit, because `None != 0` is true; that is exactly the bug that was in `hwcheck.py` and `keyprobe.py` themselves until this run, and both now use `readkey()`'s rule. `tests.py` pins `None` as an idle value so no rewrite can go back to `== 0`. One caveat: `hwcheck.py`'s own paging loops *did* exit on that run, which a constant `None` makes impossible, so the idle return is evidently not a single constant. The probe now samples it 400 times and reports every distinct value; the toolkit is correct either way. Separately, this row previously recorded a real bug - the old code sampled `getkey()` once at import and called that the idle value, but the key that launches the script is still held at import, which made that key unreadable for the whole session. |
 | `math` members available | **Predicted from upstream source; `hwcheck.py` confirms** | Neither the fx-CG100 nor the fx-CG50 manual enumerates the module - Casio only says to browse it under `CATALOG > [math]`. But the build is MicroPython 1.9.4, and [its `py/modmath.c`](https://github.com/micropython/micropython/blob/v1.9.4/py/modmath.c) settles what a build *can* contain: 28 members unconditionally, including **`atan2`**, and 13 more behind `MICROPY_PY_MATH_SPECIAL_FUNCTIONS` (the hyperbolics, `log2`/`log10`, `erf`, `gamma`, `lgamma`). Two consequences. `math.factorial` is in **neither** list, so "this device has no factorial" is confirmed from source. And `atan2` is **unconditional** - no build flag removes it while keeping `atan` - so the long-standing claim that this device lacks `atan2` looks wrong. The manual gives `log10()` its own keystroke (p125) and `log10` is in the special group, which implies that group is enabled and the hyperbolics exist too. This is inference from upstream source plus a manual table, not measurement; `hwcheck.py` probes all 41 names and settles it. `casutil` keeps its own `atan2` and hyperbolics meanwhile - they are correct and tested either way. |
-| Recursion ceiling (~38 frames) | **Unverified - run `hwcheck.py`** | Needs the device. `tests.py` caps CPython at 38 frames and asserts parse/simplify/diff/evalf/integ still run, which is the property that matters (recursion on expression nesting, never on input length), but the true figure has not been measured. `hwcheck.py` measures it by counting frames until the interpreter refuses another, and also re-runs the engine's deepest operations at that real ceiling. |
+| Recursion ceiling | **Measured: 92 frames** | `hwcheck.py` on the hardware, 2026-08-09: the interpreter refused a 93rd frame. The long-standing "~38" in this table was inherited guesswork and was wrong by a factor of 2.4. `tests.py` still caps CPython at **38** on purpose - it is a deliberate margin, not the device figure, and passing under it means the engine has roughly 2.4x the headroom it needs. The same run re-executed the engine's deepest operations at the real ceiling: deeply nested parse, a 200-term flat sum, simplify, differentiate, evaluate, print and integration by parts all completed, and nothing was reported in red. |
 | Pixel-level screen layout | **Unverified** | The autoscaling graph, the paged result screens, the CATALOG picker grid and caret windowing in long expressions were written from measured font metrics, not from screenshots. |
 
 **`hwcheck.py` settles the three remaining rows in one run.** Copy it to the
@@ -413,8 +413,8 @@ nothing held, walks the screen bounds, enumerates which of 43 possible `math`
 members this build has (and which it lacks), and finally re-runs the engine's
 deepest operations - deeply nested parse, a 200-term flat sum, simplify,
 differentiate, evaluate, print and integration by parts - at that real ceiling.
-Write the figure it prints into the table above and into `tests.py`'s `BUDGET`
-constant.
+Write the figures it prints into the table above. `tests.py`'s `BUDGET` is
+deliberately stricter than the device and is not meant to track it.
 
 `keyprobe.py` re-checks the key map on hardware and flags any code outside
 `casui.KEYCODES`; `calib_screen.py`, `fontmetrics.py` and `fontmetrics2.py`
@@ -428,7 +428,7 @@ The fx-CG100's MicroPython 1.9.4 is a restricted build, so the code avoids:
 - ASCII-only text (no Unicode glyphs),
 - only `math`, `random`, and `casioplot` are importable,
 - no `math.factorial`, `math.atan2`, or `math.sinh`/hyperbolics (these are hand-implemented),
-- a shallow recursion limit (~38 frames),
+- a shallow recursion limit (92 frames, measured),
 - the `complex` type has no `.conjugate()` method,
 - file writes are blocked on the device.
 

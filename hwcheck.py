@@ -21,6 +21,53 @@ ACC = (40, 120, 220)
 RED = (205, 60, 60)
 OK = (30, 140, 60)
 
+# ---------------------------------------------------------------- the keys --
+# The first run of this file on real hardware reported the idle getkey value as
+# None, not 0 - and the paging loops below were written as "while getkey() != 0",
+# which cannot ever exit when the idle value is None. They did exit, so the two
+# observations disagree and the idle value is not a single constant. Rather than
+# guess, this file now (a) never compares against a presumed idle value and
+# (b) samples the idle value properly instead of once.
+#
+# The rule is casui.readkey()'s: a real key code is row*10+col with row 1-9 and
+# col 1-6, and ANYTHING else - 0, None, whatever - is "no key".
+def _held():
+    k = getkey()
+    if k is None:
+        return False
+    if k < 11 or k > 96:
+        return False
+    c = k % 10
+    return c >= 1 and c <= 6
+
+
+def wait_key():
+    while _held():
+        pass
+    while not _held():
+        pass
+    while _held():
+        pass
+
+
+def idle_values(n=400):
+    # Every distinct thing getkey() returns with nothing held, as text, so 0 and
+    # None and anything else are told apart. If this reports more than one value
+    # the idle return is not a constant, which is exactly what a toolkit must
+    # not depend on.
+    seen = []
+    i = 0
+    while i < n:
+        s = str(getkey())
+        found = False
+        for t in seen:
+            if t == s:
+                found = True
+        if not found:
+            seen.append(s)
+        i += 1
+    return seen
+
 # ---------------------------------------------------------------- recursion --
 DEPTH = [0]
 
@@ -173,13 +220,7 @@ def page(title, rows, note):
             break
     draw_string(6, 174, note, GREY, "small")
     show_screen()
-    # wait for a key without depending on the idle value
-    while getkey() != 0:
-        pass
-    while getkey() == 0:
-        pass
-    while getkey() != 0:
-        pass
+    wait_key()
 
 def main():
     clear_screen()
@@ -189,16 +230,17 @@ def main():
     show_screen()
     limit = recursion_limit()
 
-    idle = getkey()
+    idle = idle_values()
     w, h = screen_size()
     have, lack = math_members()
 
     page("Limits", [
         ("recursion ceiling", str(limit) + " frames"),
-        ("getkey with nothing held", str(idle)),
+        ("idle getkey, 400 samples", " ".join(idle)),
+        ("distinct idle values", str(len(idle))),
         ("screen width", str(w)),
         ("screen height", str(h)),
-    ], "README claims ~38 frames, 384x192")
+    ], "measured 92 frames, 384x192")
 
     rows = []
     line = ""
@@ -233,11 +275,11 @@ def main():
 
     clear_screen()
     draw_string(6, 4, "HARDWARE CHECK", ACC, "medium")
-    draw_string(6, 40, "Done. Write the recursion figure", BLACK, "small")
-    draw_string(6, 56, "into the README device-facts table", BLACK, "small")
-    draw_string(6, 72, "and the tests.py BUDGET constant.", BLACK, "small")
+    draw_string(6, 40, "Done. Report both figures below.", BLACK, "small")
+    draw_string(6, 56, "More than one idle value means the", BLACK, "small")
+    draw_string(6, 72, "idle return is not a constant.", BLACK, "small")
     draw_string(6, 100, "ceiling = " + str(limit), OK, "medium")
-    draw_string(6, 124, "idle getkey = " + str(idle), OK, "medium")
+    draw_string(6, 124, "idle = " + " ".join(idle), OK, "medium")
     show_screen()
 
 main()
