@@ -343,13 +343,270 @@ def _circle_from_eqn():
     _show('Circle from eqn', ['centre (' + _fn(cx) + ',' + _fn(cy) + ')', 'r^2 = ' + _fn(r2),
                               'radius = ' + _fn(math.sqrt(r2))])
 
+def _circle_3pts():
+    # The circle through three points. Its centre is where the perpendicular
+    # bisectors of two chords meet, which is the "perpendicular bisector of a
+    # chord passes through the centre" property doing actual work.
+    _show('Circle through 3 points', ['The centre is where the perpendicular',
+                                      'bisectors of two of the chords meet.',
+                                      'Enter the three points.'])
+    pts = []
+    for nm in ('A', 'B', 'C'):
+        x = _asknum(nm + ' x')
+        if x is None:
+            return
+        y = _asknum(nm + ' y')
+        if y is None:
+            return
+        pts.append((x, y))
+    (x1, y1), (x2, y2), (x3, y3) = pts
+    # |P-A|^2 = |P-B|^2 gives a linear equation; two of them fix the centre
+    a1 = 2.0 * (x2 - x1)
+    b1 = 2.0 * (y2 - y1)
+    c1 = x2 * x2 - x1 * x1 + y2 * y2 - y1 * y1
+    a2 = 2.0 * (x3 - x1)
+    b2 = 2.0 * (y3 - y1)
+    c2 = x3 * x3 - x1 * x1 + y3 * y3 - y1 * y1
+    det = a1 * b2 - a2 * b1
+    lines = ['A(' + _fn(x1) + ', ' + _fn(y1) + ')  B(' + _fn(x2) + ', ' +
+             _fn(y2) + ')  C(' + _fn(x3) + ', ' + _fn(y3) + ')', '']
+    if abs(det) < 1e-12:
+        lines.append('The three points are COLLINEAR, so no')
+        lines.append('circle passes through all of them.')
+        _pages('Circle through 3 points', lines)
+        return
+    cx = (c1 * b2 - c2 * b1) / det
+    cy = (a1 * c2 - a2 * c1) / det
+    r = math.sqrt((x1 - cx) ** 2 + (y1 - cy) ** 2)
+    lines.append('centre (' + _fn(cx) + ', ' + _fn(cy) + ')')
+    lines.append('radius ' + _fn(r))
+    lines.append('')
+    lines.append('(x - ' + _fn(cx) + ')^2 + (y - ' + _fn(cy) + ')^2 = ' +
+                 _fn(r * r))
+    # check all three really are on it
+    ok = True
+    for (px, py) in pts:
+        d = math.sqrt((px - cx) ** 2 + (py - cy) ** 2)
+        if abs(d - r) > 1e-6:
+            ok = False
+    lines.append('')
+    lines.append('all three points on the circle: ' + ('yes' if ok else 'NO'))
+    # angle in a semicircle: is any chord a diameter?
+    for i in range(3):
+        j = (i + 1) % 3
+        k = (i + 2) % 3
+        dx = pts[j][0] - pts[k][0]
+        dy = pts[j][1] - pts[k][1]
+        if abs(math.sqrt(dx * dx + dy * dy) - 2.0 * r) < 1e-9:
+            lines.append('')
+            lines.append('One chord is a DIAMETER, so the angle')
+            lines.append('at the third point is 90 degrees -')
+            lines.append('the angle in a semicircle.')
+            break
+    _pages('Circle through 3 points', lines)
+
+
+def _circle_tangent():
+    # Tangent at a point on a circle: perpendicular to the radius there.
+    _show('Tangent to a circle', ['At a point on the circle, the tangent',
+                                  'is PERPENDICULAR TO THE RADIUS.',
+                                  'So its gradient is -1/(radius gradient).'])
+    cx = _asknum('centre x')
+    if cx is None:
+        return
+    cy = _asknum('centre y')
+    if cy is None:
+        return
+    px = _asknum('point on the circle, x')
+    if px is None:
+        return
+    py = _asknum('point y')
+    if py is None:
+        return
+    r = math.sqrt((px - cx) ** 2 + (py - cy) ** 2)
+    lines = ['centre (' + _fn(cx) + ', ' + _fn(cy) + ')',
+             'point  (' + _fn(px) + ', ' + _fn(py) + ')',
+             'radius = ' + _fn(r), '']
+    if r < 1e-12:
+        lines.append('The point IS the centre, so there is')
+        lines.append('no radius and no tangent.')
+        _pages('Tangent to a circle', lines)
+        return
+    dx = px - cx
+    dy = py - cy
+    if abs(dx) < 1e-12:
+        lines.append('the radius is vertical, so the tangent')
+        lines.append('is HORIZONTAL:  y = ' + _fn(py))
+    elif abs(dy) < 1e-12:
+        lines.append('the radius is horizontal, so the tangent')
+        lines.append('is VERTICAL:  x = ' + _fn(px))
+    else:
+        mr = dy / dx
+        mt = -1.0 / mr
+        lines.append('radius gradient  = ' + _fn(mr))
+        lines.append('tangent gradient = -1/that = ' + _fn(mt))
+        lines.append('')
+        lines.append('y - ' + _fn(py) + ' = ' + _fn(mt) + '(x - ' + _fn(px) + ')')
+        lines.append('y = ' + _fn(mt) + 'x + ' + _fn(py - mt * px))
+        lines.append('')
+        lines.append('check: ' + _fn(mr) + ' x ' + _fn(mt) + ' = ' +
+                     _fn(mr * mt) + ' (should be -1)')
+    _pages('Tangent to a circle', lines)
+
+
+def _circle_param():
+    # Parametric form of a circle, both ways.
+    _show('Circle in parametric form', ['x = a + r cos t',
+                                        'y = b + r sin t',
+                                        'traces the circle centre (a,b)',
+                                        'radius r as t goes 0 to 2pi.'])
+    cx = _asknum('centre a')
+    if cx is None:
+        return
+    cy = _asknum('centre b')
+    if cy is None:
+        return
+    r = _asknum('radius r')
+    if r is None or r <= 0:
+        _show('Parametric circle', ['The radius must be positive.'])
+        return
+    lines = ['x = ' + _fn(cx) + ' + ' + _fn(r) + ' cos t',
+             'y = ' + _fn(cy) + ' + ' + _fn(r) + ' sin t', '',
+             'eliminating t with cos^2 + sin^2 = 1:',
+             '  ((x-' + _fn(cx) + ')/' + _fn(r) + ')^2 + ((y-' + _fn(cy) +
+             ')/' + _fn(r) + ')^2 = 1',
+             '  (x-' + _fn(cx) + ')^2 + (y-' + _fn(cy) + ')^2 = ' + _fn(r * r),
+             '', 'so it is the circle centre (' + _fn(cx) + ', ' + _fn(cy) +
+             '), radius ' + _fn(r) + '.']
+    t = _asknum('point at t = (radians, or cancel)')
+    if t is not None:
+        x = cx + r * math.cos(t)
+        y = cy + r * math.sin(t)
+        lines.append('')
+        lines.append('at t = ' + _fn(t) + ':  (' + _fn(x) + ', ' + _fn(y) + ')')
+        lines.append('  dx/dt = ' + _fn(-r * math.sin(t)))
+        lines.append('  dy/dt = ' + _fn(r * math.cos(t)))
+        if abs(math.sin(t)) > 1e-12:
+            lines.append('  dy/dx = -cot t = ' +
+                         _fn(-math.cos(t) / math.sin(t)))
+            lines.append('  (perpendicular to the radius, as')
+            lines.append('   it must be)')
+        else:
+            lines.append('  dx/dt = 0 here: the tangent is vertical')
+    _pages('Parametric circle', lines)
+
+
+def t_proportion():
+    # Proportional relationships. Finding k from one pair is a division, but
+    # recognising the model and using it is the statement, and the log-log
+    # gradient is how you tell y = k x^n from y = k b^x.
+    _show('Proportion', ['y = k x      direct',
+                         'y = k / x    inverse',
+                         'y = k x^n    a power law',
+                         'Give one pair (or two, for the power),',
+                         'and it finds k and then predicts.'])
+    kind = casui.menu('Model', ['y = k x  (direct)', 'y = k / x  (inverse)',
+                                'y = k x^n  (find n too)'])
+    if kind == -1:
+        return
+    x1 = _asknum('x1')
+    if x1 is None:
+        return
+    y1 = _asknum('y1')
+    if y1 is None:
+        return
+    lines = []
+    if kind == 2:
+        x2 = _asknum('x2')
+        if x2 is None:
+            return
+        y2 = _asknum('y2')
+        if y2 is None:
+            return
+        if x1 <= 0 or x2 <= 0 or y1 <= 0 or y2 <= 0:
+            _show('Proportion', ['A power law needs positive values',
+                                 'to take logs of.'])
+            return
+        if abs(math.log(x2) - math.log(x1)) < 1e-12:
+            _show('Proportion', ['The two x values are the same, so n',
+                                 'cannot be found.'])
+            return
+        n = (math.log(y2) - math.log(y1)) / (math.log(x2) - math.log(x1))
+        k = y1 / (x1 ** n)
+        lines = ['(' + _fn(x1) + ', ' + _fn(y1) + ') and (' + _fn(x2) + ', ' +
+                 _fn(y2) + ')', '',
+                 'y = k x^n, so log y = log k + n log x:',
+                 '  n = (log y2 - log y1)/(log x2 - log x1)',
+                 '    = ' + _fn(n, 6),
+                 '  k = y1 / x1^n = ' + _fn(k, 6), '',
+                 'y = ' + _fn(k, 6) + ' x^' + _fn(n, 6)]
+    elif kind == 0:
+        if abs(x1) < 1e-12:
+            _show('Proportion', ['x = 0 gives no information about k.'])
+            return
+        k = y1 / x1
+        lines = ['y = k x with (' + _fn(x1) + ', ' + _fn(y1) + ')',
+                 '  k = y/x = ' + _fn(k, 6), '',
+                 'y = ' + _fn(k, 6) + ' x', '',
+                 'doubling x doubles y; the graph is a',
+                 'straight line through the origin.']
+    else:
+        k = y1 * x1
+        lines = ['y = k/x with (' + _fn(x1) + ', ' + _fn(y1) + ')',
+                 '  k = xy = ' + _fn(k, 6), '',
+                 'y = ' + _fn(k, 6) + ' / x', '',
+                 'doubling x halves y; xy is constant,',
+                 'and the graph is a hyperbola.']
+    xq = _asknum('predict y when x = (or cancel)')
+    if xq is not None:
+        try:
+            if kind == 0:
+                yq = k * xq
+            elif kind == 1:
+                yq = k / xq
+            else:
+                yq = k * (xq ** n)
+        except:
+            yq = None
+        lines.append('')
+        if yq is None:
+            lines.append('undefined at x = ' + _fn(xq))
+        else:
+            lines.append('at x = ' + _fn(xq) + ':  y = ' + _fn(yq, 6))
+    yq = _asknum('and x when y = (or cancel)')
+    if yq is not None:
+        try:
+            if kind == 0:
+                xr = yq / k
+            elif kind == 1:
+                xr = k / yq
+            else:
+                xr = (yq / k) ** (1.0 / n)
+        except:
+            xr = None
+        lines.append('')
+        if xr is None:
+            lines.append('undefined at y = ' + _fn(yq))
+        else:
+            lines.append('at y = ' + _fn(yq) + ':  x = ' + _fn(xr, 6))
+    _pages('Proportion', lines)
+
+
 def t_circle():
-    labels = ['Centre+r -> equation', 'Equation -> centre+r']
+    labels = ['Centre+r -> equation', 'Equation -> centre+r',
+              'Circle through 3 points', 'Tangent at a point',
+              'Parametric form']
     while True:
         c = casui.menu('CIRCLE', labels)
         if c == -1:
             return
-        if c == 0:
+        if c == 2:
+            _circle_3pts()
+        elif c == 3:
+            _circle_tangent()
+        elif c == 4:
+            _circle_param()
+        elif c == 0:
             _circle_from_cr()
         else:
             _circle_from_eqn()
@@ -1535,6 +1792,7 @@ TOOLS = [
     ('Surds & rationalising', t_surds),
     ('Line meets circle', t_linecircle),
     ('Sequences & behaviour', t_sequence),
+    ('Proportion k x, k/x', t_proportion),
 ]
 
 def run():

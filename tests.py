@@ -2461,6 +2461,57 @@ def test_proof():
     has("induction card", o, "PROOF BY INDUCTION")
     has("what not to write", o, "WHAT NOT TO WRITE")
 
+def test_circle_and_proportion():
+    import pure640
+    # (0,0), (4,0), (0,3): the 3-4-5 right angle. Centre (2, 1.5), radius 2.5,
+    # and BC = 5 = 2r is a diameter, so the angle at A is 90 - the angle in a
+    # semicircle, which the tool should spot rather than leave to be noticed.
+    o = drive(pure640._circle_3pts, ["0", "0", "4", "0", "0", "3"])
+    has("centre", o, "centre (2, 1.5)")
+    num("radius", o, "radius ", 2.5)
+    has("equation", o, "(x - 2)^2 + (y - 1.5)^2 = 6.25")
+    has("all three verified", o, "on the circle: yes")
+    has("semicircle spotted", o, "angle in a semicircle")
+    # collinear points have no circle
+    o = drive(pure640._circle_3pts, ["0", "0", "1", "1", "2", "2"])
+    has("collinear rejected", o, "COLLINEAR")
+
+    # tangent to x^2+y^2=25 at (3,4): radius gradient 4/3, tangent -3/4,
+    # so y = -0.75x + 6.25, i.e. 3x + 4y = 25
+    o = drive(pure640._circle_tangent, ["0", "0", "3", "4"])
+    num("radius gradient", o, "radius gradient  = ", 4.0 / 3.0, 1e-3)
+    num("tangent gradient", o, "-1/that = ", -0.75, 1e-6)
+    has("tangent line", o, "y = -0.75x + 6.25")
+    has("perpendicularity confirmed", o, "(should be -1)")
+    # a vertical radius gives a horizontal tangent, not a division by zero
+    o = drive(pure640._circle_tangent, ["0", "0", "0", "5"])
+    has("horizontal tangent", o, "HORIZONTAL:  y = 5")
+    o = drive(pure640._circle_tangent, ["0", "0", "5", "0"])
+    has("vertical tangent", o, "VERTICAL:  x = 5")
+
+    # parametric circle centre (1,2) radius 3, and at t = 0 the point is (4,2)
+    # with a vertical tangent
+    o = drive(pure640._circle_param, ["1", "2", "3", "0"])
+    has("cartesian form", o, "(x-1)^2 + (y-2)^2 = 9")
+    has("point at t=0", o, "(4, 2)")
+    has("vertical tangent at t=0", o, "tangent is vertical")
+
+    # y = k x^n through (2,12) and (4,48): n = log(4)/log(2) = 2 and k = 3,
+    # so y(5) = 75
+    o = drive(pure640.t_proportion, ["2", "12", "4", "48", "5", None], [2])
+    num("power found", o, "    = ", 2.0, 1e-9)
+    num("constant found", o, "k = y1 / x1^n = ", 3.0, 1e-9)
+    has("model stated", o, "y = 3 x^2")
+    num("prediction", o, "y = ", 75.0, 1e-6)
+    # direct: y = kx through (4, 10) gives k = 2.5, and y = 15 at x = 6
+    o = drive(pure640.t_proportion, ["4", "10", "6", None], [0])
+    num("direct constant", o, "k = y/x = ", 2.5)
+    num("direct prediction", o, "y = ", 15.0, 1e-6)
+    # inverse: y = k/x through (4, 3) gives k = 12, and x = 2 when y = 6
+    o = drive(pure640.t_proportion, ["4", "3", None, "6"], [1])
+    num("inverse constant", o, "k = xy = ", 12.0)
+    num("inverse back-solve", o, "x = ", 2.0, 1e-6)
+
 def test_trig_by_identity():
     import pure640
     # 2sin^2 x + sin x - 1 = 0 over 0..360. Let u = sin x: 2u^2+u-1 = 0,
@@ -3080,6 +3131,7 @@ TESTS = [
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
+    ("circle properties and proportion", test_circle_and_proportion),
     ("trig equations by identity", test_trig_by_identity),
     ("SHM amplitude and phase", test_shm_fit),
     ("inequality region sketch", test_inequality_region),
