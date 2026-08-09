@@ -104,6 +104,40 @@ ANGLE_DEG = False
 # too. See casutil.w / casutil.warn for how a tool marks its lines.
 SHOW_WORKING = True
 
+def w(text):
+    # a WORKING line: method, intermediate steps, reasoning. Hidden when the
+    # Working setting is off.
+    return ('w', text)
+
+def warn(text):
+    # a CAVEAT: something that changes whether the answer can be trusted.
+    # Shown in BOTH modes - it is part of the answer, not part of the method.
+    return ('!', text)
+
+def filter_lines(lines):
+    # Marked lines are tuples and no ordinary line can be a tuple, so there is
+    # nothing to mis-detect. An untagged tool is all-answer and unaffected.
+    keep = []
+    blank_run = 0
+    for ln in lines:
+        if isinstance(ln, tuple):
+            kind = ln[0]
+            text = ln[1]
+            if kind == 'w' and not SHOW_WORKING:
+                continue
+            ln = text
+        if ln == '':
+            # collapse the gaps left where working was removed
+            blank_run += 1
+            if blank_run > 1 or not keep:
+                continue
+        else:
+            blank_run = 0
+        keep.append(ln)
+    while keep and keep[len(keep) - 1] == '':
+        keep.pop()
+    return keep
+
 def wait_release():
     while readkey():
         pass
@@ -854,7 +888,7 @@ def do_table(tree):
         except:
             lines.append("x = " + fmt(xv) + "    f(x) = undefined")
         i += 1
-    result_screen("Table of values", lines)
+    result_screen("Table of values", filter_lines(lines))
 
 def do_partial(tree):
     # Split a rational function into partial fractions. H640 Pure asks for
@@ -877,15 +911,16 @@ def do_partial(tree):
     quot, terms = res
     lines = []
     if quot is not None:
+        lines.append(w("the top divides once, leaving a whole part:"))
         lines.append("whole part:  " + caseng.tostr(quot))
     if not terms:
-        lines.append("(divides exactly - no fractions left)")
+        lines.append(warn("divides exactly - no fractions left"))
     for top, fac, power in terms:
         den = caseng.tostr(fac)
         if power > 1:
             den = "(" + den + ")^" + str(power)
         lines.append("  " + caseng.tostr(top) + "  /  " + den)
-    result_screen("Partial fractions", lines)
+    result_screen("Partial fractions", filter_lines(lines))
 
 # ---------- main ----------
 def cas_section():

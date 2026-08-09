@@ -32,6 +32,7 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 | `\|<-` / `->\|` | first / last entry |
 | OK or EXE | choose |
 | back (the curved arrow) | back; at the top menu, leave the app |
+| **Working: SHOWN / HIDDEN** | the last home-menu entry - see below |
 
 | When typing an expression | |
 | --- | --- |
@@ -48,6 +49,10 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 **The CATALOG picker** holds the tokens the keypad has no key for at all: `!`, `abs(`, `nCr(`, `nPr(`, the reciprocal trig functions `sec(`, `cosec(`, `cot(`, the three hyperbolics and their three inverses, the reciprocal hyperbolics `sech(`, `cosech(`, `coth(`, plus `logb(`, `pi`, `ans` and `,` for convenience. Twenty tokens over two pages; arrows move, page up/down turn the page, OK inserts, back closes. Everything else comes off a real key. `tests.py` asserts every documented function stays reachable one way or the other.
 
 > The key map in `casui.py` had drifted from the hardware. ALPHA ran a whole row out of step - key 42 produced `a` when the key is printed **B** - so 17 of the 26 letters came out as the wrong letter or had no key at all, and `i`, `h`, `g`-`l`, `u` and `y` were unreachable. "EXIT" was bound to code 13, which is the jump-to-line-start key rather than back. And the comma, which has its own key at code 51, was simply never bound, which is what made `nCr`, `nPr` and `logb` impossible to type. `tests.py` now carries the keypad table transcribed independently from Casio's key-code diagram and asserts every binding against it.
+
+**Working: SHOWN / HIDDEN.** The last entry on the home menu toggles how much a result screen tells you. `SHOWN` gives the method as well as the answer: the substitution, the discriminant, the tableau at each simplex iteration, `let u = sin x`, the running sum against your claimed formula. `HIDDEN` gives the answer alone, for when you already know the method and are checking a number.
+
+A caveat is never hidden. Lines like "that point is not on the curve", "checked back in the original: all satisfy it", "no counterexample in that range - that is NOT a proof", "|sin x| cannot exceed 1, so this root is discarded" and "the tension is indeterminate from these equations alone" appear in **both** modes. They are not working; they are what makes the answer trustworthy, and a setting that hid them would turn a careful tool into a confident wrong one. `tests.py` asserts, for all 263 tools, that answer-only output is a subset of the full output and never loses every line.
 
 In **Calculus & Algebra** you enter `f(x)` once and then keep picking operations on it - differentiate, then integrate, then graph - without retyping. "New expression" or EXIT returns to the editor.
 
