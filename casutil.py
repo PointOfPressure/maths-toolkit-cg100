@@ -475,13 +475,49 @@ def binom_pmf(n, p, k):
     return r
 
 def binom_cdf(n, p, k):
+    # Sum of the pmf up to k, but walked with the recurrence
+    #   P(j+1) = P(j) * (n-j)/(j+1) * p/q
+    # rather than by calling binom_pmf k times. Each binom_pmf call is O(k)
+    # itself, so the old loop was O(k^2): binom_cdf(5000, 0.3, 1500) took most
+    # of half a second on a desktop, which on a handheld is a hang.
+    #
+    # The walk starts at the MODE, not at zero, because q**n underflows to
+    # exactly 0 long before n gets interesting - for n = 5000 and q = 0.7 it is
+    # about 1e-774 - and every subsequent term would then be 0 too. Starting
+    # from the largest term and going outwards keeps every ratio near 1.
     if k < 0:
         return 0.0
     if k >= n:
         return 1.0
-    c = 0.0
-    j = 0
-    while j <= k:
-        c += binom_pmf(n, p, j)
+    if p <= 0.0:
+        return 1.0
+    if p >= 1.0:
+        return 0.0
+    q = 1.0 - p
+    m = int((n + 1) * p)
+    if m > k:
+        m = k
+    if m < 0:
+        m = 0
+    pm = binom_pmf(n, p, m)
+    if pm <= 0.0:
+        # underflowed even at the mode: the whole tail is negligible either way
+        return 0.0 if k < (n * p) else 1.0
+    total = pm
+    # down from the mode to 0
+    t = pm
+    j = m
+    while j > 0:
+        t = t * j / (n - j + 1) * q / p
+        total += t
+        j -= 1
+    # up from the mode to k
+    t = pm
+    j = m
+    while j < k:
+        t = t * (n - j) / (j + 1) * p / q
+        total += t
         j += 1
-    return c
+    if total > 1.0:
+        total = 1.0
+    return total

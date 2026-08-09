@@ -2461,6 +2461,58 @@ def test_proof():
     has("induction card", o, "PROOF BY INDUCTION")
     has("what not to write", o, "WHAT NOT TO WRITE")
 
+def test_binom_cdf_recurrence():
+    # binom_cdf used to call binom_pmf once per term, and binom_pmf is itself
+    # O(k), so the whole thing was O(k^2): binom_cdf(5000, 0.3, 1500) took most
+    # of half a second on a desktop, which on a handheld is a hang. It now
+    # walks the pmf with the recurrence P(j+1) = P(j)(n-j)p/((j+1)q), starting
+    # from the MODE rather than from 0 - q**n underflows to exactly zero long
+    # before n gets interesting (about 1e-774 for n=5000, q=0.7) and every
+    # later term would then be zero too.
+    def reference(n, p, k):
+        # the obvious summation, which is what the old code effectively did
+        if k < 0:
+            return 0.0
+        if k >= n:
+            return 1.0
+        tot = 0.0
+        for j in range(k + 1):
+            tot += casutil.binom_pmf(n, p, j)
+        return tot
+
+    cases = [(10, 0.5, 5), (20, 0.3, 6), (100, 0.5, 50), (1000, 0.5, 500),
+             (50, 0.02, 1), (50, 0.98, 49), (200, 0.9, 180), (7, 0.25, 0),
+             (30, 0.1, 0), (12, 0.4, 3), (60, 0.75, 40), (5000, 0.3, 1500)]
+    for n, p, k in cases:
+        close("binom_cdf(" + str(n) + "," + str(p) + "," + str(k) + ")",
+              casutil.binom_cdf(n, p, k), reference(n, p, k), 1e-9)
+
+    # values worked out by hand rather than against another implementation
+    close("B(10,0.5) P(X<=5) = 638/1024", casutil.binom_cdf(10, 0.5, 5),
+          638.0 / 1024.0, 1e-12)
+    close("B(4,0.5) P(X<=2) = 11/16", casutil.binom_cdf(4, 0.5, 2),
+          11.0 / 16.0, 1e-12)
+    close("B(5,0.2) P(X<=0) = 0.8^5", casutil.binom_cdf(5, 0.2, 0),
+          0.8 ** 5, 1e-12)
+
+    # edges
+    check("k below 0 is 0", casutil.binom_cdf(10, 0.5, -1), 0.0)
+    check("k at n is 1", casutil.binom_cdf(10, 0.5, 10), 1.0)
+    check("k above n is 1", casutil.binom_cdf(10, 0.5, 99), 1.0)
+    check("p = 0 is certain", casutil.binom_cdf(10, 0.0, 0), 1.0)
+    check("p = 1 has no mass below n", casutil.binom_cdf(10, 1.0, 9), 0.0)
+    # the cdf must never exceed 1 or fall below 0, at any k
+    for k in range(0, 41):
+        v = casutil.binom_cdf(40, 0.35, k)
+        truthy("binom_cdf(40,0.35," + str(k) + ") is a probability",
+               -1e-12 <= v <= 1.0 + 1e-12)
+    # and it must be non-decreasing in k
+    prev = -1.0
+    for k in range(0, 41):
+        v = casutil.binom_cdf(40, 0.35, k)
+        truthy("binom_cdf is non-decreasing at k=" + str(k), v >= prev - 1e-12)
+        prev = v
+
 def test_engine_invariants():
     # Four properties that must hold for EVERY expression, rather than for the
     # particular answers asserted elsewhere. Named answers catch a wrong rule;
@@ -2743,6 +2795,7 @@ TESTS = [
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
+    ("binomial cdf recurrence", test_binom_cdf_recurrence),
     ("engine invariants", test_engine_invariants),
     ("screen layout", test_screen_layout),
     ("every tool is registered", test_every_tool_is_registered),
