@@ -11,8 +11,8 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-2696%20checks%2C%200%20failures-brightgreen)
-![smoke](https://img.shields.io/badge/smoke-413%20checks%2C%200%20errors-brightgreen)
+![tests](https://img.shields.io/badge/tests-3365%20checks%2C%200%20failures-brightgreen)
+![smoke](https://img.shields.io/badge/smoke-418%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
 
@@ -45,7 +45,7 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 | SHIFT | the green legend: `sin^-1`, `cos^-1`, `tan^-1`, `ln`, `log`, `pi`, `=`, and a log to a given base |
 | **CATALOG** (the book key) | the symbol picker - see below |
 
-**The CATALOG picker** holds the handful of tokens the keypad has no key for at all: `!`, `abs(`, `nCr(`, `nPr(`, the three hyperbolics and their three inverses, plus `ans` and `,` for convenience. One page; arrows move, OK inserts, back closes. Everything else comes off a real key. `tests.py` asserts every documented function stays reachable one way or the other.
+**The CATALOG picker** holds the tokens the keypad has no key for at all: `!`, `abs(`, `nCr(`, `nPr(`, the reciprocal trig functions `sec(`, `cosec(`, `cot(`, the three hyperbolics and their three inverses, the reciprocal hyperbolics `sech(`, `cosech(`, `coth(`, plus `logb(`, `pi`, `ans` and `,` for convenience. Twenty tokens over two pages; arrows move, page up/down turn the page, OK inserts, back closes. Everything else comes off a real key. `tests.py` asserts every documented function stays reachable one way or the other.
 
 > The key map in `casui.py` had drifted from the hardware. ALPHA ran a whole row out of step - key 42 produced `a` when the key is printed **B** - so 17 of the 26 letters came out as the wrong letter or had no key at all, and `i`, `h`, `g`-`l`, `u` and `y` were unreachable. "EXIT" was bound to code 13, which is the jump-to-line-start key rather than back. And the comma, which has its own key at code 51, was simply never bound, which is what made `nCr`, `nPr` and `logb` impossible to type. `tests.py` now carries the keypad table transcribed independently from Casio's key-code diagram and asserts every binding against it.
 
@@ -253,9 +253,9 @@ Copy these `.py` files to the calculator's storage (the root of the device, wher
 
 - Launcher: `maths.py`
 - UI layer: `casui.py`
-- Engine: `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`
+- Engine: `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`
 - Shared section helpers: `casutil.py`
-- The 18 section modules: `purecalc.py`, `vcplx.py`, `matrix.py`, `vectors.py`, `polyroots.py`, `series.py`, `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`, `numeric.py`, `algos.py`, `xpure.py`, `fpt.py`, `pure640.py`, `stat640.py`, `mech640.py`
+- The 19 section modules: `pure640.py`, `purecalc.py`, `stat640.py`, `mech640.py`, `proof.py`, `vcplx.py`, `matrix.py`, `vectors.py`, `polyroots.py`, `series.py`, `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`, `numeric.py`, `algos.py`, `xpure.py`, `fpt.py`
 
 To launch the toolkit, run `maths.py` (it just imports `casui` and calls `casui.main()`; the engine and section modules are pulled in from there on demand).
 
@@ -268,9 +268,9 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 2696 checks, 0 failures
-python3 stress.py      # smoke: 413 checks, 0 errors
-python3 devlint.py     # device compliance: 0 problems in 31 files
+python3 tests.py       # correctness: 3365 checks, 0 failures
+python3 stress.py      # smoke: 418 checks, 0 errors
+python3 devlint.py     # device compliance: 0 problems in 32 files
 ```
 
 All three run on every push and pull request via `.github/workflows/ci.yml`, along with a `compileall` pass over the whole repo. No dependencies beyond CPython.
@@ -292,7 +292,7 @@ module's `TOOLS` registry and hammers the engine over ~30 expressions. It proves
 nothing crashes; it does not check that any answer is right. On a PC it writes
 `stress_log.txt`; on the device (no file writes) it prints progress instead.
 
-**`devlint.py` - device compliance.** Parses each of the 31 device files and
+**`devlint.py` - device compliance.** Parses each of the 32 device files and
 reports anything the calculator's MicroPython 1.9.4 cannot run: f-strings,
 non-ASCII bytes, imports beyond `math`/`random`/`casioplot`, `math` members the
 build lacks (`factorial`, `atan2`, the hyperbolics), annotations, walrus,

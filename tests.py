@@ -2567,6 +2567,23 @@ def test_readme_matches_tools():
         check("README tool list for " + name + " matches " + modname + ".TOOLS",
               found, want)
 
+def test_readme_install_list():
+    # The install list is the one piece of documentation a user follows before
+    # anything works at all. devlint.DEVICE_FILES is the authority on what runs
+    # on the calculator, so the README must not name a file that is not one, or
+    # miss one that is.
+    path = os.path.join(HERE, "README.md")
+    text = open(path).read()
+    probes = set(["calib_screen.py", "fontmetrics.py", "fontmetrics2.py",
+                  "keyprobe.py", "hwcheck.py"])
+    for f in devlint.DEVICE_FILES:
+        if f in probes:
+            continue
+        truthy("README install list names " + f, "`" + f + "`" in text)
+    # and nothing that must NOT be copied is listed as if it should be
+    for f in ("casioplot.py", "tests.py", "devlint.py", "stress.py"):
+        truthy("README warns not to copy " + f, f in text)
+
 def test_every_tool_is_registered():
     # A tool that is not in its module's TOOLS list is unreachable from the
     # menu and invisible to stress.py, however well it works when called
@@ -2651,6 +2668,7 @@ TESTS = [
     ("engine invariants", test_engine_invariants),
     ("every tool is registered", test_every_tool_is_registered),
     ("README matches TOOLS", test_readme_matches_tools),
+    ("README install list", test_readme_install_list),
 ]
 
 # ---------------------------------------------------------- extra modules --
