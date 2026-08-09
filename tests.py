@@ -3119,6 +3119,42 @@ def test_readme_install_list():
     for f in ("casioplot.py", "tests.py", "devlint.py", "stress.py"):
         truthy("README warns not to copy " + f, f in text)
 
+def test_menu_tree_reachable():
+    # Every section module must be reachable from the launcher's menus, have a
+    # help entry, and expose a working registry. A module can be perfectly
+    # correct, fully tested and completely unreachable - test_every_tool_is_
+    # registered catches a tool missing from its module's TOOLS, and this
+    # catches a whole MODULE missing from the menus.
+    mods = list(casui.MATHS_MODS) + list(casui.FM_CORE_MODS) + list(casui.FM_OPT_MODS)
+    check("menu labels and modules line up (A-Level)",
+          len(casui.MATHS_LABELS), len(casui.MATHS_MODS))
+    check("menu labels and modules line up (Core Pure)",
+          len(casui.FM_CORE_LABELS), len(casui.FM_CORE_MODS))
+    check("menu labels and modules line up (Options)",
+          len(casui.FM_OPT_LABELS), len(casui.FM_OPT_MODS))
+    total = 0
+    for name in mods:
+        mod = __import__(name)
+        truthy(name + " has a TOOLS registry", hasattr(mod, "TOOLS"))
+        truthy(name + " has a run() entry point", hasattr(mod, "run"))
+        truthy(name + " has a HELP entry", name in casui.HELP)
+        if hasattr(mod, "TOOLS"):
+            for label, fn in mod.TOOLS:
+                truthy(name + " tool " + repr(label) + " is callable", callable(fn))
+            total += len(mod.TOOLS)
+    truthy("the menus reach a substantial toolkit", total >= 250)
+
+    # and nothing with a TOOLS list is stranded off the menus
+    infra = set(["maths", "casui", "casutil", "caslex", "caseng", "casrender",
+                 "cascalc", "caspoly", "calib_screen", "fontmetrics",
+                 "fontmetrics2", "keyprobe", "hwcheck"])
+    reachable = set(mods)
+    for f in devlint.DEVICE_FILES:
+        name = f[:-3]
+        if name in infra:
+            continue
+        truthy(name + " is reachable from a menu", name in reachable)
+
 def test_every_tool_is_registered():
     # A tool that is not in its module's TOOLS list is unreachable from the
     # menu and invisible to stress.py, however well it works when called
@@ -3212,6 +3248,7 @@ TESTS = [
     ("engine invariants", test_engine_invariants),
     ("screen layout", test_screen_layout),
     ("every tool is registered", test_every_tool_is_registered),
+    ("menu tree reachable", test_menu_tree_reachable),
     ("README matches TOOLS", test_readme_matches_tools),
     ("README install list", test_readme_install_list),
 ]
