@@ -318,9 +318,19 @@ the `casioplot` chapter is pages 141-143.
 | Key codes are `row*10+col` | **Confirmed** | Page 142 prints the grid: 9 rows, columns 1-6, with row 1 col 1 (`[ON]`) and row 6 col 5 (`[AC]`) greyed out as codeless, and rows 7-9 stopping at column 5. 48 readable keys. The manual's worked example holds the `5` key and prints `72`, which anchors the grid to the physical keypad. |
 | Which key each code is | **Confirmed** | The page-142 diagram is a blank keypad outline, so the codes were matched to the printed keytops against a full-resolution photograph of the fx-CG100 front panel. Every binding in `casui.py` agrees: the cursor cross is 14/23/25/34 around `OK` 24, `EXIT` is the back-arrow at 22 (13 is jump-to-line-start), and the ALPHA letters run A-F on 41-46, G-L on 51-56, M-O on 61-63, P-T on 71-75, U-Y on 81-85, Z on 91, with `Ans` on 94. `tests.py` holds that table independently and asserts `casui` matches it. |
 | `getkey()` idle value | **No longer relied on** | The manual documents `getkey()` as *"returns the key code of the calculator key pressed at the time this function is executed"* and its example polls it in a bare `while True`, so it is non-blocking - but it never states the idle return. The toolkit no longer needs to know: `casui.KEYCODES` is the set of codes the keypad can produce and `casui.readkey()` reports anything else as "no key". This also fixed a real bug - the old code sampled `getkey()` once at import and called that the idle value, but the key that launches the script is still held at import, which made that key unreadable for the whole session. |
-| `math` members available | **Partly settled** | The manual does not enumerate the `math` module; it is browsable on the device under `CATALOG > [math]`. What the manual does document (page 125, Python-mode key input) is `sqrt()`, `exp()`, `log()` (natural), `log10()`, `asin()`, `acos()`, `atan()` and `pi`. `devlint.MATH_OK` has deliberately **not** been widened past what the toolkit uses and the manual attests. |
-| Recursion ceiling (~38 frames) | **Unverified** | Needs the device. `tests.py` caps CPython at 38 frames and asserts parse/simplify/diff/evalf/integ still run, which is the property that matters (recursion on expression nesting, never on input length), but the true figure has not been measured. |
+| `math` members available | **Partly settled - `hwcheck.py` enumerates them** | The manual does not enumerate the `math` module; it is browsable on the device under `CATALOG > [math]`. What the manual does document (page 125, Python-mode key input) is `sqrt()`, `exp()`, `log()` (natural), `log10()`, `asin()`, `acos()`, `atan()` and `pi`. `devlint.MATH_OK` has deliberately **not** been widened past what the toolkit uses and the manual attests. |
+| Recursion ceiling (~38 frames) | **Unverified - run `hwcheck.py`** | Needs the device. `tests.py` caps CPython at 38 frames and asserts parse/simplify/diff/evalf/integ still run, which is the property that matters (recursion on expression nesting, never on input length), but the true figure has not been measured. `hwcheck.py` measures it by counting frames until the interpreter refuses another, and also re-runs the engine's deepest operations at that real ceiling. |
 | Pixel-level screen layout | **Unverified** | The autoscaling graph, the paged result screens, the CATALOG picker grid and caret windowing in long expressions were written from measured font metrics, not from screenshots. |
+
+**`hwcheck.py` settles the three remaining rows in one run.** Copy it to the
+calculator and run it: it measures the recursion ceiling by counting frames
+until the interpreter refuses another, reports what `getkey()` returns with
+nothing held, walks the screen bounds, enumerates which of 43 possible `math`
+members this build has (and which it lacks), and finally re-runs the engine's
+deepest operations - deeply nested parse, a 200-term flat sum, simplify,
+differentiate, evaluate, print and integration by parts - at that real ceiling.
+Write the figure it prints into the table above and into `tests.py`'s `BUDGET`
+constant.
 
 `keyprobe.py` re-checks the key map on hardware and flags any code outside
 `casui.KEYCODES`; `calib_screen.py`, `fontmetrics.py` and `fontmetrics2.py`

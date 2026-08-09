@@ -24,6 +24,7 @@ DEVICE_FILES = [
     # one-off hardware probes: not part of the toolkit, but they do run on the
     # calculator, so they are held to the same limits
     "calib_screen.py", "fontmetrics.py", "fontmetrics2.py", "keyprobe.py",
+    "hwcheck.py",
 ]
 
 # math members present in this build. The device has no factorial, no atan2 and
