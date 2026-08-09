@@ -566,7 +566,12 @@ def t_factor():
         else:
             parts.append(str(p) + '^' + str(e))
     s = ' * '.join(parts)
-    lines.append(s)
+    # carry n into the answer line. "n = 12" above it is working, so with the
+    # working hidden a bare "2^2 * 3" was a factorisation of nothing.
+    if len(facs) == 1 and facs[0][1] == 1:
+        lines.append(str(n) + ' = ' + s + '   (n is prime)')
+    else:
+        lines.append(str(n) + ' = ' + s)
     _pages('Prime factors', lines)
 
 def t_powmod():

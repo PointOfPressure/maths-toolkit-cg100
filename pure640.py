@@ -1479,7 +1479,7 @@ def t_surds():
         if b == 1:
             lines.append('  = ' + str(a) + '   (a perfect square)')
         elif a == 1:
-            lines.append('  = sqrt(' + str(n) + ')  already in simplest form')
+            lines.append('  sqrt(' + str(n) + ') is already in simplest form')
             lines.append(_w('  (' + str(n) + ' has no square factor)'))
         else:
             lines.append(_w('  = sqrt(' + str(a * a) + ' x ' + str(b) + ')'))

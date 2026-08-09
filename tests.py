@@ -1853,8 +1853,12 @@ def test_fpt():
     o = drive(fpt.t_prime, ['91'])
     has("fpt not prime", o, '91 is NOT prime.')
 
+    # the answer line carries n, because "n = 60" above it is working and with
+    # the working hidden a bare "2^2 * 3 * 5" factorises nothing
     o = drive(fpt.t_factor, ['60'])
-    has("fpt factorise", o, '2^2 * 3 * 5')
+    has("fpt factorise", o, '60 = 2^2 * 3 * 5')
+    o = drive(fpt.t_factor, ['7'])
+    has("fpt factorise of a prime says so", o, '7 = 7   (n is prime)')
 
     o = drive(fpt.t_powmod, ['2', '10', '1000'])
     has("fpt powmod", o, 'a^b mod m = 24')
@@ -2758,9 +2762,11 @@ def test_surds_and_circle():
     o = drive(pure640.t_surds, ["72"], [0])
     has("square factor pulled out", o, "= 6sqrt(2)")
     has("the factorisation is shown", o, "sqrt(36 x 2)")
-    # sqrt(2) has no square factor and must be left alone
+    # sqrt(2) has no square factor and must be left alone. The line names the
+    # surd rather than opening with "=", which dangled once the "sqrt(2)" line
+    # above it became working.
     o = drive(pure640.t_surds, ["2"], [0])
-    has("already simplest", o, "already in simplest form")
+    has("already simplest", o, "sqrt(2) is already in simplest form")
     # 3sqrt(8) + 2sqrt(50) = 6sqrt(2) + 10sqrt(2) = 16sqrt(2)
     o = drive(pure640.t_surds, ["3", "8", "2", "50"], [1])
     has("first simplified", o, "3sqrt(8) = 6sqrt(2)")

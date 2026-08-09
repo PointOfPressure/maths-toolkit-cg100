@@ -11,7 +11,7 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-5405%20checks%2C%200%20failures-brightgreen)
+![tests](https://img.shields.io/badge/tests-6731%20checks%2C%200%20failures-brightgreen)
 ![smoke](https://img.shields.io/badge/smoke-443%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
@@ -53,6 +53,8 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 **Working: SHOWN / HIDDEN.** The last entry on the home menu toggles how much a result screen tells you. `SHOWN` gives the method as well as the answer: the substitution, the discriminant, the tableau at each simplex iteration, `let u = sin x`, the running sum against your claimed formula. `HIDDEN` gives the answer alone, for when you already know the method and are checking a number.
 
 A caveat is never hidden. Lines like "that point is not on the curve", "checked back in the original: all satisfy it", "no counterexample in that range - that is NOT a proof", "|sin x| cannot exceed 1, so this root is discarded" and "the tension is indeterminate from these equations alone" appear in **both** modes. They are not working; they are what makes the answer trustworthy, and a setting that hid them would turn a careful tool into a confident wrong one. `tests.py` asserts, for all 263 tools, that answer-only output is a subset of the full output and never loses every line.
+
+Across the 20 section modules, 1213 output lines are marked as working and 640 as caveats. Every one of the 263 tools was driven in both modes and read, not just tested: sixteen of them lost the label that made the answer mean anything - `E(W)` with no statement of what `W` is, `a_n = A r1^n + B r2^n` with `r1` and `r2` never given, a sorted list that only ever appeared as the last row of a working table - and were re-tagged. Four had a sentence that began on a hidden line and were reworded.
 
 The setting is per-session: the calculator cannot write files, so it returns to `SHOWN` each time you launch the app. That is the safe default - nothing is hidden until you ask for it.
 
@@ -314,7 +316,7 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 5405 checks, 0 failures
+python3 tests.py       # correctness: 6731 checks, 0 failures
 python3 stress.py      # smoke: 443 checks, 0 errors
 python3 devlint.py     # device compliance: 0 problems in 32 files
 ```
