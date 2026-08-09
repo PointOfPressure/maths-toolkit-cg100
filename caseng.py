@@ -147,6 +147,15 @@ def _s(node):
         return ('neg', a)
     if t in UFUNCS:
         a = _s(node[1])
+        # exp and ln undo each other. Without this the integrating factor of
+        # dy/dx + y/x = x stays as e^(ln|x|) and cannot be multiplied through,
+        # which is the most standard first-order question there is.
+        if t == 'exp' and a[0] == 'ln':
+            return a[1]
+        if t == 'ln' and a[0] == 'exp':
+            return a[1]
+        if t == 'sqrt' and a[0] == '^' and a[2] == ('n', 2):
+            return ('abs', a[1])
         if a[0] == 'n':
             v = a[1]
             if t == 'sin' and v == 0: return ('n', 0)

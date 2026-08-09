@@ -2045,6 +2045,94 @@ def test_integ_reciprocal_powers():
             except:
                 pass
 
+
+def test_diffeq_complete():
+    import diffeq
+    # dy/dx + (1/x)y = x. IF = e^(int 1/x dx) = x; int x*x dx = x^3/3;
+    # y = x^2/3 + C/x. Through (1,1): 1 = 1/3 + C so C = 2/3.
+    o = drive(diffeq.t_first_order, ["1/x", "x", "1", "1"])
+    has("integrating factor", o, "IF = e^(ln(x))")
+    has("IF simplifies to x", o, "   = x")
+    has("IF times Q", o, "IF * Q = x^2")
+    has("the integral is performed", o, "int IF*Q dx = x^3/3")
+    num("constant from the condition", o, "C = ", 2.0 / 3.0, 1e-4)
+    has("checked at the point", o, "checked at the given point")
+    # dy/dx + 2y = e^x: IF = e^(2x), int e^(3x) dx = e^(3x)/3, y = e^x/3 + Ce^(-2x)
+    o = drive(diffeq.t_first_order, ["2", "exp(x)", None])
+    has("constant P gives e^(2x)", o, "IF = e^(2*x)")
+    # P with no elementary integral must say so rather than inventing one
+    o = drive(diffeq.t_first_order, ["exp(x^2)", None, None])
+    has("no elementary IF", o, "no elementary form")
+
+    # PARTICULAR INTEGRALS
+    # y'' - 3y' + 2y = e^(3x): aux m^2-3m+2 has roots 1 and 2, and
+    # p = 3 is not one of them, so PI = e^(3x)/(9-9+2) = 0.5 e^(3x)
+    o = drive(diffeq.t_particular, ["-3", "2", "1", "3"], [1])
+    has("auxiliary roots", o, "m = 2 and 1")
+    has("exponential PI", o, "PI: y = 0.5 e^(3x)")
+    # y'' - 3y' + 2y = e^x: now p = 1 IS a root, so the trial gains a factor
+    # of x and C = 1/(2p+a) = 1/(2-3) = -1
+    o = drive(diffeq.t_particular, ["-3", "2", "1", "1"], [1])
+    has("resonance detected", o, "already in the CF")
+    has("resonant PI", o, "PI: y = -x e^x")
+    # y'' - 2y' + y = e^x: m = 1 repeated, so the trial needs x^2 and C = 1/2
+    o = drive(diffeq.t_particular, ["-2", "1", "1", "1"], [1])
+    has("repeated root detected", o, "REPEATED root")
+    has("double resonance PI", o, "PI: y = 0.5 x^2 e^x")
+    # y'' + y = 4x^2: trial c0+c1x+c2x^2 gives 2c2 + c0 = 0, c1 = 0, c2 = 4,
+    # so PI = 4x^2 - 8
+    o = drive(diffeq.t_particular, ["0", "1", "2", "0", "0", "4"], [0])
+    has("polynomial PI", o, "PI: y = 4x^2 -8")
+    # y'' + 4y = sin x: (b-w^2)P = 0 and (b-w^2)Q = 1 with b-w^2 = 3,
+    # so PI = (1/3) sin x and the cos term is dropped, not printed as 0 cos x
+    o = drive(diffeq.t_particular, ["0", "4", "0", "1", "1"], [2])
+    has("trig PI", o, "PI: y = 0.3333 sin x")
+    truthy("a zero trig term is not printed",
+           not [ln for ln in o if "0 cos" in ln])
+    # y'' + y = 3x with b != 0: PI = 3x
+    o = drive(diffeq.t_particular, ["0", "1", "1", "0", "3"], [0])
+    has("linear PI", o, "PI: y = 3x")
+    # y'' + 2y' = 4 (b = 0): a constant already solves the homogeneous
+    # equation, so the trial polynomial has to be raised a degree -> y = 2x
+    o = drive(diffeq.t_particular, ["2", "0", "0", "4"], [0])
+    has("b=0 raises the trial degree", o, "raised a degree")
+    has("PI for b=0", o, "PI: y = 2x")
+    # y'' + 3y' = x: y = x^2/6 - x/9 gives 1/3 + 3(x/3 - 1/9) = x
+    o = drive(diffeq.t_particular, ["3", "0", "1", "0", "1"], [0])
+    has("PI for b=0 with a linear rhs", o, "PI: y = 0.1667x^2 -0.1111x")
+    # y'' = 6x with a = b = 0: the trial has to start at x^2, giving y = x^3
+    o = drive(diffeq.t_particular, ["0", "0", "1", "0", "6"], [0])
+    has("PI for a=b=0", o, "PI: y = x^3")
+    # the general solution has to be CF + PI with no extra constant
+    o = drive(diffeq.t_particular, ["-3", "2", "1", "3"], [1])
+    has("general solution given", o, "GENERAL SOLUTION = CF + PI")
+    has("no constant on the PI", o, "The PI has no arbitrary")
+
+def test_exp_ln_folding():
+    # exp and ln undo each other; without this the integrating factor of
+    # dy/dx + y/x = x stays as e^(ln|x|) and cannot be multiplied through
+    check("exp(ln(x)) is x",
+          caseng.tostr(caseng.simplify(caslex.parse("exp(ln(x))"))), "x")
+    check("ln(exp(x)) is x",
+          caseng.tostr(caseng.simplify(caslex.parse("ln(exp(x))"))), "x")
+    check("exp(ln(2x+1))",
+          caseng.tostr(caseng.simplify(caslex.parse("exp(ln(2x+1))"))), "2*x+1")
+    # sqrt(x^2) is |x|, not x - the modulus is the whole point
+    check("sqrt(x^2) is abs(x)",
+          caseng.tostr(caseng.simplify(caslex.parse("sqrt(x^2)"))), "abs(x)")
+    close("sqrt((-3)^2) is 3",
+          caseng.evalf(caseng.simplify(caslex.parse("sqrt(x^2)")), -3.0), 3.0)
+    # and the folding must not change any value
+    for e in ("exp(ln(x))", "ln(exp(x))", "exp(ln(2x+1))"):
+        f = caslex.parse(e)
+        g = caseng.simplify(f)
+        for xv in (0.4, 1.3, 2.8):
+            try:
+                close("folding " + e + " keeps its value at " + str(xv),
+                      caseng.evalf(g, xv), caseng.evalf(f, xv), 1e-9)
+            except:
+                pass
+
 def test_every_tool_is_registered():
     # A tool that is not in its module's TOOLS list is unreachable from the
     # menu and invisible to stress.py, however well it works when called
@@ -2090,6 +2178,8 @@ TESTS = [
     ("pure640 triangle/arc/inequality", test_pure640_new),
     ("purecalc calculus applications", test_purecalc_calculus),
     ("integrating reciprocal powers", test_integ_reciprocal_powers),
+    ("differential equations", test_diffeq_complete),
+    ("exp/ln folding", test_exp_ln_folding),
     ("mechanics variable accel", test_mech_variable_accel),
     ("matrix invariants", test_matrix_invariant),
     ("method of differences", test_method_of_differences),
