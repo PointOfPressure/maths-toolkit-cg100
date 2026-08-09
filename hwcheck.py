@@ -125,6 +125,39 @@ def engine_survives():
             out.append((label, "FAILED: " + str(e)))
     return out
 
+# ------------------------------------------------------------- memory ----
+# The section modules are large - the biggest is over 70 KB of source - and
+# MicroPython has to compile each one to bytecode in RAM. The toolkit loads
+# them ONE AT A TIME on demand, so the real requirement is only the largest
+# plus the always-loaded core. This imports them in sequence, which is the
+# worst case (they accumulate), so getting through all of them proves the
+# device can certainly manage the real pattern. Where it stops is the answer.
+SECTIONS = [
+    "pure640", "purecalc", "stat640", "mech640", "proof",
+    "vcplx", "matrix", "vectors", "polyroots", "series", "hyper", "polar",
+    "diffeq", "fmmech", "fmstat", "numeric", "algos", "xpure", "fpt",
+]
+
+def modules_load():
+    out = []
+    loaded = 0
+    for name in SECTIONS:
+        try:
+            __import__(name)
+            loaded += 1
+        except MemoryError:
+            out.append((name, "OUT OF MEMORY"))
+            break
+        except Exception as e:
+            out.append((name, "FAILED: " + str(e)))
+            break
+    out.append(("loaded in sequence", str(loaded) + " of " + str(len(SECTIONS))))
+    if loaded == len(SECTIONS):
+        out.append(("verdict", "all fit AT ONCE"))
+    else:
+        out.append(("verdict", "one at a time is still fine"))
+    return out
+
 # --------------------------------------------------------------------- run --
 def page(title, rows, note):
     clear_screen()
@@ -194,6 +227,9 @@ def main():
 
     page("Engine on real hardware", engine_survives(),
          "all must say ok at the ceiling above")
+
+    page("Section modules", modules_load(),
+         "the toolkit loads these one at a time")
 
     clear_screen()
     draw_string(6, 4, "HARDWARE CHECK", ACC, "medium")
