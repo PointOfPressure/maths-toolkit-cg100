@@ -1596,7 +1596,7 @@ def test_diffeq():
     has("2nd order repeated", o, 'Repeated root m = -1')
     o = drive(diffeq.t_shm, ['2'])
     num("shm period", o, 'T = ', math.pi)
-    num("shm freq", o, 'f = 1/T = ', 1.0 / math.pi)
+    num("shm freq", o, 'f = ', 1.0 / math.pi)
     o = drive(diffeq.t_damping, ['1', '1'])
     has("damping under", o, 'UNDER-DAMPED')
 
@@ -2461,6 +2461,50 @@ def test_proof():
     has("induction card", o, "PROOF BY INDUCTION")
     has("what not to write", o, "WHAT NOT TO WRITE")
 
+def test_shm_fit():
+    import diffeq
+    # w = 2, x(0) = 3, v(0) = 8. Then C = 3 and D = v/w = 4, so the amplitude
+    # is sqrt(9+16) = 5 and the phase is atan2(4,3) = 0.9273 rad = 53.13 deg.
+    # Max speed Rw = 10, max acceleration Rw^2 = 20.
+    o = drive(diffeq.t_shm, ["2", "3", "8", "0.5"])
+    num("SHM period", o, "T = ", math.pi, 1e-4)
+    num("C from x(0)", o, "x(0) = C = ", 3.0)
+    num("D from v(0)/w", o, "D = v(0)/w = ", 4.0)
+    num("amplitude", o, "R = sqrt(C^2 + D^2) = ", 5.0)
+    num("phase in radians", o, "atan2(D, C) = ", math.atan2(4.0, 3.0), 1e-4)
+    num("phase in degrees", o, "          = ", math.degrees(math.atan2(4.0, 3.0)), 1e-3)
+    num("max speed", o, "= Rw   = ", 10.0)
+    num("max acceleration", o, "= Rw^2 = ", 20.0)
+    # x(0.5) = 5 cos(1 - 0.9273) = 4.98679
+    num("x at t = 0.5", o, "  x = ", 5.0 * math.cos(1.0 - math.atan2(4.0, 3.0)), 1e-3)
+    # a = -w^2 x must hold at that instant
+    num("a = -w^2 x", o, "a = -w^2 x = ",
+        -4.0 * 5.0 * math.cos(1.0 - math.atan2(4.0, 3.0)), 1e-3)
+    # the SHM identity v^2 = w^2(R^2 - x^2), which the tool prints both sides of
+    xv = 5.0 * math.cos(1.0 - math.atan2(4.0, 3.0))
+    vv = -10.0 * math.sin(1.0 - math.atan2(4.0, 3.0))
+    close("v^2 identity holds", vv * vv, 4.0 * (25.0 - xv * xv), 1e-6)
+    # starting at rest at the extreme: v(0) = 0 gives phase 0 and R = x(0)
+    o = drive(diffeq.t_shm, ["3", "2", "0", None])
+    num("amplitude when released from rest", o, "R = sqrt(C^2 + D^2) = ", 2.0)
+    num("phase is zero from rest", o, "atan2(D, C) = ", 0.0, 1e-9)
+    # w must be positive
+    o = drive(diffeq.t_shm, ["0"])
+    has("w must be positive", o, "w must be > 0")
+
+def test_inequality_region():
+    # The region drawing goes through the shared chart helpers, so what is
+    # asserted here is the geometry: nothing off screen, nothing overprinting.
+    # The numbers are already asserted in test_pure640_new.
+    import pure640
+    rows = _layout(lambda: drive(pure640.t_inequality, ["1", "-5", "6"], [1, 2]))
+    truthy("the inequality sketch draws something", len(rows) > 0)
+    for x, y, s, size in rows:
+        truthy("inequality sketch: " + repr(s[:20]) + " fits the width",
+               x + casui.text_w(s, size) <= 384)
+        truthy("inequality sketch: " + repr(s[:20]) + " is on screen",
+               0 <= y <= 191)
+
 def test_coupled_des():
     import diffeq
     # dx/dt = x + y, dy/dt = 4x + y. Trace 2, det 1-4 = -3, so the auxiliary
@@ -2740,6 +2784,17 @@ _LAYOUT = []
 def _rec_draw_string(x, y, s, c=None, size=None):
     _LAYOUT.append((x, y, str(s), size or "medium"))
 
+def _layout_hold(note=None):
+    # hold() is stubbed to a no-op at the top of this file so tools can be
+    # driven, which means its OWN prompt never reached the layout recorder -
+    # and the prompt is exactly what a bottom-strip label collides with. This
+    # replays hold's drawing without the waiting.
+    if note:
+        _rec_draw_string(6, 178, note, None, "small")
+        _rec_draw_string(318, 178, "any key", None, "small")
+    else:
+        _rec_draw_string(6, 178, "Press any key", None, "small")
+
 def _layout(fn):
     del _LAYOUT[:]
     real = {}
@@ -2749,12 +2804,21 @@ def _layout(fn):
     for m in mods:
         real[m] = m.draw_string
         m.draw_string = _rec_draw_string
+    realhold = casui.hold
+    casui.hold = _layout_hold
     try:
         fn()
     finally:
         for m in real:
             m.draw_string = real[m]
+        casui.hold = realhold
     return list(_LAYOUT)
+
+def _chart_scene():
+    fr = casutil.frame(-12.0, 12.0, -3.5, 3.5)
+    casutil.axes(fr, "y = 1x^2 - 5x + 6   solve < 0", "x", "y")
+    casutil.seg(fr, -12.0, -3.0, 12.0, 3.0, casui.ACC)
+    casutil.chart_hold("red = solution set   roots 2, 3")
 
 def test_screen_layout():
     import casrender
@@ -2782,6 +2846,10 @@ def test_screen_layout():
             21, False, False, False, 0)),
         ("the CATALOG picker", lambda: casui.draw_input(
             "Type an expression:", "2x+", 3, False, False, True, 5)),
+        # a chart drawn through the shared helpers, with the longest note a
+        # tool actually passes - this is where the axis tick labels, the note
+        # and the key prompt all compete for the bottom strip
+        ("a chart with a long note", _chart_scene),
     ]
     for label, fn in scenes:
         rows = _layout(fn)
@@ -2961,6 +3029,8 @@ TESTS = [
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
+    ("SHM amplitude and phase", test_shm_fit),
+    ("inequality region sketch", test_inequality_region),
     ("coupled differential equations", test_coupled_des),
     ("surds and line-circle", test_surds_and_circle),
     ("surd extraction", test_surd_engine),

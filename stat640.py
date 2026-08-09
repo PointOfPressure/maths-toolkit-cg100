@@ -961,6 +961,567 @@ def _lab(fr, x, y, s):
     casui.draw_string(casutil.fx(fr, x), casutil.fy(fr, y), s,
                       casui.BLACK, 'small')
 
+# ---------------------------------------------------------- Venn diagrams --
+# The Venn frame deliberately does NOT use casutil.axes: a Venn diagram's
+# rectangle is the sample space, not a pair of axes. The pixel box is chosen so
+# that one data unit is 15.6 pixels in BOTH directions ((348-36)/20 = 312/20 and
+# (174-18)/10 = 156/10), because casutil.seg works in data coordinates and a
+# frame with different x and y scales would draw every "circle" as an ellipse.
+_VW = (0.0, 20.0, 0.0, 10.0, 36, 18, 348, 174)
+
+def _venn_frame():
+    return casutil.frame(_VW[0], _VW[1], _VW[2], _VW[3],
+                         _VW[4], _VW[5], _VW[6], _VW[7])
+
+def _circle(fr, cx, cy, r, c):
+    # circle as a closed 60-gon of casutil.seg segments
+    steps = 60
+    px = cx + r
+    py = cy
+    i = 1
+    while i <= steps:
+        t = 2.0 * casutil.PI * i / steps
+        nx = cx + r * math.cos(t)
+        ny = cy + r * math.sin(t)
+        casutil.seg(fr, px, py, nx, ny, c)
+        px = nx
+        py = ny
+        i += 1
+
+def _clab(fr, x, y, s):
+    # a region count, centred on (x, y). Truncated at 7 characters so that a
+    # silly entry cannot push a label off the side of the 384px screen.
+    if len(s) > 7:
+        s = s[:7]
+    w = casui.text_w(s, 'small')
+    casui.draw_string(casutil.fx(fr, x) - w // 2, casutil.fy(fr, y) - 5, s,
+                      casui.BLACK, 'small')
+
+def _venn_negatives(names, vals):
+    # every region whose count came out negative, i.e. every reason the figures
+    # given cannot describe a real Venn diagram
+    bad = []
+    i = 0
+    while i < len(vals):
+        if vals[i] < -1e-9:
+            bad.append(names[i] + ' = ' + _fn(vals[i]))
+        i += 1
+    return bad
+
+def _venn_reject(title, tot, inside, bad, hint):
+    lines = ['THESE FIGURES DO NOT ADD UP.',
+             'No diagram drawn: it would be',
+             'a wrong diagram.',
+             'stated total = ' + _fn(tot),
+             'the events need at least',
+             '  ' + _fn(inside) + ' between them',
+             'impossible region(s):']
+    i = 0
+    while i < len(bad):
+        lines.append('  ' + bad[i])
+        i += 1
+    lines.append(hint)
+    _show(title, lines)
+
+def _indep_line(nm, pab, pa, pb):
+    if abs(pab - pa * pb) < 1e-9:
+        return nm + ' independent: YES'
+    return nm + ' independent: NO'
+
+def _venn2():
+    tot = _asknum('total (use 1 for probs):')
+    if tot is None or tot <= 0:
+        _show('Venn 2 events', ['Need a total > 0.'])
+        return
+    na = _asknum('n(A) =')
+    if na is None:
+        return
+    nb = _asknum('n(B) =')
+    if nb is None:
+        return
+    nab = _asknum('n(A and B) =')
+    if nab is None:
+        return
+    if na < 0 or nb < 0 or nab < 0:
+        _show('Venn 2 events', ['Counts cannot be negative.'])
+        return
+    aonly = na - nab
+    bonly = nb - nab
+    inside = na + nb - nab
+    none = tot - inside
+    bad = _venn_negatives(['A only (n(A)-n(A and B))',
+                           'B only (n(B)-n(A and B))',
+                           'neither (total-n(A or B))'],
+                          [aonly, bonly, none])
+    if bad:
+        _venn_reject('Venn 2 events', tot, inside, bad,
+                     'n(A and B) is the OVERLAP.')
+        return
+    pa = na / tot
+    pb = nb / tot
+    pab = nab / tot
+    lines = ['total = ' + _fn(tot),
+             'REGIONS (they sum to the total)',
+             'n(A only) = ' + _fn(aonly),
+             'n(A and B) = ' + _fn(nab),
+             'n(B only) = ' + _fn(bonly),
+             'n(neither) = ' + _fn(none),
+             'regions sum = ' + _fn(aonly + nab + bonly + none),
+             'PROBABILITIES',
+             'P(A) = ' + _fn(pa),
+             'P(B) = ' + _fn(pb),
+             'P(A and B) = ' + _fn(pab),
+             'P(A or B) = ' + _fn(pa + pb - pab),
+             "P(A') = " + _fn(1.0 - pa),
+             "P(B') = " + _fn(1.0 - pb),
+             "P(neither) = " + _fn(none / tot)]
+    if pb > 0:
+        lines.append('P(A|B) = ' + _fn(pab / pb))
+    else:
+        lines.append('P(A|B) undefined: P(B) = 0')
+    if pa > 0:
+        lines.append('P(B|A) = ' + _fn(pab / pa))
+    else:
+        lines.append('P(B|A) undefined: P(A) = 0')
+    lines.append('P(A)P(B) = ' + _fn(pa * pb))
+    lines.append(_indep_line('A,B', pab, pa, pb))
+    if nab <= 1e-12:
+        lines.append('mutually exclusive: YES')
+    else:
+        lines.append('mutually exclusive: NO')
+        lines.append(' (the overlap is not empty)')
+    _show('Venn 2 events', lines)
+    fr = _venn_frame()
+    casui.clear_screen()
+    casui.draw_string(4, 2, 'Venn diagram: A, B', casui.ACC, 'small')
+    casutil.box(fr, 0.2, 0.2, 19.8, 9.8, casui.GREY, False)
+    _circle(fr, 7.5, 5.0, 4.0, casui.ACC)
+    _circle(fr, 12.5, 5.0, 4.0, casui.ACC)
+    _lab(fr, 0.5, 9.2, 'n = ' + _fn(tot))
+    _clab(fr, 5.5, 8.0, 'A')
+    _clab(fr, 14.5, 8.0, 'B')
+    _clab(fr, 5.5, 5.0, _fn(aonly))
+    _clab(fr, 10.0, 5.0, _fn(nab))
+    _clab(fr, 14.5, 5.0, _fn(bonly))
+    _clab(fr, 18.5, 1.2, _fn(none))
+    casutil.chart_hold('EXIT to go back')
+
+def _venn3():
+    tot = _asknum('total (use 1 for probs):')
+    if tot is None or tot <= 0:
+        _show('Venn 3 events', ['Need a total > 0.'])
+        return
+    singles = _getlist('n(A) n(B) n(C):')
+    if singles is None or len(singles) != 3:
+        _show('Venn 3 events', ['Need exactly 3 values.'])
+        return
+    pairs = _getlist('n(AandB) n(AandC) n(BandC):')
+    if pairs is None or len(pairs) != 3:
+        _show('Venn 3 events', ['Need exactly 3 values.'])
+        return
+    nabc = _asknum('n(A and B and C) =')
+    if nabc is None:
+        return
+    na, nb, nc = singles[0], singles[1], singles[2]
+    nab, nac, nbc = pairs[0], pairs[1], pairs[2]
+    if (na < 0 or nb < 0 or nc < 0 or nab < 0 or nac < 0 or nbc < 0 or
+            nabc < 0):
+        _show('Venn 3 events', ['Counts cannot be negative.'])
+        return
+    # the eight regions, from the inside out
+    rabc = nabc
+    rab = nab - nabc
+    rac = nac - nabc
+    rbc = nbc - nabc
+    ra = na - nab - nac + nabc
+    rb = nb - nab - nbc + nabc
+    rc = nc - nac - nbc + nabc
+    inside = na + nb + nc - nab - nac - nbc + nabc   # inclusion-exclusion
+    rnone = tot - inside
+    bad = _venn_negatives(['A only', 'B only', 'C only',
+                           'A and B only', 'A and C only', 'B and C only',
+                           'all three', 'none of them'],
+                          [ra, rb, rc, rab, rac, rbc, rabc, rnone])
+    if bad:
+        _venn_reject('Venn 3 events', tot, inside, bad,
+                     'Pair counts include the triple.')
+        return
+    pa = na / tot
+    pb = nb / tot
+    pc = nc / tot
+    pab = nab / tot
+    pac = nac / tot
+    pbc = nbc / tot
+    pabc = nabc / tot
+    lines = ['total = ' + _fn(tot),
+             'THE EIGHT REGIONS',
+             'n(A only) = ' + _fn(ra),
+             'n(B only) = ' + _fn(rb),
+             'n(C only) = ' + _fn(rc),
+             'n(A and B only) = ' + _fn(rab),
+             'n(A and C only) = ' + _fn(rac),
+             'n(B and C only) = ' + _fn(rbc),
+             'n(all three) = ' + _fn(rabc),
+             'n(none) = ' + _fn(rnone),
+             'regions sum = ' +
+             _fn(ra + rb + rc + rab + rac + rbc + rabc + rnone),
+             'PROBABILITIES',
+             'P(A) = ' + _fn(pa),
+             'P(B) = ' + _fn(pb),
+             'P(C) = ' + _fn(pc),
+             'P(A and B) = ' + _fn(pab),
+             'P(A and C) = ' + _fn(pac),
+             'P(B and C) = ' + _fn(pbc),
+             'P(A and B and C) = ' + _fn(pabc),
+             'P(A or B) = ' + _fn(pa + pb - pab),
+             'P(A or B or C) = ' + _fn(inside / tot),
+             "P(A') = " + _fn(1.0 - pa),
+             "P(B') = " + _fn(1.0 - pb),
+             "P(C') = " + _fn(1.0 - pc)]
+    if pb > 0:
+        lines.append('P(A|B) = ' + _fn(pab / pb))
+    else:
+        lines.append('P(A|B) undefined: P(B) = 0')
+    if pa > 0:
+        lines.append('P(B|A) = ' + _fn(pab / pa))
+    else:
+        lines.append('P(B|A) undefined: P(A) = 0')
+    lines.append('P(A)P(B) = ' + _fn(pa * pb))
+    lines.append(_indep_line('A,B', pab, pa, pb))
+    lines.append(_indep_line('A,C', pac, pa, pc))
+    lines.append(_indep_line('B,C', pbc, pb, pc))
+    if nab <= 1e-12 and nac <= 1e-12 and nbc <= 1e-12:
+        lines.append('mutually exclusive: YES')
+    else:
+        lines.append('mutually exclusive: NO')
+        lines.append(' (some overlap is not empty)')
+    _show('Venn 3 events', lines)
+    fr = _venn_frame()
+    casui.clear_screen()
+    casui.draw_string(4, 2, 'Venn diagram: A, B, C', casui.ACC, 'small')
+    casutil.box(fr, 0.2, 0.2, 19.8, 9.8, casui.GREY, False)
+    _circle(fr, 8.4, 6.2, 2.8, casui.ACC)
+    _circle(fr, 11.6, 6.2, 2.8, casui.ACC)
+    _circle(fr, 10.0, 3.6, 2.8, casui.ACC)
+    _lab(fr, 0.5, 9.2, 'n = ' + _fn(tot))
+    _clab(fr, 6.4, 7.9, 'A')
+    _clab(fr, 13.6, 7.9, 'B')
+    _clab(fr, 10.0, 1.2, 'C')
+    _clab(fr, 6.6, 6.9, _fn(ra))
+    _clab(fr, 13.4, 6.9, _fn(rb))
+    _clab(fr, 10.0, 2.0, _fn(rc))
+    _clab(fr, 10.0, 7.6, _fn(rab))
+    _clab(fr, 8.0, 4.2, _fn(rac))
+    _clab(fr, 12.0, 4.2, _fn(rbc))
+    _clab(fr, 10.0, 5.4, _fn(rabc))
+    _clab(fr, 18.5, 1.2, _fn(rnone))
+    casutil.chart_hold('EXIT to go back')
+
+def t_venn():
+    k = casui.menu('Venn diagram', ['two events A, B',
+                                    'three events A, B, C'])
+    if k == -1:
+        return
+    if k == 0:
+        _venn2()
+    else:
+        _venn3()
+
+# ------------------------------------------------ reduce to linear form ----
+def _loglin(xs, ys, kind):
+    # kind 0: y = a x^n  ->  ln y = ln a + n ln x    (log-log)
+    # kind 1: y = a b^x  ->  ln y = ln a + (ln b) x  (semi-log)
+    # Returns (tx, ty, A, B, r) for the straight line ty = A + B*tx, or None
+    # when a value is out of range for the logarithm or the fit is degenerate.
+    n = len(xs)
+    tx = []
+    ty = []
+    i = 0
+    while i < n:
+        if ys[i] <= 0.0:
+            return None
+        if kind == 0:
+            if xs[i] <= 0.0:
+                return None
+            tx.append(math.log(xs[i]))
+        else:
+            tx.append(xs[i])
+        ty.append(math.log(ys[i]))
+        i += 1
+    res = _linreg(tx, ty)
+    if res is None:
+        return None
+    a, b, r = res
+    return (tx, ty, a, b, r)
+
+def t_loglin():
+    kind = casui.menu('Reduce to linear form',
+                      ['y = a x^n   (log-log)',
+                       'y = a b^x   (semi-log)'])
+    if kind == -1:
+        return
+    xs = _getlist('X values:')
+    if xs is None or len(xs) < 2:
+        _show('Linear form', ['Need >=2 X.'])
+        return
+    ys = _getlist('Y values:')
+    if ys is None or len(ys) != len(xs):
+        _show('Linear form', ['Count mismatch.'])
+        return
+    res = _loglin(xs, ys, kind)
+    if res is None:
+        if kind == 0:
+            _show('Linear form', ['Need every x > 0 and',
+                                  'every y > 0 to take logs,',
+                                  'and some spread in both.'])
+        else:
+            _show('Linear form', ['Need every y > 0 to take',
+                                  'logs, and some spread in',
+                                  'x and in ln y.'])
+        return
+    tx, ty, ia, grad, r = res
+    a = math.exp(ia)
+    lines = ['points n = ' + str(len(xs))]
+    if kind == 0:
+        lines.append('model y = a x^n')
+        lines.append('ln y = ln a + n ln x')
+        lines.append('so plot ln y against ln x')
+        lines.append('gradient = ' + _fn(grad))
+        lines.append('intercept = ' + _fn(ia))
+        lines.append('power n = gradient = ' + _fn(grad))
+        lines.append('a = e^intercept = ' + _fn(a))
+        lines.append('model: y = ' + _fn(a) + ' x^' + _fn(grad))
+    else:
+        b = math.exp(grad)
+        lines.append('model y = a b^x')
+        lines.append('ln y = ln a + x ln b')
+        lines.append('so plot ln y against x')
+        lines.append('gradient = ' + _fn(grad))
+        lines.append('intercept = ' + _fn(ia))
+        lines.append('base b = e^gradient = ' + _fn(b))
+        lines.append('a = e^intercept = ' + _fn(a))
+        lines.append('model: y = ' + _fn(a) + ' * ' + _fn(b) + '^x')
+    lines.append('r = ' + _fn(r))
+    lines.append('r measures how well the')
+    lines.append('STRAIGHTENED points lie on a')
+    lines.append('line. It is NOT the fit of the')
+    lines.append('original curve to the raw data.')
+    _show('Reduce to linear form', lines)
+    xlo, xhi = casutil.nice_range(tx)
+    ylo, yhi = casutil.nice_range(ty)
+    fr = casutil.frame(xlo, xhi, ylo, yhi)
+    # the y axis label goes in the title, not in casutil.axes' ylab slot: that
+    # slot is drawn at (2, 4) and the title at (4, 2), so the two overprint
+    if kind == 0:
+        casutil.axes(fr, 'Straightened: ln y v ln x', 'ln x', None)
+    else:
+        casutil.axes(fr, 'Straightened: ln y v x', 'x', None)
+    i = 0
+    while i < len(tx):
+        casutil.marker(fr, tx[i], ty[i], casui.BLACK, 2)
+        i += 1
+    casutil.seg(fr, xlo, ia + grad * xlo, xhi, ia + grad * xhi, casui.ACC)
+    casutil.chart_hold('EXIT to go back')
+    px = _asknum('predict y at x (blank skip):')
+    if px is None:
+        return
+    if kind == 0:
+        if px <= 0.0:
+            _show('Prediction', ['x must be > 0 for a', 'power model.'])
+            return
+        py = a * math.exp(grad * math.log(px))
+    else:
+        py = a * math.exp(grad * px)
+    _show('Prediction', ['x = ' + _fn(px), 'y = ' + _fn(py)])
+
+# -------------------------------------------- shape of a distribution ------
+def _merge_pairs(xs, fs):
+    # sort by value and add together the frequencies of repeated values
+    vx = list(xs)
+    vf = list(fs)
+    i = 1
+    while i < len(vx):
+        kx = vx[i]
+        kf = vf[i]
+        j = i - 1
+        while j >= 0 and vx[j] > kx:
+            vx[j + 1] = vx[j]
+            vf[j + 1] = vf[j]
+            j -= 1
+        vx[j + 1] = kx
+        vf[j + 1] = kf
+        i += 1
+    ox = []
+    of = []
+    i = 0
+    while i < len(vx):
+        if ox and vx[i] == ox[len(ox) - 1]:
+            of[len(of) - 1] += vf[i]
+        else:
+            ox.append(vx[i])
+            of.append(vf[i])
+        i += 1
+    return (ox, of)
+
+def _nth_value(vals, fs, k):
+    # the k-th value (1-based) of the distribution written out in order
+    run = 0.0
+    i = 0
+    while i < len(vals):
+        run += fs[i]
+        if run >= k - 1e-9:
+            return vals[i]
+        i += 1
+    return vals[len(vals) - 1]
+
+def _peak_count(fs):
+    # Peaks of the frequency distribution. Runs of equal frequency collapse to
+    # one entry first, so a flat top counts once rather than not at all.
+    cf = []
+    i = 0
+    n = len(fs)
+    while i < n:
+        j = i
+        while j + 1 < n and fs[j + 1] == fs[i]:
+            j += 1
+        cf.append(fs[i])
+        i = j + 1
+    m = len(cf)
+    peaks = 0
+    i = 0
+    while i < m:
+        left = (i == 0) or cf[i] > cf[i - 1]
+        right = (i == m - 1) or cf[i] > cf[i + 1]
+        if left and right and cf[i] > 0:
+            peaks += 1
+        i += 1
+    return peaks
+
+def t_shape():
+    xs = _getlist('Values list:')
+    if xs is None or len(xs) == 0:
+        _show('Distribution shape', ['Need values.'])
+        return
+    fs = _getlist('Frequencies (blank = raw):')
+    if fs is None:
+        fs = []
+        i = 0
+        while i < len(xs):
+            fs.append(1.0)
+            i += 1
+    elif len(fs) != len(xs):
+        _show('Distribution shape', ['Count mismatch.'])
+        return
+    i = 0
+    while i < len(fs):
+        if fs[i] < 0:
+            _show('Distribution shape', ['Frequencies must be >= 0.'])
+            return
+        i += 1
+    vals, freq = _merge_pairs(xs, fs)
+    nf = 0.0
+    sx = 0.0
+    i = 0
+    while i < len(vals):
+        nf += freq[i]
+        sx += freq[i] * vals[i]
+        i += 1
+    if nf <= 0:
+        _show('Distribution shape', ['Total frequency is 0.'])
+        return
+    mean = sx / nf
+    # median of a discrete distribution: the (N+1)/2 th value, averaging the
+    # two middle values when N is even
+    half = nf / 2.0
+    if abs(nf - 2.0 * int(half)) < 1e-9:
+        med = 0.5 * (_nth_value(vals, freq, int(half)) +
+                     _nth_value(vals, freq, int(half) + 1))
+    else:
+        med = _nth_value(vals, freq, int(half) + 1)
+    ss = 0.0
+    s3 = 0.0
+    i = 0
+    while i < len(vals):
+        d = vals[i] - mean
+        ss += freq[i] * d * d
+        s3 += freq[i] * d * d * d
+        i += 1
+    varp = ss / nf
+    sdp = math.sqrt(varp)
+    maxf = freq[0]
+    i = 1
+    while i < len(freq):
+        if freq[i] > maxf:
+            maxf = freq[i]
+        i += 1
+    modes = []
+    i = 0
+    while i < len(freq):
+        if freq[i] == maxf:
+            modes.append(_fn(vals[i]))
+        i += 1
+    flat = True
+    i = 1
+    while i < len(freq):
+        if freq[i] != freq[0]:
+            flat = False
+        i += 1
+    peaks = _peak_count(freq)
+    lines = ['N = ' + _fn(nf),
+             'distinct values = ' + str(len(vals)),
+             'mean = ' + _fn(mean),
+             'median = ' + _fn(med),
+             'mode(s) = ' + ' '.join(modes),
+             'Sxx = ' + _fn(ss),
+             'sd (n) = ' + _fn(sdp)]
+    if flat and len(vals) > 1:
+        lines.append('peaks = 0')
+        lines.append('modality: uniform (flat)')
+    else:
+        lines.append('peaks = ' + str(peaks))
+        if peaks <= 1:
+            lines.append('modality: unimodal')
+        elif peaks == 2:
+            lines.append('modality: bimodal')
+        else:
+            lines.append('modality: multimodal')
+    lines.append('mean - median = ' + _fn(mean - med))
+    if sdp <= 0:
+        lines.append('sd = 0: every value is the')
+        lines.append('same, so there is no shape.')
+        _show('Distribution shape', lines)
+        return
+    # Pearson's second coefficient of skewness. Positive means the mean is
+    # dragged above the median by a tail on the right.
+    psk = 3.0 * (mean - med) / sdp
+    msk = (s3 / nf) / (sdp * sdp * sdp)
+    lines.append('Pearson skew = ' + _fn(psk))
+    lines.append(' = 3(mean-median)/sd(n)')
+    lines.append('moment skew = ' + _fn(msk))
+    if abs(psk) < 0.1:
+        lines.append('skewness: symmetric')
+        lines.append(' (mean and median agree)')
+    elif psk > 0:
+        lines.append('skewness: POSITIVE skew')
+        lines.append(' tail to the RIGHT,')
+        lines.append(' mean > median')
+    else:
+        lines.append('skewness: NEGATIVE skew')
+        lines.append(' tail to the LEFT,')
+        lines.append(' mean < median')
+    _show('Distribution shape', lines)
+    xlo, xhi = casutil.nice_range(vals)
+    fr = casutil.frame(xlo, xhi, 0.0, maxf * 1.15)
+    casutil.axes(fr, 'Frequency v value', 'value', None)
+    i = 0
+    while i < len(vals):
+        casutil.seg(fr, vals[i], 0.0, vals[i], freq[i], casui.BLACK)
+        casutil.marker(fr, vals[i], freq[i], casui.BLACK, 2)
+        i += 1
+    casutil.seg(fr, mean, 0.0, mean, maxf * 1.1, casui.RED)
+    casutil.seg(fr, med, 0.0, med, maxf * 1.05, casui.ACC)
+    casutil.chart_hold('red = mean, blue = median')
+
 def t_ncrfact():
     n = _asknum('n =')
     if n is None:
@@ -1006,6 +1567,9 @@ TOOLS = [
     ('Histogram', t_hist),
     ('Cumulative freq', t_cumfreq),
     ('Scatter + regression', t_scatter),
+    ('Venn diagram', t_venn),
+    ('Reduce to linear form', t_loglin),
+    ('Distribution shape', t_shape),
 ]
 
 def run():

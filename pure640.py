@@ -843,10 +843,68 @@ def t_inequality():
             lines.append('  x ' + lt + ' ' + _fn(lo) + '  or  x ' + gt + ' ' + _fn(hi))
             lines.append('  (outside the roots)')
     lines.append('')
-    lines.append('Sketch the parabola and shade the')
-    lines.append('part on the right side of the axis -')
-    lines.append('that is the check that never fails.')
+    lines.append('The sketch follows: the curve, and the')
+    lines.append('part of the x-axis that satisfies it.')
     _pages('Inequality', lines)
+    _draw_quad_region(a, b, c, lo, hi, rel, strict, want_pos, up)
+
+
+def _draw_quad_region(a, b, c, lo, hi, rel, strict, want_pos, up):
+    # Draw y = ax^2+bx+c with the solution set marked ON THE X-AXIS. Sketching
+    # it and shading is the check the specification asks for, and it is the one
+    # that survives getting the inequality direction backwards.
+    if lo is None:
+        centre = -b / (2.0 * a)
+        xa = centre - 5.0
+        xb = centre + 5.0
+    else:
+        pad = 2.0 + (hi - lo)
+        xa = lo - pad
+        xb = hi + pad
+    ys = []
+    n = 200
+    i = 0
+    while i <= n:
+        xv = xa + (xb - xa) * i / float(n)
+        ys.append(a * xv * xv + b * xv + c)
+        i += 1
+    ylo, yhi = casutil.nice_range(ys, 0.12, True)
+    fr = casutil.frame(xa, xb, ylo, yhi)
+    sym = ('>', '>=', '<', '<=')[rel]
+    casutil.axes(fr, 'y = ' + _fn(a) + 'x^2 ' + _signed(b) + 'x ' + _signed(c) +
+                 '   solve ' + sym + ' 0', 'x', 'y')
+    # the curve
+    prev = None
+    i = 0
+    while i <= n:
+        xv = xa + (xb - xa) * i / float(n)
+        yv = ys[i]
+        if prev is not None:
+            casutil.seg(fr, prev[0], prev[1], xv, yv, casui.ACC)
+        prev = (xv, yv)
+        i += 1
+    # the solution set, as a thick band along y = 0
+    band = (yhi - ylo) * 0.012
+    i = 0
+    while i <= n:
+        xv = xa + (xb - xa) * i / float(n)
+        yv = ys[i]
+        ok = (yv > 0) if (rel == 0) else ((yv >= 0) if rel == 1 else
+                                          ((yv < 0) if rel == 2 else (yv <= 0)))
+        if ok:
+            casutil.seg(fr, xv, -band, xv, band, casui.RED)
+        i += 1
+    if lo is not None:
+        casutil.marker(fr, lo, 0.0, casui.BLACK, 2)
+        casutil.marker(fr, hi, 0.0, casui.BLACK, 2)
+    note = 'red = solution set'
+    if lo is None:
+        note += ' (no real roots)'
+    elif abs(hi - lo) < 1e-12:
+        note += '   repeated root ' + _fn(lo)
+    else:
+        note += '   roots ' + _fn(lo) + ', ' + _fn(hi)
+    casutil.chart_hold(note)
 
 
 def _signed(v):

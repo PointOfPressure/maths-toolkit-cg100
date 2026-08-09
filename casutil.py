@@ -135,7 +135,7 @@ def run_tools(title, tools):
 SCREEN_W = 384
 SCREEN_H = 192
 
-def frame(xlo, xhi, ylo, yhi, x0=26, y0=16, x1=378, y1=170):
+def frame(xlo, xhi, ylo, yhi, x0=26, y0=16, x1=378, y1=158):
     # a zero-width range would divide by zero; widen it around its own value
     if xhi - xlo < 1e-12:
         xlo -= 1.0
@@ -255,13 +255,16 @@ def axes(fr, title=None, xlab=None, ylab=None, ticks=True):
     if xlab is not None:
         casui.draw_string(x0 + (x1 - x0) // 2 - 12, y1 + 3, xlab, casui.GREY, 'small')
     if ylab is not None:
-        casui.draw_string(2, y0 - 12, ylab, casui.GREY, 'small')
+        # halfway up the y-axis, not at the top: the top-left corner already
+        # holds the title and the yhi tick, and three labels do not fit there
+        casui.draw_string(2, (y0 + y1) // 2, ylab, casui.GREY, 'small')
 
 def chart_hold(note=None):
-    if note is not None:
-        casui.draw_string(4, SCREEN_H - 12, note, casui.GREY, 'small')
-    casui.show_screen()
-    casui.hold()
+    # The note goes THROUGH hold, not on top of it. Drawing it here at
+    # SCREEN_H-12 put it two pixels from hold's own "Press any key" prompt,
+    # which on an eleven-pixel font is an unreadable smudge - the same fault
+    # graph() had. hold(note) shares the bottom strip properly.
+    casui.hold(note)
 
 def nice_range(vals, pad=0.08, zero=False):
     # data range widened a little so points do not sit on the frame edge

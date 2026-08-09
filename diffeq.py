@@ -139,16 +139,84 @@ def t_second_order():
     _show('SECOND ORDER CF', lines)
 
 def t_shm():
-    w = _asknum('angular freq w (>0):')
+    # Simple harmonic motion, x'' = -w^2 x. The general solution is
+    # C cos wt + D sin wt, but the form that answers the questions is
+    # R cos(wt - phi): R is the amplitude and phi the phase. Fitting those two
+    # from the initial conditions is the part the toolkit never did.
+    w = _asknum('angular frequency w (>0):')
     if w is None:
         return
     if w <= 0:
         _show('SHM', ['w must be > 0.'])
         return
     T = 2.0 * math.pi / w
-    f = w / (2.0 * math.pi)
-    lines = ["x'' = -w^2 x", 'Simple harmonic motion', 'w = ' + _fn(w), 'Period T = 2 pi / w', 'T = ' + _fn(T), 'Frequency f = 1/T = ' + _fn(f), 'x = A cos(w t - phi)', '  = C cos(w t) + D sin(w t)']
+    lines = ["x'' = -w^2 x   with w = " + _fn(w),
+             'period T = 2 pi / w',
+             'T = ' + _fn(T),
+             'frequency f = 1/T',
+             'f = ' + _fn(1.0 / T), '',
+             'x = C cos(wt) + D sin(wt)',
+             '  = R cos(wt - phi)']
+    x0 = _asknum('x at t=0 (or cancel)')
+    if x0 is None:
+        lines.append('')
+        lines.append('Give x(0) and v(0) to fit R and phi.')
+        _show('SHM', lines)
+        return
+    v0 = _asknum('v at t=0')
+    if v0 is None:
+        _show('SHM', lines)
+        return
+    # x = C cos wt + D sin wt, so x(0) = C and x'(0) = wD
+    C = x0
+    D = v0 / w
+    R = math.sqrt(C * C + D * D)
+    phi = casutil.atan2(D, C)
+    lines.append('')
+    lines.append('x(0) = C = ' + _fn(C))
+    lines.append("x'(0) = wD, so D = v(0)/w = " + _fn(D))
+    lines.append('')
+    lines.append('amplitude R = sqrt(C^2 + D^2) = ' + _fn(R))
+    lines.append('phase phi = atan2(D, C) = ' + _fn(phi) + ' rad')
+    lines.append('          = ' + _fn(casutil.deg(phi)) + ' deg')
+    lines.append('')
+    lines.append('x = ' + _fn(R) + ' cos(' + _fn(w) + 't - ' + _fn(phi) + ')')
+    lines.append('')
+    lines.append('max speed        = Rw   = ' + _fn(R * w))
+    lines.append('max acceleration = Rw^2 = ' + _fn(R * w * w))
+    lines.append('')
+    lines.append('v^2 = w^2(R^2 - x^2) at any point,')
+    lines.append('so v = 0 at x = +/-' + _fn(R) + ' and')
+    lines.append('|v| is greatest at x = 0.')
+    # first time at the centre and at the extreme
+    lines.append('')
+    if R > 1e-12:
+        # x = 0 when wt - phi = pi/2 + k pi
+        tc = (math.pi / 2.0 + phi) / w
+        while tc < -1e-12:
+            tc += math.pi / w
+        while tc > math.pi / w + 1e-12:
+            tc -= math.pi / w
+        te = phi / w
+        while te < -1e-12:
+            te += math.pi / w
+        lines.append('first at the centre (x=0) at t = ' + _fn(tc))
+        lines.append('first at an extreme at t = ' + _fn(te))
+    tv = _asknum('x and v at t = (or cancel)')
+    if tv is not None:
+        xv = R * math.cos(w * tv - phi)
+        vv = -R * w * math.sin(w * tv - phi)
+        av = -w * w * xv
+        lines.append('')
+        lines.append('at t = ' + _fn(tv) + ':')
+        lines.append('  x = ' + _fn(xv))
+        lines.append('  v = ' + _fn(vv))
+        lines.append('  a = -w^2 x = ' + _fn(av))
+        chk = w * w * (R * R - xv * xv)
+        lines.append('  check v^2 = w^2(R^2-x^2): ' + _fn(vv * vv) +
+                     ' vs ' + _fn(chk))
     _show('SHM', lines)
+
 
 def t_damping():
     a = _asknum("damping a in x'' + a x' + b x = 0:")
