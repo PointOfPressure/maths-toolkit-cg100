@@ -9,6 +9,8 @@ _asknum = casutil.asknum
 _askint = casutil.askint
 _fn = casutil.fmt
 _show = casutil.show
+_w = casutil.w
+_warn = casutil.warn
 
 
 def _rowstr(row):
@@ -21,7 +23,7 @@ def _rowstr(row):
 def _matlines(name, m):
     out = []
     if m is None:
-        return [name + ' not set']
+        return [_warn(name + ' not set')]
     out.append(name + ' =')
     for row in m:
         out.append('  ' + _rowstr(row))
@@ -57,7 +59,7 @@ def _samedim(p, q):
 
 def _addsub(sign):
     if not _samedim(A, B):
-        _show('ERROR', ['A and B must be', 'the same size'])
+        _show('ERROR', [_warn('A and B must be'), _warn('the same size')])
         return
     r = []
     for i in range(len(A)):
@@ -136,7 +138,7 @@ def t_mul():
     ra, ca = _dims(A)
     rb, cb = _dims(B)
     if ca != rb:
-        _show('ERROR', ['cols A must = rows B', str(ca) + ' vs ' + str(rb)])
+        _show('ERROR', [_warn('cols A must = rows B'), _warn(str(ca) + ' vs ' + str(rb))])
         return
     r = []
     for i in range(ra):
@@ -164,7 +166,7 @@ def t_trans():
 
 def t_det():
     if len(A) != len(A[0]):
-        _show('ERROR', ['det needs a', 'square matrix'])
+        _show('ERROR', [_warn('det needs a'), _warn('square matrix')])
         return
     d = _det(A)
     _show('det A', ['det(A) = ' + _fn(d)])
@@ -173,11 +175,11 @@ def t_det():
 def t_inv():
     n = len(A)
     if n != len(A[0]):
-        _show('ERROR', ['inverse needs a', 'square matrix'])
+        _show('ERROR', [_warn('inverse needs a'), _warn('square matrix')])
         return
     d = _det(A)
     if abs(d) < 1e-9:
-        _show('inverse', ['det = 0', 'A is singular', 'no inverse'])
+        _show('inverse', [_w('det = 0'), _warn('A is singular'), 'no inverse'])
         return
     if n == 1:
         _show('inverse', _matlines('Ai', [[1.0 / A[0][0]]]))
@@ -214,7 +216,7 @@ def t_inv():
 def t_solve():
     n = len(A)
     if n != len(A[0]):
-        _show('ERROR', ['solve needs a', 'square matrix A'])
+        _show('ERROR', [_warn('solve needs a'), _warn('square matrix A')])
         return
     bb = []
     for i in range(n):
@@ -237,7 +239,7 @@ def t_solve():
                 big = abs(m[r][col])
                 piv = r
         if big < 1e-9:
-            _show('solve', ['no unique', 'solution', '(singular A)'])
+            _show('solve', ['no unique', 'solution', _warn('(singular A)')])
             return
         if piv != col:
             tmp = m[col]
@@ -257,7 +259,7 @@ def t_solve():
 
 def t_eig():
     if len(A) != 2 or len(A[0]) != 2:
-        _show('ERROR', ['eigenvalues here', 'are 2x2 only'])
+        _show('ERROR', [_warn('eigenvalues here'), _warn('are 2x2 only')])
         return
     a = A[0][0]
     b = A[0][1]
@@ -266,7 +268,7 @@ def t_eig():
     tr = a + d
     de = a * d - b * c
     disc = tr * tr - 4 * de
-    out = ['trace = ' + _fn(tr), 'det = ' + _fn(de)]
+    out = [_w('trace = ' + _fn(tr)), _w('det = ' + _fn(de))]
     if disc >= 0:
         r = math.sqrt(disc)
         l1 = (tr + r) / 2.0
@@ -330,7 +332,7 @@ def t_transform():
         note = 'shear (x direction)'
     A = m
     det = m[0][0] * m[1][1] - m[0][1] * m[1][0]
-    lines = [note] + _matlines('A', m) + ['det = ' + _fn(det), '|det| = area scale']
+    lines = [note] + _matlines('A', m) + ['det = ' + _fn(det), _w('|det| = area scale')]
     _show('TRANSFORM', lines)
 
 
@@ -340,16 +342,16 @@ def t_invariant():
     # it. Students routinely conflate the two, so both are reported and the
     # difference is spelled out.
     if A is None:
-        _show('INVARIANT', ['Enter A first.'])
+        _show('INVARIANT', [_warn('Enter A first.')])
         return
     if len(A) != 2 or len(A[0]) != 2:
-        _show('INVARIANT', ['A must be 2x2 for this tool.'])
+        _show('INVARIANT', [_warn('A must be 2x2 for this tool.')])
         return
     a = A[0][0]
     b = A[0][1]
     c = A[1][0]
     d = A[1][1]
-    lines = _matlines('A', A) + ['']
+    lines = [_w(ln) for ln in _matlines('A', A)] + ['']
     # invariant points: (A - I)p = 0
     p = a - 1.0
     q = b
@@ -357,9 +359,9 @@ def t_invariant():
     s = d - 1.0
     det = p * s - q * r
     lines.append('INVARIANT POINTS  (A p = p)')
-    lines.append('solve (A - I)p = 0:')
-    lines.append('  (' + _fn(p) + ')x + (' + _fn(q) + ')y = 0')
-    lines.append('  (' + _fn(r) + ')x + (' + _fn(s) + ')y = 0')
+    lines.append(_w('solve (A - I)p = 0:'))
+    lines.append(_w('  (' + _fn(p) + ')x + (' + _fn(q) + ')y = 0'))
+    lines.append(_w('  (' + _fn(r) + ')x + (' + _fn(s) + ')y = 0'))
     if abs(det) > 1e-12:
         lines.append('det(A - I) = ' + _fn(det) + ', not 0,')
         lines.append('so the origin is the only')
@@ -383,9 +385,9 @@ def t_invariant():
     # (c + d m) = m (a + b m), i.e. b m^2 + (a - d) m - c = 0
     lines.append('')
     lines.append('INVARIANT LINES y = m x')
-    lines.append('need c + d m = m(a + b m), so')
-    lines.append('  b m^2 + (a - d)m - c = 0')
-    lines.append('  (' + _fn(b) + ')m^2 + (' + _fn(a - d) + ')m - (' + _fn(c) + ') = 0')
+    lines.append(_w('need c + d m = m(a + b m), so'))
+    lines.append(_w('  b m^2 + (a - d)m - c = 0'))
+    lines.append(_w('  (' + _fn(b) + ')m^2 + (' + _fn(a - d) + ')m - (' + _fn(c) + ') = 0'))
     ms = []
     if abs(b) < 1e-12:
         if abs(a - d) > 1e-12:
@@ -411,10 +413,10 @@ def t_invariant():
     if abs(b) < 1e-12:
         lines.append('  x = 0 (the y-axis) as well')
     lines.append('')
-    lines.append('A line of invariant points is')
-    lines.append('invariant; an invariant line need')
-    lines.append('not have any invariant point on it')
-    lines.append('other than the origin.')
+    lines.append(_w('A line of invariant points is'))
+    lines.append(_w('invariant; an invariant line need'))
+    lines.append(_w('not have any invariant point on it'))
+    lines.append(_w('other than the origin.'))
     _show('INVARIANT', lines)
 
 
@@ -464,7 +466,7 @@ def t_transform3():
     A = m
     det = _det(m)
     lines = [note] + _matlines('A', m) + ['det = ' + _fn(det),
-                                          '|det| = volume scale factor']
+                                          _w('|det| = volume scale factor')]
     if det < 0:
         lines.append('det < 0: orientation is reversed')
         lines.append('(it includes a reflection)')

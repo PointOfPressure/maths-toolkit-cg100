@@ -9,6 +9,8 @@ _fn = casutil.fmt
 _show = casutil.show
 _cstr = casutil.fmtc
 _binom = casutil.ncr
+_w = casutil.w
+_warn = casutil.warn
 
 def _ask_coeffs(prompts):
     out = []
@@ -58,7 +60,7 @@ def t_quad_roots():
         _show('QUAD ROOTS', ['a must not be 0'])
         return
     disc = b * b - 4 * a * cc
-    lines = ['disc = b^2-4ac = ' + _fn(disc)]
+    lines = [_w('disc = b^2-4ac = ' + _fn(disc))]
     if disc >= 0:
         sq = math.sqrt(disc)
         r1 = (-b + sq) / (2 * a)
@@ -87,10 +89,10 @@ def t_numeric_roots():
     except:
         roots = None
     if roots is None or len(roots) == 0:
-        _show('NUMERIC ROOTS', ['no real roots in', '[-20, 20]'])
+        _show('NUMERIC ROOTS', [_warn('no real roots in'), _warn('[-20, 20]')])
         return
     roots = sorted(roots)
-    lines = ['real roots in [-20,20]:']
+    lines = [_warn('real roots in [-20,20]:')]
     for r in roots:
         lines.append('x = ' + _fn(r))
     _show('NUMERIC ROOTS', lines)
@@ -129,7 +131,7 @@ def t_shift_roots():
             new[n - j] += term
             j += 1
         i += 1
-    lines = ['new coeffs high->low:']
+    lines = [_w('new coeffs high->low:')]
     i = 0
     while i <= n:
         lines.append(names[i] + ' (x^' + str(n - i) + ') = ' + _fn(new[i]))

@@ -6,6 +6,8 @@ _fn = casutil.fmt
 _show = casutil.show
 _myacos = casutil.acos_safe
 _deg = casutil.deg
+_w = casutil.w
+_warn = casutil.warn
 
 def _vec(name):
     x = _asknum(name + ' x:')
@@ -35,7 +37,7 @@ def t_mag():
     a = _vec('a')
     if a is None:
         return
-    _show('MAGNITUDE', ['a = ' + _vstr(a), '|a| = ' + _fn(_mag(a))])
+    _show('MAGNITUDE', [_w('a = ' + _vstr(a)), '|a| = ' + _fn(_mag(a))])
 
 def t_dot():
     a = _vec('a')
@@ -44,7 +46,7 @@ def t_dot():
     b = _vec('b')
     if b is None:
         return
-    _show('DOT PRODUCT', ['a = ' + _vstr(a), 'b = ' + _vstr(b), 'a.b = ' + _fn(_dot(a, b))])
+    _show('DOT PRODUCT', [_w('a = ' + _vstr(a)), _w('b = ' + _vstr(b)), 'a.b = ' + _fn(_dot(a, b))])
 
 def t_angle():
     a = _vec('a')
@@ -56,11 +58,11 @@ def t_angle():
     ma = _mag(a)
     mb = _mag(b)
     if ma == 0 or mb == 0:
-        _show('ANGLE', ['Zero vector: undefined'])
+        _show('ANGLE', [_warn('Zero vector: undefined')])
         return
     c = _dot(a, b) / (ma * mb)
     r = _myacos(c)
-    _show('ANGLE BETWEEN', ['cos = ' + _fn(c), 'angle = ' + _fn(_deg(r)) + ' deg', '      = ' + _fn(r) + ' rad'])
+    _show('ANGLE BETWEEN', [_w('cos = ' + _fn(c)), 'angle = ' + _fn(_deg(r)) + ' deg', '      = ' + _fn(r) + ' rad'])
 
 def t_cross():
     a = _vec('a')
@@ -78,10 +80,10 @@ def t_unit():
         return
     m = _mag(a)
     if m == 0:
-        _show('UNIT VECTOR', ['Zero vector: undefined'])
+        _show('UNIT VECTOR', [_warn('Zero vector: undefined')])
         return
     u = [a[0] / m, a[1] / m, a[2] / m]
-    _show('UNIT VECTOR', ['|a| = ' + _fn(m), 'a-hat =', _vstr(u)])
+    _show('UNIT VECTOR', [_w('|a| = ' + _fn(m)), 'a-hat =', _vstr(u)])
 
 def t_proj():
     a = _vec('a')
@@ -92,10 +94,10 @@ def t_proj():
         return
     mb = _mag(b)
     if mb == 0:
-        _show('PROJECTION', ['b is zero: undefined'])
+        _show('PROJECTION', [_warn('b is zero: undefined')])
         return
     sp = _dot(a, b) / mb
-    _show('SCALAR PROJ a on b', ['a.b = ' + _fn(_dot(a, b)), '|b| = ' + _fn(mb), 'proj = ' + _fn(sp)])
+    _show('SCALAR PROJ a on b', [_w('a.b = ' + _fn(_dot(a, b))), _w('|b| = ' + _fn(mb)), 'proj = ' + _fn(sp)])
 
 def t_paraperp():
     a = _vec('a')
@@ -105,7 +107,7 @@ def t_paraperp():
     if b is None:
         return
     if _mag(a) < 1e-9 or _mag(b) < 1e-9:
-        _show('PARA / PERP TEST', ['Zero vector: undefined'])
+        _show('PARA / PERP TEST', [_warn('Zero vector: undefined')])
         return
     d = _dot(a, b)
     cr = _cross(a, b)
@@ -119,8 +121,8 @@ def t_paraperp():
         res.append('PERPENDICULAR (a.b ~ 0)')
     else:
         res.append('Not perpendicular')
-    res.append('a.b = ' + _fn(d))
-    res.append('|axb| = ' + _fn(mc))
+    res.append(_w('a.b = ' + _fn(d)))
+    res.append(_w('|axb| = ' + _fn(mc)))
     _show('PARA / PERP TEST', res)
 
 def t_ptplane():
@@ -135,10 +137,10 @@ def t_ptplane():
         return
     mn = _mag(n)
     if mn == 0:
-        _show('DISTANCE', ['Normal is zero: undefined'])
+        _show('DISTANCE', [_warn('Normal is zero: undefined')])
         return
     dist = abs(_dot(n, p) - d) / mn
-    _show('PT TO PLANE', ['n.p = ' + _fn(_dot(n, p)), 'd = ' + _fn(d), 'dist = ' + _fn(dist)])
+    _show('PT TO PLANE', [_w('n.p = ' + _fn(_dot(n, p))), _w('d = ' + _fn(d)), 'dist = ' + _fn(dist)])
 
 def t_planeangle():
     n1 = _vec('plane1 normal')
@@ -150,11 +152,11 @@ def t_planeangle():
     m1 = _mag(n1)
     m2 = _mag(n2)
     if m1 == 0 or m2 == 0:
-        _show('PLANE ANGLE', ['Zero normal: undefined'])
+        _show('PLANE ANGLE', [_warn('Zero normal: undefined')])
         return
     c = abs(_dot(n1, n2)) / (m1 * m2)
     r = _myacos(c)
-    _show('ANGLE OF PLANES', ['cos = ' + _fn(c), 'angle = ' + _fn(_deg(r)) + ' deg', '      = ' + _fn(r) + ' rad'])
+    _show('ANGLE OF PLANES', [_w('cos = ' + _fn(c)), 'angle = ' + _fn(_deg(r)) + ' deg', '      = ' + _fn(r) + ' rad'])
 
 def t_skew():
     a1 = _vec('line1 point a1')
@@ -173,10 +175,10 @@ def t_skew():
     mc = _mag(cr)
     diff = [a1[0] - a2[0], a1[1] - a2[1], a1[2] - a2[2]]
     if mc < 1e-9:
-        _show('SKEW LINES', ['d1 x d2 ~ 0:', 'lines parallel,', 'not skew'])
+        _show('SKEW LINES', [_warn('d1 x d2 ~ 0:'), _warn('lines parallel,'), _warn('not skew')])
         return
     dist = abs(_dot(diff, cr)) / mc
-    _show('SKEW LINE DIST', ['|d1 x d2| = ' + _fn(mc), 'shortest dist = ' + _fn(dist)])
+    _show('SKEW LINE DIST', [_w('|d1 x d2| = ' + _fn(mc)), 'shortest dist = ' + _fn(dist)])
 
 def t_ptline():
     # distance from a point to the line r = a + t d, i.e. |(p - a) x d| / |d|
@@ -191,14 +193,14 @@ def t_ptline():
         return
     md = _mag(d)
     if md == 0:
-        _show('PT TO LINE', ['Direction is zero:', 'not a line.'])
+        _show('PT TO LINE', [_warn('Direction is zero:'), _warn('not a line.')])
         return
     w = [p[0] - a[0], p[1] - a[1], p[2] - a[2]]
     cr = _cross(w, d)
     dist = _mag(cr) / md
     t = _dot(w, d) / (md * md)
     foot = [a[0] + t * d[0], a[1] + t * d[1], a[2] + t * d[2]]
-    _show('PT TO LINE', ['|(p-a) x d| = ' + _fn(_mag(cr)), '|d| = ' + _fn(md),
+    _show('PT TO LINE', [_w('|(p-a) x d| = ' + _fn(_mag(cr))), _w('|d| = ' + _fn(md)),
                          'dist = ' + _fn(dist), 'nearest point on line:', _vstr(foot)])
 
 def t_lineeq():
@@ -221,11 +223,11 @@ def t_lineeq():
         if d is None:
             return
     if _mag(d) < 1e-12:
-        _show('Line', ['The direction is the zero vector,',
-                       'so this does not define a line.'])
+        _show('Line', [_warn('The direction is the zero vector,'),
+                       _warn('so this does not define a line.')])
         return
-    lines = ['through ' + _vstr(a),
-             'direction ' + _vstr(d), '',
+    lines = [_w('through ' + _vstr(a)),
+             _w('direction ' + _vstr(d)), '',
              'VECTOR FORM',
              '  r = ' + _vstr(a) + ' + t' + _vstr(d), '',
              'PARAMETRIC',
@@ -248,10 +250,10 @@ def t_lineeq():
     for f in fixed:
         lines.append('  with ' + f)
     if not parts:
-        lines.append('  (the direction is zero in every')
-        lines.append('   component - not a line)')
+        lines.append(_warn('  (the direction is zero in every'))
+        lines.append(_warn('   component - not a line)'))
     lines.append('')
-    lines.append('|d| = ' + _fn(_mag(d)))
+    lines.append(_w('|d| = ' + _fn(_mag(d))))
     u = _mag(d)
     lines.append('unit direction ' + _vstr([d[0] / u, d[1] / u, d[2] / u]))
     t = _asknum('point at t = (or cancel)')
@@ -284,9 +286,9 @@ def t_lineplane():
         return
     nd = _dot(n, d)
     na = _dot(n, a)
-    lines = ['line r = ' + _vstr(a) + ' + t' + _vstr(d),
-             'plane ' + _vstr(n) + ' . r = ' + _fn(k), '',
-             'n . d = ' + _fn(nd), 'n . a = ' + _fn(na), '']
+    lines = [_w('line r = ' + _vstr(a) + ' + t' + _vstr(d)),
+             _w('plane ' + _vstr(n) + ' . r = ' + _fn(k)), '',
+             _w('n . d = ' + _fn(nd)), _w('n . a = ' + _fn(na)), '']
     if abs(nd) < 1e-12:
         if abs(na - k) < 1e-9:
             lines.append('n . d = 0 and a is in the plane,')
@@ -303,13 +305,13 @@ def t_lineplane():
         return
     t = (k - na) / nd
     p = [a[0] + t * d[0], a[1] + t * d[1], a[2] + t * d[2]]
-    lines.append('n.(a + t d) = k gives')
-    lines.append('  ' + _fn(na) + ' + ' + _fn(nd) + 't = ' + _fn(k))
+    lines.append(_w('n.(a + t d) = k gives'))
+    lines.append(_w('  ' + _fn(na) + ' + ' + _fn(nd) + 't = ' + _fn(k)))
     lines.append('  t = ' + _fn(t))
     lines.append('')
     lines.append('they meet at ' + _vstr(p))
     chk = _dot(n, p)
-    lines.append('check n.p = ' + _fn(chk) + ' (should be ' + _fn(k) + ')')
+    lines.append(_warn('check n.p = ' + _fn(chk) + ' (should be ' + _fn(k) + ')'))
     # the angle between the line and the plane is 90 - angle(d, n)
     ang = _deg(_myacos(abs(nd) / (_mag(n) * _mag(d))))
     lines.append('')

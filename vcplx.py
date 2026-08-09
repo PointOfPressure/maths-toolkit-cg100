@@ -38,6 +38,8 @@ def _askz(name):
     return complex(a, b)
 
 _show = casutil.show
+_w = casutil.w
+_warn = casutil.warn
 
 def t_arith():
     z = _askz("z")
@@ -46,7 +48,7 @@ def t_arith():
     w = _askz("w")
     if w is None:
         return
-    lines = ["z = " + _fc(z), "w = " + _fc(w),
+    lines = [_w("z = " + _fc(z)), _w("w = " + _fc(w)),
              "z+w = " + _fc(z + w), "z-w = " + _fc(z - w),
              "z*w = " + _fc(z * w)]
     if w != 0:
@@ -59,7 +61,7 @@ def t_modarg():
         return
     r = abs(z)
     th = _atan2(z.imag, z.real)
-    lines = ["z = " + _fc(z), "|z| = " + _fn(r), "arg = " + _fn(th) + " rad"]
+    lines = [_w("z = " + _fc(z)), "|z| = " + _fn(r), "arg = " + _fn(th) + " rad"]
     lab = _argpi(th)
     if lab:
         lines.append("    = " + lab)
@@ -73,7 +75,7 @@ def t_topolar():
         return
     r = abs(z)
     th = _atan2(z.imag, z.real)
-    lines = ["z = " + _fc(z), "r = " + _fn(r), "theta = " + _fn(th) + " rad"]
+    lines = [_w("z = " + _fc(z)), "r = " + _fn(r), "theta = " + _fn(th) + " rad"]
     lab = _argpi(th)
     if lab:
         lines.append("   = " + lab)
@@ -89,7 +91,7 @@ def t_frompolar():
     if th is None:
         return
     z = complex(r * math.cos(th), r * math.sin(th))
-    _show("from polar", ["r = " + _fn(r), "theta = " + _fn(th), "z = " + _fc(z)])
+    _show("from polar", [_w("r = " + _fn(r)), _w("theta = " + _fn(th)), "z = " + _fc(z)])
 
 def t_power():
     z = _askz("z")
@@ -105,8 +107,8 @@ def t_power():
     th = _atan2(z.imag, z.real)
     rn = r ** n
     zn = complex(rn * math.cos(n * th), rn * math.sin(n * th))
-    _show("z^n  (De Moivre)", ["z = " + _fc(z), "z^" + str(n) + " = " + _fc(zn),
-                               "r^n = " + _fn(rn), "n*theta = " + _fn(n * th) + " rad"])
+    _show("z^n  (De Moivre)", [_w("z = " + _fc(z)), "z^" + str(n) + " = " + _fc(zn),
+                               _w("r^n = " + _fn(rn)), _w("n*theta = " + _fn(n * th) + " rad")])
 
 def t_roots():
     z = _askz("z")
@@ -121,7 +123,7 @@ def t_roots():
     r = abs(z)
     th = _atan2(z.imag, z.real)
     rr = r ** (1.0 / n)
-    lines = ["z = " + _fc(z), "each |root| = " + _fn(rr)]
+    lines = [_w("z = " + _fc(z)), "each |root| = " + _fn(rr)]
     k = 0
     while k < n:
         ang = (th + 2 * math.pi * k) / n
@@ -225,21 +227,21 @@ def t_loci():
     if kind == 0 or kind == 3:
         r = casutil.asknum('r (radius)')
         if r is None or r < 0:
-            _show('Loci', ['The radius must be at least 0.'])
+            _show('Loci', [_warn('The radius must be at least 0.')])
             return
-        lines.append('|z - (' + _fc(a) + ')| ' + ('<=' if kind == 3 else '=') +
-                     ' ' + casutil.fmt(r))
+        lines.append(_w('|z - (' + _fc(a) + ')| ' + ('<=' if kind == 3 else '=') +
+                     ' ' + casutil.fmt(r)))
         lines.append('')
-        lines.append('This is the set of points whose')
-        lines.append('distance from ' + _fc(a) + ' is ' +
-                     ('at most ' if kind == 3 else 'exactly ') + casutil.fmt(r) + '.')
+        lines.append(_w('This is the set of points whose'))
+        lines.append(_w('distance from ' + _fc(a) + ' is ' +
+                     ('at most ' if kind == 3 else 'exactly ') + casutil.fmt(r) + '.'))
         lines.append('')
         lines.append('circle centre ' + _fc(a) + ', radius ' + casutil.fmt(r))
         lines.append('cartesian: (x - ' + casutil.fmt(cx) + ')^2 + (y - ' +
                      casutil.fmt(cy) + ')^2 ' + ('<=' if kind == 3 else '=') +
                      ' ' + casutil.fmt(r * r))
         if kind == 3:
-            lines.append('(a filled disc, boundary included)')
+            lines.append(_warn('(a filled disc, boundary included)'))
         d = math.sqrt(cx * cx + cy * cy)
         lines.append('')
         lines.append('greatest |z| on it = ' + casutil.fmt(d + r))
@@ -249,16 +251,16 @@ def t_loci():
         if b is None:
             return
         if abs(b - a) < 1e-12:
-            _show('Loci', ['a and b are the same point, so',
-                           'every z is equidistant from them.'])
+            _show('Loci', [_warn('a and b are the same point, so'),
+                           _warn('every z is equidistant from them.')])
             return
         mx = (a.real + b.real) / 2.0
         my = (a.imag + b.imag) / 2.0
         dx = b.real - a.real
         dy = b.imag - a.imag
-        lines.append('|z - (' + _fc(a) + ')| = |z - (' + _fc(b) + ')|')
+        lines.append(_w('|z - (' + _fc(a) + ')| = |z - (' + _fc(b) + ')|'))
         lines.append('')
-        lines.append('The points equidistant from a and b:')
+        lines.append(_w('The points equidistant from a and b:'))
         lines.append('the PERPENDICULAR BISECTOR of the')
         lines.append('line joining them.')
         lines.append('')
@@ -268,21 +270,21 @@ def t_loci():
         else:
             m = -dx / dy
             c = my - m * mx
-            lines.append('gradient of ab = ' + casutil.fmt(dy / dx) if abs(dx) > 1e-12
-                         else 'ab is vertical')
-            lines.append('bisector gradient = ' + casutil.fmt(m))
+            lines.append(_w('gradient of ab = ' + casutil.fmt(dy / dx)) if abs(dx) > 1e-12
+                         else _w('ab is vertical'))
+            lines.append(_w('bisector gradient = ' + casutil.fmt(m)))
             lines.append('y = ' + casutil.fmt(m) + 'x + ' + casutil.fmt(c))
     else:
         thd = casutil.asknum('theta (degrees)')
         if thd is None:
             return
         th = casutil.rad(thd)
-        lines.append('arg(z - (' + _fc(a) + ')) = ' + casutil.fmt(thd) + ' deg')
+        lines.append(_w('arg(z - (' + _fc(a) + ')) = ' + casutil.fmt(thd) + ' deg'))
         lines.append('')
         lines.append('A HALF-LINE from ' + _fc(a) + ', at')
         lines.append(casutil.fmt(thd) + ' degrees to the positive real')
-        lines.append('direction. The point ' + _fc(a) + ' itself is')
-        lines.append('NOT included - arg(0) is undefined.')
+        lines.append(_warn('direction. The point ' + _fc(a) + ' itself is'))
+        lines.append(_warn('NOT included - arg(0) is undefined.'))
         lines.append('')
         if abs(math.cos(th)) < 1e-12:
             lines.append('cartesian: x = ' + casutil.fmt(cx) +
@@ -291,8 +293,8 @@ def t_loci():
             m = math.tan(th)
             lines.append('cartesian: y - ' + casutil.fmt(cy) + ' = ' +
                          casutil.fmt(m) + '(x - ' + casutil.fmt(cx) + ')')
-            lines.append('but only the half with x ' +
-                         ('>' if math.cos(th) > 0 else '<') + ' ' + casutil.fmt(cx))
+            lines.append(_warn('but only the half with x ' +
+                         ('>' if math.cos(th) > 0 else '<') + ' ' + casutil.fmt(cx)))
     _show('Locus', lines)
     # ---- draw it ----
     span = 1.0
@@ -358,10 +360,10 @@ def t_demoivre_id():
     n = casutil.askint('n in (cos t + i sin t)^n', 2, 8)
     if n is None:
         return
-    lines = ['(cos t + i sin t)^' + str(n) + ' = cos ' + str(n) + 't + i sin ' + str(n) + 't',
-             'by de Moivre. Expanding the left side',
-             'with the binomial theorem and matching',
-             'real and imaginary parts:', '']
+    lines = [_w('(cos t + i sin t)^' + str(n) + ' = cos ' + str(n) + 't + i sin ' + str(n) + 't'),
+             _w('by de Moivre. Expanding the left side'),
+             _w('with the binomial theorem and matching'),
+             _w('real and imaginary parts:'), '']
     cos_terms = []
     sin_terms = []
     k = 0
@@ -401,8 +403,8 @@ def t_demoivre_id():
     lines.append('')
     lines.append('with c = cos t and s = sin t.')
     lines.append('')
-    lines.append('Use s^2 = 1 - c^2 to write cos ' + str(n) + 't')
-    lines.append('in cosines alone.')
+    lines.append(_w('Use s^2 = 1 - c^2 to write cos ' + str(n) + 't'))
+    lines.append(_w('in cosines alone.'))
     # numeric check at one angle, so the expansion can be trusted
     t = 0.7
     c = math.cos(t)
@@ -423,11 +425,11 @@ def t_demoivre_id():
             sv -= term
         k += 1
     lines.append('')
-    lines.append('check at t = 0.7 rad:')
-    lines.append('  cos ' + str(n) + 't = ' + casutil.fmt(math.cos(n * t), 6))
-    lines.append('  expansion  = ' + casutil.fmt(cv, 6))
-    lines.append('  sin ' + str(n) + 't = ' + casutil.fmt(math.sin(n * t), 6))
-    lines.append('  expansion  = ' + casutil.fmt(sv, 6))
+    lines.append(_warn('check at t = 0.7 rad:'))
+    lines.append(_warn('  cos ' + str(n) + 't = ' + casutil.fmt(math.cos(n * t), 6)))
+    lines.append(_warn('  expansion  = ' + casutil.fmt(cv, 6)))
+    lines.append(_warn('  sin ' + str(n) + 't = ' + casutil.fmt(math.sin(n * t), 6)))
+    lines.append(_warn('  expansion  = ' + casutil.fmt(sv, 6)))
     _show('de Moivre identities', lines)
 
 

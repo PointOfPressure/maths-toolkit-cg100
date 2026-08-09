@@ -13,6 +13,8 @@ _fn = casutil.fmt
 _atan2 = casutil.atan2
 _show = casutil.show
 _askexpr = casutil.askexpr
+_w = casutil.w
+_warn = casutil.warn
 
 
 def _realf(v):
@@ -60,7 +62,7 @@ def t_topolar_xy():
         return
     x = r * math.cos(th)
     y = r * math.sin(th)
-    _show('(r,theta) -> (x,y)', ['r = ' + _fn(r) + ', th = ' + _fn(th), 'x = ' + _fn(x), 'y = ' + _fn(y)])
+    _show('(r,theta) -> (x,y)', [_w('r = ' + _fn(r) + ', th = ' + _fn(th)), 'x = ' + _fn(x), 'y = ' + _fn(y)])
 
 
 def t_topolar_rt():
@@ -73,7 +75,7 @@ def t_topolar_rt():
     r = math.sqrt(x * x + y * y)
     th = _atan2(y, x)
     deg = th * 180.0 / PI
-    _show('(x,y) -> (r,theta)', ['x = ' + _fn(x) + ', y = ' + _fn(y), 'r = ' + _fn(r), 'theta = ' + _fn(th) + ' rad', '      = ' + _fn(deg) + ' deg'])
+    _show('(x,y) -> (r,theta)', [_w('x = ' + _fn(x) + ', y = ' + _fn(y)), 'r = ' + _fn(r), 'theta = ' + _fn(th) + ' rad', '      = ' + _fn(deg) + ' deg'])
 
 
 def _plot_tree(tree, title):
@@ -112,7 +114,7 @@ def _plot_tree(tree, title):
                 maxy = ys[j]
         j += 1
     if minx is None:
-        _show(title, ['No points to plot'])
+        _show(title, [_warn('No points to plot')])
         return
     if minx > 0:
         minx = 0.0
@@ -186,7 +188,7 @@ def t_preset():
         return
     tree = caslex.parse(presets[c][1])
     if tree is None:
-        _show('PRESET', ['Parse failed'])
+        _show('PRESET', [_warn('Parse failed')])
         return
     _plot_tree(tree, 'r = ' + presets[c][1])
 
@@ -202,7 +204,7 @@ def t_area():
     if b is None:
         return
     if a == b:
-        _show('POLAR AREA', ['a equals b', 'Area = 0'])
+        _show('POLAR AREA', [_warn('a equals b'), 'Area = 0'])
         return
     n = 100
     h = (b - a) / n
@@ -215,7 +217,7 @@ def t_area():
         except:
             r = None
         if r is None:
-            _show('POLAR AREA', ['Eval error at theta=' + _fn(th)])
+            _show('POLAR AREA', [_warn('Eval error at theta=' + _fn(th))])
             return
         f = r * r
         if i == 0 or i == n:
@@ -230,7 +232,7 @@ def t_area():
     area = 0.5 * integ
     if area < 0:
         area = -area
-    _show('POLAR AREA', ['A = 0.5 integ r^2 dtheta', 'a = ' + _fn(a) + ', b = ' + _fn(b), 'integ r^2 = ' + _fn(integ), 'Area = ' + _fn(area)])
+    _show('POLAR AREA', [_w('A = 0.5 integ r^2 dtheta'), _w('a = ' + _fn(a) + ', b = ' + _fn(b)), _w('integ r^2 = ' + _fn(integ)), 'Area = ' + _fn(area)])
 
 
 TOOLS = [('(r,theta) -> (x,y)', t_topolar_xy), ('(x,y) -> (r,theta)', t_topolar_rt), ('Plot polar curve', t_plot), ('Preset curves', t_preset), ('Polar area', t_area)]

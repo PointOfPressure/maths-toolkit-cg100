@@ -11,6 +11,8 @@ _askint = casutil.askint
 _askexpr = casutil.askexpr
 _fn = casutil.fmt
 _show = casutil.show
+_w = casutil.w
+_warn = casutil.warn
 
 def _pf(tree):
     return caseng.tostr(cascalc.tidy(tree))
@@ -37,19 +39,19 @@ def t_first_order():
         return                      # cancelled - say nothing
     P = caslex.parse(s)
     if P is None:
-        _show('FIRST ORDER LINEAR', ['Could not read P(x).'])
+        _show('FIRST ORDER LINEAR', [_warn('Could not read P(x).')])
         return
     sq = casui.input_expr('Q(x):')
     Q = None if sq is None else caslex.parse(sq)
     ip = cascalc.integ(P)
-    lines = ['dy/dx + P(x)y = Q(x)', 'P(x) = ' + _pf(P)]
+    lines = [_w('dy/dx + P(x)y = Q(x)'), _w('P(x) = ' + _pf(P))]
     if Q is not None:
-        lines.append('Q(x) = ' + _pf(Q))
+        lines.append(_w('Q(x) = ' + _pf(Q)))
     lines.append('')
     if ip is None:
-        lines.append('int P dx has no elementary form,')
-        lines.append('so the integrating factor cannot be')
-        lines.append('written down. IF = e^(int P dx).')
+        lines.append(_warn('int P dx has no elementary form,'))
+        lines.append(_warn('so the integrating factor cannot be'))
+        lines.append(_warn('written down. IF = e^(int P dx).'))
         _show('FIRST ORDER LINEAR', lines)
         return
     ip = cascalc.tidy(ip)
@@ -58,29 +60,29 @@ def t_first_order():
     # works and the sign is absorbed by the arbitrary constant.
     plain = caseng.strip_abs(ip)
     IF = caseng.simplify(('exp', plain))
-    lines.append('int P dx = ' + caseng.tostr(ip))
+    lines.append(_w('int P dx = ' + caseng.tostr(ip)))
     if plain != ip:
-        lines.append('(any constant multiple of the IF')
-        lines.append(' works, so the modulus is dropped)')
+        lines.append(_warn('(any constant multiple of the IF'))
+        lines.append(_warn(' works, so the modulus is dropped)'))
     lines.append('IF = e^(' + caseng.tostr(plain) + ')')
     lines.append('   = ' + _pf(IF))
     lines.append('')
-    lines.append('d/dx(IF * y) = IF * Q(x)')
+    lines.append(_w('d/dx(IF * y) = IF * Q(x)'))
     if Q is None:
         lines.append('y = (1/IF) int IF*Q dx')
         _show('FIRST ORDER LINEAR', lines)
         return
     prod = caspoly.cancel(caseng.simplify(('*', IF, Q)))
-    lines.append('IF * Q = ' + caseng.tostr(prod))
+    lines.append(_w('IF * Q = ' + caseng.tostr(prod)))
     R = cascalc.integ(prod)
     if R is None:
         lines.append('')
-        lines.append('int IF*Q dx has no elementary form.')
+        lines.append(_warn('int IF*Q dx has no elementary form.'))
         lines.append('y = (1/IF) int IF*Q dx + C/IF')
         _show('FIRST ORDER LINEAR', lines)
         return
     R = cascalc.tidy(R)
-    lines.append('int IF*Q dx = ' + caseng.tostr(R))
+    lines.append(_w('int IF*Q dx = ' + caseng.tostr(R)))
     lines.append('')
     gen = caspoly.cancel(caseng.simplify(('/', R, IF)))
     lines.append('y = (' + caseng.tostr(R) + ' + C) / (' + caseng.tostr(IF) + ')')
@@ -93,8 +95,8 @@ def t_first_order():
             iv = _evalx(IF, x0)
             if rv is None or iv is None or iv == 0:
                 lines.append('')
-                lines.append('That point is outside the domain of')
-                lines.append('the integrating factor.')
+                lines.append(_warn('That point is outside the domain of'))
+                lines.append(_warn('the integrating factor.'))
             else:
                 C = y0 * iv - rv
                 full = caspoly.cancel(caseng.simplify(
@@ -104,7 +106,7 @@ def t_first_order():
                 lines.append('y = ' + caseng.tostr(full))
                 chk = _evalx(full, x0)
                 if chk is not None and abs(chk - y0) < 1e-6:
-                    lines.append('(checked at the given point)')
+                    lines.append(_warn('(checked at the given point)'))
     _show('FIRST ORDER LINEAR', lines)
 
 def t_second_order():
@@ -115,7 +117,7 @@ def t_second_order():
     if b is None:
         return
     disc = a * a - 4.0 * b
-    lines = ["y'' + a y' + b y = 0", 'aux: m^2 + a m + b = 0', 'm^2 + (' + _fn(a) + ')m + (' + _fn(b) + ') = 0', 'disc = a^2 - 4b = ' + _fn(disc)]
+    lines = [_w("y'' + a y' + b y = 0"), _w('aux: m^2 + a m + b = 0'), _w('m^2 + (' + _fn(a) + ')m + (' + _fn(b) + ') = 0'), _w('disc = a^2 - 4b = ' + _fn(disc))]
     if disc > 1e-9:
         rt = math.sqrt(disc)
         m1 = (-a + rt) / 2.0
@@ -147,20 +149,20 @@ def t_shm():
     if w is None:
         return
     if w <= 0:
-        _show('SHM', ['w must be > 0.'])
+        _show('SHM', [_warn('w must be > 0.')])
         return
     T = 2.0 * math.pi / w
-    lines = ["x'' = -w^2 x   with w = " + _fn(w),
-             'period T = 2 pi / w',
+    lines = [_w("x'' = -w^2 x   with w = " + _fn(w)),
+             _w('period T = 2 pi / w'),
              'T = ' + _fn(T),
-             'frequency f = 1/T',
+             _w('frequency f = 1/T'),
              'f = ' + _fn(1.0 / T), '',
              'x = C cos(wt) + D sin(wt)',
              '  = R cos(wt - phi)']
     x0 = _asknum('x at t=0 (or cancel)')
     if x0 is None:
         lines.append('')
-        lines.append('Give x(0) and v(0) to fit R and phi.')
+        lines.append(_warn('Give x(0) and v(0) to fit R and phi.'))
         _show('SHM', lines)
         return
     v0 = _asknum('v at t=0')
@@ -173,8 +175,8 @@ def t_shm():
     R = math.sqrt(C * C + D * D)
     phi = casutil.atan2(D, C)
     lines.append('')
-    lines.append('x(0) = C = ' + _fn(C))
-    lines.append("x'(0) = wD, so D = v(0)/w = " + _fn(D))
+    lines.append(_w('x(0) = C = ' + _fn(C)))
+    lines.append(_w("x'(0) = wD, so D = v(0)/w = " + _fn(D)))
     lines.append('')
     lines.append('amplitude R = sqrt(C^2 + D^2) = ' + _fn(R))
     lines.append('phase phi = atan2(D, C) = ' + _fn(phi) + ' rad')
@@ -185,9 +187,9 @@ def t_shm():
     lines.append('max speed        = Rw   = ' + _fn(R * w))
     lines.append('max acceleration = Rw^2 = ' + _fn(R * w * w))
     lines.append('')
-    lines.append('v^2 = w^2(R^2 - x^2) at any point,')
-    lines.append('so v = 0 at x = +/-' + _fn(R) + ' and')
-    lines.append('|v| is greatest at x = 0.')
+    lines.append(_w('v^2 = w^2(R^2 - x^2) at any point,'))
+    lines.append(_w('so v = 0 at x = +/-' + _fn(R) + ' and'))
+    lines.append(_w('|v| is greatest at x = 0.'))
     # first time at the centre and at the extreme
     lines.append('')
     if R > 1e-12:
@@ -213,8 +215,8 @@ def t_shm():
         lines.append('  v = ' + _fn(vv))
         lines.append('  a = -w^2 x = ' + _fn(av))
         chk = w * w * (R * R - xv * xv)
-        lines.append('  check v^2 = w^2(R^2-x^2): ' + _fn(vv * vv) +
-                     ' vs ' + _fn(chk))
+        lines.append(_warn('  check v^2 = w^2(R^2-x^2): ' + _fn(vv * vv) +
+                     ' vs ' + _fn(chk)))
     _show('SHM', lines)
 
 
@@ -226,19 +228,19 @@ def t_damping():
     if b is None:
         return
     disc = a * a - 4.0 * b
-    lines = ["x'' + a x' + b x = 0", 'disc = a^2 - 4b = ' + _fn(disc)]
+    lines = [_w("x'' + a x' + b x = 0"), _w('disc = a^2 - 4b = ' + _fn(disc))]
     if disc > 1e-9:
         lines.append('OVER-DAMPED (disc > 0)')
-        lines.append('Two real roots; returns to')
-        lines.append('rest with no oscillation.')
+        lines.append(_w('Two real roots; returns to'))
+        lines.append(_w('rest with no oscillation.'))
     elif disc < -1e-9:
         lines.append('UNDER-DAMPED (disc < 0)')
-        lines.append('Complex roots; oscillates')
-        lines.append('with decaying amplitude.')
+        lines.append(_w('Complex roots; oscillates'))
+        lines.append(_w('with decaying amplitude.'))
     else:
         lines.append('CRITICAL (disc = 0)')
-        lines.append('Repeated root; fastest')
-        lines.append('return, no overshoot.')
+        lines.append(_w('Repeated root; fastest'))
+        lines.append(_w('return, no overshoot.'))
     _show('DAMPING CLASSIFIER', lines)
 
 def _ex(k, v='x'):
@@ -463,8 +465,8 @@ def t_particular():
     if kind == -1:
         return
     cflines, roots = _cf_lines(a, b)
-    lines = ["y'' + (" + _fn(a) + ")y' + (" + _fn(b) + ")y = f(x)",
-             'auxiliary: m^2 + (' + _fn(a) + ')m + (' + _fn(b) + ') = 0']
+    lines = [_w("y'' + (" + _fn(a) + ")y' + (" + _fn(b) + ")y = f(x)"),
+             _w('auxiliary: m^2 + (' + _fn(a) + ')m + (' + _fn(b) + ') = 0')]
     for ln in cflines:
         lines.append(ln)
     lines.append('')
@@ -481,19 +483,19 @@ def t_particular():
                 return
             cs.append(v)
             i += 1
-        lines.append('f(x) = ' + _polystr(cs))
+        lines.append(_w('f(x) = ' + _polystr(cs)))
         sol = _poly_pi(a, b, cs)
         if sol is None:
             lines.append('')
-            lines.append('No polynomial particular integral')
-            lines.append('could be found for this equation.')
+            lines.append(_warn('No polynomial particular integral'))
+            lines.append(_warn('could be found for this equation.'))
             _show('PARTICULAR INTEGRAL', lines)
             return
         pistr = _polystr(sol)
         if abs(b) < 1e-12:
-            lines.append('b = 0, so a constant solves the')
-            lines.append('homogeneous equation - the trial')
-            lines.append('polynomial has to be raised a degree.')
+            lines.append(_warn('b = 0, so a constant solves the'))
+            lines.append(_warn('homogeneous equation - the trial'))
+            lines.append(_warn('polynomial has to be raised a degree.'))
     elif kind == 1:
         k = _asknum('k in k e^(px)')
         if k is None:
@@ -501,20 +503,20 @@ def t_particular():
         p = _asknum('p in k e^(px)')
         if p is None:
             return
-        lines.append('f(x) = ' + _coefstr(k, _ex(p)))
+        lines.append(_w('f(x) = ' + _coefstr(k, _ex(p))))
         den = p * p + a * p + b
         if abs(den) > 1e-12:
             pistr = _coefstr(k / den, _ex(p))
         else:
-            lines.append('p is a root of the auxiliary equation,')
-            lines.append('so C e^(px) is already in the CF -')
-            lines.append('multiply the trial by x.')
+            lines.append(_warn('p is a root of the auxiliary equation,'))
+            lines.append(_warn('so C e^(px) is already in the CF -'))
+            lines.append(_warn('multiply the trial by x.'))
             den2 = 2.0 * p + a
             if abs(den2) > 1e-12:
                 pistr = _coefstr(k / den2, 'x ' + _ex(p))
             else:
-                lines.append('It is a REPEATED root, so multiply')
-                lines.append('by x again.')
+                lines.append(_warn('It is a REPEATED root, so multiply'))
+                lines.append(_warn('by x again.'))
                 pistr = _coefstr(k / 2.0, 'x^2 ' + _ex(p))
     else:
         m = _asknum('m (cos coeff)')
@@ -526,23 +528,23 @@ def t_particular():
         w = _asknum('w (inside the trig)')
         if w is None:
             return
-        lines.append('f(x) = ' + _trigstr(m, n, w))
+        lines.append(_w('f(x) = ' + _trigstr(m, n, w)))
         # trial P cos wx + Q sin wx gives
         #   (b - w^2)P + a w Q = m ,  -a w P + (b - w^2)Q = n
         r = _solve2(b - w * w, a * w, -a * w, b - w * w, m, n)
         if r is not None:
             pistr = _trigstr(r[0], r[1], w)
         else:
-            lines.append('w i is a root of the auxiliary')
-            lines.append('equation, so cos/sin at that')
-            lines.append('frequency is already in the CF -')
-            lines.append('multiply the trial by x.')
+            lines.append(_warn('w i is a root of the auxiliary'))
+            lines.append(_warn('equation, so cos/sin at that'))
+            lines.append(_warn('frequency is already in the CF -'))
+            lines.append(_warn('multiply the trial by x.'))
             # y = x(P cos + Q sin): substituting gives
             #   (2Qw + aP) cos + (-2Pw + aQ) sin, once b = w^2 and a w terms cancel
             r = _solve2(a, 2.0 * w, -2.0 * w, a, m, n)
             if r is None:
-                lines.append('The system is degenerate; solve by')
-                lines.append('hand from the trial x(P cos + Q sin).')
+                lines.append(_warn('The system is degenerate; solve by'))
+                lines.append(_warn('hand from the trial x(P cos + Q sin).'))
                 _show('PARTICULAR INTEGRAL', lines)
                 return
             pistr = 'x(' + _trigstr(r[0], r[1], w) + ')'
@@ -554,9 +556,9 @@ def t_particular():
         lines.append('  ' + ln.replace('CF: ', ''))
     lines.append('  + ' + pistr)
     lines.append('')
-    lines.append("Two conditions on y (and y') fix")
-    lines.append('A and B. The PI has no arbitrary')
-    lines.append('constants - do not add one.')
+    lines.append(_w("Two conditions on y (and y') fix"))
+    lines.append(_w('A and B. The PI has no arbitrary'))
+    lines.append(_w('constants - do not add one.'))
     _show('PARTICULAR INTEGRAL', lines)
 
 
@@ -588,23 +590,23 @@ def t_coupled():
         return
     tr = a + d
     det = a * d - b * c
-    lines = ["dx/dt = " + _coef(a, "x") + " " + _sgn(b, "y"),
-             "dy/dt = " + _coef(c, "x") + " " + _sgn(d, "y"), '',
-             "eliminating y gives",
-             "  x'' " + _sgn(-tr, "x'") + " " + _sgn(det, "x") + " = 0",
-             'auxiliary  m^2 ' + _sgn(-tr, 'm') + ' ' + _sgn(det) + ' = 0',
-             '(trace and determinant of the matrix,',
-             ' so m1 and m2 are its eigenvalues)', '']
+    lines = [_w("dx/dt = " + _coef(a, "x") + " " + _sgn(b, "y")),
+             _w("dy/dt = " + _coef(c, "x") + " " + _sgn(d, "y")), '',
+             _w("eliminating y gives"),
+             _w("  x'' " + _sgn(-tr, "x'") + " " + _sgn(det, "x") + " = 0"),
+             _w('auxiliary  m^2 ' + _sgn(-tr, 'm') + ' ' + _sgn(det) + ' = 0'),
+             _w('(trace and determinant of the matrix,'),
+             _w(' so m1 and m2 are its eigenvalues)'), '']
     if abs(b) < 1e-12:
-        lines.append('b = 0, so the system is already')
-        lines.append('triangular: solve dx/dt = ' + _fn(a) + 'x first,')
+        lines.append(_warn('b = 0, so the system is already'))
+        lines.append(_warn('triangular: solve dx/dt = ' + _fn(a) + 'x first,'))
         lines.append('  x = A e^(' + _fn(a) + 't)')
-        lines.append('then put that into dy/dt and use the')
-        lines.append('integrating factor tool.')
+        lines.append(_warn('then put that into dy/dt and use the'))
+        lines.append(_warn('integrating factor tool.'))
         _show('Coupled equations', lines)
         return
     disc = tr * tr - 4.0 * det
-    lines.append('discriminant = ' + _fn(disc))
+    lines.append(_w('discriminant = ' + _fn(disc)))
     lines.append('')
     kind = 0
     if disc > 1e-9:
@@ -614,7 +616,7 @@ def t_coupled():
         lines.append('m = ' + _fn(m1) + ' and ' + _fn(m2))
         lines.append('  x = A ' + _ex(m1, 't') + ' + B ' + _ex(m2, 't'))
         lines.append('')
-        lines.append('y = (dx/dt - ' + _coef(a, 'x') + ') / ' + _fn(b) + ', so')
+        lines.append(_w('y = (dx/dt - ' + _coef(a, 'x') + ') / ' + _fn(b) + ', so'))
         lines.append('  y = ' + _coef((m1 - a) / b, 'A ') + _ex(m1, 't') +
                      ' ' + _sgn((m2 - a) / b, 'B ') + _ex(m2, 't'))
         kind = 1
@@ -625,10 +627,10 @@ def t_coupled():
         head = '' if abs(p) < 1e-12 else _ex(p, 't') + ' '
         lines.append('  x = ' + head + '(A cos ' + _fn(q) + 't + B sin ' + _fn(q) + 't)')
         lines.append('')
-        lines.append("y = (dx/dt - " + _coef(a, "x") + ") / " + _fn(b) + ':')
-        lines.append('  differentiate x, subtract ' + _fn(a) + 'x,')
-        lines.append('  divide by ' + _fn(b) + '. The result is another')
-        lines.append('  combination of the same cos and sin.')
+        lines.append(_warn("y = (dx/dt - " + _coef(a, "x") + ") / " + _fn(b) + ':'))
+        lines.append(_warn('  differentiate x, subtract ' + _fn(a) + 'x,'))
+        lines.append(_warn('  divide by ' + _fn(b) + '. The result is another'))
+        lines.append(_warn('  combination of the same cos and sin.'))
         lines.append('  Spiral: it ' +
                      ('grows' if p > 1e-12 else
                       ('decays' if p < -1e-12 else 'is a closed orbit')) + '.')
@@ -638,7 +640,7 @@ def t_coupled():
         lines.append('m = ' + _fn(m) + ' (repeated)')
         lines.append('  x = (A + B t) ' + _ex(m, 't'))
         lines.append('')
-        lines.append('y = (dx/dt - ' + _coef(a, 'x') + ') / ' + _fn(b))
+        lines.append(_warn('y = (dx/dt - ' + _coef(a, 'x') + ') / ' + _fn(b)))
         kind = 3
     x0 = _asknum('x(0) = (or cancel)')
     if x0 is None:
@@ -651,9 +653,9 @@ def t_coupled():
     # x'(0) comes straight from the first equation
     xp0 = a * x0 + b * y0
     lines.append('')
-    lines.append('at t = 0:  x = ' + _fn(x0) + ', y = ' + _fn(y0))
-    lines.append("  dx/dt(0) = " + _coef(a, "x") + " " + _sgn(b, "y") +
-                 " = " + _fn(xp0))
+    lines.append(_w('at t = 0:  x = ' + _fn(x0) + ', y = ' + _fn(y0)))
+    lines.append(_w("  dx/dt(0) = " + _coef(a, "x") + " " + _sgn(b, "y") +
+                 " = " + _fn(xp0)))
     A = None
     B = None
     if kind == 1:
@@ -663,8 +665,8 @@ def t_coupled():
         # A + B = x0 ; m1 A + m2 B = xp0
         A = (xp0 - m2 * x0) / (m1 - m2)
         B = x0 - A
-        lines.append('  A + B = ' + _fn(x0))
-        lines.append('  ' + _coef(m1, 'A') + ' ' + _sgn(m2, 'B') + ' = ' + _fn(xp0))
+        lines.append(_w('  A + B = ' + _fn(x0)))
+        lines.append(_w('  ' + _coef(m1, 'A') + ' ' + _sgn(m2, 'B') + ' = ' + _fn(xp0)))
         lines.append('  A = ' + _fn(A) + ', B = ' + _fn(B))
         lines.append('')
         lines.append('  x = ' + _coef(A, _ex(m1, 't')) + ' ' +
@@ -687,9 +689,9 @@ def t_coupled():
         lines.append("  x'(0) = mA + B, so B = " + _fn(B))
     # check the constants really do reproduce the initial conditions
     lines.append('')
-    lines.append('(check at t = 0: x = ' + _fn(_coupled_x(kind, tr, disc, A, B, 0.0)) +
+    lines.append(_warn('(check at t = 0: x = ' + _fn(_coupled_x(kind, tr, disc, A, B, 0.0)) +
                  ', y = ' +
-                 _fn(_coupled_y(kind, tr, disc, A, B, 0.0, a, b)) + ')')
+                 _fn(_coupled_y(kind, tr, disc, A, B, 0.0, a, b)) + ')'))
     lines.append('')
     lines.append('Long-run behaviour:')
     if kind == 2:
