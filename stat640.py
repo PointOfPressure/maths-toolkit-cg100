@@ -707,6 +707,260 @@ def t_prob():
         lines.append('independent: NO')
     _show('Probability rules', lines)
 
+_SAMPLING = [
+    ('Simple random',
+     ['Every possible sample of size',
+      'n is equally likely; every',
+      'member equally likely.',
+      'How: number the population',
+      '1..N, draw n distinct random',
+      'numbers.',
+      'Needs: a full sampling frame.',
+      'Bias: none in principle. In',
+      ' practice non-response and an',
+      ' incomplete frame bias it.']),
+    ('Systematic',
+     ['Take every k-th member after',
+      'a random start, k = N/n.',
+      'How: random start r in 1..k,',
+      'then r, r+k, r+2k, ...',
+      'Needs: an ordered frame.',
+      'Bias: BAD if the list has a',
+      ' periodic pattern with period',
+      ' k - e.g. every 4th house is',
+      ' a corner house. Then the',
+      ' sample is systematically',
+      ' unrepresentative.']),
+    ('Stratified',
+     ['Split into strata (groups that',
+      'differ), sample each in',
+      'proportion to its size.',
+      'How: n_i = n * N_i / N, then',
+      'sample randomly within each.',
+      'Needs: strata known for every',
+      ' member.',
+      'Bias: low, and more precise',
+      ' than simple random when the',
+      ' strata really do differ.',
+      ' Biased if strata are wrong.']),
+    ('Cluster',
+     ['Split into clusters (groups',
+      'each like the whole), pick',
+      'whole clusters at random.',
+      'How: choose clusters, then',
+      'survey all of them (or sample',
+      'within them).',
+      'Needs: a list of clusters only',
+      ' - cheap, no full frame.',
+      'Bias: BAD if clusters are',
+      ' internally alike and differ',
+      ' from each other; less',
+      ' precise than simple random.']),
+    ('Quota',
+     ['Interviewer fills fixed quotas',
+      'by category (e.g. 20 men,',
+      '20 women) choosing whom to',
+      'ask.',
+      'Needs: no sampling frame -',
+      ' its main advantage.',
+      'Bias: BAD. Non-random: the',
+      ' interviewer picks, so who is',
+      ' approachable, awake and in',
+      ' that street decides. Not a',
+      ' probability sample, so no',
+      ' proper margin of error.']),
+    ('Opportunity',
+     ['Also called convenience: take',
+      'whoever is available.',
+      'How: ask the first 30 people',
+      'you meet.',
+      'Needs: nothing. Cheapest and',
+      ' quickest.',
+      'Bias: WORST. The sample is',
+      ' whoever was in that place at',
+      ' that time, so it need not',
+      ' represent anything. Cannot',
+      ' be generalised safely.']),
+]
+
+def t_sampling():
+    labels = []
+    i = 0
+    while i < len(_SAMPLING):
+        labels.append(str(i + 1) + ' ' + _SAMPLING[i][0])
+        i += 1
+    c = _asknum('method 1-6 (0 = list):')
+    if c is None:
+        return
+    k = int(round(c))
+    if k < 1 or k > len(_SAMPLING):
+        lines = ['Pick a number for detail:']
+        i = 0
+        while i < len(_SAMPLING):
+            lines.append(labels[i])
+            i += 1
+        lines.append('')
+        lines.append('Random methods (1,2,3,4)')
+        lines.append('support inference; quota')
+        lines.append('and opportunity (5,6) do')
+        lines.append('not - they are not random.')
+        _pages('Sampling methods', lines)
+        return
+    name, body = _SAMPLING[k - 1]
+    _pages(name + ' sampling', body)
+
+def t_stratsamp():
+    ns = _getlist('Stratum sizes:')
+    if ns is None or len(ns) < 2:
+        _show('Stratified sample', ['Need >=2 stratum sizes.'])
+        return
+    n = _asknum('total sample size n:')
+    if n is None:
+        return
+    want = int(round(n))
+    if want <= 0:
+        _show('Stratified sample', ['n must be > 0.'])
+        return
+    tot = 0.0
+    i = 0
+    while i < len(ns):
+        if ns[i] < 0:
+            _show('Stratified sample', ['Sizes must be >= 0.'])
+            return
+        tot += ns[i]
+        i += 1
+    if tot <= 0:
+        _show('Stratified sample', ['Population is 0.'])
+        return
+    if want > tot:
+        _show('Stratified sample', ['n is bigger than the', 'population.'])
+        return
+    # proportional allocation n_i = n * N_i / N. Rounding each one separately
+    # usually misses the target total, so the whole numbers are taken first and
+    # the leftover places handed out by largest remainder - the total is then
+    # exactly n, which is what the mark scheme wants.
+    exact = []
+    base = []
+    i = 0
+    got = 0
+    while i < len(ns):
+        e = want * ns[i] / tot
+        exact.append(e)
+        f = int(e)
+        base.append(f)
+        got += f
+        i += 1
+    left = want - got
+    while left > 0:
+        bi = -1
+        bf = -1.0
+        i = 0
+        while i < len(ns):
+            fr = exact[i] - base[i]
+            if fr > bf:
+                bf = fr
+                bi = i
+            i += 1
+        if bi < 0:
+            break
+        base[bi] += 1
+        exact[bi] = base[bi] * 1.0   # do not win the same place twice
+        left -= 1
+    lines = ['population N = ' + _fn(tot),
+             'sample n = ' + str(want),
+             'n_i = n * N_i / N']
+    i = 0
+    while i < len(ns):
+        lines.append('stratum ' + str(i + 1) + ': N=' + _fn(ns[i]) +
+                     ' -> ' + str(base[i]))
+        i += 1
+    chk = 0
+    i = 0
+    while i < len(base):
+        chk += base[i]
+        i += 1
+    lines.append('total allocated = ' + str(chk))
+    lines.append('sampling fraction = ' + _fn(want / tot))
+    k = tot / want
+    lines.append('systematic would use')
+    lines.append(' k = N/n = ' + _fn(k))
+    lines.append(' random start 1..' + str(int(k)) if k >= 1 else ' k < 1')
+    _pages('Stratified sample', lines)
+
+def t_tree():
+    pa = _asknum('P(A) =')
+    if pa is None or pa < 0 or pa > 1:
+        _show('Tree diagram', ['Need 0 <= P(A) <= 1.'])
+        return
+    pba = _asknum('P(B|A) =')
+    if pba is None or pba < 0 or pba > 1:
+        _show('Tree diagram', ['Need 0 <= P(B|A) <= 1.'])
+        return
+    pbna = _asknum("P(B|not A) =")
+    if pbna is None or pbna < 0 or pbna > 1:
+        _show('Tree diagram', ['Need 0 <= P(B|A\') <= 1.'])
+        return
+    pna = 1.0 - pa
+    # the four end-of-branch probabilities: multiply ALONG a branch
+    ab = pa * pba
+    anb = pa * (1.0 - pba)
+    nab = pna * pbna
+    nanb = pna * (1.0 - pbna)
+    pb = ab + nab                 # add ACROSS the branches that end in B
+    pnb = anb + nanb
+    lines = ['P(A) = ' + _fn(pa) + '  P(A\') = ' + _fn(pna),
+             'multiply along a branch:',
+             'P(A and B)   = ' + _fn(ab),
+             "P(A and B')  = " + _fn(anb),
+             "P(A' and B)  = " + _fn(nab),
+             "P(A' and B') = " + _fn(nanb),
+             'these four sum to ' + _fn(ab + anb + nab + nanb),
+             'add across branches:',
+             'P(B) = ' + _fn(pb),
+             "P(B') = " + _fn(pnb)]
+    # the reverse conditional, which is what Bayes is for
+    lines.append('reverse by Bayes:')
+    lines.append('P(A|B) = P(A and B)/P(B)')
+    if pb > 0:
+        lines.append('P(A|B) = ' + _fn(ab) + '/' + _fn(pb))
+        lines.append('P(A|B) = ' + _fn(ab / pb))
+        lines.append("P(A'|B) = " + _fn(nab / pb))
+    else:
+        lines.append('P(A|B) undefined: P(B)=0')
+    if pnb > 0:
+        lines.append("P(A|B') = " + _fn(anb / pnb))
+    if pa > 0 and pb > 0:
+        if abs(ab - pa * pb) < 1e-9:
+            lines.append('A and B are INDEPENDENT')
+            lines.append(' (P(B|A) = P(B))')
+        else:
+            lines.append('A and B are NOT independent')
+    _pages('Tree diagram', lines)
+    # draw the two-stage tree with the branch probabilities on it
+    fr = casutil.frame(0.0, 10.0, 0.0, 10.0)
+    casutil.axes(fr, 'Two-stage tree', None, None, False)
+    casutil.seg(fr, 1.0, 5.0, 4.0, 8.0, casui.ACC)
+    casutil.seg(fr, 1.0, 5.0, 4.0, 2.0, casui.ACC)
+    casutil.seg(fr, 4.5, 8.0, 7.5, 9.5, casui.BLACK)
+    casutil.seg(fr, 4.5, 8.0, 7.5, 6.5, casui.BLACK)
+    casutil.seg(fr, 4.5, 2.0, 7.5, 3.5, casui.BLACK)
+    casutil.seg(fr, 4.5, 2.0, 7.5, 0.5, casui.BLACK)
+    _lab(fr, 2.2, 7.2, 'A ' + _fn(pa))
+    _lab(fr, 2.2, 3.0, "A' " + _fn(pna))
+    _lab(fr, 5.9, 9.3, 'B ' + _fn(pba))
+    _lab(fr, 5.9, 7.0, "B' " + _fn(1.0 - pba))
+    _lab(fr, 5.9, 3.6, 'B ' + _fn(pbna))
+    _lab(fr, 5.9, 1.2, "B' " + _fn(1.0 - pbna))
+    _lab(fr, 8.0, 9.5, '= ' + _fn(ab))
+    _lab(fr, 8.0, 6.5, '= ' + _fn(anb))
+    _lab(fr, 8.0, 3.5, '= ' + _fn(nab))
+    _lab(fr, 8.0, 0.5, '= ' + _fn(nanb))
+    casutil.chart_hold('EXIT to go back')
+
+def _lab(fr, x, y, s):
+    casui.draw_string(casutil.fx(fr, x), casutil.fy(fr, y), s,
+                      casui.BLACK, 'small')
+
 def t_ncrfact():
     n = _asknum('n =')
     if n is None:
@@ -744,6 +998,9 @@ TOOLS = [
     ('HT Normal mean z', t_htmean),
     ('PMCC + regression', t_regress),
     ('Probability rules', t_prob),
+    ('Tree diagram + Bayes', t_tree),
+    ('Sampling methods', t_sampling),
+    ('Stratified sample', t_stratsamp),
     ('Factorial / nCr', t_ncrfact),
     ('Box plot', t_boxplot),
     ('Histogram', t_hist),
