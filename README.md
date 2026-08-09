@@ -54,6 +54,8 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 
 A caveat is never hidden. Lines like "that point is not on the curve", "checked back in the original: all satisfy it", "no counterexample in that range - that is NOT a proof", "|sin x| cannot exceed 1, so this root is discarded" and "the tension is indeterminate from these equations alone" appear in **both** modes. They are not working; they are what makes the answer trustworthy, and a setting that hid them would turn a careful tool into a confident wrong one. `tests.py` asserts, for all 263 tools, that answer-only output is a subset of the full output and never loses every line.
 
+The setting is per-session: the calculator cannot write files, so it returns to `SHOWN` each time you launch the app. That is the safe default - nothing is hidden until you ask for it.
+
 In **Calculus & Algebra** you enter `f(x)` once and then keep picking operations on it - differentiate, then integrate, then graph - without retyping. "New expression" or EXIT returns to the editor.
 
 ---
