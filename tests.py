@@ -2133,6 +2133,126 @@ def test_exp_ln_folding():
             except:
                 pass
 
+
+def test_complex_loci():
+    import vcplx
+    # |z - (1+2i)| = 3 is the circle centre 1+2i radius 3.
+    # |1+2i| = sqrt(5) = 2.2361, so the greatest |z| on it is sqrt(5)+3 and the
+    # least would be sqrt(5)-3 < 0, which means the circle encloses the origin
+    # and the least is 0.
+    o = drive(vcplx.t_loci, ["1", "2", "3"], [0])
+    has("circle described", o, "circle centre 1 + 2i, radius 3")
+    has("cartesian circle", o, "(x - 1)^2 + (y - 2)^2 = 9")
+    num("greatest modulus on the circle", o, "greatest |z| on it = ",
+        math.sqrt(5.0) + 3.0, 1e-3)
+    num("least modulus on the circle", o, "least |z| on it    = ", 0.0, 1e-9)
+    # |z - 1| = |z - 3i| is the perpendicular bisector of 1 and 3i:
+    # midpoint (0.5, 1.5), ab has gradient -3, so the bisector has gradient 1/3
+    # and passes through the midpoint: y = x/3 + 4/3
+    o = drive(vcplx.t_loci, ["1", "0", "0", "3"], [1])
+    has("bisector named", o, "PERPENDICULAR BISECTOR")
+    has("midpoint", o, "midpoint (0.5, 1.5)")
+    num("bisector gradient", o, "bisector gradient = ", 1.0 / 3.0, 1e-3)
+    num("bisector intercept", o, "y = 0.3333x + ", 4.0 / 3.0, 1e-3)
+    # arg(z - 2) = 45 degrees is a HALF-line from 2, not the whole line
+    o = drive(vcplx.t_loci, ["2", "0", "45"], [2])
+    has("half-line, not a line", o, "HALF-LINE")
+    has("the endpoint is excluded", o, "NOT included")
+    has("only one half", o, "only the half with x > 2")
+    # the region |z - a| <= r is a disc
+    o = drive(vcplx.t_loci, ["0", "0", "2"], [3])
+    has("region is a disc", o, "filled disc")
+    has("region inequality", o, "<= 4")
+    # a and b coincident has no bisector
+    o = drive(vcplx.t_loci, ["1", "1", "1", "1"], [1])
+    has("coincident points reported", o, "every z is equidistant")
+
+    # de Moivre: (cos t + i sin t)^3 gives cos3t = c^3 - 3cs^2 and
+    # sin3t = 3c^2 s - s^3
+    o = drive(vcplx.t_demoivre_id, ["3"])
+    has("cos 3t expansion", o, "cos 3t = c^3 - 3cs^2")
+    has("sin 3t expansion", o, "sin 3t = 3c^2s - s^3")
+    # and the printed check has to agree with the direct value
+    num("cos 3t at 0.7", o, "cos 3t = ", math.cos(2.1), 1e-5)
+    num("expansion of cos 3t at 0.7", o, "  expansion  = ", math.cos(2.1), 1e-5)
+    # n = 2: cos2t = c^2 - s^2, sin2t = 2cs
+    o = drive(vcplx.t_demoivre_id, ["2"])
+    has("cos 2t expansion", o, "cos 2t = c^2 - s^2")
+    has("sin 2t expansion", o, "sin 2t = 2cs")
+    # n = 4: cos4t = c^4 - 6c^2s^2 + s^4
+    o = drive(vcplx.t_demoivre_id, ["4"])
+    has("cos 4t expansion", o, "cos 4t = c^4 - 6c^2s^2 + s^4")
+
+def test_vector_lines():
+    import vectors
+    # through (1,2,3) and (4,6,3): direction (3,4,0), |d| = 5, and because the
+    # z-component is zero the cartesian form is a pair plus "with z = 3"
+    o = drive(vectors.t_lineeq, ["1", "1", "2", "3", "4", "6", "3", None])
+    has("vector form", o, "r = (1, 2, 3) + t(3, 4, 0)")
+    has("cartesian form", o, "(x - 1)/3 = (y - 2)/4")
+    has("the fixed coordinate", o, "with z = 3")
+    num("length of the direction", o, "|d| = ", 5.0)
+    has("unit direction", o, "(0.6, 0.8, 0)")
+    # point + direction, and a point on it at t = 2
+    o = drive(vectors.t_lineeq, ["2", "0", "0", "0", "1", "1", "1", "2"])
+    has("point at t=2", o, "at t = 2: (2, 2, 2)")
+    # a zero direction is not a line
+    o = drive(vectors.t_lineeq, ["2", "1", "1", "1", "0", "0", "0"])
+    has("zero direction rejected", o, "does not define a line")
+
+    # line (1,0,0) + t(1,1,1) meets the plane z = 5 at t = 5, point (6,5,5),
+    # and the angle between d and the normal is acos(1/sqrt(3)) = 54.7356 deg,
+    # so the line-plane angle is 35.2644
+    o = drive(vectors.t_lineplane, ["1", "0", "0", "1", "1", "1", "0", "0", "1", "5"])
+    num("parameter at the intersection", o, "t = ", 5.0)
+    has("intersection point", o, "they meet at (6, 5, 5)")
+    num("angle to the normal", o, "angle between d and n = ", 54.7356, 1e-3)
+    num("angle to the plane", o, "= 90 - that = ", 35.2644, 1e-3)
+    # parallel: n.d = 0 and a not in the plane, distance |n.a - k|/|n| = 5
+    o = drive(vectors.t_lineplane, ["1", "0", "0", "1", "1", "0", "0", "0", "1", "5"])
+    has("parallel reported", o, "PARALLEL")
+    num("distance to the plane", o, "|n| = ", 5.0)
+    # lying in the plane: n.d = 0 and a IS in the plane
+    o = drive(vectors.t_lineplane, ["1", "0", "5", "1", "1", "0", "0", "0", "1", "5"])
+    has("line lies in the plane", o, "LIES IN")
+
+def test_projectile_inverse():
+    import mech640
+    # R = u^2 sin2a / g. At 45 degrees sin2a = 1, so u = sqrt(Rg):
+    # sqrt(100 * 9.8) = 31.305
+    o = drive(mech640.projectile_inverse, ["9.8", "100", "45"], [0])
+    num("speed from range and angle", o, "u = ", math.sqrt(980.0), 1e-3)
+    # 30 and 60 degrees give the same range, which the tool has to say
+    o = drive(mech640.projectile_inverse, ["9.8", "100", "30"], [0])
+    has("complementary angle noted", o, "60 deg gives the same range")
+    # H = (u sin a)^2/(2g): u = sqrt(2*9.8*20)/sin30 = 39.598
+    o = drive(mech640.projectile_inverse, ["9.8", "20", "30"], [1])
+    num("speed from height and angle", o, "u = ",
+        math.sqrt(2.0 * 9.8 * 20.0) / 0.5, 1e-3)
+    # at (40, 0) after 4 s: ux = 10, uy = (0 + 9.8*16/2)/4 = 19.6,
+    # u = sqrt(100 + 384.16) = 22.0036 at atan(1.96) = 62.969 deg
+    o = drive(mech640.projectile_inverse, ["9.8", "40", "0", "4"], [2])
+    num("horizontal component", o, "ux = x/t = ", 10.0)
+    num("vertical component", o, "= ", 19.6, 1e-6)
+    num("speed from a point and time", o, "u = sqrt(ux^2 + uy^2) = ",
+        math.sqrt(100.0 + 19.6 * 19.6), 1e-3)
+    num("angle from a point and time", o, "angle = ",
+        math.degrees(math.atan(1.96)), 1e-3)
+    # u = 30 at target (50, 10): two angles. Check the low one really lands
+    # there - tan a = T solves 13.6111 T^2 - 50 T + 23.6111 = 0
+    o = drive(mech640.projectile_inverse, ["9.8", "30", "50", "10"], [3])
+    has("two solutions", o, "TWO angles")
+    num("low ball angle", o, "low ball  ", 29.0977, 1e-3)
+    num("high ball angle", o, "high ball ", 72.2123, 1e-3)
+    # out of range must be said, not answered
+    o = drive(mech640.projectile_inverse, ["9.8", "10", "200", "0"], [3])
+    has("out of range reported", o, "OUT OF RANGE")
+    # R = 80 in T = 4 s back at launch height: uy = gT/2 = 19.6, ux = 20
+    o = drive(mech640.projectile_inverse, ["9.8", "80", "4"], [4])
+    num("uy from the time of flight", o, "uy = gT/2 = ", 19.6, 1e-6)
+    num("ux from range and time", o, "ux = R/T  = ", 20.0)
+    num("speed from range and time", o, "u = ", math.sqrt(400.0 + 384.16), 1e-3)
+
 def test_every_tool_is_registered():
     # A tool that is not in its module's TOOLS list is unreachable from the
     # menu and invisible to stress.py, however well it works when called
@@ -2179,6 +2299,9 @@ TESTS = [
     ("purecalc calculus applications", test_purecalc_calculus),
     ("integrating reciprocal powers", test_integ_reciprocal_powers),
     ("differential equations", test_diffeq_complete),
+    ("complex loci and de Moivre", test_complex_loci),
+    ("vector lines and planes", test_vector_lines),
+    ("projectile inverse", test_projectile_inverse),
     ("exp/ln folding", test_exp_ln_folding),
     ("mechanics variable accel", test_mech_variable_accel),
     ("matrix invariants", test_matrix_invariant),

@@ -201,6 +201,236 @@ def t_argand():
     casui.wait_press()
     casui.wait_release()
 
+def t_loci():
+    # Loci and regions in the Argand diagram. The three the specification
+    # names are |z - a| = r (a circle), |z - a| = |z - b| (the perpendicular
+    # bisector of a and b), and arg(z - a) = theta (a HALF-line, not a whole
+    # line - the half that matters is the one the argument actually points
+    # along, which is the detail most often lost).
+    kind = casui.menu('Locus of z', ['|z - a| = r        circle',
+                                     '|z - a| = |z - b|  bisector',
+                                     'arg(z - a) = th    half-line',
+                                     '|z - a| <= r       region'])
+    if kind == -1:
+        return
+    lines = []
+    a = _askz('a')
+    if a is None:
+        return
+    cx = a.real
+    cy = a.imag
+    r = 0.0
+    b = None
+    th = 0.0
+    if kind == 0 or kind == 3:
+        r = casutil.asknum('r (radius)')
+        if r is None or r < 0:
+            _show('Loci', ['The radius must be at least 0.'])
+            return
+        lines.append('|z - (' + _fc(a) + ')| ' + ('<=' if kind == 3 else '=') +
+                     ' ' + casutil.fmt(r))
+        lines.append('')
+        lines.append('This is the set of points whose')
+        lines.append('distance from ' + _fc(a) + ' is ' +
+                     ('at most ' if kind == 3 else 'exactly ') + casutil.fmt(r) + '.')
+        lines.append('')
+        lines.append('circle centre ' + _fc(a) + ', radius ' + casutil.fmt(r))
+        lines.append('cartesian: (x - ' + casutil.fmt(cx) + ')^2 + (y - ' +
+                     casutil.fmt(cy) + ')^2 ' + ('<=' if kind == 3 else '=') +
+                     ' ' + casutil.fmt(r * r))
+        if kind == 3:
+            lines.append('(a filled disc, boundary included)')
+        d = math.sqrt(cx * cx + cy * cy)
+        lines.append('')
+        lines.append('greatest |z| on it = ' + casutil.fmt(d + r))
+        lines.append('least |z| on it    = ' + casutil.fmt(d - r if d > r else 0.0))
+    elif kind == 1:
+        b = _askz('b')
+        if b is None:
+            return
+        if abs(b - a) < 1e-12:
+            _show('Loci', ['a and b are the same point, so',
+                           'every z is equidistant from them.'])
+            return
+        mx = (a.real + b.real) / 2.0
+        my = (a.imag + b.imag) / 2.0
+        dx = b.real - a.real
+        dy = b.imag - a.imag
+        lines.append('|z - (' + _fc(a) + ')| = |z - (' + _fc(b) + ')|')
+        lines.append('')
+        lines.append('The points equidistant from a and b:')
+        lines.append('the PERPENDICULAR BISECTOR of the')
+        lines.append('line joining them.')
+        lines.append('')
+        lines.append('midpoint (' + casutil.fmt(mx) + ', ' + casutil.fmt(my) + ')')
+        if abs(dy) < 1e-12:
+            lines.append('vertical line x = ' + casutil.fmt(mx))
+        else:
+            m = -dx / dy
+            c = my - m * mx
+            lines.append('gradient of ab = ' + casutil.fmt(dy / dx) if abs(dx) > 1e-12
+                         else 'ab is vertical')
+            lines.append('bisector gradient = ' + casutil.fmt(m))
+            lines.append('y = ' + casutil.fmt(m) + 'x + ' + casutil.fmt(c))
+    else:
+        thd = casutil.asknum('theta (degrees)')
+        if thd is None:
+            return
+        th = casutil.rad(thd)
+        lines.append('arg(z - (' + _fc(a) + ')) = ' + casutil.fmt(thd) + ' deg')
+        lines.append('')
+        lines.append('A HALF-LINE from ' + _fc(a) + ', at')
+        lines.append(casutil.fmt(thd) + ' degrees to the positive real')
+        lines.append('direction. The point ' + _fc(a) + ' itself is')
+        lines.append('NOT included - arg(0) is undefined.')
+        lines.append('')
+        if abs(math.cos(th)) < 1e-12:
+            lines.append('cartesian: x = ' + casutil.fmt(cx) +
+                         (', y > ' if math.sin(th) > 0 else ', y < ') + casutil.fmt(cy))
+        else:
+            m = math.tan(th)
+            lines.append('cartesian: y - ' + casutil.fmt(cy) + ' = ' +
+                         casutil.fmt(m) + '(x - ' + casutil.fmt(cx) + ')')
+            lines.append('but only the half with x ' +
+                         ('>' if math.cos(th) > 0 else '<') + ' ' + casutil.fmt(cx))
+    _show('Locus', lines)
+    # ---- draw it ----
+    span = 1.0
+    for v in (abs(cx), abs(cy), r):
+        if v > span:
+            span = v
+    if b is not None:
+        for v in (abs(b.real), abs(b.imag)):
+            if v > span:
+                span = v
+    span *= 1.6
+    fr = casutil.frame(-span, span, -span, span)
+    casutil.axes(fr, 'Argand diagram', 'Re', 'Im')
+    if kind == 0 or kind == 3:
+        n = 180
+        i = 0
+        prev = None
+        while i <= n:
+            t = 2.0 * math.pi * i / n
+            px = cx + r * math.cos(t)
+            py = cy + r * math.sin(t)
+            if prev is not None:
+                casutil.seg(fr, prev[0], prev[1], px, py, casui.ACC)
+            prev = (px, py)
+            i += 1
+        if kind == 3:
+            # shade the interior with a coarse grid of dots
+            i = -12
+            while i <= 12:
+                j = -12
+                while j <= 12:
+                    px = cx + r * i / 12.0
+                    py = cy + r * j / 12.0
+                    if (px - cx) ** 2 + (py - cy) ** 2 <= r * r:
+                        casutil.dot(fr, px, py, casui.HL)
+                    j += 1
+                i += 1
+        casutil.marker(fr, cx, cy, casui.RED, 2)
+    elif kind == 1:
+        casutil.marker(fr, a.real, a.imag, casui.RED, 2)
+        casutil.marker(fr, b.real, b.imag, casui.RED, 2)
+        casutil.seg(fr, a.real, a.imag, b.real, b.imag, casui.GREY)
+        mx = (a.real + b.real) / 2.0
+        my = (a.imag + b.imag) / 2.0
+        dx = b.real - a.real
+        dy = b.imag - a.imag
+        L = math.sqrt(dx * dx + dy * dy)
+        ux = -dy / L
+        uy = dx / L
+        k = 4.0 * span
+        casutil.seg(fr, mx - ux * k, my - uy * k, mx + ux * k, my + uy * k, casui.ACC)
+    else:
+        k = 4.0 * span
+        casutil.seg(fr, cx, cy, cx + k * math.cos(th), cy + k * math.sin(th), casui.ACC)
+        casutil.marker(fr, cx, cy, casui.RED, 2)
+    casutil.chart_hold('Re right, Im up')
+
+
+def t_demoivre_id():
+    # de Moivre gives the multiple-angle identities: expanding (cos t + i sin t)^n
+    # by the binomial theorem and matching real and imaginary parts turns
+    # cos(nt) and sin(nt) into polynomials in cos t and sin t.
+    n = casutil.askint('n in (cos t + i sin t)^n', 2, 8)
+    if n is None:
+        return
+    lines = ['(cos t + i sin t)^' + str(n) + ' = cos ' + str(n) + 't + i sin ' + str(n) + 't',
+             'by de Moivre. Expanding the left side',
+             'with the binomial theorem and matching',
+             'real and imaginary parts:', '']
+    cos_terms = []
+    sin_terms = []
+    k = 0
+    while k <= n:
+        c = casutil.ncr(n, k)
+        # i^k cycles 1, i, -1, -i
+        m = k % 4
+        body = ''
+        if n - k > 0:
+            body += 'c^' + str(n - k) if n - k > 1 else 'c'
+        if k > 0:
+            body += ('s^' + str(k) if k > 1 else 's')
+        if body == '':
+            body = '1'
+        piece = (str(c) + body) if c != 1 else body
+        if m == 0:
+            cos_terms.append(('+', piece))
+        elif m == 1:
+            sin_terms.append(('+', piece))
+        elif m == 2:
+            cos_terms.append(('-', piece))
+        else:
+            sin_terms.append(('-', piece))
+        k += 1
+
+    def join(ts):
+        out = ''
+        for sign, piece in ts:
+            if out == '':
+                out = ('-' + piece) if sign == '-' else piece
+            else:
+                out += ' ' + sign + ' ' + piece
+        return out if out else '0'
+
+    lines.append('cos ' + str(n) + 't = ' + join(cos_terms))
+    lines.append('sin ' + str(n) + 't = ' + join(sin_terms))
+    lines.append('')
+    lines.append('with c = cos t and s = sin t.')
+    lines.append('')
+    lines.append('Use s^2 = 1 - c^2 to write cos ' + str(n) + 't')
+    lines.append('in cosines alone.')
+    # numeric check at one angle, so the expansion can be trusted
+    t = 0.7
+    c = math.cos(t)
+    s = math.sin(t)
+    cv = 0.0
+    sv = 0.0
+    k = 0
+    while k <= n:
+        term = casutil.ncr(n, k) * (c ** (n - k)) * (s ** k)
+        m = k % 4
+        if m == 0:
+            cv += term
+        elif m == 1:
+            sv += term
+        elif m == 2:
+            cv -= term
+        else:
+            sv -= term
+        k += 1
+    lines.append('')
+    lines.append('check at t = 0.7 rad:')
+    lines.append('  cos ' + str(n) + 't = ' + casutil.fmt(math.cos(n * t), 6))
+    lines.append('  expansion  = ' + casutil.fmt(cv, 6))
+    lines.append('  sin ' + str(n) + 't = ' + casutil.fmt(math.sin(n * t), 6))
+    lines.append('  expansion  = ' + casutil.fmt(sv, 6))
+    _show('de Moivre identities', lines)
+
+
 TOOLS = [
     ("Arithmetic z, w", t_arith),
     ("Modulus & argument", t_modarg),
@@ -210,6 +440,8 @@ TOOLS = [
     ("nth roots of z", t_roots),
     ("Quadratic complex roots", t_quad),
     ("Argand plot", t_argand),
+    ("Loci in the Argand plane", t_loci),
+    ("de Moivre identities", t_demoivre_id),
 ]
 
 def run():

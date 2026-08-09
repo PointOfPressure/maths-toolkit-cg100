@@ -631,6 +631,147 @@ def connected():
     lines.append(' equation per mass enough)')
     _show('Connected particles', lines)
 
+def projectile_inverse():
+    # The projectile question usually runs backwards: something about the
+    # flight is given and the launch has to be recovered. The forward tool
+    # only ever went launch -> flight.
+    _show('Find the launch', ['Given something about the flight,',
+                              'work back to the launch speed u',
+                              'and angle. Pick what you know.'])
+    which = casui.menu('You know', ['range and angle', 'max height and angle',
+                                    'position (x, y) at time t',
+                                    'speed u and a target (x, y)',
+                                    'range and time of flight'])
+    if which == -1:
+        return
+    g = _askg()
+    if g <= 0:
+        _show('Find the launch', ['g must be positive.'])
+        return
+    lines = ['g = ' + _fn(g)]
+    if which == 0:
+        R = _asknum('range R (m)')
+        if R is None:
+            return
+        ad = _asknum('angle (deg)')
+        if ad is None:
+            return
+        s2 = math.sin(2.0 * _rad(ad))
+        if abs(s2) < 1e-12 or R / s2 <= 0:
+            _show('Find the launch', ['R = u^2 sin2a / g cannot be solved',
+                                      'for these values.'])
+            return
+        u = math.sqrt(R * g / s2)
+        lines.append('R = u^2 sin(2a) / g')
+        lines.append('u = sqrt(Rg / sin 2a)')
+        lines.append('u = ' + _fn(u) + ' m/s at ' + _fn(ad) + ' deg')
+        lines.append('')
+        other = 90.0 - ad
+        if abs(other - ad) > 1e-9:
+            lines.append('NOTE: ' + _fn(other) + ' deg gives the same range')
+            lines.append('with the same speed - sin2a is equal')
+            lines.append('for a and 90 - a. The higher angle is')
+            lines.append('the slower, higher trajectory.')
+    elif which == 1:
+        H = _asknum('max height H (m)')
+        if H is None or H < 0:
+            return
+        ad = _asknum('angle (deg)')
+        if ad is None:
+            return
+        sa = math.sin(_rad(ad))
+        if abs(sa) < 1e-12:
+            _show('Find the launch', ['At 0 degrees the projectile never',
+                                      'rises, so H = 0 for every u.'])
+            return
+        u = math.sqrt(2.0 * g * H) / sa
+        lines.append('H = (u sin a)^2 / (2g)')
+        lines.append('u = sqrt(2gH) / sin a')
+        lines.append('u = ' + _fn(u) + ' m/s at ' + _fn(ad) + ' deg')
+    elif which == 2:
+        x = _asknum('horizontal distance x (m)')
+        if x is None:
+            return
+        y = _asknum('height y (m, above launch)')
+        if y is None:
+            return
+        t = _asknum('time t (s)')
+        if t is None or t <= 0:
+            _show('Find the launch', ['t must be positive.'])
+            return
+        ux = x / t
+        uy = (y + 0.5 * g * t * t) / t
+        u = math.sqrt(ux * ux + uy * uy)
+        ang = _deg(_atan2(uy, ux))
+        lines.append('x = ux t          so ux = x/t = ' + _fn(ux))
+        lines.append('y = uy t - gt^2/2 so uy = (y + gt^2/2)/t')
+        lines.append('                        = ' + _fn(uy))
+        lines.append('')
+        lines.append('u = sqrt(ux^2 + uy^2) = ' + _fn(u) + ' m/s')
+        lines.append('angle = ' + _fn(ang) + ' deg above the horizontal')
+    elif which == 3:
+        u = _asknum('launch speed u (m/s)')
+        if u is None or u <= 0:
+            return
+        x = _asknum('target x (m)')
+        if x is None or x == 0:
+            _show('Find the launch', ['x must be non-zero.'])
+            return
+        y = _asknum('target y (m, above launch)')
+        if y is None:
+            return
+        # y = x tan a - g x^2 (1 + tan^2 a) / (2 u^2); quadratic in T = tan a
+        A = g * x * x / (2.0 * u * u)
+        B = -x
+        C = y + A
+        disc = B * B - 4.0 * A * C
+        lines.append('y = x tan a - gx^2(1 + tan^2 a)/(2u^2)')
+        lines.append('is a quadratic in tan a:')
+        lines.append('  ' + _fn(A) + ' T^2 + ' + _fn(B) + ' T + ' + _fn(C) + ' = 0')
+        lines.append('discriminant = ' + _fn(disc))
+        if disc < -1e-12:
+            lines.append('')
+            lines.append('Negative: at ' + _fn(u) + ' m/s the target is')
+            lines.append('OUT OF RANGE at any angle.')
+        else:
+            if disc < 0:
+                disc = 0.0
+            rt = math.sqrt(disc)
+            t1 = (-B + rt) / (2.0 * A)
+            t2 = (-B - rt) / (2.0 * A)
+            a1 = _deg(math.atan(t1))
+            a2 = _deg(math.atan(t2))
+            lines.append('')
+            if rt < 1e-9:
+                lines.append('One solution: the target is exactly')
+                lines.append('at the limit of the range.')
+                lines.append('  angle = ' + _fn(a1) + ' deg')
+            else:
+                lines.append('TWO angles reach the target:')
+                lines.append('  high ball ' + _fn(a1) + ' deg')
+                lines.append('  low ball  ' + _fn(a2) + ' deg')
+                lines.append('(the low one gets there sooner)')
+    else:
+        R = _asknum('range R (m)')
+        if R is None:
+            return
+        T = _asknum('time of flight T (s)')
+        if T is None or T <= 0:
+            _show('Find the launch', ['T must be positive.'])
+            return
+        ux = R / T
+        uy = g * T / 2.0            # returns to launch height, so uy = gT/2
+        u = math.sqrt(ux * ux + uy * uy)
+        ang = _deg(_atan2(uy, ux))
+        lines.append('back at launch height, so T = 2 uy/g')
+        lines.append('uy = gT/2 = ' + _fn(uy))
+        lines.append('ux = R/T  = ' + _fn(ux))
+        lines.append('')
+        lines.append('u = ' + _fn(u) + ' m/s at ' + _fn(ang) + ' deg')
+    _show('Find the launch', lines)
+
+
+TOOLS.append(('Projectile: find the launch', projectile_inverse))
 TOOLS.append(('Variable acceleration', kinematics))
 TOOLS.append(('Distance vs displacement', distance_travelled))
 TOOLS.append(('Connected particles', connected))
