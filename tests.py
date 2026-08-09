@@ -567,6 +567,22 @@ def test_engine_substitution():
     check("invert refuses x^2+x", caseng.invert(caslex.parse("x^2+x"), 'x', 'y'), None)
     check("invert refuses abs", caseng.invert(caslex.parse("abs(x)"), 'x', 'y'), None)
 
+def test_evalf_env_precedence():
+    # env is consulted before the positional argument, INCLUDING for x.
+    # The other way round, a tool passing {'x': a, 'y': b} had its x silently
+    # ignored and evaluated at whatever happened to be passed positionally.
+    t = caslex.parse("x")
+    close("env overrides the positional x", caseng.evalf(t, 5.0, False, {'x': 9.0}), 9.0)
+    close("positional x is used when env has none", caseng.evalf(t, 5.0, False, {'y': 9.0}), 5.0)
+    close("positional x is used with no env", caseng.evalf(t, 5.0), 5.0)
+    t = caslex.parse("x^2+y")
+    close("two variables both from env",
+          caseng.evalf(t, 0.0, False, {'x': 3.0, 'y': 4.0}), 13.0)
+    close("x from env, y from env, positional ignored",
+          caseng.evalf(t, 99.0, False, {'x': 3.0, 'y': 4.0}), 13.0)
+    raises("a variable in neither still raises",
+           lambda: caseng.evalf(caslex.parse("x+w"), 1.0, False, {'x': 1.0}))
+
 def test_solve_variable():
     # solve() and defint() passed the sample point to evalf positionally, and
     # evalf's positional argument is always x. Anything written in another
@@ -1741,8 +1757,83 @@ def test_xpure():
     o = drive(xpure.t_mod, ['3', '7'], menus=[3])
     has("xpure modinv", o, '= 5')
 
-    o = drive(xpure.t_partial, ['x^2', '3'])
-    num("xpure partial", o, "f'(3) ~ ", 6.0, 1e-4)
+    # Partial derivatives are symbolic now, in two variables. For
+    # z = x^2 y + y^3: dz/dx = 2xy, dz/dy = x^2 + 3y^2, d2z/dxdy = 2x.
+    # At (2,1): z = 5, dz/dx = 4, dz/dy = 7, d2z/dxdy = 4.
+    o = drive(xpure.t_partial, ['x^2*y+y^3', '2', '1'])
+    has("dz/dx", o, "dz/dx = 2*x*y")
+    has("dz/dy", o, "dz/dy = x^2+3*y^2")
+    has("mixed partial", o, "d2z/dxdy = 2*x")
+    has("mixed partials agree", o, "d2z/dydx is the same")
+    num("z at (2,1)", o, "z = ", 5.0)
+    num("dz/dx at (2,1)", o, "dz/dx = ", 4.0)
+    num("dz/dy at (2,1)", o, "dz/dy = ", 7.0)
+    num("mixed partial at (2,1)", o, "d2z/dxdy = ", 4.0)
+    has("gradient vector", o, "grad z = (4, 7)")
+    num("gradient magnitude", o, "|grad z| = ", math.sqrt(65.0), 1e-3)
+
+    # Stationary points of a surface. z = x^2+y^2-4x-6y has a minimum at
+    # (2,3) with z = -13 and D = 4 > 0 with fxx = 2 > 0.
+    o = drive(xpure.t_surface_stat, ['x^2+y^2-4x-6y', '0', '0'])
+    has("stationary point located", o, "x = 2, y = 3")
+    num("value at the minimum", o, "z = ", -13.0)
+    num("discriminant", o, "D = fxx fyy - fxy^2 = ", 4.0)
+    has("classified as a minimum", o, "MINIMUM")
+    # z = x^2 - y^2 is the standard saddle at the origin, D = -4
+    o = drive(xpure.t_surface_stat, ['x^2-y^2', '1', '1'])
+    has("saddle located", o, "x = 0, y = 0")
+    num("saddle discriminant", o, "D = fxx fyy - fxy^2 = ", -4.0)
+    has("classified as a saddle", o, "SADDLE POINT")
+    # z = -x^2-y^2+2x has a maximum at (1,0) with z = 1
+    o = drive(xpure.t_surface_stat, ['-x^2-y^2+2x', '0', '0'])
+    has("maximum located", o, "x = 1, y = 0")
+    has("classified as a maximum", o, "MAXIMUM")
+    # A NON-ZERO mixed partial is essential here. Every case above has
+    # fxy = 0, so D = fxx fyy - fxy^2 and fxx fyy + fxy^2 agree and the sign
+    # in the discriminant is untested. z = x^2 + 4xy + y^2 has fxx = fyy = 2
+    # and fxy = 4, so D = 4 - 16 = -12: a saddle. Get the sign wrong and
+    # D = 20 and it is called a minimum.
+    o = drive(xpure.t_surface_stat, ['x^2+4x*y+y^2', '1', '-1'])
+    num("discriminant with a non-zero mixed partial",
+        o, "D = fxx fyy - fxy^2 = ", -12.0, 1e-6)
+    has("non-zero fxy still a saddle", o, "SADDLE POINT")
+    # z = x^2 + x*y + y^2: fxy = 1, D = 4 - 1 = 3 > 0, a genuine minimum
+    o = drive(xpure.t_surface_stat, ['x^2+x*y+y^2', '1', '1'])
+    num("discriminant of a skewed bowl", o, "D = fxx fyy - fxy^2 = ", 3.0, 1e-6)
+    has("skewed bowl is a minimum", o, "MINIMUM")
+
+    # Tangent plane to z = x^2+y^2 at (1,2): z = 5, fx = 2, fy = 4, so the
+    # plane is z = 5 + 2(x-1) + 4(y-2), i.e. 2x + 4y - z = 5, and the normal
+    # direction is (2, 4, -1)
+    o = drive(xpure.t_tangent_plane, ['x^2+y^2', '1', '2'])
+    has("height at the point", o, "at (1, 2), z = 5")
+    has("tangent plane", o, "2x + 4y - z = 5")
+    has("normal line", o, "+ t(2, 4, -1)")
+
+    # 3x3 eigenvalues. A lower-triangular matrix has its diagonal as the
+    # spectrum: [[2,0,0],[1,3,0],[0,0,4]] has eigenvalues 2, 3, 4, trace 9,
+    # det 24, so the characteristic equation is k^3 - 9k^2 + 26k - 24 = 0.
+    o = drive(xpure.t_eigen3,
+              ['2', '0', '0', '1', '3', '0', '0', '0', '4', None])
+    has("characteristic cubic", o, "k^3 - 9k^2 + 26k - 24 = 0")
+    has("first eigenvalue", o, "k = 2")
+    has("second eigenvalue", o, "k = 3")
+    has("third eigenvalue", o, "k = 4")
+    has("eigenvector for k=2", o, "(1, -1, 0)")
+    has("diagonalisable", o, "DIAGONALISABLE")
+    has("Cayley-Hamilton", o, "M^3 = 9M^2 - 26M + 24I")
+    # every eigenvector must satisfy Mv = kv, which the tool checks itself
+    for ln in o:
+        if "check |Mv - kv| = " in ln:
+            v = _first_number(ln.split("check |Mv - kv| = ")[1])
+            truthy("eigenvector satisfies Mv = kv", v is not None and abs(v) < 1e-6)
+    # a rotation about z by 90 degrees has only one real eigenvalue, 1,
+    # with the axis (0,0,1) as its eigenvector
+    o = drive(xpure.t_eigen3,
+              ['0', '-1', '0', '1', '0', '0', '0', '0', '1', None])
+    has("single real eigenvalue", o, "k = 1")
+    has("rotation axis is the eigenvector", o, "(0, 0, 1)")
+    has("not three distinct", o, "may not be diagonalisable")
 
     # Klein four-group Cayley table: closed, abelian, not cyclic
     o = drive(xpure.t_group, ['4', '0 1 2 3', '1 0 3 2', '2 3 0 1', '3 2 1 0'])
@@ -2293,6 +2384,7 @@ TESTS = [
     ("CAS algebra UI", test_cas_algebra_ui),
     ("reciprocal trig", test_reciprocal_trig),
     ("engine substitution", test_engine_substitution),
+    ("evalf env precedence", test_evalf_env_precedence),
     ("solve in any variable", test_solve_variable),
     ("purecalc", test_purecalc),
     ("pure640 triangle/arc/inequality", test_pure640_new),

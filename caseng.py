@@ -553,10 +553,15 @@ def evalf(n, x, deg=False, env=None):
     if t == 'n':
         return n[1]
     if t == 'v':
-        if n[1] == 'x':
-            return x
+        # env is consulted FIRST, including for x. Checking the positional
+        # argument first made env['x'] silently ignored, so a two-variable
+        # tool that passed {'x': a, 'y': b} evaluated at whatever had been
+        # passed positionally instead - which is how the surface stationary
+        # point tool searched with x pinned at 0 and still reported an answer.
         if env is not None and n[1] in env:
             return env[n[1]]
+        if n[1] == 'x':
+            return x
         if n[1] == 'ans':
             return ANS
         raise ValueError("unknown variable " + n[1])
