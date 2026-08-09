@@ -65,6 +65,8 @@ def _sig(x, k):
 
 _show = casutil.show
 _pages = casutil.show      # result_screen pages by itself now
+_w = casutil.w             # method / intermediate steps, hidden in answer mode
+_warn = casutil.warn       # caveat about the answer, shown in both modes
 
 
 def _bound(v, x):
@@ -78,12 +80,12 @@ def _bound(v, x):
 def t_newton():
     f = _askfn('f(x)=')
     if f is None:
-        _show('Newton-Raphson', ['Bad function'])
+        _show('Newton-Raphson', [_warn('Bad function')])
         return
     try:
         d = caseng.diff(f, 'x')
     except:
-        _show('Newton-Raphson', ['Cannot differentiate'])
+        _show('Newton-Raphson', [_warn('Cannot differentiate')])
         return
     x0 = _asknum('start x0=')
     if x0 is None:
@@ -93,7 +95,7 @@ def t_newton():
     tol = _asknum('accuracy [1e-9]')
     if tol is None or tol <= 0:
         tol = 1e-9
-    lines = ["f'(x)=" + caseng.tostr(d), 'target accuracy ' + _f9(tol)]
+    lines = [_w("f'(x)=" + caseng.tostr(d)), _w('target accuracy ' + _f9(tol))]
     x = x0
     dx = 0.0
     ok = False
@@ -102,38 +104,38 @@ def t_newton():
             fx = _ev(f, x)
             dfx = _ev(d, x)
         except:
-            lines.append('n' + str(it) + ': eval error')
+            lines.append(_warn('n' + str(it) + ': eval error'))
             break
         if dfx == 0:
-            lines.append('n' + str(it) + ": f'=0, stop")
+            lines.append(_warn('n' + str(it) + ": f'=0, stop"))
             break
         nx = x - fx / dfx
         dx = nx - x
-        lines.append('n' + str(it) + ' x=' + _fn(nx))
+        lines.append(_w('n' + str(it) + ' x=' + _fn(nx)))
         x = nx
         if abs(dx) < tol:
             ok = True
             break
     if ok:
         lines.append('root x=' + _fn(x))
-        lines.append('last step |dx| = ' + _f9(abs(dx)))
+        lines.append(_w('last step |dx| = ' + _f9(abs(dx))))
         lines.append('error bound <= ' + _f9(_bound(abs(dx), x)))
         try:
             fv = _ev(f, x)
             dv = _ev(d, x)
             if dv != 0:
-                lines.append('next correction = ' + _f9(abs(fv / dv)))
+                lines.append(_w('next correction = ' + _f9(abs(fv / dv))))
         except:
             pass
     else:
-        lines.append('no converge in 50')
+        lines.append(_warn('no converge in 50'))
     _pages('Newton-Raphson', lines)
 
 
 def t_fixed():
     g = _askfn('g(x)= (x=g(x))')
     if g is None:
-        _show('Fixed-point', ['Bad function'])
+        _show('Fixed-point', [_warn('Bad function')])
         return
     x0 = _asknum('start x0=')
     if x0 is None:
@@ -141,27 +143,35 @@ def t_fixed():
     tol = _asknum('accuracy [1e-9]')
     if tol is None or tol <= 0:
         tol = 1e-9
-    lines = ['x=g(x) iteration', 'target accuracy ' + _f9(tol)]
+    lines = [_w('x=g(x) iteration'), _w('target accuracy ' + _f9(tol))]
     x = x0
     dx = 0.0
     pdx = None
     ok = False
+    last = -1
+    lasttxt = ''
     for it in range(1, 51):
         try:
             nx = _ev(g, x)
         except:
-            lines.append('n' + str(it) + ': eval error')
+            lines.append(_warn('n' + str(it) + ': eval error'))
             break
         pdx = dx
         dx = nx - x
-        lines.append('n' + str(it) + ' x=' + _fn(nx))
+        lasttxt = 'n' + str(it) + ' x=' + _fn(nx)
+        lines.append(_w(lasttxt))
+        last = len(lines) - 1
         x = nx
         if abs(dx) < tol:
             ok = True
             break
         if abs(x) > 1e12:
-            lines.append('diverged')
+            lines.append(_warn('diverged'))
             break
+    if not ok and last >= 0:
+        # with no converged value to quote, the last iterate is the estimate,
+        # so it stays visible when the working is hidden
+        lines[last] = lasttxt
     if ok:
         lines.append('fixed pt x=' + _fn(x))
         # a first order iteration overshoots the limit by about |dx|.r/(1-r),
@@ -171,7 +181,7 @@ def t_fixed():
             r = abs(dx / pdx)
             if r < 1.0:
                 bound = abs(dx) * r / (1.0 - r)
-        lines.append('last step |dx| = ' + _f9(abs(dx)))
+        lines.append(_w('last step |dx| = ' + _f9(abs(dx))))
         lines.append('error bound <= ' + _f9(_bound(bound, x)))
     _pages('Fixed-point', lines)
 
@@ -179,7 +189,7 @@ def t_fixed():
 def t_bisect():
     f = _askfn('f(x)=')
     if f is None:
-        _show('Bisection', ['Bad function'])
+        _show('Bisection', [_warn('Bad function')])
         return
     a = _asknum('a=')
     if a is None:
@@ -188,7 +198,7 @@ def t_bisect():
     if b is None:
         return
     if a == b:
-        _show('Bisection', ['a and b must differ'])
+        _show('Bisection', [_warn('a and b must differ')])
         return
     tol = _asknum('accuracy [1e-9]')
     if tol is None or tol <= 0:
@@ -198,13 +208,14 @@ def t_bisect():
         fa = _ev(f, a)
         fb = _ev(f, b)
     except:
-        _show('Bisection', ['eval error'])
+        _show('Bisection', [_warn('eval error')])
         return
     # compare signs rather than the product: fa*fb overflows to inf for big values
     if (fa > 0 and fb > 0) or (fa < 0 and fb < 0):
-        _show('Bisection', ['No sign change', 'f(a)=' + _fn(fa), 'f(b)=' + _fn(fb)])
+        _show('Bisection', [_warn('No sign change'), _w('f(a)=' + _fn(fa)),
+                            _w('f(b)=' + _fn(fb))])
         return
-    lines = ['sign change OK', 'target accuracy ' + _f9(tol)]
+    lines = [_w('sign change OK'), _w('target accuracy ' + _f9(tol))]
     # every halving divides the bracket by 2, so the count needed is known
     # before the loop starts - that is the justification for the accuracy claim
     need = 0
@@ -212,7 +223,7 @@ def t_bisect():
     while w >= tol and need < 200:
         w = w / 2.0
         need += 1
-    lines.append('steps needed = ' + str(need))
+    lines.append(_w('steps needed = ' + str(need)))
     m = a
     ok = False
     for it in range(1, 201):
@@ -220,9 +231,9 @@ def t_bisect():
         try:
             fm = _ev(f, m)
         except:
-            lines.append('n' + str(it) + ': eval error')
+            lines.append(_warn('n' + str(it) + ': eval error'))
             break
-        lines.append('n' + str(it) + ' m=' + _fn(m))
+        lines.append(_w('n' + str(it) + ' m=' + _fn(m)))
         if fm == 0 or abs(b - a) / 2.0 < tol:
             ok = True
             break
@@ -243,7 +254,7 @@ def t_bisect():
 def t_integ():
     f = _askfn('f(x)=')
     if f is None:
-        _show('Integration', ['Bad function'])
+        _show('Integration', [_warn('Bad function')])
         return
     a = _asknum('a=')
     if a is None:
@@ -256,7 +267,7 @@ def t_integ():
         return
     n = int(round(n))   # int() would turn an entered 100 that evaluates to
     if n < 1:           # 99.9999999 into 99, flipping Simpson's even-n test
-        _show('Integration', ['n must be >=1'])
+        _show('Integration', [_warn('n must be >=1')])
         return
     if n > 2000:
         n = 2000
@@ -271,9 +282,9 @@ def t_integ():
             mid += _ev(f, a + (i + 0.5) * h)
         mid = mid * h
     except:
-        _show('Integration', ['eval error'])
+        _show('Integration', [_warn('eval error')])
         return
-    lines = ['h=' + _fn(h), 'trapezium=' + _fn(trap), 'midpoint=' + _fn(mid)]
+    lines = [_w('h=' + _fn(h)), 'trapezium=' + _fn(trap), 'midpoint=' + _fn(mid)]
     if n % 2 == 0:
         try:
             sm = _ev(f, a) + _ev(f, b)
@@ -283,31 +294,32 @@ def t_integ():
             sm = sm * h / 3.0
             lines.append('Simpson=' + _fn(sm))
         except:
-            lines.append('Simpson: eval error')
+            lines.append(_warn('Simpson: eval error'))
     else:
-        lines.append('Simpson: need even n')
+        lines.append(_warn('Simpson: need even n'))
     _pages('Integration', lines)
 
 
 def t_diff():
     f = _askfn('f(x)=')
     if f is None:
-        _show('Differentiation', ['Bad function'])
+        _show('Differentiation', [_warn('Bad function')])
         return
     x0 = _asknum('point x=')
     if x0 is None:
         return
     h = _asknum('step h=')
     if h is None or h == 0:
-        _show('Differentiation', ['h must be nonzero'])
+        _show('Differentiation', [_warn('h must be nonzero')])
         return
     try:
         fwd = (_ev(f, x0 + h) - _ev(f, x0)) / h
         cen = (_ev(f, x0 + h) - _ev(f, x0 - h)) / (2.0 * h)
     except:
-        _show('Differentiation', ['eval error'])
+        _show('Differentiation', [_warn('eval error')])
         return
-    lines = ['at x=' + _fn(x0) + ' h=' + _fn(h), 'forward=' + _fn(fwd), 'central=' + _fn(cen)]
+    lines = [_w('at x=' + _fn(x0) + ' h=' + _fn(h)), 'forward=' + _fn(fwd),
+             'central=' + _fn(cen)]
     try:
         d = caseng.diff(f, 'x')
         exact = _ev(d, x0)
@@ -320,7 +332,7 @@ def t_diff():
 def t_euler():
     f = _askfn('dy/dx=f(x,y)')
     if f is None:
-        _show('Euler', ['Bad function'])
+        _show('Euler', [_warn('Bad function')])
         return
     x0 = _asknum('x0=')
     if x0 is None:
@@ -336,25 +348,25 @@ def t_euler():
         return
     nn = int(nn)
     if nn < 1:
-        _show('Euler', ['N must be >=1'])
+        _show('Euler', [_warn('N must be >=1')])
         return
     if nn > 500:
         nn = 500
-    lines = ['y(n+1) = y(n) + h f(x,y)', 'x0=' + _fn(x0) + ' y0=' + _fn(y0)]
+    lines = [_w('y(n+1) = y(n) + h f(x,y)'), _w('x0=' + _fn(x0) + ' y0=' + _fn(y0))]
     x = x0
     y = y0
-    lines.append('n0 x=' + _fn(x) + ' y=' + _fn(y))
+    lines.append(_w('n0 x=' + _fn(x) + ' y=' + _fn(y)))
     ok = True
     for it in range(1, nn + 1):
         try:
             slope = _ev(f, x, {'y': y})
         except:
-            lines.append('n' + str(it) + ': eval error')
+            lines.append(_warn('n' + str(it) + ': eval error'))
             ok = False
             break
         y = y + h * slope
         x = x + h
-        lines.append('n' + str(it) + ' x=' + _fn(x) + ' y=' + _fn(y))
+        lines.append(_w('n' + str(it) + ' x=' + _fn(x) + ' y=' + _fn(y)))
     if ok:
         lines.append('end y=' + _fn(y))
     _pages('Euler method', lines)
@@ -373,7 +385,7 @@ def t_error():
         lines.append('relative=' + _fn(absr / abs(ex)))
         lines.append('percent=' + _fn(100.0 * absr / abs(ex)) + '%')
     else:
-        lines.append('relative: exact=0')
+        lines.append(_warn('relative: exact=0'))
     _show('Error', lines)
 
 
@@ -390,7 +402,7 @@ def t_round():
     if k > 12:
         k = 12
     r = _sig(v, k)
-    _show('Round to s.f.', ['value=' + _fn(v), str(k) + ' s.f. = ' + _fn(r)])
+    _show('Round to s.f.', [_w('value=' + _fn(v)), str(k) + ' s.f. = ' + _fn(r)])
 
 
 # ======================= Y434: ERROR BEHAVIOUR =============================
@@ -454,21 +466,22 @@ def _rstr(v):
 def _elide(rows, lines):
     # a 60-step iteration is 60 result lines; the interesting part is the start
     # and the tail, so the middle is dropped rather than paged through
+    # every caller feeds this a per-step table, so the whole block is working
     n = len(rows)
     if n <= 14:
         k = 0
         while k < n:
-            lines.append(rows[k])
+            lines.append(_w(rows[k]))
             k += 1
         return
     k = 0
     while k < 3:
-        lines.append(rows[k])
+        lines.append(_w(rows[k]))
         k += 1
-    lines.append('  ... ' + str(n - 13) + ' rows omitted ...')
+    lines.append(_w('  ... ' + str(n - 13) + ' rows omitted ...'))
     k = n - 10
     while k < n:
-        lines.append(rows[k])
+        lines.append(_w(rows[k]))
         k += 1
 
 
@@ -496,7 +509,8 @@ def _errrows(labels, vals, lines):
             s += ' d=' + _f8(d[k - 1])
         if k >= 2:
             s += ' r=' + _rstr(r[k - 2])
-        lines.append(s)
+        # the h-halving table and its ratio column are working, not the answer
+        lines.append(_w(s))
         k += 1
     return _lastr(r)
 
@@ -526,7 +540,7 @@ def _trapmid(f, a, b, n):
 def t_integ_error():
     f = _askfn('f(x)=')
     if f is None:
-        _show('Integration error', ['Bad function'])
+        _show('Integration error', [_warn('Bad function')])
         return
     a = _asknum('a=')
     if a is None:
@@ -562,29 +576,29 @@ def t_integ_error():
             n = n * 2
             k += 1
     except:
-        _show('Integration error', ['eval error'])
+        _show('Integration error', [_warn('eval error')])
         return
-    lines = ['f(x)=' + caseng.tostr(f), 'a=' + _fn(a) + ' b=' + _fn(b),
-             'h halves down each column',
-             '-- trapezium T --']
+    lines = [_w('f(x)=' + caseng.tostr(f)), _w('a=' + _fn(a) + ' b=' + _fn(b)),
+             _w('h halves down each column'),
+             _w('-- trapezium T --')]
     rt = _errrows(labels, ts, lines)
-    lines.append('-- midpoint M --')
+    lines.append(_w('-- midpoint M --'))
     rm = _errrows(labels, ms, lines)
-    lines.append('-- Simpson S=(2M+T)/3 --')
+    lines.append(_w('-- Simpson S=(2M+T)/3 --'))
     rs = _errrows(labels, ss, lines)
-    lines.append('-- what the ratios mean --')
-    lines.append('T ratio = ' + _rstr(rt))
-    lines.append('M ratio = ' + _rstr(rm))
-    lines.append('S ratio = ' + _rstr(rs))
-    lines.append('ratio 4 => error ~ h^2 (2nd order)')
-    lines.append('ratio 16 => error ~ h^4 (4th order)')
-    lines.append('T and M are 2nd order,')
-    lines.append('Simpson is 4th order.')
+    lines.append(_w('-- what the ratios mean --'))
+    lines.append(_w('T ratio = ' + _rstr(rt)))
+    lines.append(_w('M ratio = ' + _rstr(rm)))
+    lines.append(_w('S ratio = ' + _rstr(rs)))
+    lines.append(_w('ratio 4 => error ~ h^2 (2nd order)'))
+    lines.append(_w('ratio 16 => error ~ h^4 (4th order)'))
+    lines.append(_w('T and M are 2nd order,'))
+    lines.append(_w('Simpson is 4th order.'))
     # Simpson IS the Richardson extrapolation of the trapezium rule
     if len(ts) >= 2:
         lines.append('Richardson (4T2-T1)/3 = ' +
                      _f9((4.0 * ts[1] - ts[0]) / 3.0))
-        lines.append('  = Simpson on ' + str(2 * ns[0]) + ' strips')
+        lines.append(_w('  = Simpson on ' + str(2 * ns[0]) + ' strips'))
     lines.append('best T = ' + _f9(ts[len(ts) - 1]))
     lines.append('best M = ' + _f9(ms[len(ms) - 1]))
     lines.append('best S = ' + _f9(ss[len(ss) - 1]))
@@ -595,23 +609,23 @@ def t_integ_error():
 def t_richardson():
     vals = _asklist('A(h), A(h/2), A(h/4) ...')
     if vals is None or len(vals) < 2:
-        _show('Richardson', ['Need at least two',
+        _show('Richardson', [_warn('Need at least two'),
                              'estimates, each with h',
                              'half the one before.'])
         return
     p = _asknum('order p [2]')
     if p is None or p <= 0:
         p = 2.0
-    lines = ['R(i,j) = R(i,j-1) +',
-             '  (R(i,j-1)-R(i-1,j-1))/(2^(pj)-1)',
-             'p = ' + _fn(p),
-             'column 0 (as entered):']
+    lines = [_w('R(i,j) = R(i,j-1) +'),
+             _w('  (R(i,j-1)-R(i-1,j-1))/(2^(pj)-1)'),
+             _w('p = ' + _fn(p)),
+             _w('column 0 (as entered):')]
     col = []
     k = 0
     while k < len(vals):
         col.append(vals[k])
         k += 1
-    lines.append('  ' + ' '.join([_f8(v) for v in col]))
+    lines.append(_w('  ' + ' '.join([_f8(v) for v in col])))
     j = 1
     while j < len(vals):
         fac = 2.0 ** (p * j) - 1.0
@@ -623,12 +637,12 @@ def t_richardson():
             nxt.append(col[i] + (col[i] - col[i - 1]) / fac)
             i += 1
         col = nxt
-        lines.append('column ' + str(j) + ' (divide by ' + _fn(fac) + '):')
-        lines.append('  ' + ' '.join([_f8(v) for v in col]))
+        lines.append(_w('column ' + str(j) + ' (divide by ' + _fn(fac) + '):'))
+        lines.append(_w('  ' + ' '.join([_f8(v) for v in col])))
         j += 1
     best = col[len(col) - 1]
-    lines.append('each column removes the next')
-    lines.append('power of h from the error.')
+    lines.append(_w('each column removes the next'))
+    lines.append(_w('power of h from the error.'))
     lines.append('best = ' + _f9(best))
     if len(vals) >= 2:
         lines.append('improvement on last entry = ' +
@@ -639,29 +653,29 @@ def t_richardson():
 def t_aitken():
     xs = _asklist('sequence x0 x1 x2 ...')
     if xs is None or len(xs) < 3:
-        _show('Aitken', ['Need at least 3 terms.'])
+        _show('Aitken', [_warn('Need at least 3 terms.')])
         return
-    lines = ["Aitken delta^2:",
-             "y = x - (dx)^2/(d2x)",
-             'given ' + str(len(xs)) + ' terms']
+    lines = [_w("Aitken delta^2:"),
+             _w("y = x - (dx)^2/(d2x)"),
+             _w('given ' + str(len(xs)) + ' terms')]
     out = []
     k = 0
     while k + 2 < len(xs):
         d1 = xs[k + 1] - xs[k]
         d2 = xs[k + 2] - 2.0 * xs[k + 1] + xs[k]
         if d2 == 0:
-            lines.append('y' + str(k) + ': second difference 0')
+            lines.append(_warn('y' + str(k) + ': second difference 0'))
         else:
             y = xs[k] - d1 * d1 / d2
             out.append(y)
-            lines.append('y' + str(k) + ' = ' + _f9(y))
+            lines.append(_w('y' + str(k) + ' = ' + _f9(y)))
         k += 1
     if not out:
-        lines.append('no accelerated value')
+        lines.append(_warn('no accelerated value'))
         _pages('Aitken', lines)
         return
-    lines.append('the y sequence converges faster')
-    lines.append('than the x sequence.')
+    lines.append(_w('the y sequence converges faster'))
+    lines.append(_w('than the x sequence.'))
     lines.append('best = ' + _f9(out[len(out) - 1]))
     lines.append('shift on last x = ' +
                  _f9(abs(out[len(out) - 1] - xs[len(xs) - 1])))
@@ -672,7 +686,7 @@ def t_aitken():
 def t_diff_error():
     f = _askfn('f(x)=')
     if f is None:
-        _show('Derivative error', ['Bad function'])
+        _show('Derivative error', [_warn('Bad function')])
         return
     x0 = _asknum('point x=')
     if x0 is None:
@@ -694,23 +708,23 @@ def t_diff_error():
             h = h / 2.0
             k += 1
     except:
-        _show('Derivative error', ['eval error'])
+        _show('Derivative error', [_warn('eval error')])
         return
-    lines = ['f(x)=' + caseng.tostr(f), 'at x=' + _fn(x0),
-             '-- forward (f(x+h)-f(x))/h --']
+    lines = [_w('f(x)=' + caseng.tostr(f)), _w('at x=' + _fn(x0)),
+             _w('-- forward (f(x+h)-f(x))/h --')]
     rf = _errrows(labels, fwd, lines)
-    lines.append('-- central (f(x+h)-f(x-h))/2h --')
+    lines.append(_w('-- central (f(x+h)-f(x-h))/2h --'))
     rc = _errrows(labels, cen, lines)
-    lines.append('-- what the ratios mean --')
-    lines.append('fwd ratio = ' + _rstr(rf))
-    lines.append('cen ratio = ' + _rstr(rc))
-    lines.append('ratio 2 => error ~ h (1st order)')
-    lines.append('ratio 4 => error ~ h^2 (2nd order)')
+    lines.append(_w('-- what the ratios mean --'))
+    lines.append(_w('fwd ratio = ' + _rstr(rf)))
+    lines.append(_w('cen ratio = ' + _rstr(rc)))
+    lines.append(_w('ratio 2 => error ~ h (1st order)'))
+    lines.append(_w('ratio 4 => error ~ h^2 (2nd order)'))
     nf = len(fwd)
     fe = 2.0 * fwd[nf - 1] - fwd[nf - 2]
     ce = (4.0 * cen[nf - 1] - cen[nf - 2]) / 3.0
-    lines.append('extrapolate: kill the leading')
-    lines.append('error term from the last two.')
+    lines.append(_w('extrapolate: kill the leading'))
+    lines.append(_w('error term from the last two.'))
     lines.append('fwd extrap = ' + _f9(fe))
     lines.append('cen extrap = ' + _f9(ce))
     try:
@@ -722,8 +736,8 @@ def t_diff_error():
         lines.append('err(cen extrap) = ' + _f9(abs(ce - ex)))
     except:
         pass
-    lines.append('h too small: subtracting nearly')
-    lines.append('equal values loses accuracy.')
+    lines.append(_warn('h too small: subtracting nearly'))
+    lines.append(_warn('equal values loses accuracy.'))
     _pages('Derivative error', lines)
 
 
@@ -748,12 +762,12 @@ def _order_of(d):
 
 def _verdict(r, lines):
     if r is None:
-        lines.append('no usable ratio')
+        lines.append(_warn('no usable ratio'))
         return
     lines.append('last ratio r = ' + _f9(r))
     if abs(r) >= 1.0:
-        lines.append('|r| >= 1: the sequence')
-        lines.append('DIVERGES.')
+        lines.append(_warn('|r| >= 1: the sequence'))
+        lines.append(_warn('DIVERGES.'))
         return
     if abs(r) < 1e-3:
         lines.append('r collapsing towards 0:')
@@ -768,17 +782,17 @@ def _verdict(r, lines):
 def t_conv_order():
     xs = _asklist('iterates x0 x1 x2 ...')
     if xs is None or len(xs) < 3:
-        _show('Order of convergence', ['Need at least 3 iterates.'])
+        _show('Order of convergence', [_warn('Need at least 3 iterates.')])
         return
     d = _diffs(xs)
     r = _shrink(d)
-    lines = ['d(n) = x(n+1) - x(n)',
-             'r(n) = d(n+1)/d(n)']
+    lines = [_w('d(n) = x(n+1) - x(n)'),
+             _w('r(n) = d(n+1)/d(n)')]
     _seqrows(d, r, lines)
     _verdict(_lastr(r), lines)
     p = _order_of(d)
     if p is None:
-        lines.append('order p: not determined')
+        lines.append(_warn('order p: not determined'))
     else:
         lines.append('order p = ' + _fn(p))
         if p > 1.5:
@@ -806,7 +820,7 @@ def _gprime(g, x):
 def t_fixed_diag():
     g = _askfn('g(x)= (x=g(x))')
     if g is None:
-        _show('Fixed-point diagnosis', ['Bad function'])
+        _show('Fixed-point diagnosis', [_warn('Bad function')])
         return
     x0 = _asknum('start x0=')
     if x0 is None:
@@ -836,8 +850,8 @@ def t_fixed_diag():
         if abs(x) > 1e8:
             blew = True
             break
-    lines = ['g(x)=' + caseng.tostr(g), 'x0=' + _fn(x0),
-             'steps taken = ' + str(it)]
+    lines = [_w('g(x)=' + caseng.tostr(g)), _w('x0=' + _fn(x0)),
+             _w('steps taken = ' + str(it))]
     d = _diffs(xs)
     r = _shrink(d)
     _seqrows(d, r, lines)
@@ -845,12 +859,12 @@ def t_fixed_diag():
     if ok:
         lines.append('fixed pt x = ' + _f9(x))
     elif blew:
-        lines.append('no fixed point reached:')
-        lines.append('the iterates ran away.')
+        lines.append(_warn('no fixed point reached:'))
+        lines.append(_warn('the iterates ran away.'))
     else:
         lines.append('stopped at x = ' + _f9(x))
     if gp is None:
-        lines.append("g'(x) unavailable")
+        lines.append(_warn("g'(x) unavailable"))
     else:
         lines.append("g'(x) = " + _f9(gp))
         lines.append("|g'| = " + _f9(abs(gp)))
@@ -861,12 +875,12 @@ def t_fixed_diag():
                 lines.append("g' = 0 here, so convergence")
                 lines.append('is second order.')
             else:
-                lines.append('Fixed point iteration is')
-                lines.append("FIRST ORDER: r tends to g'.")
+                lines.append(_w('Fixed point iteration is'))
+                lines.append(_w("FIRST ORDER: r tends to g'."))
         else:
-            lines.append("|g'| > 1 so the iteration")
-            lines.append('diverges. Rearrange x=g(x)')
-            lines.append('a different way, or relax it.')
+            lines.append(_warn("|g'| > 1 so the iteration"))
+            lines.append(_warn('diverges. Rearrange x=g(x)'))
+            lines.append(_warn('a different way, or relax it.'))
     _pages('Fixed-point diagnosis', lines)
 
 
@@ -874,7 +888,7 @@ def t_fixed_diag():
 def t_relax():
     g = _askfn('g(x)= (x=g(x))')
     if g is None:
-        _show('Relaxation', ['Bad function'])
+        _show('Relaxation', [_warn('Bad function')])
         return
     x0 = _asknum('start x0=')
     if x0 is None:
@@ -885,8 +899,8 @@ def t_relax():
     tol = _asknum('accuracy [1e-10]')
     if tol is None or tol <= 0:
         tol = 1e-10
-    lines = ['x(n+1) = x(n) + L(g(x(n))-x(n))',
-             'L = ' + _fn(lam) + ' (L=1 is plain iteration)']
+    lines = [_w('x(n+1) = x(n) + L(g(x(n))-x(n))'),
+             _w('L = ' + _fn(lam) + ' (L=1 is plain iteration)')]
     x = x0
     xs = [x0]
     rows = []
@@ -916,7 +930,7 @@ def t_relax():
     if ok:
         lines.append('fixed pt x = ' + _f9(x))
     elif blew:
-        lines.append('diverges with this L.')
+        lines.append(_warn('diverges with this L.'))
     else:
         lines.append('stopped at x = ' + _f9(x))
     gp = _gprime(g, x)
@@ -924,20 +938,20 @@ def t_relax():
         gg = 1.0 + lam * (gp - 1.0)
         lines.append("g'(x) = " + _f9(gp))
         lines.append("G(x) = x + L(g(x)-x), so")
-        lines.append("G'(x) = 1 + L(g'(x)-1)")
+        lines.append(_w("G'(x) = 1 + L(g'(x)-1)"))
         lines.append("G' = " + _f9(gg))
         if abs(gg) < 1.0:
             lines.append("|G'| < 1: this L converges.")
         else:
-            lines.append("|G'| >= 1: this L fails.")
+            lines.append(_warn("|G'| >= 1: this L fails."))
         if gp != 1.0:
             best = 1.0 / (1.0 - gp)
             lines.append('suggested L = ' + _f9(best))
-            lines.append('that choice makes the')
-            lines.append('derivative zero: the fastest')
-            lines.append('convergence available here.')
+            lines.append(_w('that choice makes the'))
+            lines.append(_w('derivative zero: the fastest'))
+            lines.append(_w('convergence available here.'))
         else:
-            lines.append("g' = 1: no L helps.")
+            lines.append(_warn("g' = 1: no L helps."))
     _pages('Relaxation', lines)
 
 
@@ -945,7 +959,7 @@ def t_relax():
 def t_cobweb():
     g = _askfn('g(x)= (x=g(x))')
     if g is None:
-        _show('Iteration diagram', ['Bad function'])
+        _show('Iteration diagram', [_warn('Bad function')])
         return
     x0 = _asknum('start x0=')
     if x0 is None:
@@ -975,7 +989,7 @@ def t_cobweb():
         x = y
         k += 1
     if not gs:
-        _show('Iteration diagram', ['g(x0) could not be evaluated.'])
+        _show('Iteration diagram', [_warn('g(x0) could not be evaluated.')])
         return
     lo, hi = casutil.nice_range(xs, 0.15)
     fr = casutil.frame(lo, hi, lo, hi)
@@ -1007,32 +1021,32 @@ def t_cobweb():
     casutil.marker(fr, xs[0], xs[0], casui.BLACK, 2)
     casutil.chart_hold('grey y=x, blue y=g(x), red path')
     gp = _gprime(g, xs[len(xs) - 1])
-    lines = ['g(x)=' + caseng.tostr(g), 'x0=' + _fn(x0),
-             'steps drawn = ' + str(len(gs))]
+    lines = [_w('g(x)=' + caseng.tostr(g)), _w('x0=' + _fn(x0)),
+             _w('steps drawn = ' + str(len(gs)))]
     if gp is None:
-        lines.append("g' unavailable, so the shape")
-        lines.append('cannot be named.')
+        lines.append(_warn("g' unavailable, so the shape"))
+        lines.append(_warn('cannot be named.'))
     else:
         lines.append("g'(x) = " + _f9(gp))
         if gp > 0:
             lines.append('STAIRCASE diagram:')
-            lines.append("g' > 0, so every step moves")
-            lines.append('the same way and the path')
-            lines.append('climbs like steps.')
+            lines.append(_w("g' > 0, so every step moves"))
+            lines.append(_w('the same way and the path'))
+            lines.append(_w('climbs like steps.'))
         elif gp < 0:
             lines.append('COBWEB diagram:')
-            lines.append("g' < 0, so the iterates")
-            lines.append('alternate either side of the')
-            lines.append('fixed point and the path')
-            lines.append('spirals into a box.')
+            lines.append(_w("g' < 0, so the iterates"))
+            lines.append(_w('alternate either side of the'))
+            lines.append(_w('fixed point and the path'))
+            lines.append(_w('spirals into a box.'))
         else:
             lines.append("g' = 0: one step lands on it.")
         if abs(gp) < 1.0:
             lines.append("|g'| < 1: the path closes in")
             lines.append('on the fixed point (converges).')
         else:
-            lines.append("|g'| > 1: the path runs away")
-            lines.append('from it (diverges).')
+            lines.append(_warn("|g'| > 1: the path runs away"))
+            lines.append(_warn('from it (diverges).'))
     rows = []
     i = 0
     while i < len(xs):
@@ -1119,7 +1133,7 @@ def _polystr(c, var):
 def t_newton_fwd():
     ys = _asklist('y values (equal spacing)')
     if ys is None or len(ys) < 2:
-        _show('Forward differences', ['Need at least 2 y values.'])
+        _show('Forward differences', [_warn('Need at least 2 y values.')])
         return
     if len(ys) > 10:
         ys = ys[:10]
@@ -1142,20 +1156,20 @@ def t_newton_fwd():
             break
         rows.append(cur)
         k += 1
-    lines = ['x0=' + _fn(x0) + ' h=' + _fn(h),
+    lines = [_w('x0=' + _fn(x0) + ' h=' + _fn(h)),
              's = (x - x0)/h',
-             'p = y0 + s.D1 + s(s-1)/2! D2 + ...',
-             '-- difference table --']
+             _w('p = y0 + s.D1 + s(s-1)/2! D2 + ...'),
+             _w('-- difference table --')]
     k = 0
     while k < len(rows):
         tag = 'y :' if k == 0 else 'D' + str(k) + ':'
-        lines.append(tag + ' ' + ' '.join([_fn(v) for v in rows[k]]))
+        lines.append(_w(tag + ' ' + ' '.join([_fn(v) for v in rows[k]])))
         k += 1
-    lines.append('-- leading differences --')
+    lines.append(_w('-- leading differences --'))
     k = 0
     while k < len(rows):
         nm = 'y0' if k == 0 else 'D' + str(k)
-        lines.append(nm + ' = ' + _fn(rows[k][0]))
+        lines.append(_w(nm + ' = ' + _fn(rows[k][0])))
         k += 1
     # build p(s) = sum D_k * C(s, k), then substitute s = (x - x0)/h
     ps = [0.0]
@@ -1186,11 +1200,11 @@ def t_newton_fwd():
             tot += rows[k][0] * cf
             cf = cf * (s - k) / (k + 1)
             k += 1
-        lines.append('s = ' + _fn(s))
+        lines.append(_w('s = ' + _fn(s)))
         lines.append('p(' + _fn(xq) + ') = ' + _f9(tot))
         if s < 0 or s > len(ys) - 1:
-            lines.append('warning: that x is outside')
-            lines.append('the table (extrapolation).')
+            lines.append(_warn('warning: that x is outside'))
+            lines.append(_warn('the table (extrapolation).'))
     _pages('Forward differences', lines)
 
 
@@ -1210,12 +1224,12 @@ def t_err_prop():
         return
     da = abs(da)
     db = abs(db)
-    lines = ['a = ' + _fn(a) + ' +/- ' + _fn(da),
-             'b = ' + _fn(b) + ' +/- ' + _fn(db),
-             'sums/differences: ADD the',
-             'absolute errors.',
-             'products/quotients: ADD the',
-             'relative errors.']
+    lines = [_w('a = ' + _fn(a) + ' +/- ' + _fn(da)),
+             _w('b = ' + _fn(b) + ' +/- ' + _fn(db)),
+             _w('sums/differences: ADD the'),
+             _w('absolute errors.'),
+             _w('products/quotients: ADD the'),
+             _w('relative errors.')]
     ra = abs(da / a) if a != 0 else None
     rb = abs(db / b) if b != 0 else None
     lines.append('rel(a) = ' + (_f9(ra) if ra is not None else 'a=0'))
@@ -1227,32 +1241,32 @@ def t_err_prop():
         if val != 0:
             lines.append('rel(' + tag + ') = ' + _f9(abs(es / val)))
         else:
-            lines.append('rel(' + tag + ') = infinite (result 0)')
+            lines.append(_warn('rel(' + tag + ') = infinite (result 0)'))
     if ra is not None and rb is not None:
         rr = ra + rb
         for tag, val in [('a*b', a * b), ('a/b', a / b if b != 0 else None)]:
             if val is None:
-                lines.append(tag + ' = undefined (b=0)')
+                lines.append(_warn(tag + ' = undefined (b=0)'))
                 continue
             lines.append(tag + ' = ' + _f9(val))
             lines.append('err(' + tag + ') = ' + _f9(abs(val) * rr))
             lines.append('rel(' + tag + ') = ' + _f9(rr))
     else:
-        lines.append('a or b is 0: no relative error')
-        lines.append('for the product or quotient.')
+        lines.append(_warn('a or b is 0: no relative error'))
+        lines.append(_warn('for the product or quotient.'))
     # U3/U5: the arrangement of a calculation decides whether it survives
     if abs(a - b) < 10.0 * es and es > 0:
-        lines.append('WARNING: a-b subtracts nearly')
-        lines.append('equal numbers, so its relative')
-        lines.append('error is huge. Rearrange the')
-        lines.append('calculation to avoid it.')
+        lines.append(_warn('WARNING: a-b subtracts nearly'))
+        lines.append(_warn('equal numbers, so its relative'))
+        lines.append(_warn('error is huge. Rearrange the'))
+        lines.append(_warn('calculation to avoid it.'))
     _pages('Error propagation', lines)
 
 
 def t_err_fx():
     f = _askfn('f(x)=')
     if f is None:
-        _show('Error in f(x)', ['Bad function'])
+        _show('Error in f(x)', [_warn('Bad function')])
         return
     x0 = _asknum('x=')
     if x0 is None:
@@ -1264,18 +1278,18 @@ def t_err_fx():
     try:
         fv = _ev(f, x0)
     except:
-        _show('Error in f(x)', ['eval error'])
+        _show('Error in f(x)', [_warn('eval error')])
         return
     gp = _gprime(f, x0)
-    lines = ['f(x)=' + caseng.tostr(f),
-             'x = ' + _fn(x0) + ' +/- ' + _fn(dx),
+    lines = [_w('f(x)=' + caseng.tostr(f)),
+             _w('x = ' + _fn(x0) + ' +/- ' + _fn(dx)),
              'f(x) = ' + _f9(fv)]
     if gp is None:
-        lines.append("f'(x) unavailable")
+        lines.append(_warn("f'(x) unavailable"))
     else:
         est = abs(gp) * dx
         lines.append("f'(x) = " + _f9(gp))
-        lines.append("error in f = |f'(x)| * dx")
+        lines.append(_w("error in f = |f'(x)| * dx"))
         lines.append('abs err = ' + _f9(est))
         if fv != 0:
             lines.append('rel err = ' + _f9(abs(est / fv)))
@@ -1285,15 +1299,15 @@ def t_err_fx():
         hi = _ev(f, x0 + dx)
         w = lo if lo < hi else hi
         z = hi if hi > lo else lo
-        lines.append('f(x-dx) = ' + _f9(lo))
-        lines.append('f(x+dx) = ' + _f9(hi))
+        lines.append(_w('f(x-dx) = ' + _f9(lo)))
+        lines.append(_w('f(x+dx) = ' + _f9(hi)))
         lines.append('actual range ' + _f9(w) + ' to ' + _f9(z))
         act = abs(hi - fv)
         if abs(lo - fv) > act:
             act = abs(lo - fv)
         lines.append('largest actual change = ' + _f9(act))
     except:
-        lines.append('endpoints not evaluable')
+        lines.append(_warn('endpoints not evaluable'))
     _pages('Error in f(x)', lines)
 
 
@@ -1319,23 +1333,23 @@ def t_chop():
     ch = math.floor(scaled) if v >= 0 else math.ceil(scaled)
     chop = ch * u
     rnd = round(v, dp)
-    lines = ['value = ' + _f9(v),
-             'to ' + str(dp) + ' d.p., unit u = ' + _f9(u),
+    lines = [_w('value = ' + _f9(v)),
+             _w('to ' + str(dp) + ' d.p., unit u = ' + _f9(u)),
              'chop = ' + _f9(chop),
              'round = ' + _f9(rnd),
              'chop error = ' + _f9(v - chop),
              'round error = ' + _f9(v - rnd),
-             'chopping throws the rest away,',
-             'so its error is one-sided:',
+             _w('chopping throws the rest away,'),
+             _w('so its error is one-sided:'),
              'chop max err = ' + _f9(u),
              'chop mean err = ' + _f9(u / 2.0),
-             'rounding goes to the nearer,',
-             'so its error is two-sided:',
+             _w('rounding goes to the nearer,'),
+             _w('so its error is two-sided:'),
              'round max err = ' + _f9(u / 2.0),
              'round mean err = 0 (signed)',
              'round mean |err| = ' + _f9(u / 4.0),
-             'chopping biases a long sum;',
-             'rounding does not.']
+             _w('chopping biases a long sum;'),
+             _w('rounding does not.')]
     _pages('Chop vs round', lines)
 
 

@@ -10,6 +10,8 @@ _askint = casutil.askint
 _askexpr = casutil.askexpr
 _fn = casutil.fmt
 _show = casutil.show
+_w = casutil.w             # method / intermediate steps, hidden in answer mode
+_warn = casutil.warn       # caveat about the answer, shown in both modes
 _ncr = casutil.ncr
 _erf = casutil.erf
 _phi = casutil.phi
@@ -145,7 +147,7 @@ def t_drv():
     if ps is None:
         return
     if len(xs) != len(ps):
-        _show('Discrete RV', ['Lists differ in length'])
+        _show('Discrete RV', [_warn('Lists differ in length')])
         return
     sp = sum(ps)
     ex = 0.0
@@ -168,13 +170,13 @@ def t_pois():
         return
     pmf = _poispmf(mu, k)
     cdf = casutil.poisson_cdf(mu, k)   # one pass, not k passes
-    _show('Poisson', ['mu = ' + _fn(mu) + '  k = ' + str(k),
+    _show('Poisson', [_w('mu = ' + _fn(mu) + '  k = ' + str(k)),
                       'P(X=k) = ' + _fn(pmf),
                       'P(X<=k) = ' + _fn(cdf),
                       'P(X>=k) = ' + _fn(1.0 - cdf + pmf),
                       'mean = ' + _fn(mu),
                       'variance = ' + _fn(mu),
-                      '(Poisson mean = variance)',
+                      _w('(Poisson mean = variance)'),
                       'SD = ' + _fn(math.sqrt(mu))])
 
 def t_bin():
@@ -188,11 +190,11 @@ def t_bin():
     if k is None or k < 0 or k > n:
         return
     if n > 5000:
-        _show('Binomial', ['n too large (max 5000).'])
+        _show('Binomial', [_warn('n too large (max 5000).')])
         return
     pmf = _binpmf(n, p, k)
     cdf = casutil.binom_cdf(n, p, k)
-    lines = ['n=' + str(n) + ' p=' + _fn(p) + ' k=' + str(k),
+    lines = [_w('n=' + str(n) + ' p=' + _fn(p) + ' k=' + str(k)),
              'P(X=k) = ' + _fn(pmf),
              'P(X<=k) = ' + _fn(cdf),
              'P(X>=k) = ' + _fn(1.0 - cdf + pmf),
@@ -202,8 +204,8 @@ def t_bin():
     # approximation; say so only when the usual conditions actually hold
     if n >= 50 and p <= 0.1:
         mu = n * p
-        lines.append('n>=50, p<=0.1 so Poisson')
-        lines.append(' approx with mu = np = ' + _fn(mu))
+        lines.append(_w('n>=50, p<=0.1 so Poisson'))
+        lines.append(_w(' approx with mu = np = ' + _fn(mu)))
         lines.append('Pois P(X=k) = ' + _fn(_poispmf(mu, k)))
         lines.append('Pois P(X<=k) = ' + _fn(casutil.poisson_cdf(mu, k)))
     _show('Binomial', lines)
@@ -211,7 +213,7 @@ def t_bin():
 def t_geom():
     p = _asknum('p success:')
     if p is None or p <= 0 or p > 1:
-        _show('Geometric', ['Need 0 < p <= 1'])
+        _show('Geometric', [_warn('Need 0 < p <= 1')])
         return
     r = _askint('value r (>=1):')
     if r is None or r < 1:
@@ -219,13 +221,13 @@ def t_geom():
     q = 1.0 - p
     pmf = q ** (r - 1) * p
     upto = 1.0 - q ** r
-    _show('Geometric', ['X = trial of 1st success',
-                        'p = ' + _fn(p) + '  r = ' + str(r),
-                        'P(X=r) = (1-p)^(r-1) p',
+    _show('Geometric', [_w('X = trial of 1st success'),
+                        _w('p = ' + _fn(p) + '  r = ' + str(r)),
+                        _w('P(X=r) = (1-p)^(r-1) p'),
                         'P(X=r) = ' + _fn(pmf),
-                        'P(X<=r) = 1-(1-p)^r',
+                        _w('P(X<=r) = 1-(1-p)^r'),
                         'P(X<=r) = ' + _fn(upto),
-                        'P(X>r) = (1-p)^r',
+                        _w('P(X>r) = (1-p)^r'),
                         'P(X>r) = ' + _fn(q ** r),
                         'mean 1/p = ' + _fn(1.0 / p),
                         'var (1-p)/p^2 = ' + _fn(q / (p * p)),
@@ -237,13 +239,13 @@ def t_dunif():
         return
     b = _askint('highest value b:')
     if b is None or b < a:
-        _show('Discrete uniform', ['Need b >= a'])
+        _show('Discrete uniform', [_warn('Need b >= a')])
         return
     n = b - a + 1
     mean = (a + b) / 2.0
     var = (n * n - 1) / 12.0
-    _show('Discrete uniform', ['X uniform on ' + str(a) + '..' + str(b),
-                               'n values = ' + str(n),
+    _show('Discrete uniform', [_w('X uniform on ' + str(a) + '..' + str(b)),
+                               _w('n values = ' + str(n)),
                                'P(X=x) = 1/n = ' + _fn(1.0 / n),
                                'mean (a+b)/2 = ' + _fn(mean),
                                'var (n^2-1)/12 = ' + _fn(var),
@@ -252,7 +254,7 @@ def t_dunif():
 def t_normplot():
     xs = _asklist('Data list:')
     if xs is None or len(xs) < 3:
-        _show('Normal plot', ['Need at least 3 values.'])
+        _show('Normal plot', [_warn('Need at least 3 values.')])
         return
     n = len(xs)
     srt = list(xs)
@@ -265,7 +267,7 @@ def t_normplot():
         zs.append(_invphi((i + 0.5) / n))
         i += 1
     m, _sx, _sy, Sxy, Sxx, Syy = _stats2(zs, srt)
-    lines = ['n = ' + str(n), 'z_i = invphi((i-0.5)/n)']
+    lines = [_w('n = ' + str(n)), _w('z_i = invphi((i-0.5)/n)')]
     if Sxx > 0 and Syy > 0:
         r = Sxy / math.sqrt(Sxx * Syy)
         b = Sxy / Sxx
@@ -279,8 +281,8 @@ def t_normplot():
         elif r > 0.96:
             lines.append('fairly close to a line')
         else:
-            lines.append('clearly curved: Normal')
-            lines.append(' looks doubtful')
+            lines.append(_warn('clearly curved: Normal'))
+            lines.append(_warn(' looks doubtful'))
     _show('Normal plot', lines)
     xlo, xhi = casutil.nice_range(zs)
     ylo, yhi = casutil.nice_range(srt)
@@ -312,7 +314,9 @@ def t_norm():
     za = (a - mu) / sg
     zb = (b - mu) / sg
     pr = _phi(zb) - _phi(za)
-    _show('Normal P(a<X<b)', ['mu=' + _fn(mu) + ' sigma=' + _fn(sg), 'z(a) = ' + _fn(za), 'z(b) = ' + _fn(zb), 'P(a<X<b) = ' + _fn(pr)])
+    _show('Normal P(a<X<b)', [_w('mu=' + _fn(mu) + ' sigma=' + _fn(sg)),
+                              _w('z(a) = ' + _fn(za)), _w('z(b) = ' + _fn(zb)),
+                              'P(a<X<b) = ' + _fn(pr)])
 
 def t_std():
     mu = _asknum('mean mu:')
@@ -325,7 +329,9 @@ def t_std():
     if x is None:
         return
     z = (x - mu) / sg
-    _show('Standardise', ['z = (x-mu)/sigma', 'z = ' + _fn(z), 'P(X<x) = ' + _fn(_phi(z)), 'P(X>x) = ' + _fn(1.0 - _phi(z))])
+    _show('Standardise', [_w('z = (x-mu)/sigma'), 'z = ' + _fn(z),
+                          'P(X<x) = ' + _fn(_phi(z)),
+                          'P(X>x) = ' + _fn(1.0 - _phi(z))])
 
 def t_inv():
     mu = _asknum('mean mu:')
@@ -339,7 +345,8 @@ def t_inv():
         return
     z = _invphi(p)
     x = mu + z * sg
-    _show('Inverse Normal', ['P(X<x) = ' + _fn(p), 'z = ' + _fn(z), 'x = ' + _fn(x)])
+    _show('Inverse Normal', [_w('P(X<x) = ' + _fn(p)), 'z = ' + _fn(z),
+                             'x = ' + _fn(x)])
 
 def _stats2(xs, ys):
     n = len(xs)
@@ -447,47 +454,49 @@ def _corr_test(lines, coef, name, n, tab, tabmin, alpha, tail, src):
     # shared critical-value comparison for both correlation coefficients
     a1 = alpha if tail != 3 else alpha / 2.0
     if tail == 1:
-        lines.append('H1: positive correlation')
+        lines.append(_w('H1: positive correlation'))
     elif tail == 2:
-        lines.append('H1: negative correlation')
+        lines.append(_w('H1: negative correlation'))
     else:
-        lines.append('H1: some correlation')
-    lines.append('H0: no correlation')
-    lines.append('alpha = ' + _fn(alpha * 100.0) + '% ' +
-                 ('2-tail' if tail == 3 else '1-tail'))
-    lines.append('one-tail level used = ' + _fn(a1 * 100.0) + '%')
+        lines.append(_w('H1: some correlation'))
+    lines.append(_w('H0: no correlation'))
+    lines.append(_w('alpha = ' + _fn(alpha * 100.0) + '% ' +
+                 ('2-tail' if tail == 3 else '1-tail')))
+    lines.append(_w('one-tail level used = ' + _fn(a1 * 100.0) + '%'))
     col = _corr_col(a1)
     if col < 0:
-        lines.append('No table column for that')
-        lines.append(' level (5/2.5/1/0.5% only)')
+        lines.append(_warn('No table column for that'))
+        lines.append(_warn(' level (5/2.5/1/0.5% only)'))
         return
     idx = n - tabmin
     if idx < 0 or idx >= len(tab):
-        lines.append('n = ' + str(n) + ' is outside the')
-        lines.append(' table (' + str(tabmin) + ' to ' +
-                     str(tabmin + len(tab) - 1) + ')')
+        lines.append(_warn('n = ' + str(n) + ' is outside the'))
+        lines.append(_warn(' table (' + str(tabmin) + ' to ' +
+                     str(tabmin + len(tab) - 1) + ')'))
         return
     cv = tab[idx][col]
     if cv is None:
-        lines.append('That level is unreachable')
-        lines.append(' with n = ' + str(n))
+        lines.append(_warn('That level is unreachable'))
+        lines.append(_warn(' with n = ' + str(n)))
         return
     lines.append('crit ' + name + ' = ' + _fn(cv))
-    lines.append(src)
+    lines.append(_w(src))
     if tail == 1:
         rej = coef >= cv
-        lines.append('reject if ' + name + ' >= ' + _fn(cv))
+        lines.append(_w('reject if ' + name + ' >= ' + _fn(cv)))
     elif tail == 2:
         rej = coef <= -cv
-        lines.append('reject if ' + name + ' <= -' + _fn(cv))
+        lines.append(_w('reject if ' + name + ' <= -' + _fn(cv)))
     else:
         rej = abs(coef) >= cv
-        lines.append('reject if |' + name + '| >= ' + _fn(cv))
+        lines.append(_w('reject if |' + name + '| >= ' + _fn(cv)))
     if rej:
         lines.append('REJECT H0: correlation')
         lines.append(' is significant')
     else:
-        lines.append('accept H0: not significant')
+        # "not significant" is a caveat, not just an answer: it is the line that
+        # stops a big-looking r being read as evidence
+        lines.append(_warn('accept H0: not significant'))
 
 def _ask_corr_test():
     # (alpha, tail) or (None, None) when the test is to be skipped
@@ -509,19 +518,19 @@ def t_pmcc():
     if ys is None:
         return
     if len(xs) != len(ys):
-        _show('PMCC', ['Lists differ in length'])
+        _show('PMCC', [_warn('Lists differ in length')])
         return
     n, sx, sy, Sxy, Sxx, Syy = _stats2(xs, ys)
     if Sxx <= 0 or Syy <= 0:
-        _show('PMCC', ['Zero variance'])
+        _show('PMCC', [_warn('Zero variance')])
         return
     r = Sxy / math.sqrt(Sxx * Syy)
     alpha, tail = _ask_corr_test()
-    lines = ['n = ' + str(n), 'Sxy = ' + _fn(Sxy), 'Sxx = ' + _fn(Sxx),
-             'Syy = ' + _fn(Syy), 'r = ' + _fn(r), 'r^2 = ' + _fn(r * r)]
+    lines = [_w('n = ' + str(n)), _w('Sxy = ' + _fn(Sxy)), _w('Sxx = ' + _fn(Sxx)),
+             _w('Syy = ' + _fn(Syy)), 'r = ' + _fn(r), 'r^2 = ' + _fn(r * r)]
     if alpha is not None:
         if n < 3:
-            lines.append('Need n >= 3 to test.')
+            lines.append(_warn('Need n >= 3 to test.'))
         else:
             _corr_test(lines, r, 'r', n, _RCRIT, _RCRIT_MIN, alpha, tail,
                        '(pmcc table, = t/sqrt(t^2+n-2))')
@@ -530,7 +539,7 @@ def t_pmcc():
             if abs(r) < 1.0:
                 tst = r * math.sqrt((n - 2) / (1.0 - r * r))
                 p1 = _t_sf(abs(tst), n - 2)
-                lines.append('t = r sqrt((n-2)/(1-r^2))')
+                lines.append(_w('t = r sqrt((n-2)/(1-r^2))'))
                 lines.append('t = ' + _fn(tst) + ' on ' + str(n - 2) + ' df')
                 lines.append('p (1-tail) = ' + _fp(p1))
                 lines.append('p (2-tail) = ' + _fp(2.0 * p1))
@@ -583,17 +592,17 @@ def t_spear():
     if ys is None:
         return
     if len(xs) != len(ys):
-        _show('Spearman', ['Lists differ in length'])
+        _show('Spearman', [_warn('Lists differ in length')])
         return
     rx = _ranks(xs)
     ry = _ranks(ys)
     n, sx, sy, Sxy, Sxx, Syy = _stats2(rx, ry)
     if Sxx <= 0 or Syy <= 0:
-        _show('Spearman', ['Tied to one rank'])
+        _show('Spearman', [_warn('Tied to one rank')])
         return
     rs = Sxy / math.sqrt(Sxx * Syy)
     alpha, tail = _ask_corr_test()
-    lines = ['n = ' + str(n), '(PMCC of ranks,', ' ties averaged)',
+    lines = [_w('n = ' + str(n)), _w('(PMCC of ranks,'), _w(' ties averaged)'),
              'rs = ' + _fn(rs)]
     tied = False
     i = 0
@@ -605,8 +614,8 @@ def t_spear():
         _corr_test(lines, rs, 'rs', n, _SCRIT, _SCRIT_MIN, alpha, tail,
                    '(Spearman rs table, exact)')
         if tied:
-            lines.append('NOTE: there are ties, so')
-            lines.append(' the table is approximate')
+            lines.append(_warn('NOTE: there are ties, so'))
+            lines.append(_warn(' the table is approximate'))
     _show('Spearman rs', lines)
 
 def t_reg():
@@ -617,16 +626,16 @@ def t_reg():
     if ys is None:
         return
     if len(xs) != len(ys):
-        _show('Regression', ['Lists differ in length'])
+        _show('Regression', [_warn('Lists differ in length')])
         return
     n, sx, sy, Sxy, Sxx, Syy = _stats2(xs, ys)
     if Sxx <= 0:
-        _show('Regression', ['Zero x variance'])
+        _show('Regression', [_warn('Zero x variance')])
         return
     b = Sxy / Sxx
     a = sy / n - b * sx / n
     xv = _asknum('predict at x:')
-    lines = ['y = a + b x', 'a = ' + _fn(a), 'b = ' + _fn(b)]
+    lines = [_w('y = a + b x'), 'a = ' + _fn(a), 'b = ' + _fn(b)]
     if Syy > 0:
         r = Sxy / math.sqrt(Sxx * Syy)
         lines.append('r = ' + _fn(r))
@@ -639,23 +648,23 @@ def t_reg():
         lines.append('x on y: x = c + d y')
         lines.append('c = ' + _fn(cc))
         lines.append('d = ' + _fn(d))
-        lines.append('use y on x to predict y,')
-        lines.append(' x on y to predict x')
+        lines.append(_warn('use y on x to predict y,'))
+        lines.append(_warn(' x on y to predict x'))
         lines.append('means point (' + _fn(sx / n) + ', ' + _fn(sy / n) + ')')
     if xv is not None:
         lines.append('at x=' + _fn(xv) + ': y=' + _fn(a + b * xv))
     # residuals y - (a + bx): the model-fit check the audit flagged as missing
-    lines.append('residuals y-(a+bx):')
+    lines.append(_w('residuals y-(a+bx):'))
     i = 0
     ssr = 0.0
     while i < n:
         e = ys[i] - (a + b * xs[i])
         ssr += e * e
         if i < 10:
-            lines.append(' x=' + _fn(xs[i]) + ' e=' + _fn(e))
+            lines.append(_w(' x=' + _fn(xs[i]) + ' e=' + _fn(e)))
         i += 1
     if n > 10:
-        lines.append(' (first 10 of ' + str(n) + ')')
+        lines.append(_w(' (first 10 of ' + str(n) + ')'))
     lines.append('sum of e^2 = ' + _fn(ssr))
     _show('Least squares', lines)
 
@@ -677,9 +686,9 @@ def _chi_verdict(lines, chi, df, a):
     # and the association test can never disagree about the decision rule
     cv = _chi2_crit(df, a)
     p = _chi2_sf(chi, df)
-    lines.append('alpha = ' + _fn(a * 100.0) + '%')
+    lines.append(_w('alpha = ' + _fn(a * 100.0) + '%'))
     lines.append('crit = ' + _fn(cv))
-    lines.append('(chi^2 upper tail, df ' + str(df) + ')')
+    lines.append(_w('(chi^2 upper tail, df ' + str(df) + ')'))
     lines.append('p-value = ' + _fp(p))
     if chi > cv:
         lines.append('chi^2 > crit: reject H0')
@@ -694,7 +703,7 @@ def t_chi():
     if E is None:
         return
     if len(O) != len(E):
-        _show('Chi-squared', ['Lists differ in length'])
+        _show('Chi-squared', [_warn('Lists differ in length')])
         return
     # The degrees of freedom are cells - 1 - (parameters estimated from the
     # data). This used to be hard-coded as cells - 1, which is right only when
@@ -705,33 +714,33 @@ def t_chi():
     if m is None:
         m = 0                      # blank means "none estimated", the common case
     if m < 0:
-        _show('Chi-squared', ['Params cannot be negative'])
+        _show('Chi-squared', [_warn('Params cannot be negative')])
         return
     al = _asknum('alpha % (5):')
     if al is None:
         al = 5.0
     if al <= 0 or al >= 100:
-        _show('Chi-squared', ['Need 0 < alpha < 100'])
+        _show('Chi-squared', [_warn('Need 0 < alpha < 100')])
         return
     chi = 0.0
     i = 0
     while i < len(O):
         if E[i] <= 0:
-            _show('Chi-squared', ['Expected has 0 cell'])
+            _show('Chi-squared', [_warn('Expected has 0 cell')])
             return
         chi += (O[i] - E[i]) ** 2 / E[i]
         i += 1
     df = len(O) - 1 - m
     if df < 1:
-        _show('Chi-squared GOF', ['cells = ' + str(len(O)),
-                                  'params estimated = ' + str(m),
-                                  'df = ' + str(df) + ' is not >= 1',
-                                  'Too few cells for this',
-                                  'many fitted parameters.'])
+        _show('Chi-squared GOF', [_w('cells = ' + str(len(O))),
+                                  _w('params estimated = ' + str(m)),
+                                  _warn('df = ' + str(df) + ' is not >= 1'),
+                                  _warn('Too few cells for this'),
+                                  _warn('many fitted parameters.')])
         return
-    lines = ['cells = ' + str(len(O)),
-             'params estimated = ' + str(m),
-             'df = cells-1-params',
+    lines = [_w('cells = ' + str(len(O))),
+             _w('params estimated = ' + str(m)),
+             _w('df = cells-1-params'),
              'df = ' + str(df),
              'chi^2 = ' + _fn(chi)]
     small = 0
@@ -741,8 +750,8 @@ def t_chi():
             small += 1
         i += 1
     if small:
-        lines.append('WARN: ' + str(small) + ' cell(s) E<5;')
-        lines.append(' pool classes first')
+        lines.append(_warn('WARN: ' + str(small) + ' cell(s) E<5;'))
+        lines.append(_warn(' pool classes first'))
     _chi_verdict(lines, chi, df, al / 100.0)
     _show('Chi-squared GOF', lines)
 
@@ -761,8 +770,8 @@ def t_assoc():
         if row is None:
             return
         if len(row) != c:
-            _show('Association', ['Row ' + str(i + 1) + ' has ' + str(len(row)),
-                                  'values, expected ' + str(c)])
+            _show('Association', [_warn('Row ' + str(i + 1) + ' has ' + str(len(row))),
+                                  _warn('values, expected ' + str(c))])
             return
         obs.append(row)
         i += 1
@@ -770,7 +779,7 @@ def t_assoc():
     if al is None:
         al = 5.0
     if al <= 0 or al >= 100:
-        _show('Association', ['Need 0 < alpha < 100'])
+        _show('Association', [_warn('Need 0 < alpha < 100')])
         return
     rowt = []
     i = 0
@@ -779,7 +788,7 @@ def t_assoc():
         j = 0
         while j < c:
             if obs[i][j] < 0:
-                _show('Association', ['Counts must be >= 0'])
+                _show('Association', [_warn('Counts must be >= 0')])
                 return
             s += obs[i][j]
             j += 1
@@ -801,11 +810,11 @@ def t_assoc():
         tot += rowt[i]
         i += 1
     if tot <= 0:
-        _show('Association', ['Table total is 0'])
+        _show('Association', [_warn('Table total is 0')])
         return
     # E = row total * column total / grand total, which is what independence
     # predicts; the flat-list goodness-of-fit tool cannot form these at all
-    lines = ['H0: no association', 'grand total = ' + _fn(tot)]
+    lines = [_w('H0: no association'), _w('grand total = ' + _fn(tot))]
     chi = 0.0
     small = 0
     i = 0
@@ -814,25 +823,25 @@ def t_assoc():
         while j < c:
             e = rowt[i] * colt[j] / tot
             if e <= 0:
-                _show('Association', ['Zero expected frequency',
-                                      'in row ' + str(i + 1) + ' col ' + str(j + 1)])
+                _show('Association', [_warn('Zero expected frequency'),
+                                      _warn('in row ' + str(i + 1) + ' col ' + str(j + 1))])
                 return
             if e < 5:
                 small += 1
             chi += (obs[i][j] - e) ** 2 / e
-            lines.append('E[' + str(i + 1) + ',' + str(j + 1) + '] = ' + _fn(e) +
-                         '  O = ' + _fn(obs[i][j]))
+            lines.append(_w('E[' + str(i + 1) + ',' + str(j + 1) + '] = ' + _fn(e) +
+                         '  O = ' + _fn(obs[i][j])))
             j += 1
         i += 1
     df = (r - 1) * (c - 1)
-    lines.append('df = (r-1)(c-1) = ' + str(df))
+    lines.append(_w('df = (r-1)(c-1) = ' + str(df)))
     lines.append('chi^2 = ' + _fn(chi))
     if small:
-        lines.append('WARN: ' + str(small) + ' cell(s) E<5;')
-        lines.append(' combine rows or columns')
+        lines.append(_warn('WARN: ' + str(small) + ' cell(s) E<5;'))
+        lines.append(_warn(' combine rows or columns'))
     if r == 2 and c == 2:
-        lines.append('2x2: Yates correction not')
-        lines.append(' applied (not required)')
+        lines.append(_w('2x2: Yates correction not'))
+        lines.append(_w(' applied (not required)'))
     _chi_verdict(lines, chi, df, al / 100.0)
     if chi > _chi2_crit(df, al / 100.0):
         lines.append('evidence of association')
@@ -977,39 +986,40 @@ def _validity(pieces, lines):
     # the two defining properties of a pdf, each reported either way
     tot, exact = _moment(pieces, 0)
     if tot is None:
-        lines.append('Cannot integrate f here.')
+        lines.append(_warn('Cannot integrate f here.'))
         return False
-    lines.append('int f dx = ' + _fn(tot) + (' (exact)' if exact else ' (Simpson)'))
+    lines.append(_w('int f dx = ' + _fn(tot) +
+                 (' (exact)' if exact else ' (Simpson)')))
     ok = True
     if abs(tot - 1.0) > 5e-4:
         ok = False
-        lines.append('NOT a pdf: integral is not 1')
+        lines.append(_warn('NOT a pdf: integral is not 1'))
     mn, mx = _pdf_min(pieces, 120)
     if mn is None:
         ok = False
-        lines.append('NOT a pdf: f will not')
-        lines.append(' evaluate on this range')
+        lines.append(_warn('NOT a pdf: f will not'))
+        lines.append(_warn(' evaluate on this range'))
     elif mn < -1e-9:
         ok = False
-        lines.append('NOT a pdf: f(' + _fn(mx) + ') =')
-        lines.append(' ' + _fn(mn) + ', which is < 0')
+        lines.append(_warn('NOT a pdf: f(' + _fn(mx) + ') ='))
+        lines.append(_warn(' ' + _fn(mn) + ', which is < 0'))
     if ok:
         lines.append('valid pdf: YES')
     else:
-        lines.append('valid pdf: NO (results')
-        lines.append(' below assume it were)')
+        lines.append(_warn('valid pdf: NO (results'))
+        lines.append(_warn(' below assume it were)'))
     return ok
 
 def _moments_lines(pieces, lines):
     e1, x1 = _moment(pieces, 1)
     e2, x2 = _moment(pieces, 2)
     if e1 is None or e2 is None:
-        lines.append('Cannot integrate for E(X).')
+        lines.append(_warn('Cannot integrate for E(X).'))
         return
     var = e2 - e1 * e1
     lines.append('E(X) = ' + _fn(e1))
     lines.append('E(X^2) = ' + _fn(e2))
-    lines.append('Var(X) = E(X^2)-E(X)^2')
+    lines.append(_w('Var(X) = E(X^2)-E(X)^2'))
     lines.append('Var(X) = ' + _fn(var))
     lines.append('SD = ' + _fn(math.sqrt(var) if var > 0 else 0.0))
 
@@ -1052,7 +1062,7 @@ def _ask_pdf(title):
     if b is None:
         return None
     if b <= a:
-        _show(title, ['Need b > a.'])
+        _show(title, [_warn('Need b > a.')])
         return None
     return [_mkpiece(f, a, b)]
 
@@ -1062,7 +1072,7 @@ def t_pdf():
         return
     lo = pieces[0][1]
     hi = pieces[0][2]
-    lines = ['f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']']
+    lines = [_w('f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']')]
     # the moments are reported even when the check fails: finding E(X) after
     # solving for an unknown constant k is a normal exam step, and the header
     # line already says loudly whether f is a pdf
@@ -1079,7 +1089,7 @@ def t_cdf():
     lo = pieces[0][1]
     hi = pieces[0][2]
     F = pieces[0][3]
-    lines = ['f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']']
+    lines = [_w('f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']')]
     _validity(pieces, lines)
     if F is not None:
         # F(x) = int from a to x of f, i.e. the antiderivative shifted so
@@ -1090,17 +1100,17 @@ def t_cdf():
             lines.append('F(x) = ' + caseng.tostr(cascalc.tidy(expr)))
             lines.append(' for ' + _fn(lo) + ' <= x <= ' + _fn(hi))
         except:
-            lines.append('F(x): numeric only')
+            lines.append(_warn('F(x): numeric only'))
     else:
-        lines.append('F(x): numeric only')
+        lines.append(_warn('F(x): numeric only'))
     q1 = _quantile(pieces, 0.25)
     md = _quantile(pieces, 0.5)
     q3 = _quantile(pieces, 0.75)
     if md is None:
-        lines.append('Cannot invert F.')
+        lines.append(_warn('Cannot invert F.'))
         _show('cdf F(x)', lines)
         return
-    lines.append('solving F(x) = p:')
+    lines.append(_w('solving F(x) = p:'))
     lines.append('Q1 = ' + _fn(q1))
     lines.append('median = ' + _fn(md))
     lines.append('Q3 = ' + _fn(q3))
@@ -1141,7 +1151,7 @@ def t_pdfmode():
         return
     lo = pieces[0][1]
     hi = pieces[0][2]
-    lines = ['f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']']
+    lines = [_w('f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']')]
     _validity(pieces, lines)
     # coarse scan for the bracket, then a ternary search inside it. A scan is
     # used rather than solving f'(x) = 0 because the mode of an exam pdf is
@@ -1158,7 +1168,7 @@ def t_pdfmode():
             bi = i
         i += 1
     if best is None:
-        lines.append('f will not evaluate here.')
+        lines.append(_warn('f will not evaluate here.'))
         _show('Mode of a pdf', lines)
         return
     step = (hi - lo) / float(n)
@@ -1214,18 +1224,18 @@ def t_pdfpw():
         if hi is None:
             return
         if hi <= lo:
-            _show('Piecewise pdf', ['Piece ' + str(i + 1) + ': need to > from'])
+            _show('Piecewise pdf', [_warn('Piece ' + str(i + 1) + ': need to > from')])
             return
         if i > 0 and abs(lo - pieces[i - 1][2]) > 1e-9:
-            _show('Piecewise pdf', ['Piece ' + str(i + 1) + ' starts at ' + _fn(lo),
-                                    'but piece ' + str(i) + ' ended at ' +
-                                    _fn(pieces[i - 1][2]) + '.',
-                                    'Pieces must join up.'])
+            _show('Piecewise pdf', [_warn('Piece ' + str(i + 1) + ' starts at ' + _fn(lo)),
+                                    _warn('but piece ' + str(i) + ' ended at ' +
+                                    _fn(pieces[i - 1][2]) + '.'),
+                                    _warn('Pieces must join up.')])
             return
         pieces.append(_mkpiece(f, lo, hi))
         i += 1
-    lines = ['support [' + _fn(pieces[0][1]) + ', ' +
-             _fn(pieces[k - 1][2]) + '] in ' + str(k) + ' pieces']
+    lines = [_w('support [' + _fn(pieces[0][1]) + ', ' +
+             _fn(pieces[k - 1][2]) + '] in ' + str(k) + ' pieces')]
     _validity(pieces, lines)
     _moments_lines(pieces, lines)
     md = _quantile(pieces, 0.5)
@@ -1246,14 +1256,14 @@ def t_lincomb():
         return
     vx = _asknum('Var(X):')
     if vx is None or vx < 0:
-        _show('aX+bY+c', ['Var(X) must be >= 0'])
+        _show('aX+bY+c', [_warn('Var(X) must be >= 0')])
         return
     my = _asknum('E(Y):')
     if my is None:
         return
     vy = _asknum('Var(Y):')
     if vy is None or vy < 0:
-        _show('aX+bY+c', ['Var(Y) must be >= 0'])
+        _show('aX+bY+c', [_warn('Var(Y) must be >= 0')])
         return
     a = _asknum('a in aX+bY+c:')
     if a is None:
@@ -1268,32 +1278,32 @@ def t_lincomb():
     vw = a * a * vx + b * b * vy
     sw = math.sqrt(vw) if vw > 0 else 0.0
     lines = ['W = ' + _fn(a) + 'X' + _signed(b, 'Y') + _signed(c, ''),
-             'X, Y assumed INDEPENDENT',
-             'E(W) = aE(X)+bE(Y)+c',
+             _warn('X, Y assumed INDEPENDENT'),
+             _w('E(W) = aE(X)+bE(Y)+c'),
              'E(W) = ' + _fn(ew),
-             'Var(W) = a^2VarX+b^2VarY',
+             _w('Var(W) = a^2VarX+b^2VarY'),
              'Var(W) = ' + _fn(vw),
              'SD(W) = ' + _fn(sw),
              'E(X+Y) = ' + _fn(mx + my),
              'Var(X+Y) = ' + _fn(vx + vy),
              'E(X-Y) = ' + _fn(mx - my),
              'Var(X-Y) = ' + _fn(vx + vy),
-             'note Var(X-Y) ADDS the',
-             ' variances, never subtracts',
-             'If X,Y are Normal then W is',
-             ' Normal. The mean and var',
-             ' above hold for ANY indep',
-             ' X and Y.']
+             _w('note Var(X-Y) ADDS the'),
+             _w(' variances, never subtracts'),
+             _w('If X,Y are Normal then W is'),
+             _w(' Normal. The mean and var'),
+             _w(' above hold for ANY indep'),
+             _w(' X and Y.')]
     w = _asknum('P(W<w), w (blank skip):')
     if w is not None:
         if sw > 0:
             z = (w - ew) / sw
-            lines.append('assuming W Normal:')
-            lines.append('z = ' + _fn(z))
+            lines.append(_warn('assuming W Normal:'))
+            lines.append(_w('z = ' + _fn(z)))
             lines.append('P(W<w) = ' + _fn(_phi(z)))
             lines.append('P(W>w) = ' + _fn(1.0 - _phi(z)))
         else:
-            lines.append('SD is 0: W is the constant ' + _fn(ew))
+            lines.append(_warn('SD is 0: W is the constant ' + _fn(ew)))
     _show('aX+bY+c', lines)
 
 def t_nsum():
@@ -1302,7 +1312,7 @@ def t_nsum():
         return
     vx = _asknum('Var(X):')
     if vx is None or vx < 0:
-        _show('nX vs X1+..+Xn', ['Var(X) must be >= 0'])
+        _show('nX vs X1+..+Xn', [_warn('Var(X) must be >= 0')])
         return
     n = _askint('n:')
     if n is None or n < 1:
@@ -1312,25 +1322,25 @@ def t_nsum():
     # whose variances add. Same mean, different variance.
     vscale = n * n * vx
     vsum = n * vx
-    lines = ['n = ' + str(n),
-             '--- nX: ONE X, scaled ---',
+    lines = [_w('n = ' + str(n)),
+             _w('--- nX: ONE X, scaled ---'),
              'E(nX) = nE(X) = ' + _fn(n * mx),
-             'Var(nX) = n^2Var(X)',
+             _w('Var(nX) = n^2Var(X)'),
              'Var(nX) = ' + _fn(vscale),
              'SD(nX) = ' + _fn(math.sqrt(vscale) if vscale > 0 else 0.0),
-             '--- X1+..+Xn: n INDEP ---',
+             _w('--- X1+..+Xn: n INDEP ---'),
              'E(sum) = nE(X) = ' + _fn(n * mx),
-             'Var(sum) = nVar(X)',
+             _w('Var(sum) = nVar(X)'),
              'Var(sum) = ' + _fn(vsum),
              'SD(sum) = ' + _fn(math.sqrt(vsum) if vsum > 0 else 0.0),
-             'SAME mean, DIFFERENT var',
+             _w('SAME mean, DIFFERENT var'),
              'ratio Var(nX)/Var(sum) = ' + _fn(float(n)),
-             '--- sample mean Xbar ---',
+             _w('--- sample mean Xbar ---'),
              'E(Xbar) = ' + _fn(mx),
              'Var(Xbar) = Var(X)/n = ' + _fn(vx / n),
              'SD(Xbar) = ' + _fn(math.sqrt(vx / n) if vx > 0 else 0.0),
-             'If X is Normal all three',
-             ' of these are Normal too.']
+             _w('If X is Normal all three'),
+             _w(' of these are Normal too.')]
     _show('nX vs X1+..+Xn', lines)
 
 def t_cimean():
@@ -1349,20 +1359,23 @@ def t_cimean():
     z = _invphi(1.0 - (1.0 - cl / 100.0) / 2.0)
     se = sg / math.sqrt(n)
     m = z * se
-    _show('CI for mean', ['z* = ' + _fn(z), 'SE = ' + _fn(se), 'mean +/- ' + _fn(m), '(' + _fn(xb - m) + ', ' + _fn(xb + m) + ')', 'small n: use t, not z'])
+    _show('CI for mean', [_w('z* = ' + _fn(z)), _w('SE = ' + _fn(se)),
+                          'mean +/- ' + _fn(m),
+                          '(' + _fn(xb - m) + ', ' + _fn(xb + m) + ')',
+                          _warn('small n: use t, not z')])
 
 def t_tint():
     # One-sample / paired t interval. For paired data enter the list of
     # DIFFERENCES: the paired test is just the one-sample test applied to them.
     a = _asklist('Data (or differences):')
     if a is None or len(a) < 2:
-        _show('t interval', ['Need at least 2 values.'])
+        _show('t interval', [_warn('Need at least 2 values.')])
         return
     cl = _asknum('conf level % (95):')
     if cl is None:
         cl = 95.0
     if cl <= 0 or cl >= 100:
-        _show('t interval', ['Need 0 < level < 100'])
+        _show('t interval', [_warn('Need 0 < level < 100')])
         return
     n = len(a)
     tot = 0.0
@@ -1381,20 +1394,20 @@ def t_tint():
     v = n - 1
     tc = _t_crit(v, (1.0 - cl / 100.0) / 2.0)
     m = tc * se
-    lines = ['n = ' + str(n),
+    lines = [_w('n = ' + str(n)),
              'mean = ' + _fn(mean),
              's (n-1) = ' + _fn(s),
-             'SE = s/sqrt(n) = ' + _fn(se),
-             'df = ' + str(v),
-             't* = ' + _fn(tc),
+             _w('SE = s/sqrt(n) = ' + _fn(se)),
+             _w('df = ' + str(v)),
+             _w('t* = ' + _fn(tc)),
              'mean +/- ' + _fn(m),
              '(' + _fn(mean - m) + ', ' + _fn(mean + m) + ')',
-             'sigma is estimated from the',
-             ' sample, so this uses t, not z']
+             _w('sigma is estimated from the'),
+             _w(' sample, so this uses t, not z')]
     # a confidence interval doubles as a two-tail test of any given mean
     mu0 = _asknum('test mean mu0 (blank skip):')
     if mu0 is not None:
-        lines.append('mu0 = ' + _fn(mu0))
+        lines.append(_w('mu0 = ' + _fn(mu0)))
         if mu0 < mean - m or mu0 > mean + m:
             lines.append('mu0 outside the interval:')
             lines.append(' reject H0 at ' + _fn(100.0 - cl) + '%')
@@ -1421,7 +1434,9 @@ def t_ciprop():
     z = _invphi(1.0 - (1.0 - cl / 100.0) / 2.0)
     se = math.sqrt(p * (1.0 - p) / n)
     m = z * se
-    _show('CI for proportion', ['p-hat = ' + _fn(p), 'z* = ' + _fn(z), 'SE = ' + _fn(se), 'p +/- ' + _fn(m), '(' + _fn(p - m) + ', ' + _fn(p + m) + ')'])
+    _show('CI for proportion', ['p-hat = ' + _fn(p), _w('z* = ' + _fn(z)),
+                                _w('SE = ' + _fn(se)), 'p +/- ' + _fn(m),
+                                '(' + _fn(p - m) + ', ' + _fn(p + m) + ')'])
 
 def t_ztest():
     mu0 = _asknum('H0 mean mu0:')
@@ -1445,7 +1460,11 @@ def t_ztest():
     zc1 = _invphi(1.0 - a)
     zc2 = _invphi(1.0 - a / 2.0)
     pv = 2.0 * (1.0 - _phi(abs(z)))
-    _show('One-sample z-test', ['z = ' + _fn(z), '1-tail crit = +/-' + _fn(zc1), '2-tail crit = +/-' + _fn(zc2), 'p (2-tail) = ' + _fn(pv), '|z|>crit: reject H0'])
+    _show('One-sample z-test', ['z = ' + _fn(z),
+                                '1-tail crit = +/-' + _fn(zc1),
+                                '2-tail crit = +/-' + _fn(zc2),
+                                'p (2-tail) = ' + _fn(pv),
+                                _w('|z|>crit: reject H0')])
 
 # ---------------------------------------------------------- simulation ----
 # Y422 Z2: use simulations to investigate distributions. `random` is one of the
@@ -1514,13 +1533,13 @@ def t_simulate():
     if p2 is None:
         return
     if base == 1 and (p1 < 1 or p2 < 0 or p2 > 1):
-        _show('Simulation', ['Need n >= 1 and 0 <= p <= 1.'])
+        _show('Simulation', [_warn('Need n >= 1 and 0 <= p <= 1.')])
         return
     if base == 2 and p1 <= 0:
-        _show('Simulation', ['Po(mu) needs mu > 0.'])
+        _show('Simulation', [_warn('Po(mu) needs mu > 0.')])
         return
     if base == 3 and p2 <= 0:
-        _show('Simulation', ['sigma must be positive.'])
+        _show('Simulation', [_warn('sigma must be positive.')])
         return
     n = 1
     if clt:
@@ -1576,9 +1595,9 @@ def t_simulate():
         tvar = p2 * p2
     if clt:
         tvar = tvar / n
-    lines = [_SIMNAMES[base] + ('  sample means, n = ' + str(n) if clt else ''),
-             str(trials) + ' trials' +
-             ('' if seed is None else '  (seed ' + str(seed) + ')'), '',
+    lines = [_w(_SIMNAMES[base] + ('  sample means, n = ' + str(n) if clt else '')),
+             _w(str(trials) + ' trials' +
+             ('' if seed is None else '  (seed ' + str(seed) + ')')), '',
              'simulated mean     = ' + _fn(mean, 5),
              'theoretical mean   = ' + _fn(tmean, 5),
              'simulated variance = ' + _fn(var, 5),
@@ -1588,19 +1607,19 @@ def t_simulate():
         z = (mean - tmean) / se
         lines.append('the simulated mean is ' + _fn(z, 2) + ' standard errors')
         lines.append('from the theoretical one.')
-        lines.append('|z| under 2 is what you expect; a big')
-        lines.append('|z| means a bug, not bad luck.')
+        lines.append(_warn('|z| under 2 is what you expect; a big'))
+        lines.append(_warn('|z| means a bug, not bad luck.'))
     lines.append('')
-    lines.append('More trials narrows the gap like')
-    lines.append('1/sqrt(trials) - four times as many')
-    lines.append('trials halves the error.')
+    lines.append(_w('More trials narrows the gap like'))
+    lines.append(_w('1/sqrt(trials) - four times as many'))
+    lines.append(_w('trials halves the error.'))
     if clt:
         lines.append('')
-        lines.append('The sample MEAN has variance sigma^2/n,')
-        lines.append('so it clusters ' + _fn(math.sqrt(float(n)), 3) +
-                     ' times more tightly')
-        lines.append('than one observation, and its shape')
-        lines.append('tends to Normal whatever the parent is.')
+        lines.append(_w('The sample MEAN has variance sigma^2/n,'))
+        lines.append(_w('so it clusters ' + _fn(math.sqrt(float(n)), 3) +
+                     ' times more tightly'))
+        lines.append(_w('than one observation, and its shape'))
+        lines.append(_w('tends to Normal whatever the parent is.'))
     _show('Simulation', lines)
     _sim_histogram(vals, tmean, math.sqrt(tvar) if tvar > 0 else 0.0,
                    _SIMNAMES[base] + (' sample means' if clt else ''))

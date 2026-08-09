@@ -21,6 +21,8 @@ _askexpr = casutil.askexpr
 _fn = casutil.fmt
 _show = casutil.show
 _pages = casutil.show      # result_screen pages by itself now
+_w = casutil.w             # method / intermediate steps, hidden in answer mode
+_warn = casutil.warn       # caveat about the answer, shown in both modes
 _atan2 = casutil.atan2
 _gcd = casutil.gcd
 _powmod = casutil.powmod
@@ -62,14 +64,14 @@ def _line(x0, y0, x1, y1):
 def t_plot():
     tree = _askexpr('f(x) to plot')
     if tree is None:
-        _show('Plot f(x)', ['Could not read f(x).'])
+        _show('Plot f(x)', [_warn('Could not read f(x).')])
         return
     xlo = _asknum('x min (e.g. -5)')
     if xlo is None:
         return
     xhi = _asknum('x max (e.g. 5)')
     if xhi is None or xhi <= xlo:
-        _show('Plot f(x)', ['Need x max > x min.'])
+        _show('Plot f(x)', [_warn('Need x max > x min.')])
         return
     # sample for auto-scale on y
     N = 240
@@ -91,7 +93,7 @@ def t_plot():
         i += 1
     fin = [y for y in ys if y is not None]
     if not fin:
-        _show('Plot f(x)', ['No finite values', 'in that range.'])
+        _show('Plot f(x)', [_warn('No finite values'), _warn('in that range.')])
         return
     ylo = min(fin)
     yhi = max(fin)
@@ -162,18 +164,19 @@ def t_demoivre():
     z = complex(a, b)
     r = abs(z)
     if r == 0 and n <= 0:
-        _show('z^n  (De Moivre)', ['z = 0 with n <= 0', 'is undefined.'])
+        _show('z^n  (De Moivre)', [_warn('z = 0 with n <= 0'),
+                                   _warn('is undefined.')])
         return
     th = _atan2(z.imag, z.real)
     # De Moivre directly (avoids complex ** quirks): r^n (cos n.th + i sin n.th)
     rn = r ** n
     nth = n * th
     w = complex(rn * math.cos(nth), rn * math.sin(nth))
-    _show('z^n  (De Moivre)', ['z = ' + _fc(z),
-                               '|z|=' + _fn(r) + ' arg=' + _fn(th) + 'r',
-                               'n = ' + str(n),
-                               '|z|^n = ' + _fn(rn),
-                               'n*arg = ' + _fn(nth) + ' rad',
+    _show('z^n  (De Moivre)', [_w('z = ' + _fc(z)),
+                               _w('|z|=' + _fn(r) + ' arg=' + _fn(th) + 'r'),
+                               _w('n = ' + str(n)),
+                               _w('|z|^n = ' + _fn(rn)),
+                               _w('n*arg = ' + _fn(nth) + ' rad'),
                                'z^n = ' + _fc(w)])
 
 # ---- 3. COMPLEX: nth ROOTS -----------------------------------------------
@@ -186,13 +189,14 @@ def t_roots():
         return
     n = _askint('n (number of roots)')
     if n is None or n < 1:
-        _show('nth roots', ['n must be >= 1.'])
+        _show('nth roots', [_warn('n must be >= 1.')])
         return
     z = complex(a, b)
     r = abs(z)
     th = _atan2(z.imag, z.real)
     rr = r ** (1.0 / n)
-    lines = ['z = ' + _fc(z), 'each |root| = ' + _fn(rr), 'arg step = 2pi/' + str(n)]
+    lines = [_w('z = ' + _fc(z)), 'each |root| = ' + _fn(rr),
+             _w('arg step = 2pi/' + str(n))]
     k = 0
     while k < n:
         ang = (th + 2 * math.pi * k) / n
@@ -205,7 +209,7 @@ def t_roots():
 def t_euler():
     tree = _askexpr('dy/dx = f(x,y)')
     if tree is None:
-        _show('Euler', ['Could not read f(x).'])
+        _show('Euler', [_warn('Could not read f(x).')])
         return
     x0 = _asknum('x0 (start)')
     if x0 is None:
@@ -221,10 +225,11 @@ def t_euler():
         return
     if n > 12:
         n = 12
-    lines = ['y_n+1 = y_n + h.f(x_n,y_n)', '------------------', 'x      y']
+    lines = [_w('y_n+1 = y_n + h.f(x_n,y_n)'), _w('------------------'),
+             'x      y']
     x = x0
     y = y0
-    lines.append(_fn(x) + '   ' + _fn(y))
+    lines.append(_w(_fn(x) + '   ' + _fn(y)))
     i = 0
     while i < n:
         try:
@@ -235,7 +240,9 @@ def t_euler():
             slope = 0.0
         y = y + h * slope
         x = x + h
-        lines.append(_fn(x) + '   ' + _fn(y))
+        # the intermediate rows are the working; the last row is the answer
+        txt = _fn(x) + '   ' + _fn(y)
+        lines.append(txt if i == n - 1 else _w(txt))
         i += 1
     _pages('Euler method', lines)
 
@@ -279,7 +286,7 @@ def _march(tree, x0, y0, h, n, step):
 def t_rk():
     tree = _askexpr('dy/dx = f(x,y)')
     if tree is None:
-        _show('Runge-Kutta', ['Could not read f(x,y).'])
+        _show('Runge-Kutta', [_warn('Could not read f(x,y).')])
         return
     x0 = _asknum('x0 (start)')
     if x0 is None:
@@ -295,20 +302,20 @@ def t_rk():
         return
     if n > 50:
         n = 50
-    lines = ['k1 = f(x, y)',
-             'k2 = f(x+h/2, y+h.k1/2)',
-             'k3 = f(x+h/2, y+h.k2/2)',
-             'k4 = f(x+h, y+h.k3)',
-             'Euler: y + h.k1',
-             'RK2 (midpoint): y + h.k2',
-             'RK4: y + h(k1+2k2+2k3+k4)/6',
-             '------------------',
-             'x   Euler / RK2 / RK4']
+    lines = [_w('k1 = f(x, y)'),
+             _w('k2 = f(x+h/2, y+h.k1/2)'),
+             _w('k3 = f(x+h/2, y+h.k2/2)'),
+             _w('k4 = f(x+h, y+h.k3)'),
+             _w('Euler: y + h.k1'),
+             _w('RK2 (midpoint): y + h.k2'),
+             _w('RK4: y + h(k1+2k2+2k3+k4)/6'),
+             _w('------------------'),
+             _w('x   Euler / RK2 / RK4')]
     x = x0
     ye = y0
     y2 = y0
     y4 = y0
-    lines.append(_fn(x) + '  ' + _f8(ye))
+    lines.append(_w(_fn(x) + '  ' + _f8(ye)))
     ok = True
     i = 0
     while i < n:
@@ -317,17 +324,17 @@ def t_rk():
             y2 = _st_rk2(tree, x, y2, h)
             y4 = _st_rk4(tree, x, y4, h)
         except:
-            lines.append('eval error at x=' + _fn(x))
+            lines.append(_warn('eval error at x=' + _fn(x)))
             ok = False
             break
         x = x + h
-        lines.append(_fn(x) + '  ' + _f8(ye))
-        lines.append('    ' + _f8(y2) + ' / ' + _f8(y4))
+        lines.append(_w(_fn(x) + '  ' + _f8(ye)))
+        lines.append(_w('    ' + _f8(y2) + ' / ' + _f8(y4)))
         i += 1
     if not ok:
         _pages('Runge-Kutta', lines)
         return
-    lines.append('------------------')
+    lines.append(_w('------------------'))
     lines.append('at x = ' + _fn(x))
     lines.append('Euler y = ' + _f8(ye))
     lines.append('RK2 y = ' + _f8(y2))
@@ -335,7 +342,7 @@ def t_rk():
     lines.append('RK4 - Euler = ' + _f8(y4 - ye))
     lines.append('RK4 - RK2 = ' + _f8(y4 - y2))
     # c8: the same interval, walked with a smaller step each time
-    lines.append('-- same interval, smaller h --')
+    lines.append(_w('-- same interval, smaller h --'))
     hh = h
     nn = n
     j = 0
@@ -345,15 +352,15 @@ def t_rk():
             r = _march(tree, x0, y0, hh, nn, _st_rk4)
         except:
             break
-        lines.append('h=' + _fn(hh) + ' Euler=' + _f8(e))
-        lines.append('        RK4=' + _f8(r))
+        lines.append(_w('h=' + _fn(hh) + ' Euler=' + _f8(e)))
+        lines.append(_w('        RK4=' + _f8(r)))
         hh = hh / 2.0
         nn = nn * 2
         j += 1
-    lines.append('halving h divides the Euler')
-    lines.append('error by about 2 and the RK4')
-    lines.append('error by about 16: Euler is')
-    lines.append('first order, RK4 is fourth.')
+    lines.append(_w('halving h divides the Euler'))
+    lines.append(_w('error by about 2 and the RK4'))
+    lines.append(_w('error by about 16: Euler is'))
+    lines.append(_w('first order, RK4 is fourth.'))
     _pages('Runge-Kutta', lines)
 
 # ---- 4c. ARC LENGTH (C8) --------------------------------------------------
@@ -378,12 +385,12 @@ def t_arclen():
     if c == 0:
         tree = _askexpr('y = f(x)')
         if tree is None:
-            _show('Arc length', ['Could not read f(x).'])
+            _show('Arc length', [_warn('Could not read f(x).')])
             return
         try:
             d = caseng.diff(tree, 'x')
         except:
-            _show('Arc length', ['Cannot differentiate.'])
+            _show('Arc length', [_warn('Cannot differentiate.')])
             return
         a = _asknum('x from')
         if a is None:
@@ -396,17 +403,17 @@ def t_arclen():
             v = caseng.evalf(d, t)
             return math.sqrt(1.0 + v * v)
 
-        head = ['s = integ sqrt(1 + (dy/dx)^2) dx',
-                'dy/dx = ' + caseng.tostr(caseng.simplify(d))]
+        head = [_w('s = integ sqrt(1 + (dy/dx)^2) dx'),
+                _w('dy/dx = ' + caseng.tostr(caseng.simplify(d)))]
     elif c == 1:
         tree = _askexpr('r(theta), use x=theta:')
         if tree is None:
-            _show('Arc length', ['Could not read r.'])
+            _show('Arc length', [_warn('Could not read r.')])
             return
         try:
             d = caseng.diff(tree, 'x')
         except:
-            _show('Arc length', ['Cannot differentiate.'])
+            _show('Arc length', [_warn('Cannot differentiate.')])
             return
         a = _asknum('theta from')
         if a is None:
@@ -420,22 +427,22 @@ def t_arclen():
             dr = caseng.evalf(d, t)
             return math.sqrt(r * r + dr * dr)
 
-        head = ['s = integ sqrt(r^2 + (dr/dth)^2) dth',
-                'dr/dth = ' + caseng.tostr(caseng.simplify(d))]
+        head = [_w('s = integ sqrt(r^2 + (dr/dth)^2) dth'),
+                _w('dr/dth = ' + caseng.tostr(caseng.simplify(d)))]
     else:
         xt = _askexpr('x(t), in t:')
         if xt is None:
-            _show('Arc length', ['Could not read x(t).'])
+            _show('Arc length', [_warn('Could not read x(t).')])
             return
         yt = _askexpr('y(t), in t:')
         if yt is None:
-            _show('Arc length', ['Could not read y(t).'])
+            _show('Arc length', [_warn('Could not read y(t).')])
             return
         try:
             dx = caseng.diff(xt, 't')
             dy = caseng.diff(yt, 't')
         except:
-            _show('Arc length', ['Cannot differentiate.'])
+            _show('Arc length', [_warn('Cannot differentiate.')])
             return
         a = _asknum('t from')
         if a is None:
@@ -449,26 +456,26 @@ def t_arclen():
             v = caseng.evalf(dy, t, False, {'t': t})
             return math.sqrt(u * u + v * v)
 
-        head = ["s = integ sqrt(x'^2 + y'^2) dt",
-                "dx/dt = " + caseng.tostr(caseng.simplify(dx)),
-                "dy/dt = " + caseng.tostr(caseng.simplify(dy))]
+        head = [_w("s = integ sqrt(x'^2 + y'^2) dt"),
+                _w("dx/dt = " + caseng.tostr(caseng.simplify(dx))),
+                _w("dy/dt = " + caseng.tostr(caseng.simplify(dy)))]
     if b == a:
-        _show('Arc length', ['The two limits are equal.'])
+        _show('Arc length', [_warn('The two limits are equal.')])
         return
     try:
         s = _simp(g, a, b, 400)
         s2 = _simp(g, a, b, 800)
     except:
-        _show('Arc length', ['The integrand is not defined',
-                             'somewhere in that range.'])
+        _show('Arc length', [_warn('The integrand is not defined'),
+                             _warn('somewhere in that range.')])
         return
     lines = []
     for t in head:
         lines.append(t)
-    lines.append('from ' + _fn(a) + ' to ' + _fn(b))
-    lines.append('------------------')
-    lines.append('400 panels: s = ' + _f8(s))
-    lines.append('800 panels: s = ' + _f8(s2))
+    lines.append(_w('from ' + _fn(a) + ' to ' + _fn(b)))
+    lines.append(_w('------------------'))
+    lines.append(_w('400 panels: s = ' + _f8(s)))
+    lines.append(_w('800 panels: s = ' + _f8(s2)))
     lines.append('arc length = ' + _f8(s2))
     lines.append('change on halving h = ' + _f8(abs(s2 - s)))
     _pages('Arc length', lines)
@@ -483,7 +490,7 @@ def t_gcdlcm():
         return
     g = _gcd(a, b)
     l = casutil.lcm(a, b)
-    _show('gcd & lcm', ['a = ' + str(a), 'b = ' + str(b),
+    _show('gcd & lcm', [_w('a = ' + str(a)), _w('b = ' + str(b)),
                         'gcd(a,b) = ' + str(g), 'lcm(a,b) = ' + str(l)])
 
 # trial division is O(sqrt n); past this the handheld would appear to hang
@@ -508,13 +515,14 @@ def t_prime():
     if n is None:
         return
     if n > NT_MAX:
-        _show('Prime test', ['n too large for trial', 'division (max ' + str(NT_MAX) + ').'])
+        _show('Prime test', [_warn('n too large for trial'),
+                             _warn('division (max ' + str(NT_MAX) + ').')])
         return
     if _isprime(n):
         msg = str(n) + ' is PRIME.'
     else:
         msg = str(n) + ' is NOT prime.'
-    _show('Prime test', [msg, '(trial division', ' up to sqrt n)'])
+    _show('Prime test', [msg, _w('(trial division'), _w(' up to sqrt n)')])
 
 def _chunk(s, n):
     out = []
@@ -531,10 +539,11 @@ def t_factor():
     if n is None:
         return
     if n < 2:
-        _show('Factorise', ['Need n >= 2.'])
+        _show('Factorise', [_warn('Need n >= 2.')])
         return
     if n > NT_MAX:
-        _show('Factorise', ['n too large for trial', 'division (max ' + str(NT_MAX) + ').'])
+        _show('Factorise', [_warn('n too large for trial'),
+                            _warn('division (max ' + str(NT_MAX) + ').')])
         return
     m = n
     facs = []
@@ -549,7 +558,7 @@ def t_factor():
         d = 3 if d == 2 else d + 2
     if m > 1:
         facs.append((m, 1))
-    lines = ['n = ' + str(n), '------------------']
+    lines = [_w('n = ' + str(n)), _w('------------------')]
     parts = []
     for (p, e) in facs:
         if e == 1:
@@ -566,15 +575,16 @@ def t_powmod():
         return
     b = _askint('exponent b (>=0)')
     if b is None or b < 0:
-        _show('a^b mod m', ['Need b >= 0.'])
+        _show('a^b mod m', [_warn('Need b >= 0.')])
         return
     m = _askint('modulus m (>=1)')
     if m is None or m < 1:
-        _show('a^b mod m', ['Need m >= 1.'])
+        _show('a^b mod m', [_warn('Need m >= 1.')])
         return
     r = _powmod(a, b, m)
-    _show('a^b mod m', ['a = ' + str(a), 'b = ' + str(b), 'm = ' + str(m),
-                        '------------------', 'a^b mod m = ' + str(r)])
+    _show('a^b mod m', [_w('a = ' + str(a)), _w('b = ' + str(b)),
+                        _w('m = ' + str(m)),
+                        _w('------------------'), 'a^b mod m = ' + str(r)])
 
 def _egcd(a, b):
     # iterative extended Euclid -> (g, x, y) with a*x + b*y = g
@@ -594,19 +604,19 @@ def t_modinv():
         return
     m = _askint('modulus m (>=2)')
     if m is None or m < 2:
-        _show('mod inverse', ['Need m >= 2.'])
+        _show('mod inverse', [_warn('Need m >= 2.')])
         return
     g, x, y = _egcd(a % m, m)
     if g != 1:
-        _show('mod inverse', ['a = ' + str(a) + '  m = ' + str(m),
-                              'gcd = ' + str(g) + ' (not 1)',
-                              'no inverse exists.'])
+        _show('mod inverse', [_w('a = ' + str(a) + '  m = ' + str(m)),
+                              _warn('gcd = ' + str(g) + ' (not 1)'),
+                              _warn('no inverse exists.')])
         return
     inv = x % m
-    _show('mod inverse', ['a = ' + str(a) + '  m = ' + str(m),
+    _show('mod inverse', [_w('a = ' + str(a) + '  m = ' + str(m)),
                           'a^-1 mod m = ' + str(inv),
-                          'check: a*inv mod m',
-                          '  = ' + str((a * inv) % m)])
+                          _warn('check: a*inv mod m'),
+                          _warn('  = ' + str((a * inv) % m))])
 
 def t_base():
     n = _askint('decimal n')
@@ -630,17 +640,18 @@ def t_base():
             h = digs[t & 15] + h
             t >>= 4
     sign = '-' if neg else ''
-    _show('Base convert', ['decimal: ' + str(n), 'binary:  ' + sign + b, 'hex:     ' + sign + h])
+    _show('Base convert', [_w('decimal: ' + str(n)),
+                           'binary:  ' + sign + b, 'hex:     ' + sign + h])
 
 # ---- 6. MORE NUMBER THEORY (T5, T6, T7, T8, T9) ---------------------------
 def t_totient():
     n = _askint('n >= 1')
     if n is None or n < 1:
-        _show('Euler totient', ['Need n >= 1.'])
+        _show('Euler totient', [_warn('Need n >= 1.')])
         return
     if n > NT_MAX:
-        _show('Euler totient', ['n too large for trial',
-                                'division (max ' + str(NT_MAX) + ').'])
+        _show('Euler totient', [_warn('n too large for trial'),
+                                _warn('division (max ' + str(NT_MAX) + ').')])
         return
     m = n
     r = n
@@ -656,27 +667,27 @@ def t_totient():
     if m > 1:
         facs.append(m)
         r = r // m * (m - 1)
-    lines = ['n = ' + str(n),
-             'phi(n) counts the integers in',
-             '1..n that are coprime to n.',
-             '------------------']
+    lines = [_w('n = ' + str(n)),
+             _w('phi(n) counts the integers in'),
+             _w('1..n that are coprime to n.'),
+             _w('------------------')]
     if facs:
         lines.append('distinct primes: ' + ' '.join([str(p) for p in facs]))
         prod = 'n'
         for p in facs:
             prod = prod + ' * (1 - 1/' + str(p) + ')'
-        lines.append('phi = ' + prod)
+        lines.append(_w('phi = ' + prod))
     lines.append('phi(n) = ' + str(r))
     if len(facs) == 1 and facs[0] == n:
         lines.append('n is prime, so phi(n) = n-1.')
-    lines.append('a^phi(n) = 1 (mod n) when')
-    lines.append('gcd(a, n) = 1 (Euler).')
+    lines.append(_w('a^phi(n) = 1 (mod n) when'))
+    lines.append(_w('gcd(a, n) = 1 (Euler).'))
     _pages('Euler totient', lines)
 
 def t_pythag():
     lim = _askint('max hypotenuse c')
     if lim is None or lim < 5:
-        _show('Pythagorean triples', ['Need c >= 5.'])
+        _show('Pythagorean triples', [_warn('Need c >= 5.')])
         return
     if lim > 2000:
         lim = 2000
@@ -698,14 +709,14 @@ def t_pythag():
             n += 1
         m += 1
     trs.sort()
-    lines = ['primitive triples with c <= ' + str(lim),
-             'a^2 + b^2 = c^2',
-             '------------------']
+    lines = [_w('primitive triples with c <= ' + str(lim)),
+             _w('a^2 + b^2 = c^2'),
+             _w('------------------')]
     for (c, a, b) in trs:
         lines.append(str(a) + ', ' + str(b) + ', ' + str(c))
     lines.append('count = ' + str(len(trs)))
-    lines.append('every other triple is a whole')
-    lines.append('multiple of one of these.')
+    lines.append(_w('every other triple is a whole'))
+    lines.append(_w('multiple of one of these.'))
     _pages('Pythagorean triples', lines)
 
 def _isqrt(n):
@@ -721,16 +732,16 @@ def _isqrt(n):
 def t_pell():
     n = _askint('n (not a perfect square)')
     if n is None or n < 2:
-        _show("Pell's equation", ['Need n >= 2.'])
+        _show("Pell's equation", [_warn('Need n >= 2.')])
         return
     if n > 100000:
-        _show("Pell's equation", ['n too large (max 100000).'])
+        _show("Pell's equation", [_warn('n too large (max 100000).')])
         return
     a0 = _isqrt(n)
     if a0 * a0 == n:
-        _show("Pell's equation", [str(n) + ' is a perfect square,',
-                                 'so x^2 - n y^2 = 1 has only',
-                                 'the trivial solution x=1, y=0.'])
+        _show("Pell's equation", [_warn(str(n) + ' is a perfect square,'),
+                                 _warn('so x^2 - n y^2 = 1 has only'),
+                                 _warn('the trivial solution x=1, y=0.')])
         return
     # fundamental solution from the continued fraction of sqrt(n)
     m = 0
@@ -749,19 +760,19 @@ def t_pell():
         k, kp = a * k + kp, k
         steps += 1
     if h * h - n * k * k != 1:
-        _show("Pell's equation", ['No solution found within',
-                                 '4000 continued-fraction steps.'])
+        _show("Pell's equation", [_warn('No solution found within'),
+                                 _warn('4000 continued-fraction steps.')])
         return
-    lines = ['x^2 - ' + str(n) + ' y^2 = 1',
-             'sqrt(' + str(n) + ') = [' + str(a0) + '; ...]',
-             'continued fraction steps: ' + str(steps),
-             '------------------',
+    lines = [_w('x^2 - ' + str(n) + ' y^2 = 1'),
+             _w('sqrt(' + str(n) + ') = [' + str(a0) + '; ...]'),
+             _w('continued fraction steps: ' + str(steps)),
+             _w('------------------'),
              'x = ' + str(h),
              'y = ' + str(k),
-             'check x^2-n y^2 = ' + str(h * h - n * k * k),
-             '------------------',
-             'further solutions from',
-             '(x + y sqrt n)^j :']
+             _warn('check x^2-n y^2 = ' + str(h * h - n * k * k)),
+             _w('------------------'),
+             _w('further solutions from'),
+             _w('(x + y sqrt n)^j :')]
     x1 = h
     y1 = k
     xx = h
@@ -779,38 +790,38 @@ WILSON_MAX = 20000
 def t_fermat():
     p = _askint('p (>=2)')
     if p is None or p < 2:
-        _show('Fermat & Wilson', ['Need p >= 2.'])
+        _show('Fermat & Wilson', [_warn('Need p >= 2.')])
         return
     a = _askint('a (base for Fermat)')
     if a is None:
         return
     isp = _isprime(p) if p <= NT_MAX else None
     fl = _powmod(a, p - 1, p)
-    lines = ['p = ' + str(p), 'a = ' + str(a)]
+    lines = [_w('p = ' + str(p)), _w('a = ' + str(a))]
     if isp is None:
-        lines.append('p too large to test for')
-        lines.append('primality here.')
+        lines.append(_warn('p too large to test for'))
+        lines.append(_warn('primality here.'))
     elif isp:
         lines.append('p is PRIME.')
     else:
         lines.append('p is NOT prime.')
-    lines.append('------------------')
-    lines.append('Fermat: a^(p-1) = 1 (mod p)')
-    lines.append('for prime p not dividing a.')
+    lines.append(_w('------------------'))
+    lines.append(_w('Fermat: a^(p-1) = 1 (mod p)'))
+    lines.append(_w('for prime p not dividing a.'))
     lines.append('a^(p-1) mod p = ' + str(fl))
     if _gcd(a, p) != 1:
-        lines.append('but gcd(a,p) = ' + str(_gcd(a, p)) +
-                     ', so Fermat does not apply.')
+        lines.append(_warn('but gcd(a,p) = ' + str(_gcd(a, p)) +
+                     ', so Fermat does not apply.'))
     elif fl == 1:
         lines.append('Fermat holds for this a.')
     else:
         lines.append('not 1, so p is COMPOSITE.')
-    lines.append('------------------')
-    lines.append('Wilson: (p-1)! = -1 (mod p)')
-    lines.append('exactly when p is prime.')
+    lines.append(_w('------------------'))
+    lines.append(_w('Wilson: (p-1)! = -1 (mod p)'))
+    lines.append(_w('exactly when p is prime.'))
     if p > WILSON_MAX:
-        lines.append('p above ' + str(WILSON_MAX) + ': the factorial')
-        lines.append('loop would be too slow.')
+        lines.append(_warn('p above ' + str(WILSON_MAX) + ': the factorial'))
+        lines.append(_warn('loop would be too slow.'))
     else:
         # reduced at every step, so no huge integer is ever built and the
         # casutil.fact cap never applies
@@ -820,7 +831,7 @@ def t_fermat():
             w = (w * i) % p
             i += 1
         lines.append('(p-1)! mod p = ' + str(w))
-        lines.append('-1 mod p = ' + str(p - 1))
+        lines.append(_w('-1 mod p = ' + str(p - 1)))
         if w == p - 1:
             lines.append('Wilson holds, so p is prime.')
         else:
@@ -946,21 +957,21 @@ MAX_CURVES = 4
 def t_tangentfield():
     tree = _askexpr('dy/dx = f(x,y)')
     if tree is None:
-        _show('Tangent field', ['Could not read f(x,y).'])
+        _show('Tangent field', [_warn('Could not read f(x,y).')])
         return
     xlo = _asknum('x min')
     if xlo is None:
         return
     xhi = _asknum('x max')
     if xhi is None or xhi <= xlo:
-        _show('Tangent field', ['Need x max > x min.'])
+        _show('Tangent field', [_warn('Need x max > x min.')])
         return
     ylo = _asknum('y min')
     if ylo is None:
         return
     yhi = _asknum('y max')
     if yhi is None or yhi <= ylo:
-        _show('Tangent field', ['Need y max > y min.'])
+        _show('Tangent field', [_warn('Need y max > y min.')])
         return
     # every prompt is asked BEFORE anything is drawn: the input screen owns the
     # whole display, so a prompt after the plot would wipe the plot
@@ -976,15 +987,15 @@ def t_tangentfield():
     fr = casutil.frame(xlo, xhi, ylo, yhi)
     casutil.axes(fr, 'dy/dx = ' + caseng.tostr(tree)[:40], 'x', 'y')
     drawn = _field(fr, tree, FIELD_NX, FIELD_NY, casui.ACC)
-    lines = ['tangent field of',
-             'dy/dx = ' + caseng.tostr(tree),
-             'x in [' + _fn(xlo) + ', ' + _fn(xhi) + ']',
-             'y in [' + _fn(ylo) + ', ' + _fn(yhi) + ']',
-             'grid ' + str(FIELD_NX) + ' x ' + str(FIELD_NY) +
-             ', dashes: ' + str(drawn),
-             'every dash is the same length,',
-             'so only its slant carries f.',
-             '------------------']
+    lines = [_w('tangent field of'),
+             _w('dy/dx = ' + caseng.tostr(tree)),
+             _w('x in [' + _fn(xlo) + ', ' + _fn(xhi) + ']'),
+             _w('y in [' + _fn(ylo) + ', ' + _fn(yhi) + ']'),
+             _w('grid ' + str(FIELD_NX) + ' x ' + str(FIELD_NY) +
+             ', dashes: ' + str(drawn)),
+             _w('every dash is the same length,'),
+             _w('so only its slant carries f.'),
+             _w('------------------')]
     k = 0
     while k < len(starts):
         x0, y0 = starts[k]
@@ -1002,8 +1013,8 @@ def t_tangentfield():
     if not starts:
         lines.append('no solution curve was asked for.')
     else:
-        lines.append('curves are RK4, forwards from')
-        lines.append('the point and backwards.')
+        lines.append(_w('curves are RK4, forwards from'))
+        lines.append(_w('the point and backwards.'))
     casutil.chart_hold('RK4 solution curves in red')
     _pages('Tangent field', lines)
 
@@ -1095,26 +1106,28 @@ def _vstr(k):
     return 'no limit found'
 
 def _limtable(lines, labels, la, lb):
-    lines.append('h        f(a-h) then f(a+h)')
+    # the walk-in table is the evidence for the limit, so it is working: the
+    # limit itself is printed underneath it
+    lines.append(_w('h        f(a-h) then f(a+h)'))
     i = 0
     while i < len(labels):
         sa = 'undefined' if la[i] is None else _f6(la[i])
         sb = 'undefined' if lb[i] is None else _f6(lb[i])
-        lines.append(labels[i] + ' below ' + sa)
-        lines.append('     above ' + sb)
+        lines.append(_w(labels[i] + ' below ' + sa))
+        lines.append(_w('     above ' + sb))
         i += 1
 
 def t_limit():
     tree = _askexpr('f(x)')
     if tree is None:
-        _show('Limit of f(x)', ['Could not read f(x).'])
+        _show('Limit of f(x)', [_warn('Could not read f(x).')])
         return
     c = casui.menu('Limit of f(x)', ['x -> a  (a finite)',
                                      'x -> +infinity',
                                      'x -> -infinity'])
     if c < 0:
         return
-    lines = ['f(x) = ' + caseng.tostr(tree), '------------------']
+    lines = [_w('f(x) = ' + caseng.tostr(tree)), _w('------------------')]
     if c == 0:
         a = _asknum('a')
         if a is None:
@@ -1123,9 +1136,9 @@ def t_limit():
         rv = _samples(tree, _at_pts(a, 1.0))
         kl = _verdict(lv)
         kr = _verdict(rv)
-        lines.append('x -> ' + _fn(a))
+        lines.append(_w('x -> ' + _fn(a)))
         _limtable(lines, LIM_HS, lv, rv)
-        lines.append('------------------')
+        lines.append(_w('------------------'))
         lines.append('from below: ' + _vstr(kl))
         lines.append('from above: ' + _vstr(kr))
         if kl[0] == 'num' and kr[0] == 'num' and \
@@ -1138,33 +1151,34 @@ def t_limit():
                     lines.append('f(a) = ' + _f6(fa) + ', so f is')
                     lines.append('continuous at x = ' + _fn(a) + '.')
                 else:
-                    lines.append('but f(a) = ' + _f6(fa) + ', so there')
-                    lines.append('is a removable discontinuity.')
+                    lines.append(_warn('but f(a) = ' + _f6(fa) + ', so there'))
+                    lines.append(_warn('is a removable discontinuity.'))
             except:
-                lines.append('f(a) itself is undefined, so the')
-                lines.append('point is a hole in the curve.')
+                lines.append(_warn('f(a) itself is undefined, so the'))
+                lines.append(_warn('point is a hole in the curve.'))
         elif kl[0] == 'inf' and kr[0] == 'inf' and kl[1] == kr[1]:
             lines.append('limit = ' + ('+infinity' if kl[1] > 0 else '-infinity'))
             lines.append('so x = ' + _fn(a) + ' is a vertical')
             lines.append('asymptote.')
         elif kl[0] == 'inf' or kr[0] == 'inf':
-            lines.append('the two sides disagree, so there')
-            lines.append('is no limit: x = ' + _fn(a) + ' is a')
-            lines.append('vertical asymptote.')
+            lines.append(_warn('the two sides disagree, so there'))
+            lines.append(_warn('is no limit: x = ' + _fn(a) + ' is a'))
+            lines.append(_warn('vertical asymptote.'))
         else:
-            lines.append('the two sides disagree, so the')
-            lines.append('limit does not exist.')
+            lines.append(_warn('the two sides disagree, so the'))
+            lines.append(_warn('limit does not exist.'))
     else:
         sgn = 1.0 if c == 1 else -1.0
         vv = _samples(tree, _inf_pts(sgn))
         k = _verdict(vv)
-        lines.append('x -> ' + ('+' if sgn > 0 else '-') + 'infinity')
+        lines.append(_w('x -> ' + ('+' if sgn > 0 else '-') + 'infinity'))
         i = 0
         while i < len(LIM_XS):
             s = 'undefined' if vv[i] is None else _f6(vv[i])
-            lines.append(('x=' if sgn > 0 else 'x=-') + LIM_XS[i] + '  f = ' + s)
+            lines.append(_w(('x=' if sgn > 0 else 'x=-') + LIM_XS[i] +
+                         '  f = ' + s))
             i += 1
-        lines.append('------------------')
+        lines.append(_w('------------------'))
         lines.append('limit = ' + _vstr(k))
         if k[0] == 'num':
             lines.append('so y = ' + _f6(k[1]) + ' is a horizontal')
@@ -1333,9 +1347,9 @@ def _rval(r):
 def t_asympt():
     tree = _askexpr('f(x)')
     if tree is None:
-        _show('Asymptotes', ['Could not read f(x).'])
+        _show('Asymptotes', [_warn('Could not read f(x).')])
         return
-    lines = ['f(x) = ' + caseng.tostr(tree), '------------------']
+    lines = [_w('f(x) = ' + caseng.tostr(tree)), _w('------------------')]
     vs = _verticals(tree, VA_LO, VA_HI)
     if vs:
         for c in vs:
@@ -1343,9 +1357,9 @@ def t_asympt():
             lines.append('  from below f -> ' + _side(tree, c, -1.0))
             lines.append('  from above f -> ' + _side(tree, c, 1.0))
     else:
-        lines.append('no vertical asymptote in')
-        lines.append('[' + _fn(VA_LO) + ', ' + _fn(VA_HI) + '].')
-    lines.append('------------------')
+        lines.append(_warn('no vertical asymptote in'))
+        lines.append(_warn('[' + _fn(VA_LO) + ', ' + _fn(VA_HI) + '].'))
+    lines.append(_w('------------------'))
     # exact route: for a rational function the quotient of the long division IS
     # the horizontal or oblique asymptote, with the remainder as the error term
     num, den = _numden(tree)
@@ -1360,24 +1374,24 @@ def t_asympt():
                 v = 0.0 if not q else _rval(q[0])
                 lines.append('horizontal: y = ' + _fn(v) + '  (exact)')
                 if not q:
-                    lines.append('deg(num) < deg(den), so f -> 0')
-                    lines.append('at both ends.')
+                    lines.append(_w('deg(num) < deg(den), so f -> 0'))
+                    lines.append(_w('at both ends.'))
                 else:
-                    lines.append('deg(num) = deg(den), so f tends')
-                    lines.append('to the ratio of the leading')
-                    lines.append('coefficients at both ends.')
+                    lines.append(_w('deg(num) = deg(den), so f tends'))
+                    lines.append(_w('to the ratio of the leading'))
+                    lines.append(_w('coefficients at both ends.'))
                 done = True
             elif len(q) == 2:
                 lines.append('oblique: y = ' +
                              caseng.tostr(caspoly.ptree(q, 'x')) + '  (exact)')
-                lines.append('num = q(x).den + r(x) with')
-                lines.append('r = ' + caseng.tostr(caspoly.ptree(qr[1], 'x')))
-                lines.append('and r/den -> 0, so y = q(x).')
+                lines.append(_w('num = q(x).den + r(x) with'))
+                lines.append(_w('r = ' + caseng.tostr(caspoly.ptree(qr[1], 'x'))))
+                lines.append(_w('and r/den -> 0, so y = q(x).'))
                 done = True
             else:
-                lines.append('deg(num) - deg(den) = ' + str(len(q) - 1) + ',')
-                lines.append('so there is no horizontal or')
-                lines.append('oblique asymptote.')
+                lines.append(_warn('deg(num) - deg(den) = ' + str(len(q) - 1) + ','))
+                lines.append(_warn('so there is no horizontal or'))
+                lines.append(_warn('oblique asymptote.'))
                 done = True
     kp = _verdict(_samples(tree, _inf_pts(1.0)))
     km = _verdict(_samples(tree, _inf_pts(-1.0)))
@@ -1395,7 +1409,7 @@ def t_asympt():
                 continue
             mk = _verdict(_samples(('/', tree, ('v', 'x')), _inf_pts(sgn)))
             if mk[0] != 'num' or abs(mk[1]) < 1e-9:
-                lines.append('no asymptote as x->' + name + '.')
+                lines.append(_warn('no asymptote as x->' + name + '.'))
                 continue
             m = _snap(mk[1])
             bk = _verdict(_samples(('-', tree, ('*', ('n', m), ('v', 'x'))),
@@ -1403,30 +1417,30 @@ def t_asympt():
             if bk[0] == 'num':
                 lines.append('oblique as x->' + name + ': ' +
                              _linstr(m, _snap(bk[1])))
-                lines.append('  m = lim f(x)/x = ' + _f6(m))
-                lines.append('  c = lim f(x) - mx = ' + _f6(_snap(bk[1])))
+                lines.append(_w('  m = lim f(x)/x = ' + _f6(m)))
+                lines.append(_w('  c = lim f(x) - mx = ' + _f6(_snap(bk[1]))))
             else:
-                lines.append('no asymptote as x->' + name + '.')
+                lines.append(_warn('no asymptote as x->' + name + '.'))
     _pages('Asymptotes', lines)
 
 # ---- 10. STATIONARY POINTS AND CUSPS (C12) --------------------------------
 def t_statcusp():
     tree = _askexpr('f(x)')
     if tree is None:
-        _show('Stationary pts & cusps', ['Could not read f(x).'])
+        _show('Stationary pts & cusps', [_warn('Could not read f(x).')])
         return
     try:
         d1 = caseng.diff(tree, 'x')
     except:
-        _show('Stationary pts & cusps', ['Cannot differentiate f.'])
+        _show('Stationary pts & cusps', [_warn('Cannot differentiate f.')])
         return
     try:
         d2 = caseng.diff(d1, 'x')
     except:
         d2 = None
-    lines = ['f(x) = ' + caseng.tostr(tree),
-             "f'(x) = " + caseng.tostr(caseng.simplify(d1)),
-             '------------------']
+    lines = [_w('f(x) = ' + caseng.tostr(tree)),
+             _w("f'(x) = " + caseng.tostr(caseng.simplify(d1))),
+             _w('------------------')]
     roots = cascalc.solve(d1, 'x')
     if roots:
         for r in roots:
@@ -1468,14 +1482,14 @@ def t_statcusp():
             lines.append('x = ' + _fn(r) + '  y = ' + _fn(y) + '  ' + word)
             if d2 is not None:
                 try:
-                    lines.append("  f'' = " + _fn(_ev(d2, r)) +
-                                 ' (supporting only)')
+                    lines.append(_w("  f'' = " + _fn(_ev(d2, r)) +
+                                 ' (supporting only)'))
                 except:
                     pass
     else:
-        lines.append('no stationary point in')
-        lines.append('[' + _fn(VA_LO) + ', ' + _fn(VA_HI) + '].')
-    lines.append('------------------')
+        lines.append(_warn('no stationary point in'))
+        lines.append(_warn('[' + _fn(VA_LO) + ', ' + _fn(VA_HI) + '].'))
+    lines.append(_w('------------------'))
     # A cusp is a point where the curve carries on but the gradient does not:
     # f is continuous there and the one-sided limits of f' disagree. So look
     # for the places where f' blows up and f does not.
@@ -1523,13 +1537,13 @@ def t_statcusp():
         lines.append("  f' from below -> " + sl)
         lines.append("  f' from above -> " + sr)
     if found == 0:
-        lines.append('no cusp: the gradient has the')
-        lines.append('same finite limit from both')
-        lines.append('sides everywhere it was tested.')
+        lines.append(_warn('no cusp: the gradient has the'))
+        lines.append(_warn('same finite limit from both'))
+        lines.append(_warn('sides everywhere it was tested.'))
     else:
-        lines.append('a cusp is where f carries on but')
-        lines.append("f' does not: the two one-sided")
-        lines.append('limits of the gradient differ.')
+        lines.append(_w('a cusp is where f carries on but'))
+        lines.append(_w("f' does not: the two one-sided"))
+        lines.append(_w('limits of the gradient differ.'))
     _pages('Stationary pts & cusps', lines)
 
 # ---- 11. FAMILY OF CURVES (C4, TC1) ---------------------------------------
@@ -1558,18 +1572,18 @@ def _fam_curve(tree, a, xlo, xhi, n):
 def t_family():
     tree = _askexpr('family y = f(x,a), in x and a')
     if tree is None:
-        _show('Family of curves', ['Could not read f(x,a).'])
+        _show('Family of curves', [_warn('Could not read f(x,a).')])
         return
     xlo = _asknum('x min')
     if xlo is None:
         return
     xhi = _asknum('x max')
     if xhi is None or xhi <= xlo:
-        _show('Family of curves', ['Need x max > x min.'])
+        _show('Family of curves', [_warn('Need x max > x min.')])
         return
     avs = casutil.asklist('values of a (e.g. -2 0 2)')
     if not avs:
-        _show('Family of curves', ['Give at least one value of a.'])
+        _show('Family of curves', [_warn('Give at least one value of a.')])
         return
     if len(avs) > FAM_MAX:
         avs = avs[:FAM_MAX]
@@ -1582,14 +1596,15 @@ def t_family():
             if p[1] is not None:
                 ys.append(p[1])
     if not ys:
-        _show('Family of curves', ['No finite values in that', 'x range.'])
+        _show('Family of curves', [_warn('No finite values in that'),
+                                   _warn('x range.')])
         return
     ylo, yhi = casutil.nice_range(ys, 0.08)
     fr = casutil.frame(xlo, xhi, ylo, yhi)
     casutil.axes(fr, 'y = ' + caseng.tostr(tree)[:40], 'x', 'y')
-    lines = ['family y = ' + caseng.tostr(tree),
-             'x in [' + _fn(xlo) + ', ' + _fn(xhi) + ']',
-             '------------------']
+    lines = [_w('family y = ' + caseng.tostr(tree)),
+             _w('x in [' + _fn(xlo) + ', ' + _fn(xhi) + ']'),
+             _w('------------------')]
     k = 0
     while k < len(curves):
         colour = FAM_COLS[k % len(FAM_COLS)]
@@ -1617,11 +1632,11 @@ def t_family():
                          ', '.join([_fn(r) for r in rts]))
         else:
             lines.append('a=' + _fn(a) + ' roots: none in range')
-    lines.append('------------------')
-    lines.append('members drawn: ' + str(len(curves)))
-    lines.append('changing a moves the whole')
-    lines.append('curve; what stays the same is')
-    lines.append('the property of the family.')
+    lines.append(_w('------------------'))
+    lines.append(_w('members drawn: ' + str(len(curves))))
+    lines.append(_w('changing a moves the whole'))
+    lines.append(_w('curve; what stays the same is'))
+    lines.append(_w('the property of the family.'))
     casutil.chart_hold('one curve per value of a')
     _pages('Family of curves', lines)
 
@@ -1636,26 +1651,26 @@ ENV_EVERY = 10   # report every tenth column, so the table lands on round x
 def t_envelope():
     tree = _askexpr('family y = f(x,a), in x and a')
     if tree is None:
-        _show('Envelope', ['Could not read f(x,a).'])
+        _show('Envelope', [_warn('Could not read f(x,a).')])
         return
     try:
         g = caseng.diff(tree, 'a')
     except:
-        _show('Envelope', ['Cannot differentiate in a.'])
+        _show('Envelope', [_warn('Cannot differentiate in a.')])
         return
     xlo = _asknum('x min')
     if xlo is None:
         return
     xhi = _asknum('x max')
     if xhi is None or xhi <= xlo:
-        _show('Envelope', ['Need x max > x min.'])
+        _show('Envelope', [_warn('Need x max > x min.')])
         return
     alo = _asknum('a min')
     if alo is None:
         return
     ahi = _asknum('a max')
     if ahi is None or ahi <= alo:
-        _show('Envelope', ['Need a max > a min.'])
+        _show('Envelope', [_warn('Need a max > a min.')])
         return
     env = []
     i = 0
@@ -1669,9 +1684,9 @@ def t_envelope():
             except:
                 pass
     if not env:
-        _show('Envelope', ['df/da = 0 has no solution',
-                           'for a in that range, so this',
-                           'family has no envelope here.'])
+        _show('Envelope', [_warn('df/da = 0 has no solution'),
+                           _warn('for a in that range, so this'),
+                           _warn('family has no envelope here.')])
         return
     ys = [p[2] for p in env]
     ylo, yhi = casutil.nice_range(ys, 0.12)
@@ -1693,11 +1708,11 @@ def t_envelope():
             j += 1
     for p in env:
         casutil.marker(fr, p[0], p[2], casui.RED, 1)
-    lines = ['family y = ' + caseng.tostr(tree),
-             'df/da = ' + caseng.tostr(caseng.simplify(g)),
-             'envelope: df/da = 0 and y = f(x,a)',
-             'a in [' + _fn(alo) + ', ' + _fn(ahi) + ']',
-             '------------------']
+    lines = [_w('family y = ' + caseng.tostr(tree)),
+             _w('df/da = ' + caseng.tostr(caseng.simplify(g))),
+             _w('envelope: df/da = 0 and y = f(x,a)'),
+             _w('a in [' + _fn(alo) + ', ' + _fn(ahi) + ']'),
+             _w('------------------')]
     j = 0
     while j < len(env):
         p = env[j]
@@ -1705,11 +1720,11 @@ def t_envelope():
         if p[3] % ENV_EVERY:
             continue
         lines.append('x=' + _fn(p[0]) + ' a=' + _fn(p[1]) + ' y=' + _fn(p[2]))
-    lines.append('------------------')
+    lines.append(_w('------------------'))
     lines.append('envelope points found: ' + str(len(env)))
-    lines.append('each one is where the member')
-    lines.append('touches the envelope, so the')
-    lines.append('family only reaches it once.')
+    lines.append(_w('each one is where the member'))
+    lines.append(_w('touches the envelope, so the'))
+    lines.append(_w('family only reaches it once.'))
     casutil.chart_hold('members grey, envelope red')
     _pages('Envelope', lines)
 
@@ -1774,24 +1789,24 @@ VDE_X = [-1.3, -0.4, 0.35, 0.9, 1.7]
 def t_verifyde():
     y = _askexpr('proposed y, in x')
     if y is None:
-        _show('Verify a DE solution', ['Could not read y.'])
+        _show('Verify a DE solution', [_warn('Could not read y.')])
         return
     res = _askexpr('DE as expr = 0, y p=dy/dx q=d2y/dx2')
     if res is None:
-        _show('Verify a DE solution', ['Could not read the equation.'])
+        _show('Verify a DE solution', [_warn('Could not read the equation.')])
         return
     try:
         d1 = caseng.diff(y, 'x')
         d2 = caseng.diff(d1, 'x')
     except:
-        _show('Verify a DE solution', ['Cannot differentiate y.'])
+        _show('Verify a DE solution', [_warn('Cannot differentiate y.')])
         return
-    lines = ['y = ' + caseng.tostr(y),
-             'dy/dx = ' + caseng.tostr(caseng.simplify(d1)),
-             'd2y/dx2 = ' + caseng.tostr(caseng.simplify(d2)),
-             'equation (must be 0):',
-             '  ' + caseng.tostr(res),
-             '------------------']
+    lines = [_w('y = ' + caseng.tostr(y)),
+             _w('dy/dx = ' + caseng.tostr(caseng.simplify(d1))),
+             _w('d2y/dx2 = ' + caseng.tostr(caseng.simplify(d2))),
+             _w('equation (must be 0):'),
+             _w('  ' + caseng.tostr(res)),
+             _w('------------------')]
     sym = None
     try:
         s = caseng.subst(res, 'q', d2)
@@ -1806,8 +1821,8 @@ def t_verifyde():
     except:
         sym = None
     if sym is not None:
-        lines.append('after substituting:')
-        lines.append('  ' + sym[:60])
+        lines.append(_w('after substituting:'))
+        lines.append(_w('  ' + sym[:60]))
     worst = 0.0
     tested = 0
     ok = True
@@ -1832,19 +1847,19 @@ def t_verifyde():
         tested += 1
     if tested == 0:
         ok = False
-    lines.append('------------------')
-    lines.append('checked at ' + str(tested) + ' values of x')
-    lines.append('largest relative residual')
-    lines.append('  = ' + _f6(worst))
+    lines.append(_w('------------------'))
+    lines.append(_warn('checked at ' + str(tested) + ' values of x'))
+    lines.append(_warn('largest relative residual'))
+    lines.append(_warn('  = ' + _f6(worst)))
     if ok and worst < 1e-9:
         lines.append('VERIFIED: y satisfies the')
         lines.append('differential equation.')
     elif not ok:
-        lines.append('NOT CHECKED: the equation could')
-        lines.append('not be evaluated anywhere.')
+        lines.append(_warn('NOT CHECKED: the equation could'))
+        lines.append(_warn('not be evaluated anywhere.'))
     else:
-        lines.append('NOT a solution: the equation')
-        lines.append('does not balance.')
+        lines.append(_warn('NOT a solution: the equation'))
+        lines.append(_warn('does not balance.'))
     _pages('Verify a DE solution', lines)
 
 # ---- 14. LINEAR DIOPHANTINE ax + by = c (T10) -----------------------------
@@ -1867,25 +1882,25 @@ def t_diophantine():
     if c is None:
         return
     sb = ' + ' + str(b) if b >= 0 else ' - ' + str(-b)
-    lines = [str(a) + 'x' + sb + 'y = ' + str(c),
-             '------------------']
+    lines = [_w(str(a) + 'x' + sb + 'y = ' + str(c)),
+             _w('------------------')]
     if a == 0 and b == 0:
         if c == 0:
             lines.append('every (x, y) is a solution.')
         else:
-            lines.append('no solutions: 0 = ' + str(c) + ' is false.')
+            lines.append(_warn('no solutions: 0 = ' + str(c) + ' is false.'))
         _pages('Linear Diophantine', lines)
         return
     g, u, v = _egcd(a, b)
     if g < 0:
         g, u, v = -g, -u, -v
-    lines.append('gcd(' + str(a) + ', ' + str(b) + ') = ' + str(g))
-    lines.append('Bezout: ' + str(a) + '*' + str(u) + ' + ' + str(b) + '*' +
-                 str(v) + ' = ' + str(g))
+    lines.append(_w('gcd(' + str(a) + ', ' + str(b) + ') = ' + str(g)))
+    lines.append(_w('Bezout: ' + str(a) + '*' + str(u) + ' + ' + str(b) + '*' +
+                 str(v) + ' = ' + str(g)))
     if c % g != 0:
-        lines.append(str(g) + ' does not divide ' + str(c) + ',')
-        lines.append('so there are NO integer')
-        lines.append('solutions.')
+        lines.append(_warn(str(g) + ' does not divide ' + str(c) + ','))
+        lines.append(_warn('so there are NO integer'))
+        lines.append(_warn('solutions.'))
         _pages('Linear Diophantine', lines)
         return
     k = c // g
@@ -1893,11 +1908,11 @@ def t_diophantine():
     y0 = v * k
     bg = b // g
     ag = a // g
-    lines.append(str(g) + ' divides ' + str(c) + ', so solutions')
-    lines.append('exist. Scaling Bezout by ' + str(k) + ':')
+    lines.append(_w(str(g) + ' divides ' + str(c) + ', so solutions'))
+    lines.append(_w('exist. Scaling Bezout by ' + str(k) + ':'))
     lines.append('x0 = ' + str(x0) + ', y0 = ' + str(y0))
-    lines.append('check: ' + str(a * x0 + b * y0) + ' = ' + str(c))
-    lines.append('------------------')
+    lines.append(_warn('check: ' + str(a * x0 + b * y0) + ' = ' + str(c)))
+    lines.append(_w('------------------'))
     lines.append('general solution, t integer:')
     lines.append('x = ' + str(x0) + _tterm(bg))
     lines.append('y = ' + str(y0) + _tterm(-ag))

@@ -11,6 +11,8 @@ _askints = casutil.askints
 _num = casutil.fmt
 _show = casutil.show
 _pages = casutil.show      # result_screen pages by itself now
+_w = casutil.w             # method / intermediate steps, hidden in answer mode
+_warn = casutil.warn       # caveat about the answer, shown in both modes
 
 def _row(lst):
     return ' '.join([_num(v) for v in lst])
@@ -39,7 +41,7 @@ def bubble():
     a = _asklist('List (comma/space)')
     if not a:
         return
-    lines = ['Start: ' + _row(a)]
+    lines = [_w('Start: ' + _row(a))]
     n = len(a)
     swaps = 0
     comps = 0
@@ -49,7 +51,9 @@ def bubble():
             if a[j] > a[j + 1]:
                 a[j], a[j + 1] = a[j + 1], a[j]
                 swaps += 1
-        lines.append('Pass ' + str(i + 1) + ': ' + _row(a))
+        txt = 'Pass ' + str(i + 1) + ': ' + _row(a)
+        # the intermediate passes are working; the final pass IS the sorted list
+        lines.append(txt if i == n - 2 else _w(txt))
     lines.append('Comparisons: ' + str(comps))
     lines.append('Swaps: ' + str(swaps))
     lines.append('Passes: ' + str(n - 1 if n > 1 else 0))
@@ -60,7 +64,7 @@ def insertion():
     a = _asklist('List (comma/space)')
     if not a:
         return
-    lines = ['Start: ' + _row(a)]
+    lines = [_w('Start: ' + _row(a))]
     n = len(a)
     comps = 0
     shifts = 0
@@ -77,7 +81,9 @@ def insertion():
             else:
                 break
         a[j + 1] = key
-        lines.append('Step ' + str(i) + ': ' + _row(a))
+        txt = 'Step ' + str(i) + ': ' + _row(a)
+        # as for bubble: the last step is the sorted list, so it is the answer
+        lines.append(txt if i == n - 1 else _w(txt))
     lines.append('Comparisons: ' + str(comps))
     lines.append('Shifts: ' + str(shifts))
     lines.append('Order: O(n^2); worst n(n-1)/2 = ' + str(n * (n - 1) // 2))
@@ -105,8 +111,8 @@ def quicksort():
         return
     n = len(a)
     fixed = [False] * n
-    lines = ['Start: ' + _row(a)]
-    lines.append('Pivot = first item of each sub-list; [ ] = pivot in place')
+    lines = [_w('Start: ' + _row(a))]
+    lines.append(_w('Pivot = first item of each sub-list; [ ] = pivot in place'))
     stack = [(0, n - 1)]          # explicit stack of sub-lists still to split
     comps = 0
     p = 0
@@ -148,7 +154,7 @@ def quicksort():
                 nxt.append((ppos + 1, hi))
             elif hi == ppos + 1:
                 fixed[hi] = True
-        lines.append('Pass ' + str(p) + ': ' + _qshow(a, fixed))
+        lines.append(_w('Pass ' + str(p) + ': ' + _qshow(a, fixed)))
         stack = nxt
         if p > 2 * n + 4:
             break
@@ -180,7 +186,7 @@ def _firstfit(items, cap):
 
 def _packshow(title, items, cap):
     bins, comps = _firstfit(items, cap)
-    lines = ['Cap ' + _num(cap) + '  Items ' + str(len(items))]
+    lines = [_w('Cap ' + _num(cap) + '  Items ' + str(len(items)))]
     tot = 0.0
     for i in range(len(bins)):
         lines.append('Bin ' + str(i + 1) + ': ' + _row(bins[i][1]) + ' =' + _num(bins[i][0]))
@@ -252,18 +258,18 @@ def dijkstra():
                 dist[v] = dist[u] + w
                 prev[v] = u
                 work[v].append(dist[v])
-    lines = ['From node ' + str(s + 1) + ':']
-    lines.append('Order of permanent labels:')
+    lines = [_w('From node ' + str(s + 1) + ':')]
+    lines.append(_w('Order of permanent labels:'))
     for k in range(len(order)):
         u = order[k]
-        lines.append('  ' + str(k + 1) + ': node ' + str(u + 1) +
-                     ' perm ' + _num(dist[u]))
-    lines.append('Working values (in order tried):')
+        lines.append(_w('  ' + str(k + 1) + ': node ' + str(u + 1) +
+                     ' perm ' + _num(dist[u])))
+    lines.append(_w('Working values (in order tried):'))
     for i in range(n):
         if work[i]:
-            lines.append('  node ' + str(i + 1) + ': ' + ', '.join([_num(v) for v in work[i]]))
+            lines.append(_w('  node ' + str(i + 1) + ': ' + ', '.join([_num(v) for v in work[i]])))
         else:
-            lines.append('  node ' + str(i + 1) + ': none')
+            lines.append(_w('  node ' + str(i + 1) + ': none'))
     lines.append('Final distances:')
     for i in range(n):
         d = 'unreachable' if dist[i] >= BIG else _num(dist[i])
@@ -320,7 +326,7 @@ def prim():
         lines.append(str(e[0] + 1) + '-' + str(e[1] + 1) + '  w=' + _num(e[2]))
     lines.append('Total weight: ' + _num(total))
     if len(edges) < n - 1:
-        lines.append('(graph not connected)')
+        lines.append(_warn('(graph not connected)'))
     lines.append('Order: O(n^2) on an n-node adjacency matrix')
     _pages('Prim MST', lines)
 
@@ -358,7 +364,7 @@ def kruskal():
         lines.append(str(e[0] + 1) + '-' + str(e[1] + 1) + '  w=' + _num(e[2]))
     lines.append('Total weight: ' + _num(total))
     if len(edges) < n - 1:
-        lines.append('(graph not connected)')
+        lines.append(_warn('(graph not connected)'))
     lines.append('Order: O(m log m) for m arcs (the sort dominates)')
     _pages('Kruskal MST', lines)
 
@@ -400,7 +406,7 @@ def graphinfo():
         for i in range(n):
             lines.append('deg(' + str(i + 1) + ') = ' + str(deg[i]))
             tot += deg[i]
-        lines.append('Sum of degrees = ' + str(tot) + ' = 2 x ' + str(len(arcs)))
+        lines.append(_w('Sum of degrees = ' + str(tot) + ' = 2 x ' + str(len(arcs))))
         odd = 0
         for i in range(n):
             if deg[i] % 2 == 1:
@@ -537,9 +543,9 @@ def _runflow(cap, s, t, lines):
         total += b
         it += 1
         if lines is not None:
-            lines.append('Path ' + str(it) + ': ' +
+            lines.append(_w('Path ' + str(it) + ': ' +
                          ' - '.join([str(v + 1) for v in path]) +
-                         '  flow ' + _num(b))
+                         '  flow ' + _num(b)))
     return flow, total
 
 def maxflow():
@@ -555,8 +561,8 @@ def maxflow():
         return
     s -= 1
     t -= 1
-    lines = ['Source ' + str(s + 1) + ', sink ' + str(t + 1)]
-    lines.append('Augmenting paths:')
+    lines = [_w('Source ' + str(s + 1) + ', sink ' + str(t + 1))]
+    lines.append(_w('Augmenting paths:'))
     flow, total = _runflow(cap, s, t, lines)
     lines.append('Maximum flow = ' + _num(total))
     lines.append('Flow on each arc:')
@@ -611,10 +617,10 @@ def cutcap():
         if 1 <= v <= n:
             inS[v - 1] = True
     if not inS[s]:
-        _show('Cut capacity', ['The source must be on the source side.'])
+        _show('Cut capacity', [_warn('The source must be on the source side.')])
         return
     if inS[t]:
-        _show('Cut capacity', ['The sink must be on the sink side.'])
+        _show('Cut capacity', [_warn('The sink must be on the sink side.')])
         return
     sset = []
     tset = []
@@ -623,24 +629,24 @@ def cutcap():
             sset.append(str(i + 1))
         else:
             tset.append(str(i + 1))
-    lines = ['S = {' + ', '.join(sset) + '}']
-    lines.append('T = {' + ', '.join(tset) + '}')
+    lines = [_w('S = {' + ', '.join(sset) + '}')]
+    lines.append(_w('T = {' + ', '.join(tset) + '}'))
     ccap = 0.0
     back = 0.0
-    lines.append('Arcs from S to T (these count):')
+    lines.append(_w('Arcs from S to T (these count):'))
     any_f = False
     for i in range(n):
         for j in range(n):
             if cap[i][j] > 0 and inS[i] and not inS[j]:
-                lines.append('  ' + str(i + 1) + '-' + str(j + 1) + ': ' + _num(cap[i][j]))
+                lines.append(_w('  ' + str(i + 1) + '-' + str(j + 1) + ': ' + _num(cap[i][j])))
                 ccap += cap[i][j]
                 any_f = True
             elif cap[i][j] > 0 and inS[j] and not inS[i]:
                 back += cap[i][j]
     if not any_f:
-        lines.append('  none')
+        lines.append(_w('  none'))
     lines.append('Cut capacity = ' + _num(ccap))
-    lines.append('(arcs T to S total ' + _num(back) + ', not counted)')
+    lines.append(_w('(arcs T to S total ' + _num(back) + ', not counted)'))
     flow, total = _runflow(cap, s, t, None)
     lines.append('Maximum flow = ' + _num(total))
     if abs(total - ccap) < 1e-9:
@@ -743,16 +749,18 @@ def _blab(names, basis):
     return out
 
 def _tabshow(lines, names, basis, tab, wid):
+    # a tableau is what the mark scheme wants to see, but it is working, not
+    # the answer: the answer is the optimum _lpreport prints at the end
     hdr = _padl('', 4)
     for nm in names:
         hdr = hdr + _padl(nm, wid)
-    lines.append(hdr)
+    lines.append(_w(hdr))
     lab = _blab(names, basis)
     for i in range(len(tab)):
         s = _padl(lab[i], 4)
         for v in tab[i]:
             s = s + _padl(_num(v, 3), wid)
-        lines.append(s)
+        lines.append(_w(s))
 
 def _pivot_on(tab, r, c):
     p = tab[r][c]
@@ -795,10 +803,10 @@ def _simplex_run(tab, basis, allowed, names, wid, lines, tag):
             return 'unbounded'
         it += 1
         if lines is not None:
-            lines.append(tag + 'Pivot ' + str(it) + ': column ' + names[c] +
-                         ', row ' + names[basis[r]] + ', ratio ' + _num(bestq, 3))
-            lines.append('  pivot element ' + _num(tab[r][c], 3) + '; ' +
-                         names[c] + ' enters, ' + names[basis[r]] + ' leaves')
+            lines.append(_w(tag + 'Pivot ' + str(it) + ': column ' + names[c] +
+                         ', row ' + names[basis[r]] + ', ratio ' + _num(bestq, 3)))
+            lines.append(_w('  pivot element ' + _num(tab[r][c], 3) + '; ' +
+                         names[c] + ' enters, ' + names[basis[r]] + ' leaves'))
         _pivot_on(tab, r, c)
         basis[r] = c
         if lines is not None:
@@ -810,7 +818,7 @@ def _lpreport(lines, names, basis, tab, nv, nother, objname, sign):
     val = [0.0] * ncol
     for i in range(1, len(tab)):
         val[basis[i]] = tab[i][-1]
-    lines.append('Optimal tableau reached.')
+    lines.append(_w('Optimal tableau reached.'))
     lines.append(objname + ' = ' + _num(sign * tab[0][-1]))
     for j in range(1, 1 + nv):
         lines.append(names[j] + ' = ' + _num(val[j]))
@@ -827,8 +835,8 @@ def _lpreport(lines, names, basis, tab, nv, nother, objname, sign):
             bas.append(names[j])
         else:
             non.append(names[j])
-    lines.append('Basic variables: ' + (', '.join(bas) if bas else 'none'))
-    lines.append('Non-basic (= 0): ' + (', '.join(non) if non else 'none'))
+    lines.append(_w('Basic variables: ' + (', '.join(bas) if bas else 'none')))
+    lines.append(_w('Non-basic (= 0): ' + (', '.join(non) if non else 'none')))
 
 def simplex():
     n = _askint('How many variables (1..4)', 1, 4)
@@ -849,8 +857,8 @@ def simplex():
         rows.append([r[j] for j in range(n + 1)])
     for i in range(m):
         if rows[i][n] < 0:
-            _show('Simplex', ['Standard form needs every b >= 0.',
-                              'Constraint ' + str(i + 1) + ' has b < 0.',
+            _show('Simplex', [_warn('Standard form needs every b >= 0.'),
+                              _warn('Constraint ' + str(i + 1) + ' has b < 0.'),
                               'Use the 2-stage tool instead.'])
             return
     vnames = [VN[j] for j in range(n)]
@@ -874,27 +882,27 @@ def simplex():
     for i in range(m):
         basis.append(1 + n + i)
     allowed = [True] * ncol
-    lines = ['Standard form (L3):']
-    lines.append('Maximise P = ' + _lin(obj, vnames))
+    lines = [_w('Standard form (L3):')]
+    lines.append(_w('Maximise P = ' + _lin(obj, vnames)))
     for i in range(m):
-        lines.append('  ' + _lin(rows[i][0:n], vnames) + ' <= ' + _num(rows[i][n]))
-    lines.append('  ' + ', '.join(vnames) + ' >= 0')
-    lines.append('Slack form (L4):')
+        lines.append(_w('  ' + _lin(rows[i][0:n], vnames) + ' <= ' + _num(rows[i][n])))
+    lines.append(_w('  ' + ', '.join(vnames) + ' >= 0'))
+    lines.append(_w('Slack form (L4):'))
     for i in range(m):
-        lines.append('  ' + _lin(rows[i][0:n], vnames) + ' + ' + snames[i] +
-                     ' = ' + _num(rows[i][n]))
+        lines.append(_w('  ' + _lin(rows[i][0:n], vnames) + ' + ' + snames[i] +
+                     ' = ' + _num(rows[i][n])))
     # the objective row is P - c.x = 0, so every coefficient is negated; the
     # old form printed "P - 5x + 4y" for c = (5, 4), which is the wrong sign
     negobj = [-v for v in obj]
     orow = _lin(negobj, vnames)
     if orow[0] == '-':
         orow = '- ' + orow[1:]
-    lines.append('Objective row: P ' + orow + ' = 0')
-    lines.append('Initial tableau:')
+    lines.append(_w('Objective row: P ' + orow + ' = 0'))
+    lines.append(_w('Initial tableau:'))
     _tabshow(lines, names, basis, tab, 6)
     st = _simplex_run(tab, basis, allowed, names, 6, lines, '')
     if st == 'unbounded':
-        lines.append('No leaving row: P is UNBOUNDED.')
+        lines.append(_warn('No leaving row: P is UNBOUNDED.'))
         _pages('Simplex', lines)
         return
     _lpreport(lines, names, basis, tab, n, m, 'P', 1.0)
@@ -929,7 +937,7 @@ def simplex2():
             return
         rel = int(round(r[n]))
         if rel not in (-1, 0, 1):
-            _show('2-stage simplex', ['rel must be 1 (<=), 0 (=) or -1 (>=).'])
+            _show('2-stage simplex', [_warn('rel must be 1 (<=), 0 (=) or -1 (>=).')])
             return
         a = [r[j] for j in range(n)]
         b = r[n + 1]
@@ -987,11 +995,11 @@ def simplex2():
         basis.append(acol0 + art[i] if art[i] >= 0 else 1 + n + slack[i])
     relstr = ['>=', '=', '<=']
     objname = 'P' if mx == 1 else 'C'
-    lines = [('Maximise ' if mx == 1 else 'Minimise ') + objname + ' = ' + _lin(obj, vnames)]
+    lines = [_w(('Maximise ' if mx == 1 else 'Minimise ') + objname + ' = ' + _lin(obj, vnames))]
     for i in range(m):
-        lines.append('  ' + _lin(rows[i][0:n], vnames) + ' ' + relstr[rels[i] + 1] +
-                     ' ' + _num(rows[i][n]))
-    lines.append('  ' + ', '.join(vnames) + ' >= 0')
+        lines.append(_w('  ' + _lin(rows[i][0:n], vnames) + ' ' + relstr[rels[i] + 1] +
+                     ' ' + _num(rows[i][n])))
+    lines.append(_w('  ' + ', '.join(vnames) + ' >= 0'))
     allowed = [True] * ncol
     if na > 0:
         # phase 1: maximise -(sum of artificials)
@@ -1002,12 +1010,12 @@ def simplex2():
             if art[i - 1] >= 0:
                 for j in range(ncol):
                     tab[0][j] = tab[0][j] - tab[i][j]
-        lines.append('Phase 1: minimise ' + ' + '.join(anames))
+        lines.append(_w('Phase 1: minimise ' + ' + '.join(anames)))
         _tabshow(lines, names, basis, tab, 6)
         _simplex_run(tab, basis, allowed, names, 6, lines, 'P1 ')
         if tab[0][ncol - 1] < -1e-7:
-            lines.append('Phase 1 value ' + _num(-tab[0][ncol - 1]) + ' > 0:')
-            lines.append('the constraints are INFEASIBLE.')
+            lines.append(_warn('Phase 1 value ' + _num(-tab[0][ncol - 1]) + ' > 0:'))
+            lines.append(_warn('the constraints are INFEASIBLE.'))
             _pages('2-stage simplex', lines)
             return
         # push any artificial that is still basic (at 0) out of the basis
@@ -1020,7 +1028,7 @@ def simplex2():
                         break
         for j in range(na):
             allowed[acol0 + j] = False
-        lines.append('Phase 1 done: all artificials are zero.')
+        lines.append(_w('Phase 1 done: all artificials are zero.'))
     # phase 2 objective row, then clear the basic columns from it
     sign = 1.0 if mx == 1 else -1.0
     o = [0.0] * ncol
@@ -1033,11 +1041,11 @@ def simplex2():
         if f != 0.0:
             for j in range(ncol):
                 tab[0][j] = tab[0][j] - f * tab[i][j]
-    lines.append('Phase 2 tableau:')
+    lines.append(_w('Phase 2 tableau:'))
     _tabshow(lines, names, basis, tab, 6)
     st = _simplex_run(tab, basis, allowed, names, 6, lines, 'P2 ')
     if st == 'unbounded':
-        lines.append('No leaving row: the objective is UNBOUNDED.')
+        lines.append(_warn('No leaving row: the objective is UNBOUNDED.'))
         _pages('2-stage simplex', lines)
         return
     _lpreport(lines, names, basis, tab, n, nx + na, objname, sign)
@@ -1134,15 +1142,15 @@ def lpgraph():
     p = obj[0]
     q = obj[1]
     objname = 'P' if mx == 1 else 'C'
-    lines = [('Maximise ' if mx == 1 else 'Minimise ') + objname + ' = ' +
-             _lin([p, q], ['x', 'y'])]
-    lines.append('subject to')
+    lines = [_w(('Maximise ' if mx == 1 else 'Minimise ') + objname + ' = ' +
+             _lin([p, q], ['x', 'y']))]
+    lines.append(_w('subject to'))
     for s in shown:
-        lines.append('  ' + s)
-    lines.append('  x >= 0, y >= 0')
+        lines.append(_w('  ' + s))
+    lines.append(_w('  x >= 0, y >= 0'))
     vs = _lpverts(cons)
     if not vs:
-        lines.append('The feasible region is EMPTY.')
+        lines.append(_warn('The feasible region is EMPTY.'))
         _pages('LP graph 2-D', lines)
         return
     cx = 0.0
@@ -1158,12 +1166,12 @@ def lpgraph():
     ang = sorted(ang)
     vs = [(t[1], t[2]) for t in ang]
     rec = _recession(cons)
-    lines.append('Vertices of the feasible region:')
+    lines.append(_w('Vertices of the feasible region:'))
     for v in vs:
-        lines.append('  (' + _num(v[0]) + ', ' + _num(v[1]) + ')  ' + objname +
-                     ' = ' + _num(p * v[0] + q * v[1]))
+        lines.append(_w('  (' + _num(v[0]) + ', ' + _num(v[1]) + ')  ' + objname +
+                     ' = ' + _num(p * v[0] + q * v[1])))
     if rec:
-        lines.append('Region is UNBOUNDED; recession directions exist.')
+        lines.append(_warn('Region is UNBOUNDED; recession directions exist.'))
     bad = False
     for d in rec:
         g = p * d[0] + q * d[1]
@@ -1172,7 +1180,7 @@ def lpgraph():
         if mx == 0 and g < -1e-9:
             bad = True
     if bad:
-        lines.append(objname + ' is UNBOUNDED on this region.')
+        lines.append(_warn(objname + ' is UNBOUNDED on this region.'))
         _pages('LP graph 2-D', lines)
         return
     bv = vs[0]
@@ -1217,7 +1225,7 @@ def lpgraph():
                 j += 1
             i += 1
         if bix is None:
-            lines.append('No integer point lies in the region.')
+            lines.append(_warn('No integer point lies in the region.'))
         else:
             lines.append('Best integer point (L10): x = ' + str(bix[0]) +
                          ', y = ' + str(bix[1]) + ', ' + objname + ' = ' + _num(bio))

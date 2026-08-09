@@ -8,6 +8,8 @@ _asknum = casutil.asknum
 _askg = casutil.askg
 _fn = casutil.fmt
 _show = casutil.show
+_w = casutil.w             # method / intermediate steps, hidden in answer mode
+_warn = casutil.warn       # caveat about the answer, shown in both modes
 _getlist = casutil.asklist
 _askexpr = casutil.askexpr
 _deg = casutil.deg
@@ -55,7 +57,7 @@ def t_momentum():
         if m is None or u is None or v is None:
             return
         j = m * (v - u)
-        _show('Impulse', ['J = m(v-u)', 'J = ' + _fn(j) + ' N s',
+        _show('Impulse', [_w('J = m(v-u)'), 'J = ' + _fn(j) + ' N s',
             'change p = ' + _fn(j) + ' kg m/s'])
         return
     _show('Conservation', ['m1u1+m2u2 = m1v1+m2v2',
@@ -68,7 +70,7 @@ def t_momentum():
     if None in (m1, u1, m2, u2, v1):
         return
     if m2 == 0:
-        _show('Conservation', ['m2 = 0, cannot find v2'])
+        _show('Conservation', [_warn('m2 = 0, cannot find v2')])
         return
     v2 = (m1 * u1 + m2 * u2 - m1 * v1) / m2
     p = m1 * u1 + m2 * u2
@@ -89,7 +91,7 @@ def t_restitution():
         return
     tot = m1 + m2
     if tot == 0:
-        _show('Restitution', ['total mass 0'])
+        _show('Restitution', [_warn('total mass 0')])
         return
     # conservation: m1 v1 + m2 v2 = m1 u1 + m2 u2 = P
     # restitution:  v2 - v1 = e (u1 - u2) = sep
@@ -116,7 +118,7 @@ def t_work():
         v = _asknum('speed v')
         if None in (m, v):
             return
-        _show('Kinetic energy', ['KE = 0.5 m v^2',
+        _show('Kinetic energy', [_w('KE = 0.5 m v^2'),
             'KE = ' + _fn(0.5 * m * v * v) + ' J'])
     elif k == 2:
         m = _asknum('mass m')
@@ -124,26 +126,26 @@ def t_work():
         if None in (m, h):
             return
         g = _askg()
-        _show('GPE', ['GPE = m g h', 'g = ' + _fn(g),
+        _show('GPE', [_w('GPE = m g h'), _w('g = ' + _fn(g)),
             'GPE = ' + _fn(m * g * h) + ' J'])
     elif k == 3:
         f = _asknum('force F')
         d = _asknum('distance d')
         if None in (f, d):
             return
-        _show('Work done', ['W = F d', 'W = ' + _fn(f * d) + ' J'])
+        _show('Work done', [_w('W = F d'), 'W = ' + _fn(f * d) + ' J'])
     elif k == 4:
         f = _asknum('force F')
         v = _asknum('speed v')
         if None in (f, v):
             return
-        _show('Power', ['P = F v', 'P = ' + _fn(f * v) + ' W'])
+        _show('Power', [_w('P = F v'), 'P = ' + _fn(f * v) + ' W'])
     elif k == 5:
         w = _asknum('work W')
         t = _asknum('time t')
         if None in (w, t) or t == 0:
             return
-        _show('Power', ['P = W / t', 'P = ' + _fn(w / t) + ' W'])
+        _show('Power', [_w('P = W / t'), 'P = ' + _fn(w / t) + ' W'])
 
 # ---------- circular motion ----------
 def t_circular():
@@ -185,7 +187,7 @@ def t_circular():
         tan = v * v / (r * g)
         th = math.atan(tan)
         deg = th * 180.0 / math.pi
-        _show('Conical pendulum', ['tan th = v^2/(r g)',
+        _show('Conical pendulum', [_w('tan th = v^2/(r g)'),
             'tan th = ' + _fn(tan), 'theta = ' + _fn(deg) + ' deg'])
     elif k == 4:
         r = _asknum('radius r')
@@ -196,7 +198,7 @@ def t_circular():
             return
         vmin = math.sqrt(g * r)
         _show('Vertical circle', ['min speed at top',
-            'v = sqrt(g r)', 'v = ' + _fn(vmin) + ' m/s'])
+            _w('v = sqrt(g r)'), 'v = ' + _fn(vmin) + ' m/s'])
     elif k == 5:
         # r6: the speed is changing, so there is a component of acceleration
         # along the tangent as well as the v^2/r towards the centre.
@@ -209,11 +211,11 @@ def t_circular():
         at = al * r
         tot = math.sqrt(ar * ar + at * at)
         th = _deg(_atan2(at, ar))
-        _show('Tangential accel', ['radial: a_r = omega^2 r',
+        _show('Tangential accel', [_w('radial: a_r = omega^2 r'),
             'a_r = ' + _fn(ar) + ' m/s2',
-            'tangential: a_t = r alpha = dv/dt',
+            _w('tangential: a_t = r alpha = dv/dt'),
             'a_t = ' + _fn(at) + ' m/s2',
-            'total a = sqrt(a_r^2 + a_t^2)',
+            _w('total a = sqrt(a_r^2 + a_t^2)'),
             'total a = ' + _fn(tot) + ' m/s2',
             'angle to radius = ' + _fn(th) + ' deg',
             'v = omega r = ' + _fn(w * r) + ' m/s'])
@@ -230,7 +232,7 @@ def t_hooke():
     tens = lam * x / l
     epe = lam * x * x / (2.0 * l)
     _show('Hooke / elastic', ['T = lam x/l = ' + _fn(tens) + ' N',
-        'EPE = lam x^2/(2l)', 'EPE = ' + _fn(epe) + ' J'])
+        _w('EPE = lam x^2/(2l)'), 'EPE = ' + _fn(epe) + ' J'])
 
 # ---------- centre of mass ----------
 def t_com():
@@ -246,30 +248,30 @@ def t_com():
     for m in masses:
         sm += m
     if sm == 0:
-        _show('Centre of mass', ['total mass 0'])
+        _show('Centre of mass', [_warn('total mass 0')])
         return
     if int(k) == 1:
         xs = _getlist('x coords (space sep)')
         if xs is None or len(xs) != len(masses):
-            _show('Centre of mass', ['count mismatch'])
+            _show('Centre of mass', [_warn('count mismatch')])
             return
         sx = 0.0
         for i in range(len(masses)):
             sx += masses[i] * xs[i]
-        _show('COM (1-D)', ['total m = ' + _fn(sm),
+        _show('COM (1-D)', [_w('total m = ' + _fn(sm)),
             'x_bar = ' + _fn(sx / sm)])
     else:
         xs = _getlist('x coords (space sep)')
         ys = _getlist('y coords (space sep)')
         if xs is None or ys is None or len(xs) != len(masses) or len(ys) != len(masses):
-            _show('Centre of mass', ['count mismatch'])
+            _show('Centre of mass', [_warn('count mismatch')])
             return
         sx = 0.0
         sy = 0.0
         for i in range(len(masses)):
             sx += masses[i] * xs[i]
             sy += masses[i] * ys[i]
-        _show('COM (2-D)', ['total m = ' + _fn(sm),
+        _show('COM (2-D)', [_w('total m = ' + _fn(sm)),
             'x_bar = ' + _fn(sx / sm), 'y_bar = ' + _fn(sy / sm)])
 
 # ---------- dimensional analysis ----------
@@ -279,7 +281,7 @@ def t_dim():
     a = _getlist('LHS: M L T powers')
     b = _getlist('RHS: M L T powers')
     if a is None or b is None or len(a) != 3 or len(b) != 3:
-        _show('Dimensions', ['need 3 numbers each', 'e.g.  1 1 -2'])
+        _show('Dimensions', [_warn('need 3 numbers each'), 'e.g.  1 1 -2'])
         return
     nm = ['M', 'L', 'T']
     same = True
@@ -295,7 +297,7 @@ def t_dim():
         res = 'CONSISTENT'
     else:
         res = 'NOT consistent'
-    _show('Dimensions', ['LHS ' + lhs, 'RHS ' + rhs, res])
+    _show('Dimensions', [_w('LHS ' + lhs), _w('RHS ' + rhs), res])
 
 # ---------- oblique impact: sphere and a smooth surface ----------
 def t_oblique_wall():
@@ -322,27 +324,27 @@ def t_oblique_wall():
     nout = e * nin                   # NEL, and it reverses
     v = math.sqrt(tang * tang + nout * nout)
     aout = _deg(_atan2(nout, tang))  # to the surface
-    lines = ['u = ' + _fn(u) + ' m/s at ' + _fn(a) + ' deg',
-        '  to the surface',
-        '  (= ' + _fn(90.0 - a) + ' deg to the normal)',
-        'e = ' + _fn(e), '',
-        'ASSUMPTION: smooth surface, so',
-        'the component along the surface',
-        'is UNCHANGED (no impulse on it)',
-        'along surface = ' + _fn(tang) + ' m/s', '',
-        'normal in = ' + _fn(nin) + ' m/s',
-        'NEL: normal out = e x normal in',
-        'normal out = ' + _fn(nout) + ' m/s', '',
+    lines = [_w('u = ' + _fn(u) + ' m/s at ' + _fn(a) + ' deg'),
+        _w('  to the surface'),
+        _w('  (= ' + _fn(90.0 - a) + ' deg to the normal)'),
+        _w('e = ' + _fn(e)), '',
+        _warn('ASSUMPTION: smooth surface, so'),
+        _warn('the component along the surface'),
+        _warn('is UNCHANGED (no impulse on it)'),
+        _w('along surface = ' + _fn(tang) + ' m/s'), '',
+        _w('normal in = ' + _fn(nin) + ' m/s'),
+        _w('NEL: normal out = e x normal in'),
+        _w('normal out = ' + _fn(nout) + ' m/s'), '',
         'speed = ' + _fn(v) + ' m/s',
         'angle to surface = ' + _fn(aout) + ' deg',
         'angle to normal = ' + _fn(90.0 - aout) + ' deg',
-        'tan(out to normal)',
-        '  = tan(in to normal) / e']
+        _w('tan(out to normal)'),
+        _w('  = tan(in to normal) / e')]
     m = _asknum('mass m (or cancel to skip)')
     if m is not None:
         lines.append('')
         lines.append('KE lost = ' + _fn(0.5 * m * (u * u - v * v)) + ' J')
-        lines.append('  = 0.5 m (normal in)^2 (1-e^2)')
+        lines.append(_w('  = 0.5 m (normal in)^2 (1-e^2)'))
         lines.append('impulse = ' + _fn(m * (1.0 + e) * nin) + ' N s')
         lines.append('  along the normal')
     _show('Oblique: sphere/wall', lines)
@@ -370,7 +372,7 @@ def t_oblique_spheres():
     if None in (m1, u1, a1, m2, u2, a2, e):
         return
     if m1 + m2 == 0:
-        _show('Oblique: two spheres', ['total mass 0'])
+        _show('Oblique: two spheres', [_warn('total mass 0')])
         return
     x1 = u1 * math.cos(_rad(a1))
     y1 = u1 * math.sin(_rad(a1))
@@ -385,17 +387,17 @@ def t_oblique_spheres():
     d1 = _deg(_atan2(y1, v1))
     d2 = _deg(_atan2(y2, v2))
     kel = 0.5 * m1 * (x1 * x1 - v1 * v1) + 0.5 * m2 * (x2 * x2 - v2 * v2)
-    _show('Oblique: two spheres', ['ASSUMPTION: smooth spheres, so',
-        'the parts perpendicular to the',
-        'LOC are UNCHANGED',
-        'perp 1 = ' + _fn(y1) + ' m/s',
-        'perp 2 = ' + _fn(y2) + ' m/s', '',
-        'along LOC before:',
-        'u1 = ' + _fn(x1) + '  u2 = ' + _fn(x2),
-        'momentum ' + _fn(p) + ' kg m/s',
-        'NEL: separation = e x approach', '',
-        'v1 along LOC = ' + _fn(v1) + ' m/s',
-        'v2 along LOC = ' + _fn(v2) + ' m/s', '',
+    _show('Oblique: two spheres', [_warn('ASSUMPTION: smooth spheres, so'),
+        _warn('the parts perpendicular to the'),
+        _warn('LOC are UNCHANGED'),
+        _w('perp 1 = ' + _fn(y1) + ' m/s'),
+        _w('perp 2 = ' + _fn(y2) + ' m/s'), '',
+        _w('along LOC before:'),
+        _w('u1 = ' + _fn(x1) + '  u2 = ' + _fn(x2)),
+        _w('momentum ' + _fn(p) + ' kg m/s'),
+        _w('NEL: separation = e x approach'), '',
+        _w('v1 along LOC = ' + _fn(v1) + ' m/s'),
+        _w('v2 along LOC = ' + _fn(v2) + ' m/s'), '',
         'speed 1 = ' + _fn(s1) + ' m/s',
         'angle 1 = ' + _fn(d1) + ' deg to LOC',
         'speed 2 = ' + _fn(s2) + ' m/s',
@@ -419,21 +421,21 @@ def t_proj_path():
     ra = _rad(a)
     ca = math.cos(ra)
     if g <= 0 or u == 0 or abs(ca) < 1e-9:
-        _show('Projectile path', ['need g > 0, u > 0 and the',
-            'angle away from 90 deg -',
-            'a vertical launch has no',
-            'cartesian path.'])
+        _show('Projectile path', [_warn('need g > 0, u > 0 and the'),
+            _warn('angle away from 90 deg -'),
+            _warn('a vertical launch has no'),
+            _warn('cartesian path.')])
         return
     ta = math.tan(ra)
     kk = g / (2.0 * u * u * ca * ca)
     rng = 2.0 * u * u * math.sin(ra) * ca / g
     hmax = u * u * math.sin(ra) * math.sin(ra) / (2.0 * g)
     tof = 2.0 * u * math.sin(ra) / g
-    lines = ['u = ' + _fn(u) + ' m/s at ' + _fn(a) + ' deg',
-        'g = ' + _fn(g), '',
+    lines = [_w('u = ' + _fn(u) + ' m/s at ' + _fn(a) + ' deg'),
+        _w('g = ' + _fn(g)), '',
         'y = ' + _fn(ta) + ' x - ' + _fn(kk) + ' x^2', '',
-        'tan a = ' + _fn(ta),
-        'g/(2u^2cos^2a) = ' + _fn(kk), '',
+        _w('tan a = ' + _fn(ta)),
+        _w('g/(2u^2cos^2a) = ' + _fn(kk)), '',
         'range = ' + _fn(rng) + ' m',
         'max height = ' + _fn(hmax) + ' m',
         'time of flight = ' + _fn(tof) + ' s', '',
@@ -490,31 +492,31 @@ def t_proj_incline():
     rb = _rad(b)
     cb = math.cos(rb)
     if g <= 0 or abs(cb) < 1e-9:
-        _show('Projectile: incline', ['need g > 0 and |b| < 90 deg'])
+        _show('Projectile: incline', [_warn('need g > 0 and |b| < 90 deg')])
         return
     tof = 2.0 * u * math.sin(ra - rb) / (g * cb)
     rr = 2.0 * u * u * math.cos(ra) * math.sin(ra - rb) / (g * cb * cb)
     besta = 45.0 + b / 2.0
     rmax = u * u / (g * (1.0 + math.sin(rb)))
-    lines = ['u = ' + _fn(u) + ' m/s at ' + _fn(a) + ' deg',
-        'slope b = ' + _fn(b) + ' deg, g = ' + _fn(g), '']
+    lines = [_w('u = ' + _fn(u) + ' m/s at ' + _fn(a) + ' deg'),
+        _w('slope b = ' + _fn(b) + ' deg, g = ' + _fn(g)), '']
     if tof <= 0:
-        lines.append('a is not above the slope, so the')
-        lines.append('particle does not travel up it:')
-        lines.append('need a > b.')
+        lines.append(_warn('a is not above the slope, so the'))
+        lines.append(_warn('particle does not travel up it:'))
+        lines.append(_warn('need a > b.'))
     else:
         lines.append('time of flight = ' + _fn(tof) + ' s')
         lines.append('range along plane = ' + _fn(rr) + ' m')
         lines.append('horizontal range = ' + _fn(rr * cb) + ' m')
         lines.append('rise along plane = ' + _fn(rr * math.sin(rb)) + ' m')
     lines.append('')
-    lines.append('maximum range: 2a - b = 90 deg')
+    lines.append(_w('maximum range: 2a - b = 90 deg'))
     lines.append('best angle = ' + _fn(besta) + ' deg')
     lines.append('  (to the horizontal)')
     lines.append('max range = ' + _fn(rmax) + ' m')
-    lines.append('  = u^2 / (g(1 + sin b))')
+    lines.append(_w('  = u^2 / (g(1 + sin b))'))
     if abs(b) < 1e-9:
-        lines.append('level ground: 45 deg, u^2/g')
+        lines.append(_w('level ground: 45 deg, u^2/g'))
     _show('Projectile: incline', lines)
 
 # ---------- elastic strings and springs: equilibrium and energy ----------
@@ -532,7 +534,7 @@ def t_elastic():
         l = _asknum('natural length l')
         v = _asknum('speed when the string')
         if None in (m, lam, l, v) or lam <= 0 or l <= 0 or m <= 0:
-            _show('Elastic: max extension', ['need m, lambda, l all > 0'])
+            _show('Elastic: max extension', [_warn('need m, lambda, l all > 0')])
             return
         g = _askg()
         # 0.5 m v^2 + m g x = lam x^2 / (2 l)   (KE + GPE = EPE)
@@ -542,27 +544,27 @@ def t_elastic():
             return
         x = q + math.sqrt(disc)
         epe = lam * x * x / (2.0 * l)
-        _show('Elastic: max extension', ['KE + GPE lost = EPE gained',
-            '0.5 m v^2 + m g x = lam x^2/(2l)', '',
+        _show('Elastic: max extension', [_w('KE + GPE lost = EPE gained'),
+            _w('0.5 m v^2 + m g x = lam x^2/(2l)'), '',
             'KE at that instant = ' + _fn(0.5 * m * v * v) + ' J',
             'max extension x = ' + _fn(x) + ' m',
             'GPE lost = ' + _fn(m * g * x) + ' J',
             'EPE stored = ' + _fn(epe) + ' J',
             'total length = ' + _fn(l + x) + ' m',
-            '(v = 0 gives x = 2 m g l / lam,',
-            ' twice the equilibrium value)'])
+            _w('(v = 0 gives x = 2 m g l / lam,'),
+            _w(' twice the equilibrium value)')])
         return
     if k == 3:
         m = _asknum('mass m')
         l = _asknum('natural length l')
         x = _asknum('equilibrium extension x')
         if None in (m, l, x) or x == 0:
-            _show('Elastic: modulus', ['need a non-zero extension'])
+            _show('Elastic: modulus', [_warn('need a non-zero extension')])
             return
         g = _askg()
         lam = m * g * l / x
-        _show('Elastic: modulus', ['m g = lam x / l  =>',
-            'lam = m g l / x',
+        _show('Elastic: modulus', [_w('m g = lam x / l  =>'),
+            _w('lam = m g l / x'),
             'lambda = ' + _fn(lam) + ' N',
             'stiffness k = lam/l = ' + _fn(lam / l if l else 0.0) + ' N/m',
             'tension T = m g = ' + _fn(m * g) + ' N'])
@@ -571,13 +573,13 @@ def t_elastic():
     lam = _asknum('lambda (modulus)')
     l = _asknum('natural length l')
     if None in (m, lam, l) or lam == 0 or l == 0:
-        _show('Elastic: equilibrium', ['need lambda and l non-zero'])
+        _show('Elastic: equilibrium', [_warn('need lambda and l non-zero')])
         return
     g = _askg()
     x = m * g * l / lam
-    _show('Elastic: equilibrium', ['hanging in equilibrium:',
-        'T = m g  and  T = lam x / l',
-        'so x = m g l / lam', '',
+    _show('Elastic: equilibrium', [_w('hanging in equilibrium:'),
+        _w('T = m g  and  T = lam x / l'),
+        _w('so x = m g l / lam'), '',
         'extension x = ' + _fn(x) + ' m',
         'tension T = ' + _fn(m * g) + ' N',
         'total length = ' + _fn(l + x) + ' m',
@@ -610,7 +612,7 @@ def t_com_calculus():
     if b < a:
         a, b = b, a
     if b == a:
-        _show('COM by calculus', ['the limits are equal'])
+        _show('COM by calculus', [_warn('the limits are equal')])
         return
     sq = ('^', f, ('n', 2))
     vt = ('v', var)
@@ -619,37 +621,37 @@ def t_com_calculus():
         mx = _defi(('*', vt, f), a, b, var)
         my = _defi(('/', sq, ('n', 2)), a, b, var)
         if area is None or mx is None or my is None or area == 0:
-            _show('COM: lamina', ['could not integrate over',
-                'that interval'])
+            _show('COM: lamina', [_warn('could not integrate over'),
+                _warn('that interval')])
             return
-        _show('COM: lamina', ['uniform lamina under',
-            'y = ' + caseng.tostr(f),
-            'from x = ' + _fn(a) + ' to ' + _fn(b), '',
-            'A = int y dx',
+        _show('COM: lamina', [_w('uniform lamina under'),
+            _w('y = ' + caseng.tostr(f)),
+            _w('from x = ' + _fn(a) + ' to ' + _fn(b)), '',
+            _w('A = int y dx'),
             'area A = ' + _fn(area), '',
-            'x_bar = int x y dx / A',
-            'int x y dx = ' + _fn(mx),
+            _w('x_bar = int x y dx / A'),
+            _w('int x y dx = ' + _fn(mx)),
             'x_bar = ' + _fn(mx / area), '',
-            'y_bar = int (y^2/2) dx / A',
-            'int y^2/2 dx = ' + _fn(my),
+            _w('y_bar = int (y^2/2) dx / A'),
+            _w('int y^2/2 dx = ' + _fn(my)),
             'y_bar = ' + _fn(my / area)])
         return
     i0 = _defi(sq, a, b, var)
     i1 = _defi(('*', vt, sq), a, b, var)
     if i0 is None or i1 is None or i0 == 0:
-        _show('COM: solid', ['could not integrate over',
-            'that interval'])
+        _show('COM: solid', [_warn('could not integrate over'),
+            _warn('that interval')])
         return
     axis = 'Ox' if k == 2 else 'Oy'
     other = 'y' if k == 2 else 'x'
-    _show('COM: solid', ['solid of revolution about ' + axis,
-        ('y = ' if k == 2 else 'x = ') + caseng.tostr(f),
-        'from ' + var + ' = ' + _fn(a) + ' to ' + _fn(b), '',
-        'V = pi int ' + ('y^2 dx' if k == 2 else 'x^2 dy'),
-        'int = ' + _fn(i0),
+    _show('COM: solid', [_w('solid of revolution about ' + axis),
+        _w(('y = ' if k == 2 else 'x = ') + caseng.tostr(f)),
+        _w('from ' + var + ' = ' + _fn(a) + ' to ' + _fn(b)), '',
+        _w('V = pi int ' + ('y^2 dx' if k == 2 else 'x^2 dy')),
+        _w('int = ' + _fn(i0)),
         'volume V = ' + _fn(math.pi * i0), '',
-        var + '_bar = int ' + var + ' r^2 d' + var + ' / int r^2 d' + var,
-        'int ' + var + ' r^2 = ' + _fn(i1),
+        _w(var + '_bar = int ' + var + ' r^2 d' + var + ' / int r^2 d' + var),
+        _w('int ' + var + ' r^2 = ' + _fn(i1)),
         var + '_bar = ' + _fn(i1 / i0),
         other + '_bar = 0 by symmetry'])
 
@@ -677,20 +679,20 @@ def t_com_standard():
             return
         aa = _rad(ang)
         if abs(aa) < 1e-12:
-            _show('Standard bodies', ['half-angle must be non-zero'])
+            _show('Standard bodies', [_warn('half-angle must be non-zero')])
             return
         if k == 3:
             d = r * math.sin(aa) / aa
             _show('Circular arc', ['centre of mass on the axis',
                 'of symmetry, from the CENTRE',
-                'd = r sin A / A  (A in radians)',
-                'A = ' + _fn(aa) + ' rad',
+                _w('d = r sin A / A  (A in radians)'),
+                _w('A = ' + _fn(aa) + ' rad'),
                 'distance = ' + _fn(d)])
         else:
             d = 2.0 * r * math.sin(aa) / (3.0 * aa)
             _show('Circular sector', ['from the CENTRE of the circle',
-                'd = 2 r sin A / (3 A)',
-                'A = ' + _fn(aa) + ' rad',
+                _w('d = 2 r sin A / (3 A)'),
+                _w('A = ' + _fn(aa) + ' rad'),
                 'distance = ' + _fn(d)])
         return
     if k in (1, 2, 9, 10):
@@ -701,40 +703,40 @@ def t_com_standard():
         return
     if k == 1:
         _show('Uniform rod', ['at the midpoint',
-            'd = L / 2', 'distance = ' + _fn(s / 2.0), 'from either end'])
+            _w('d = L / 2'), 'distance = ' + _fn(s / 2.0), 'from either end'])
     elif k == 2:
-        _show('Triangular lamina', ['at the centroid: the mean of',
-            'the three vertices, and 2/3 of',
-            'the way down each median',
-            'd = h / 3', 'distance = ' + _fn(s / 3.0),
+        _show('Triangular lamina', [_w('at the centroid: the mean of'),
+            _w('the three vertices, and 2/3 of'),
+            _w('the way down each median'),
+            _w('d = h / 3'), 'distance = ' + _fn(s / 3.0),
             'above the base'])
     elif k == 4:
         _show('Semicircular arc', ['a uniform wire, from the CENTRE',
-            'd = 2 r / pi',
+            _w('d = 2 r / pi'),
             'distance = ' + _fn(2.0 * s / math.pi)])
     elif k == 6:
         _show('Semicircular lamina', ['from the CENTRE of the',
             'bounding diameter',
-            'd = 4 r / (3 pi)',
+            _w('d = 4 r / (3 pi)'),
             'distance = ' + _fn(4.0 * s / (3.0 * math.pi))])
     elif k == 7:
         _show('Solid hemisphere', ['from the CENTRE of the flat face',
-            'd = 3 r / 8',
+            _w('d = 3 r / 8'),
             'distance = ' + _fn(3.0 * s / 8.0)])
     elif k == 8:
         _show('Hollow hemisphere', ['a shell, from the CENTRE of',
             'the rim',
-            'd = r / 2', 'distance = ' + _fn(s / 2.0)])
+            _w('d = r / 2'), 'distance = ' + _fn(s / 2.0)])
     elif k == 9:
         _show('Solid cone/pyramid', ['on the axis, from the APEX',
-            'd = 3 h / 4',
+            _w('d = 3 h / 4'),
             'distance = ' + _fn(3.0 * s / 4.0),
             '(= h/4 above the base,',
             ' i.e. ' + _fn(s / 4.0) + ')'])
     else:
         _show('Hollow cone', ['the curved surface only,',
             'from the APEX',
-            'd = 2 h / 3',
+            _w('d = 2 h / 3'),
             'distance = ' + _fn(2.0 * s / 3.0),
             '(= h/3 above the base,',
             ' i.e. ' + _fn(s / 3.0) + ')'])
@@ -756,7 +758,7 @@ def t_topple():
         y = _asknum('height y of the force')
         mu = _asknum('mu')
         if None in (w, aa, y, mu) or y == 0:
-            _show('Slide or topple', ['need a non-zero height y'])
+            _show('Slide or topple', [_warn('need a non-zero height y')])
             return
         psl = mu * w
         pto = w * aa / y
@@ -766,8 +768,8 @@ def t_topple():
             first = 'slides first'
         else:
             first = 'slides and topples together'
-        _show('Push on a block', ['sliding needs P > mu W',
-            'toppling needs P y > W a', '',
+        _show('Push on a block', [_w('sliding needs P > mu W'),
+            _w('toppling needs P y > W a'), '',
             'P to slide = ' + _fn(psl) + ' N',
             'P to topple = ' + _fn(pto) + ' N',
             first])
@@ -776,7 +778,7 @@ def t_topple():
     h = _asknum('height h of the COM')
     mu = _asknum('mu')
     if None in (aa, h, mu) or h <= 0:
-        _show('Slide or topple', ['need h > 0'])
+        _show('Slide or topple', [_warn('need h > 0')])
         return
     tto = _deg(math.atan(aa / h))
     tsl = _deg(math.atan(mu))
@@ -786,8 +788,8 @@ def t_topple():
         first = 'slides first'
     else:
         first = 'slides and topples together'
-    lines = ['topples when tan th > a/h',
-        'slides when tan th > mu', '',
+    lines = [_w('topples when tan th > a/h'),
+        _w('slides when tan th > mu'), '',
         'topple angle = ' + _fn(tto) + ' deg',
         'slide angle = ' + _fn(tsl) + ' deg',
         first]
@@ -815,19 +817,19 @@ def t_couple():
     d = _asknum('distance d apart')
     if None in (f, d):
         return
-    lines = ['G = F d',
+    lines = [_w('G = F d'),
         'moment G = ' + _fn(f * d) + ' N m',
         'resultant force = 0 N', '',
-        'demonstration: F up at x = 0',
-        'and F down at x = ' + _fn(d)]
+        _w('demonstration: F up at x = 0'),
+        _w('and F down at x = ' + _fn(d))]
     p = _asknum('moments about x = p (or cancel)')
     if p is not None:
         m0 = (0.0 - p) * f
         m1 = (d - p) * (-f)
-        lines.append('about x = ' + _fn(p) + ':')
-        lines.append('  ' + _fn(m0) + ' + ' + _fn(m1))
+        lines.append(_w('about x = ' + _fn(p) + ':'))
+        lines.append(_w('  ' + _fn(m0) + ' + ' + _fn(m1)))
         lines.append('moment about p = ' + _fn(m0 + m1) + ' N m')
-        lines.append('  size F d whatever p is')
+        lines.append(_w('  size F d whatever p is'))
     _show('Couple', lines)
 
 # ---------- triangle of forces ----------
@@ -859,42 +861,42 @@ def t_triangle_forces():
         dr = _deg(_atan2(-sy, -sx))
         if dr < 0:
             dr += 360.0
-        _show('Third force', ['for equilibrium F3 = -(F1 + F2)',
-            'F1 + F2 = (' + _fn(sx) + ', ' + _fn(sy) + ')',
+        _show('Third force', [_w('for equilibrium F3 = -(F1 + F2)'),
+            _w('F1 + F2 = (' + _fn(sx) + ', ' + _fn(sy) + ')'),
             'F3 = (' + _fn(-sx) + ', ' + _fn(-sy) + ')',
             'F3 = ' + _fn(mag) + ' N',
             'direction = ' + _fn(dr) + ' deg',
-            'the three vectors head to tail',
-            'close the triangle.'])
+            _w('the three vectors head to tail'),
+            _w('close the triangle.')])
         pts = [(0.0, 0.0), (x1, y1), (sx, sy), (0.0, 0.0)]
         _draw_polygon(pts, 'triangle of forces')
         return
     fs = _getlist('three magnitudes')
     if fs is None or len(fs) != 3:
-        _show('Triangle of forces', ['need three numbers,',
+        _show('Triangle of forces', [_warn('need three numbers,'),
             'e.g.  3 4 5'])
         return
     a, b, c = fs[0], fs[1], fs[2]
     if a <= 0 or b <= 0 or c <= 0:
-        _show('Triangle of forces', ['magnitudes must be positive'])
+        _show('Triangle of forces', [_warn('magnitudes must be positive')])
         return
     if a + b <= c or b + c <= a or c + a <= b:
-        _show('Triangle of forces', ['these cannot close into a',
-            'triangle, so the three forces',
-            'cannot be in equilibrium.'])
+        _show('Triangle of forces', [_warn('these cannot close into a'),
+            _warn('triangle, so the three forces'),
+            _warn('cannot be in equilibrium.')])
         return
     ca = casutil.acos_safe((b * b + c * c - a * a) / (2.0 * b * c))
     cb = casutil.acos_safe((c * c + a * a - b * b) / (2.0 * c * a))
     cc = casutil.acos_safe((a * a + b * b - c * c) / (2.0 * a * b))
-    _show('Angles between forces', ['cosine rule on the closed',
-        'triangle; the angle between two',
-        'forces is 180 - the interior',
-        'angle opposite the third.', '',
+    _show('Angles between forces', [_w('cosine rule on the closed'),
+        _w('triangle; the angle between two'),
+        _w('forces is 180 - the interior'),
+        _w('angle opposite the third.'), '',
         'F1 to F2 = ' + _fn(180.0 - _deg(cc)) + ' deg',
         'F2 to F3 = ' + _fn(180.0 - _deg(ca)) + ' deg',
         'F3 to F1 = ' + _fn(180.0 - _deg(cb)) + ' deg',
-        '(they add to 360)', '',
-        'Lami: F1/sin(F2^F3) = ...'])
+        _w('(they add to 360)'), '',
+        _w('Lami: F1/sin(F2^F3) = ...')])
     px = (a * a + c * c - b * b) / (2.0 * a)
     py2 = c * c - px * px
     py = math.sqrt(py2) if py2 > 0 else 0.0
@@ -966,7 +968,7 @@ def t_units():
         return
     p = _getlist('M L T powers, e.g. 1 1 -2')
     if p is None or len(p) != 3:
-        _show('Units', ['need 3 numbers, e.g.  1 1 -2'])
+        _show('Units', [_warn('need 3 numbers, e.g.  1 1 -2')])
         return
     us = _unitstr(p)
     name = None
@@ -974,39 +976,39 @@ def t_units():
         if row[0] == p[0] and row[1] == p[1] and row[2] == p[2]:
             name = row[3]
     if k != 2:
-        lines = ['M^' + _fn(p[0]) + ' L^' + _fn(p[1]) + ' T^' + _fn(p[2]),
+        lines = [_w('M^' + _fn(p[0]) + ' L^' + _fn(p[1]) + ' T^' + _fn(p[2])),
             'SI units: ' + us]
         if name is not None:
             lines.append('this is ' + name)
         else:
             lines.append('(not a named quantity here)')
         if p[0] == 0 and p[1] == 0 and p[2] == 0:
-            lines.append('a dimensionless quantity: its')
-            lines.append('value is the same in any')
-            lines.append('consistent system of units.')
+            lines.append(_w('a dimensionless quantity: its'))
+            lines.append(_w('value is the same in any'))
+            lines.append(_w('consistent system of units.'))
         _show('Units', lines)
         return
     v = _asknum('value in kg, m, s')
     fac = _getlist('new units in kg m s')
     if v is None or fac is None or len(fac) != 3:
-        _show('Units', ['need the value and 3 factors,',
+        _show('Units', [_warn('need the value and 3 factors,'),
             'e.g. 1 1000 3600 for km and h'])
         return
     if fac[0] <= 0 or fac[1] <= 0 or fac[2] <= 0:
-        _show('Units', ['unit sizes must be positive'])
+        _show('Units', [_warn('unit sizes must be positive')])
         return
     d = (fac[0] ** p[0]) * (fac[1] ** p[1]) * (fac[2] ** p[2])
     if d == 0:
-        _show('Units', ['conversion factor is zero'])
+        _show('Units', [_warn('conversion factor is zero')])
         return
-    _show('Change of units', ['quantity in ' + us,
-        'value = ' + _fn(v), '',
-        '1 new mass unit = ' + _fn(fac[0]) + ' kg',
-        '1 new length unit = ' + _fn(fac[1]) + ' m',
-        '1 new time unit = ' + _fn(fac[2]) + ' s', '',
-        'divide by ' + _fn(fac[0]) + '^' + _fn(p[0]) + ' x ' +
+    _show('Change of units', [_w('quantity in ' + us),
+        _w('value = ' + _fn(v)), '',
+        _w('1 new mass unit = ' + _fn(fac[0]) + ' kg'),
+        _w('1 new length unit = ' + _fn(fac[1]) + ' m'),
+        _w('1 new time unit = ' + _fn(fac[2]) + ' s'), '',
+        _w('divide by ' + _fn(fac[0]) + '^' + _fn(p[0]) + ' x ' +
         _fn(fac[1]) + '^' + _fn(p[1]) + ' x ' +
-        _fn(fac[2]) + '^' + _fn(p[2]),
+        _fn(fac[2]) + '^' + _fn(p[2])),
         'factor = ' + _fn(d),
         'new value = ' + _fn(v / d)])
 
@@ -1026,7 +1028,7 @@ def t_relative():
     if ra is None or va is None or rb is None or vb is None:
         return
     if len(ra) != 2 or len(va) != 2 or len(rb) != 2 or len(vb) != 2:
-        _show('Relative motion', ['need two numbers in each',
+        _show('Relative motion', [_warn('need two numbers in each'),
             'entry, e.g.  3 -4'])
         return
     rx = rb[0] - ra[0]
