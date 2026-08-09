@@ -3,6 +3,7 @@ import casui
 import caslex
 import caseng
 import cascalc
+import caspoly
 import casutil
 
 _asknum = casutil.asknum
@@ -746,14 +747,1645 @@ def t_eigen3():
     _pages('3x3 eigen', lines)
 
 
+# ================= non-homogeneous recurrence relations ==================
+# t_recur above solves u(n+2) = p u(n+1) + q u(n) and nothing else: the
+# complementary function on its own. What follows adds the particular solution,
+# so the whole of s5, s6, s7 and s8 is covered, plus s4 (verify a given
+# solution) and s2/s3/s9 (say what the sequence actually does).
+#
+# The method is undetermined coefficients, done once for both orders. Write the
+# recurrence as L[u](n) = f(n) with
+#     L[g](n) = g(n+k) - co[k-1] g(n+k-1) - ... - co[0] g(n)
+# so co = [a] for the first order case and co = [b, a] for the second. If
+# f(n) = P(n) b^n with deg P = d, a particular solution is
+#     p(n) = (c_0 + c_1 n + ... + c_d n^d) n^s b^n
+# where s is the multiplicity of b as a root of the auxiliary equation - the
+# resonant case, and the one everybody drops. The c_j come from a (d+1) square
+# linear system, because L[p] and f are both (polynomial of degree d) times
+# b^n and two of those agree everywhere as soon as they agree at d+1 points.
+
+def _onlyvars(tree, allowed, title):
+    # every letter the expression uses must be one this tool binds; an
+    # unbound letter would otherwise be read as x and silently evaluate to 0
+    for v in caseng.vars_in(tree):
+        if v not in allowed:
+            _show(title, ['That expression uses the letter "' + v + '".',
+                          'This tool only knows ' + ', '.join(allowed) + '.'])
+            return False
+    return True
+
+
+def _fat(tree, n):
+    # f(n) as a float, or None if it cannot be evaluated there
+    return _at(tree, {'n': float(n)})
+
+
+def _fsamples(tree, lo, hi):
+    out = []
+    n = lo
+    while n <= hi:
+        v = _fat(tree, n)
+        if v is None:
+            return None
+        out.append(v)
+        n += 1
+    return out
+
+
+def _polydeg(vals):
+    # Degree of the polynomial through equally spaced samples, by finite
+    # differences: the (d+1)th difference of a degree d polynomial is zero.
+    # -1 means the zero function; None means the differences never die away,
+    # so the samples are not polynomial at all.
+    scale = 0.0
+    for v in vals:
+        if abs(v) > scale:
+            scale = abs(v)
+    cur = list(vals)
+    k = 0
+    while k < len(vals) and k <= 5:
+        allz = True
+        for v in cur:
+            if abs(v) > 1e-9 * (scale + 1.0) * (1 << k):
+                allz = False
+                break
+        if allz:
+            return k - 1
+        nxt = []
+        i = 1
+        while i < len(cur):
+            nxt.append(cur[i] - cur[i - 1])
+            i += 1
+        cur = nxt
+        k += 1
+    return None
+
+
+def _fform(tree):
+    # f(n) written as P(n) b^n: returns (b, deg P), or None for anything else.
+    # b = 1 is the polynomial (and constant) case.
+    vals = _fsamples(tree, 0, 8)
+    if vals is None:
+        return None
+    d = _polydeg(vals)
+    if d is not None:
+        return (1.0, d if d > 0 else 0)
+    if abs(vals[0]) < 1e-300:
+        return None
+    b = vals[1] / vals[0]
+    if abs(b) < 1e-12:
+        return None
+    v = vals[0]
+    i = 0
+    while i < len(vals):
+        if abs(vals[i] - v) > 1e-7 * (abs(v) + 1.0):
+            return None
+        v *= b
+        i += 1
+    return (b, 0)
+
+
+def _bstr(b):
+    # a base, bracketed when it is negative so (-1)^n is not read as -(1^n)
+    s = _fn(b)
+    return '(' + s + ')' if b < 0 else s
+
+
+def _formname(b, d):
+    if abs(b - 1.0) < 1e-12:
+        if d == 0:
+            return 'a constant'
+        if d == 1:
+            return 'linear in n'
+        return 'a polynomial of degree ' + str(d)
+    if d == 0:
+        return 'k * ' + _bstr(b) + '^n'
+    return 'a degree ' + str(d) + ' polynomial times ' + _bstr(b) + '^n'
+
+
+def _powf(b, n):
+    # b^n, capped instead of raising: float ** big int is the one operation
+    # here that throws rather than returning inf, and an absurd index is a
+    # typing mistake, not a reason to take the result screen down with it
+    try:
+        return b ** n
+    except:
+        return 1.7e308 if (b > 0 or n % 2 == 0) else -1.7e308
+
+
+def _bval(e, b, n):
+    # n^e b^n, taking 0^0 = 1 as usual
+    p = 1.0
+    i = 0
+    while i < e:
+        p *= n
+        i += 1
+    return p * _powf(b, n)
+
+
+def _lop(co, e, b, n):
+    # L applied to the single trial term n^e b^n, at n
+    k = len(co)
+    v = _bval(e, b, n + k)
+    i = 0
+    while i < k:
+        v -= co[i] * _bval(e, b, n + i)
+        i += 1
+    return v
+
+
+def _lsolve(M, v):
+    # Gaussian elimination with partial pivoting; None when singular
+    n = len(v)
+    A = []
+    i = 0
+    while i < n:
+        row = list(M[i])
+        row.append(v[i])
+        A.append(row)
+        i += 1
+    c = 0
+    while c < n:
+        best = c
+        r = c
+        while r < n:
+            if abs(A[r][c]) > abs(A[best][c]):
+                best = r
+            r += 1
+        if abs(A[best][c]) < 1e-12:
+            return None
+        A[c], A[best] = A[best], A[c]
+        d = A[c][c]
+        j = c
+        while j <= n:
+            A[c][j] /= d
+            j += 1
+        r = 0
+        while r < n:
+            if r != c and abs(A[r][c]) > 1e-15:
+                fq = A[r][c]
+                j = c
+                while j <= n:
+                    A[r][j] -= fq * A[c][j]
+                    j += 1
+            r += 1
+        c += 1
+    out = []
+    i = 0
+    while i < n:
+        out.append(A[i][n])
+        i += 1
+    return out
+
+
+def _particular(co, tree, b, d, s):
+    # coefficients of p(n) = sum_j c_j n^(s+j) b^n, or None if the trial form
+    # does not in fact reproduce f - which is the check that catches a wrong
+    # guess at the shape of f or at the resonance
+    m = d + 1
+    M = []
+    rhs = []
+    n = 0
+    while n < m:
+        row = []
+        j = 0
+        while j < m:
+            row.append(_lop(co, s + j, b, n))
+            j += 1
+        M.append(row)
+        v = _fat(tree, n)
+        if v is None:
+            return None
+        rhs.append(v)
+        n += 1
+    c = _lsolve(M, rhs)
+    if c is None:
+        return None
+    j = 0
+    while j < m:
+        r = float(int(round(c[j])))
+        if abs(c[j] - r) < 1e-9 * (abs(c[j]) + 1.0):
+            c[j] = r
+        j += 1
+    n = 0
+    while n <= m + 4:
+        got = 0.0
+        j = 0
+        while j < m:
+            got += c[j] * _lop(co, s + j, b, n)
+            j += 1
+        want = _fat(tree, n)
+        if want is None:
+            return None
+        if abs(got - want) > 1e-6 * (abs(want) + 1.0):
+            return None
+        n += 1
+    return c
+
+
+def _pval(c, b, s, n):
+    v = 0.0
+    j = 0
+    while j < len(c):
+        v += c[j] * _bval(s + j, b, n)
+        j += 1
+    return v
+
+
+def _mono(coef, e, b, first):
+    # one term coef * n^e * b^n, with its sign, ready to be concatenated
+    if abs(coef) < 1e-12:
+        return ''
+    neg = coef < 0
+    mag = -coef if neg else coef
+    parts = []
+    if e == 0 and abs(b - 1.0) < 1e-12:
+        parts.append(_fn(mag))
+    else:
+        if abs(mag - 1.0) > 1e-9:
+            parts.append(_fn(mag))
+        if e == 1:
+            parts.append('n')
+        elif e > 1:
+            parts.append('n^' + str(e))
+        if abs(b - 1.0) > 1e-12:
+            parts.append(_bstr(b) + '^n')
+    body = '*'.join(parts)
+    if body == '':
+        body = '1'
+    if first:
+        return ('-' + body) if neg else body
+    return (' - ' + body) if neg else (' + ' + body)
+
+
+def _signed(v):
+    # "+ 3" or "- 2", for writing a recurrence back out readably
+    return ('- ' + _fn(-v)) if v < 0 else ('+ ' + _fn(v))
+
+
+def _trigterm(c, name, th, first):
+    # one of A cos(n t), B sin(n t), with its sign
+    if abs(c) < 1e-12:
+        return ''
+    neg = c < 0
+    mag = -c if neg else c
+    body = (('' if abs(mag - 1.0) < 1e-9 else _fn(mag) + '*') + name +
+            '(' + _fn(th) + 'n)')
+    if first:
+        return ('-' + body) if neg else body
+    return (' - ' + body) if neg else (' + ' + body)
+
+
+def _sumstr(terms):
+    out = ''
+    for c, e, b in terms:
+        out += _mono(c, e, b, out == '')
+    return out if out != '' else '0'
+
+
+def _pterms(c, b, s):
+    # the particular solution as (coef, power of n, base) triples, highest
+    # power first, which is how it would be written down
+    out = []
+    j = len(c) - 1
+    while j >= 0:
+        out.append((c[j], s + j, b))
+        j -= 1
+    return out
+
+
+def _asknz(prompt):
+    v = _asknum(prompt)
+    if v is None:
+        return 0
+    return int(round(v))
+
+
+def t_recur_nonhom():
+    # s5 and s6: u(n+1) = a u(n) + f(n)
+    _show('First order recurrence', [
+        'u(n+1) = a u(n) + f(n)',
+        '',
+        'The general solution is the',
+        'complementary function A a^n (what',
+        'solves the equation with f = 0)',
+        'plus any one particular solution',
+        'p(n). The shape of p follows f:',
+        '  constant   -> constant',
+        '  polynomial -> same degree',
+        '  k b^n      -> C b^n',
+        'and when b = a that trial term is',
+        'already a solution of the',
+        'homogeneous equation, so it needs',
+        'an extra factor of n.'])
+    a = _asknum('a in u(n+1) = a u(n) + f(n)')
+    if a is None:
+        return
+    ft = casutil.askexpr('f(n) = (in n; type 0 for none)')
+    if ft is None:
+        return
+    if not _onlyvars(ft, ['n'], 'First order recurrence'):
+        return
+    u0 = _asknum('first term u(n0) =')
+    if u0 is None:
+        return
+    n0 = _asknz('n0, the index of that term [0]')
+    if n0 < 0 or n0 > 100:
+        _show('First order recurrence', ['n0 must be between 0 and 100.'])
+        return
+    lines = ['u(n+1) = ' + _fn(a) + ' u(n) + f(n)',
+             'f(n) = ' + caseng.tostr(caseng.simplify(ft)),
+             'u(' + str(n0) + ') = ' + _fn(u0), '']
+    if abs(a) < 1e-12:
+        lines.append('a = 0, so u(n+1) = f(n) outright')
+        lines.append('and u(n) = f(n-1) for n > ' + str(n0) + '.')
+        lines.append('There is no complementary function')
+        lines.append('to fit.')
+        _pages('First order recurrence', lines + _recur1_terms(a, ft, u0, n0))
+        return
+    form = _fform(ft)
+    c = None
+    if form is not None:
+        b, d = form
+        if d > 4:
+            form = None
+    if form is not None:
+        s = 1 if abs(b - a) < 1e-9 * (abs(a) + 1.0) else 0
+        c = _particular([a], ft, b, d, s)
+    if c is None:
+        lines.append('f(n) is not a constant, a')
+        lines.append('polynomial or k b^n, so there is no')
+        lines.append('standard trial solution. The exact')
+        lines.append('answer is still')
+        lines.append('  u(n) = a^(n-n0) u(n0)')
+        lines.append('       + sum a^(n-1-k) f(k),')
+        lines.append('  the sum over k = n0 .. n-1.')
+        _pages('First order recurrence', lines + _recur1_terms(a, ft, u0, n0))
+        return
+    lines.append('f(n) is ' + _formname(b, d) + '.')
+    lines.append('complementary function: A * ' + _bstr(a) + '^n')
+    if s:
+        lines.append('RESONANCE: b = a = ' + _fn(a) + ', so the')
+        lines.append('trial term carries an extra n.')
+    lines.append('trial p(n) = ' + _trialstr(b, d, s))
+    lines.append('p(n) = ' + _sumstr(_pterms(c, b, s)))
+    A = (u0 - _pval(c, b, s, n0)) / _powf(a, n0)
+    lines.append('u(' + str(n0) + ') = ' + _fn(u0) + ' fixes A = ' + _fn(A))
+    closed = _sumstr([(A, 0, a)] + _pterms(c, b, s))
+    # check before printing: run the recurrence forward and compare
+    rows = []
+    err = 0.0
+    uv = u0
+    k = 0
+    while k <= 10:
+        n = n0 + k
+        cf = A * _powf(a, n) + _pval(c, b, s, n)
+        e = abs(cf - uv)
+        if e / (1.0 + abs(uv)) > err:
+            err = e / (1.0 + abs(uv))
+        rows.append('n=' + str(n) + '  u=' + _fn(uv) + '  closed=' + _fn(cf))
+        fv = _fat(ft, n)
+        if fv is None:
+            break
+        uv = a * uv + fv
+        k += 1
+    lines.append('')
+    if err < 1e-6:
+        lines.append('CLOSED FORM')
+        lines.append('u(n) = ' + closed)
+        lines.append('checked against the recurrence for')
+        lines.append('11 terms: largest relative')
+        lines.append('difference ' + _fn(err, 10) + '.')
+    else:
+        lines.append('The trial solution did NOT survive')
+        lines.append('the check (relative difference ' +
+                     _fn(err, 6) + '),')
+        lines.append('so no closed form is offered.')
+        lines.append('candidate was ' + closed)
+    lines.append('')
+    lines.append('term from the recurrence, then from')
+    lines.append('the closed form:')
+    _pages('First order recurrence', lines + rows)
+
+
+def _trialstr(b, d, s):
+    # the trial form written out, e.g. "(C0 + C1 n) n 2^n"
+    if d == 0:
+        head = 'C'
+    else:
+        head = '(C0'
+        j = 1
+        while j <= d:
+            head += ' + C' + str(j) + (' n' if j == 1 else ' n^' + str(j))
+            j += 1
+        head += ')'
+    tail = ''
+    if s == 1:
+        tail += ' n'
+    elif s > 1:
+        tail += ' n^' + str(s)
+    if abs(b - 1.0) > 1e-12:
+        tail += ' ' + _bstr(b) + '^n'
+    return head + tail
+
+
+def _recur1_terms(a, ft, u0, n0):
+    out = ['', 'the sequence itself:']
+    uv = u0
+    k = 0
+    while k <= 10:
+        out.append('u(' + str(n0 + k) + ') = ' + _fn(uv))
+        fv = _fat(ft, n0 + k)
+        if fv is None:
+            break
+        uv = a * uv + fv
+        k += 1
+    return out
+
+
+def _cbasis(kind, p, q, idx, n):
+    # the two complementary basis sequences, for each root case
+    if kind == 'real':
+        return _powf(p, n) if idx == 0 else _powf(q, n)
+    if kind == 'rep':
+        return _powf(p, n) if idx == 0 else n * _powf(p, n)
+    return _powf(p, n) * (math.cos(n * q) if idx == 0 else math.sin(n * q))
+
+
+def t_recur_nonhom2():
+    # s7 and s8: u(n+2) = a u(n+1) + b u(n) + f(n)
+    _show('Second order recurrence', [
+        'u(n+2) = a u(n+1) + b u(n) + f(n)',
+        '',
+        'The auxiliary equation',
+        '  x^2 - a x - b = 0',
+        'gives the complementary function:',
+        '  distinct roots  A r1^n + B r2^n',
+        '  repeated root   (A + B n) r^n',
+        '  complex roots   R^n (A cos(n t)',
+        '                  + B sin(n t))',
+        'A particular solution is added on',
+        'top, its shape following f(n), and',
+        'the two given terms then fix A',
+        'and B.'])
+    ca = _asknum('a in u(n+2)=a u(n+1)+b u(n)+f(n)')
+    if ca is None:
+        return
+    cb = _asknum('b (the u(n) coefficient)')
+    if cb is None:
+        return
+    ft = casutil.askexpr('f(n) = (in n; type 0 for none)')
+    if ft is None:
+        return
+    if not _onlyvars(ft, ['n'], 'Second order recurrence'):
+        return
+    u0 = _asknum('first term u(n0) =')
+    if u0 is None:
+        return
+    u1 = _asknum('next term u(n0+1) =')
+    if u1 is None:
+        return
+    n0 = _asknz('n0, the index of the first [0]')
+    if n0 < 0 or n0 > 100:
+        _show('Second order recurrence', ['n0 must be between 0 and 100.'])
+        return
+    lines = ['u(n+2) = ' + _fn(ca) + ' u(n+1) ' + _signed(cb) + ' u(n) + f(n)',
+             'f(n) = ' + caseng.tostr(caseng.simplify(ft)),
+             'u(' + str(n0) + ') = ' + _fn(u0) +
+             ', u(' + str(n0 + 1) + ') = ' + _fn(u1), '',
+             'auxiliary: x^2 - (' + _fn(ca) + ')x - (' + _fn(cb) + ') = 0']
+    disc = ca * ca + 4.0 * cb
+    lines.append('discriminant = ' + _fn(disc))
+    if disc > 1e-12:
+        sd = math.sqrt(disc)
+        r1 = (ca + sd) / 2.0
+        r2 = (ca - sd) / 2.0
+        kind = 'real'
+        pp, qq = r1, r2
+        lines.append('distinct real roots r1 = ' + _fn(r1) +
+                     ', r2 = ' + _fn(r2))
+        lines.append('CF = A(' + _fn(r1) + ')^n + B(' + _fn(r2) + ')^n')
+    elif disc < -1e-12:
+        sd = math.sqrt(-disc)
+        re = ca / 2.0
+        im = sd / 2.0
+        kind = 'cx'
+        pp = math.sqrt(re * re + im * im)
+        qq = casutil.atan2(im, re)
+        lines.append('complex roots ' + _cstr(complex(re, im)) +
+                     ' and ' + _cstr(complex(re, -im)))
+        lines.append('modulus R = ' + _fn(pp) + ', argument t = ' +
+                     _fn(qq) + ' rad')
+        lines.append('CF = R^n (A cos(n t) + B sin(n t))')
+    else:
+        kind = 'rep'
+        pp = ca / 2.0
+        qq = 0.0
+        lines.append('repeated root r = ' + _fn(pp))
+        lines.append('CF = (A + B n)(' + _fn(pp) + ')^n')
+    co = [cb, ca]
+    form = _fform(ft)
+    c = None
+    s = 0
+    if form is not None:
+        fb, d = form
+        if d > 4:
+            form = None
+    if form is not None:
+        if abs(fb * fb - ca * fb - cb) < 1e-9 * (1.0 + abs(cb) + abs(ca)):
+            s = 1
+            if kind == 'rep' and abs(fb - pp) < 1e-9 * (1.0 + abs(pp)):
+                s = 2
+        c = _particular(co, ft, fb, d, s)
+    if c is None:
+        lines.append('')
+        lines.append('f(n) is not a constant, a polynomial')
+        lines.append('or k b^n, so there is no standard')
+        lines.append('trial solution to add. Only the')
+        lines.append('sequence itself is shown.')
+        _pages('Second order recurrence',
+               lines + _recur2_terms(ca, cb, ft, u0, u1, n0))
+        return
+    lines.append('')
+    lines.append('f(n) is ' + _formname(fb, d) + '.')
+    if s:
+        lines.append('RESONANCE: ' + _fn(fb) + ' is a root of the')
+        lines.append('auxiliary equation ' +
+                     ('twice' if s == 2 else 'once') + ', so the')
+        lines.append('trial term carries n^' + str(s) + '.')
+    lines.append('trial p(n) = ' + _trialstr(fb, d, s))
+    lines.append('p(n) = ' + _sumstr(_pterms(c, fb, s)))
+    g0 = u0 - _pval(c, fb, s, n0)
+    g1 = u1 - _pval(c, fb, s, n0 + 1)
+    M = [[_cbasis(kind, pp, qq, 0, n0), _cbasis(kind, pp, qq, 1, n0)],
+         [_cbasis(kind, pp, qq, 0, n0 + 1), _cbasis(kind, pp, qq, 1, n0 + 1)]]
+    AB = _lsolve(M, [g0, g1])
+    if AB is None:
+        lines.append('The two given terms do not fix A')
+        lines.append('and B (the system is singular).')
+        _pages('Second order recurrence',
+               lines + _recur2_terms(ca, cb, ft, u0, u1, n0))
+        return
+    A, B = AB[0], AB[1]
+    lines.append('the two given terms fix')
+    lines.append('  A = ' + _fn(A) + ',  B = ' + _fn(B))
+    if kind == 'real':
+        closed = _sumstr([(A, 0, pp), (B, 0, qq)] + _pterms(c, fb, s))
+    elif kind == 'rep':
+        closed = _sumstr([(A, 0, pp), (B, 1, pp)] + _pterms(c, fb, s))
+    else:
+        inner = _trigterm(A, 'cos', qq, True) + _trigterm(B, 'sin', qq, False)
+        if inner == '':
+            inner = '0'
+        if abs(pp - 1.0) < 1e-9:
+            closed = inner
+        else:
+            closed = _fn(pp) + '^n*(' + inner + ')'
+        tail = _sumstr(_pterms(c, fb, s))
+        if tail != '0':
+            closed += ' + ' + tail
+    rows = []
+    err = 0.0
+    ua = u0
+    ub = u1
+    k = 0
+    while k <= 10:
+        n = n0 + k
+        cf = (A * _cbasis(kind, pp, qq, 0, n) + B * _cbasis(kind, pp, qq, 1, n)
+              + _pval(c, fb, s, n))
+        e = abs(cf - ua) / (1.0 + abs(ua))
+        if e > err:
+            err = e
+        rows.append('n=' + str(n) + '  u=' + _fn(ua) + '  closed=' + _fn(cf))
+        fv = _fat(ft, n)
+        if fv is None:
+            break
+        ua, ub = ub, ca * ub + cb * ua + fv
+        k += 1
+    lines.append('')
+    if err < 1e-6:
+        lines.append('CLOSED FORM')
+        lines.append('u(n) = ' + closed)
+        lines.append('checked against the recurrence for')
+        lines.append('11 terms: largest relative')
+        lines.append('difference ' + _fn(err, 10) + '.')
+    else:
+        lines.append('The trial solution did NOT survive')
+        lines.append('the check (relative difference ' +
+                     _fn(err, 6) + '),')
+        lines.append('so no closed form is offered.')
+        lines.append('candidate was ' + closed)
+    lines.append('')
+    lines.append('term from the recurrence, then from')
+    lines.append('the closed form:')
+    _pages('Second order recurrence', lines + rows)
+
+
+def _recur2_terms(ca, cb, ft, u0, u1, n0):
+    out = ['', 'the sequence itself:']
+    ua = u0
+    ub = u1
+    k = 0
+    while k <= 10:
+        out.append('u(' + str(n0 + k) + ') = ' + _fn(ua))
+        fv = _fat(ft, n0 + k)
+        if fv is None:
+            break
+        ua, ub = ub, ca * ub + cb * ua + fv
+        k += 1
+    return out
+
+
+# ---------- s4: verify a given closed form solves a given recurrence ----------
+def t_recur_verify():
+    labels = ['u(n+1) = f(n, u)', 'u(n+2) = f(n, u, v)']
+    c = casui.menu('Verify a solution', labels)
+    if c == -1:
+        return
+    order = c + 1
+    _show('Verify a solution', [
+        'Type the right-hand side of the',
+        'recurrence with',
+        '  u for u(n)',
+        '  v for u(n+1)   (2nd order only)',
+        '  n for the index,',
+        'then the closed form you want to',
+        'test, as an expression in n.',
+        '',
+        'Each side is worked out separately',
+        'and the two are set side by side.'])
+    allowed = ['n', 'u'] if order == 1 else ['n', 'u', 'v']
+    rhs = casutil.askexpr('u(n+' + str(order) + ') = (in n, u' +
+                          (', v' if order == 2 else '') + ')')
+    if rhs is None:
+        return
+    if not _onlyvars(rhs, allowed, 'Verify a solution'):
+        return
+    cand = casutil.askexpr('candidate u(n) = (in n)')
+    if cand is None:
+        return
+    if not _onlyvars(cand, ['n'], 'Verify a solution'):
+        return
+    n0 = _asknz('check from n = [0]')
+    if n0 < 0 or n0 > 100:
+        _show('Verify a solution', ['start between 0 and 100, please.'])
+        return
+    lines = ['recurrence: u(n+' + str(order) + ') = ' +
+             caseng.tostr(caseng.simplify(rhs)),
+             'candidate:  u(n) = ' + caseng.tostr(caseng.simplify(cand)), '']
+    # the symbolic substitution, which is what "verify" means on paper
+    try:
+        nplus = ('+', ('v', 'n'), ('n', 1))
+        cn1 = caseng.subst(cand, 'n', nplus)
+        cn2 = caseng.subst(cand, 'n', ('+', ('v', 'n'), ('n', 2)))
+        left = cn1 if order == 1 else cn2
+        sub = caseng.subst(rhs, 'u', cand)
+        if order == 2:
+            sub = caseng.subst(sub, 'v', cn1)
+        ls = caseng.tostr(cascalc.tidy(caspoly.collect(caspoly.expand(left))))
+        rs = caseng.tostr(cascalc.tidy(caspoly.collect(caspoly.expand(sub))))
+        lines.append('substituting the candidate:')
+        lines.append('  LHS u(n+' + str(order) + ') = ' + ls)
+        lines.append('  RHS            = ' + rs)
+        if ls == rs:
+            lines.append('  the two sides are identical after')
+            lines.append('  expanding, which settles it exactly.')
+        lines.append('')
+    except:
+        pass
+    ok = True
+    rows = []
+    k = 0
+    while k <= 10:
+        n = n0 + k
+        cv = _fat(cand, n)
+        c1 = _fat(cand, n + 1)
+        c2 = _fat(cand, n + 2)
+        if cv is None or c1 is None or (order == 2 and c2 is None):
+            rows.append('n=' + str(n) + '  undefined there')
+            ok = False
+            break
+        env = {'n': float(n), 'u': cv}
+        if order == 2:
+            env['v'] = c1
+        rv = _at(rhs, env)
+        lv = c1 if order == 1 else c2
+        if rv is None:
+            rows.append('n=' + str(n) + '  RHS undefined')
+            ok = False
+            break
+        d = abs(lv - rv)
+        if d > 1e-7 * (1.0 + abs(lv)):
+            ok = False
+        rows.append('n=' + str(n) + '  LHS=' + _fn(lv) + '  RHS=' + _fn(rv) +
+                    '  diff=' + _fn(d, 8))
+        k += 1
+    if ok:
+        lines.append('VERDICT: the closed form SATISFIES')
+        lines.append('the recurrence.')
+        lines.append('(It is the solution of that')
+        lines.append(' recurrence with the first ' + str(order))
+        lines.append(' term(s) it produces itself.)')
+    else:
+        lines.append('VERDICT: the closed form does NOT')
+        lines.append('satisfy the recurrence.')
+    lines.append('')
+    lines.append('LHS is u(n+' + str(order) + ') from the closed form,')
+    lines.append('RHS is the recurrence with the closed')
+    lines.append('form substituted:')
+    _pages('Verify a solution', lines + rows)
+
+
+# ---------- s2, s3, s9: what does the sequence actually do? ----------
+def t_recur_behave():
+    _show('Behaviour of a sequence', [
+        'For u(n+1) = f(u(n)), this reports',
+        'whether the sequence converges (and',
+        'to what), diverges, is periodic (and',
+        'with what period), oscillates, or',
+        'is increasing or decreasing.',
+        '',
+        'It also finds the fixed points, the',
+        'u with f(u) = u, and says whether',
+        'each attracts or repels: a fixed',
+        'point attracts when |f\'(u)| < 1.'])
+    f = casutil.askexpr('u(n+1) = f(u) = (in u)')
+    if f is None:
+        return
+    if not _onlyvars(f, ['u', 'n'], 'Behaviour of a sequence'):
+        return
+    u0 = _asknum('u(0) =')
+    if u0 is None:
+        return
+    lines = ['u(n+1) = ' + caseng.tostr(caseng.simplify(f)),
+             'u(0) = ' + _fn(u0), '']
+    seq = [u0]
+    diverged = False
+    broke = False
+    n = 0
+    while n < 300:
+        v = _at(f, {'u': seq[n], 'n': float(n)})
+        if v is None:
+            broke = True
+            break
+        if abs(v) > 1e12:
+            seq.append(v)
+            diverged = True
+            break
+        seq.append(v)
+        n += 1
+    shown = []
+    i = 0
+    while i < len(seq) and i < 12:
+        shown.append('u(' + str(i) + ') = ' + _fn(seq[i]))
+        i += 1
+    m = len(seq) - 1
+    # convergence: the tail stops moving
+    conv = False
+    if not diverged and not broke and m > 20:
+        conv = True
+        k = m - 4
+        while k < m:
+            if abs(seq[k + 1] - seq[k]) > 1e-9 * (1.0 + abs(seq[k])):
+                conv = False
+                break
+            k += 1
+    # periodicity: the tail repeats
+    period = 0
+    if not diverged and not broke and m > 40 and not conv:
+        p = 1
+        while p <= 12:
+            good = True
+            k = m - 2 * p
+            while k <= m - p:
+                if abs(seq[k] - seq[k + p]) > 1e-7 * (1.0 + abs(seq[k])):
+                    good = False
+                    break
+                k += 1
+            if good:
+                period = p
+                break
+            p += 1
+    # monotone / oscillating over the terms we have
+    inc = True
+    dec = True
+    osc = True
+    i = 1
+    while i < len(seq) and i < 30:
+        d = seq[i] - seq[i - 1]
+        if d < -1e-12:
+            inc = False
+        if d > 1e-12:
+            dec = False
+        if i >= 2:
+            e = seq[i - 1] - seq[i - 2]
+            if d * e > 0 or abs(d) < 1e-15:
+                osc = False
+        i += 1
+    lines.append('BEHAVIOUR')
+    if broke:
+        lines.append('The sequence leaves the domain of f')
+        lines.append('at u(' + str(len(seq) - 1) + '), so it stops there.')
+    elif diverged:
+        lines.append('DIVERGENT: |u(n)| passes 1e12 by')
+        lines.append('n = ' + str(len(seq) - 1) + ' and keeps growing.')
+    elif conv:
+        lines.append('CONVERGENT: u(n) -> ' + _fn(seq[m]))
+        lines.append('The limit L satisfies L = f(L), which')
+        lines.append('is why the fixed points below are')
+        lines.append('the only possible limits.')
+    elif period == 1:
+        lines.append('Constant from some point on.')
+    elif period:
+        lines.append('PERIODIC with period ' + str(period) + ':')
+        lines.append('u(n+' + str(period) + ') = u(n) for large n.')
+        cyc = []
+        i = m - period + 1
+        while i <= m:
+            cyc.append(_fn(seq[i]))
+            i += 1
+        lines.append('the cycle is ' + ', '.join(cyc))
+    else:
+        lines.append('Neither settling nor repeating over')
+        lines.append('300 terms: bounded but not periodic')
+        lines.append('(or converging too slowly to see).')
+    if inc and not dec:
+        lines.append('It is INCREASING over the terms shown.')
+    elif dec and not inc:
+        lines.append('It is DECREASING over the terms shown.')
+    elif osc:
+        lines.append('It OSCILLATES: the steps alternate in')
+        lines.append('sign, so the terms straddle the limit.')
+    lines.append('')
+    lines.append('FIXED POINTS  (f(u) = u)')
+    if 'n' in caseng.vars_in(f):
+        lines.append('f depends on n as well as u, so there')
+        lines.append('are no fixed points of a single map.')
+    else:
+        try:
+            roots = cascalc.solve(('-', f, ('v', 'u')), 'u')
+        except:
+            roots = []
+        if not roots:
+            lines.append('None found in -20 <= u <= 20, so the')
+            lines.append('sequence has no limit to settle to')
+            lines.append('in that range.')
+        else:
+            try:
+                df = caseng.simplify(caseng.diff(f, 'u'))
+                lines.append("f'(u) = " + caseng.tostr(cascalc.tidy(df)))
+            except:
+                df = None
+            for r in roots:
+                g = None if df is None else _at(df, {'u': r})
+                if g is None:
+                    lines.append('u = ' + _fn(r) + '  (slope unknown)')
+                    continue
+                if abs(g) < 1.0 - 1e-9:
+                    tag = 'ATTRACTING: nearby terms are pulled in'
+                elif abs(g) > 1.0 + 1e-9:
+                    tag = 'REPELLING: nearby terms are pushed away'
+                else:
+                    tag = "|f'| = 1: the test decides nothing"
+                lines.append('u = ' + _fn(r) + ",  f'= " + _fn(g))
+                lines.append('   ' + tag)
+    lines.append('')
+    lines.append('the first terms:')
+    _pages('Behaviour of a sequence', lines + shown)
+
+
+# ============================ XS1: sets ==================================
+def _setnorm(v):
+    out = []
+    for x in v:
+        dup = False
+        for y in out:
+            if abs(x - y) < 1e-9:
+                dup = True
+                break
+        if not dup:
+            out.append(x)
+    out.sort()
+    return out
+
+
+def _inset(x, s):
+    for y in s:
+        if abs(x - y) < 1e-9:
+            return True
+    return False
+
+
+def _sunion(a, b):
+    out = list(a)
+    for x in b:
+        if not _inset(x, out):
+            out.append(x)
+    out.sort()
+    return out
+
+
+def _sinter(a, b):
+    out = []
+    for x in a:
+        if _inset(x, b):
+            out.append(x)
+    return out
+
+
+def _sdiff(a, b):
+    out = []
+    for x in a:
+        if not _inset(x, b):
+            out.append(x)
+    return out
+
+
+def _ssubset(a, b):
+    for x in a:
+        if not _inset(x, b):
+            return False
+    return True
+
+
+def _seq(a, b):
+    return _ssubset(a, b) and _ssubset(b, a)
+
+
+def _sstr(s):
+    if not s:
+        return '{ }'
+    parts = []
+    for x in s:
+        parts.append(_fn(x))
+    return '{' + ', '.join(parts) + '}'
+
+
+def t_sets():
+    _show('Sets and notation', [
+        'Type each set as a list of numbers,',
+        'separated by spaces or commas.',
+        'Repeats are dropped - a set holds',
+        'each element once, and order does',
+        'not matter.',
+        '',
+        'The third set is optional: press',
+        'EXIT to work with two.'])
+    E = casutil.asklist('universal set E =')
+    if E is None:
+        return
+    A = casutil.asklist('A =')
+    if A is None:
+        return
+    B = casutil.asklist('B =')
+    if B is None:
+        return
+    C = casutil.asklist('C = (optional)')
+    E = _setnorm(E)
+    A = _setnorm(A)
+    B = _setnorm(B)
+    C = None if C is None else _setnorm(C)
+    # anything named in A, B or C belongs in E whether it was typed there or not
+    E = _sunion(E, _sunion(A, B))
+    if C is not None:
+        E = _sunion(E, C)
+    lines = ['NOTATION',
+             "  A u B    union: in A or B or both",
+             "  A n B    intersection: in both",
+             "  A'       complement: in E, not in A",
+             "  A \\ B    difference: in A, not in B",
+             "  A (+) B  symmetric difference:",
+             "           in exactly one of the two",
+             "  A c B    A is a subset of B: every",
+             "           element of A is in B",
+             "  |A|      cardinality: how many",
+             "  P(A)     power set: every subset",
+             "  { }      the empty set",
+             '',
+             'E = ' + _sstr(E) + '   |E| = ' + str(len(E)),
+             'A = ' + _sstr(A) + '   |A| = ' + str(len(A)),
+             'B = ' + _sstr(B) + '   |B| = ' + str(len(B))]
+    if C is not None:
+        lines.append('C = ' + _sstr(C) + '   |C| = ' + str(len(C)))
+    un = _sunion(A, B)
+    it = _sinter(A, B)
+    lines.append('')
+    lines.append('A u B = ' + _sstr(un) + '   |A u B| = ' + str(len(un)))
+    lines.append('A n B = ' + _sstr(it) + '   |A n B| = ' + str(len(it)))
+    lines.append("A' = " + _sstr(_sdiff(E, A)))
+    lines.append("B' = " + _sstr(_sdiff(E, B)))
+    lines.append('A \\ B = ' + _sstr(_sdiff(A, B)))
+    lines.append('B \\ A = ' + _sstr(_sdiff(B, A)))
+    lines.append('A (+) B = ' + _sstr(_sunion(_sdiff(A, B), _sdiff(B, A))))
+    lines.append('')
+    lines.append('|A| + |B| - |A n B| = ' + str(len(A)) + ' + ' + str(len(B)) +
+                 ' - ' + str(len(it)) + ' = ' + str(len(A) + len(B) - len(it)))
+    lines.append('which is |A u B| = ' + str(len(un)) +
+                 ('  (agrees)' if len(un) == len(A) + len(B) - len(it)
+                  else '  (DISAGREES)'))
+    lines.append('')
+    lines.append('A c B: ' + ('YES' if _ssubset(A, B) else 'no'))
+    lines.append('B c A: ' + ('YES' if _ssubset(B, A) else 'no'))
+    lines.append('A = B: ' + ('YES' if _seq(A, B) else 'no'))
+    lines.append('A and B disjoint (A n B = { }): ' +
+                 ('YES' if not it else 'no'))
+    lines.append('')
+    lines.append('|P(A)| = 2^' + str(len(A)) + ' = ' + str(1 << len(A)))
+    lines.append('|P(B)| = 2^' + str(len(B)) + ' = ' + str(1 << len(B)))
+    if len(A) <= 4:
+        subs = []
+        mask = 0
+        while mask < (1 << len(A)):
+            sub = []
+            i = 0
+            while i < len(A):
+                if mask & (1 << i):
+                    sub.append(A[i])
+                i += 1
+            subs.append(_sstr(sub))
+            mask += 1
+        lines.append('P(A) = { ' + ', '.join(subs) + ' }')
+    lines.append('')
+    lines.append('DE MORGAN')
+    dm1 = _seq(_sdiff(E, un), _sinter(_sdiff(E, A), _sdiff(E, B)))
+    dm2 = _seq(_sdiff(E, it), _sunion(_sdiff(E, A), _sdiff(E, B)))
+    lines.append("(A u B)' = " + _sstr(_sdiff(E, un)))
+    lines.append("A' n B'  = " + _sstr(_sinter(_sdiff(E, A), _sdiff(E, B))))
+    lines.append('  equal: ' + ('YES' if dm1 else 'NO'))
+    lines.append("(A n B)' = " + _sstr(_sdiff(E, it)))
+    lines.append("A' u B'  = " + _sstr(_sunion(_sdiff(E, A), _sdiff(E, B))))
+    lines.append('  equal: ' + ('YES' if dm2 else 'NO'))
+    if C is not None:
+        lines.append('')
+        lines.append('THREE SETS')
+        lines.append('A u B u C = ' + _sstr(_sunion(un, C)))
+        lines.append('A n B n C = ' + _sstr(_sinter(it, C)))
+        lines.append('(A u B) n C = ' + _sstr(_sinter(un, C)))
+        lines.append('(A n C) u (B n C) = ' +
+                     _sstr(_sunion(_sinter(A, C), _sinter(B, C))))
+        lines.append('  those two are equal: ' +
+                     ('YES' if _seq(_sinter(un, C),
+                                    _sunion(_sinter(A, C), _sinter(B, C)))
+                      else 'NO'))
+        tot = (len(A) + len(B) + len(C) - len(it) - len(_sinter(A, C))
+               - len(_sinter(B, C)) + len(_sinter(it, C)))
+        lines.append('inclusion-exclusion for three sets')
+        lines.append('gives |A u B u C| = ' + str(tot) + ', and counting')
+        lines.append('them gives ' + str(len(_sunion(un, C))) + '.')
+    _pages('Sets and notation', lines)
+
+
+# =================== a5, a6: subgroups and Lagrange ======================
+def _readtable(tag, n):
+    # a Cayley table typed one row at a time, entries being element indices
+    T = []
+    i = 0
+    while i < n:
+        s = casui.input_expr(tag + ' row ' + str(i) + ' (' + str(n) +
+                             ' indices 0..' + str(n - 1) + ')')
+        if s is None:
+            return None
+        row = []
+        for tok in s.replace(',', ' ').split():
+            try:
+                row.append(int(float(tok)))
+            except:
+                pass
+        if len(row) != n:
+            return None
+        for v in row:
+            if v < 0 or v >= n:
+                return None
+        T.append(row)
+        i += 1
+    return T
+
+
+def _identity(T):
+    n = len(T)
+    e = 0
+    while e < n:
+        good = True
+        x = 0
+        while x < n:
+            if T[e][x] != x or T[x][e] != x:
+                good = False
+                break
+            x += 1
+        if good:
+            return e
+        e += 1
+    return -1
+
+
+def _inverses(T, e):
+    n = len(T)
+    inv = []
+    a = 0
+    while a < n:
+        found = -1
+        b = 0
+        while b < n:
+            if T[a][b] == e and T[b][a] == e:
+                found = b
+                break
+            b += 1
+        inv.append(found)
+        a += 1
+    return inv
+
+
+def _cyclic_sub(T, e, a):
+    # <a> = {a, a^2, ...} up to the identity, with the powers in order
+    n = len(T)
+    out = [a]
+    cur = a
+    k = 0
+    while cur != e and k < n:
+        cur = T[a][cur]
+        out.append(cur)
+        k += 1
+    if cur != e:
+        return None
+    got = []
+    for v in out:
+        if v not in got:
+            got.append(v)
+    got.sort()
+    return got
+
+
+def t_subgroups():
+    _show('Subgroups and Lagrange', [
+        'A subgroup H of G is a subset that',
+        'is a group in its own right: it',
+        'holds the identity, it is closed',
+        'under the operation, and it holds',
+        'the inverse of each of its members.',
+        '',
+        "Lagrange's theorem: |H| always",
+        'divides |G|. The index [G:H] is',
+        '|G| / |H|.'])
+    n = _askint('Group order n (<=8)')
+    if n is None or n < 1 or n > 8:
+        _show('Subgroups', ['Need 1..8.'])
+        return
+    T = _readtable('G', n)
+    if T is None:
+        _show('Subgroups', ['Each row needs ' + str(n) + ' entries,',
+                            'each one an index 0..' + str(n - 1) + '.'])
+        return
+    e = _identity(T)
+    if e < 0:
+        _show('Subgroups', ['That table has no two-sided',
+                            'identity, so it is not a group.'])
+        return
+    inv = _inverses(T, e)
+    for a in range(n):
+        if inv[a] < 0:
+            _show('Subgroups', ['Element ' + str(a) + ' has no inverse,',
+                                'so this is not a group.'])
+            return
+    lines = ['|G| = ' + str(n) + ', identity e = ' + str(e), '']
+    selfinv = True
+    a = 0
+    while a < n:
+        if inv[a] != a:
+            selfinv = False
+        a += 1
+    lines.append('CYCLIC SUBGROUPS <a>')
+    lines.append('(the powers of a single element)')
+    found = []
+    a = 0
+    while a < n:
+        H = _cyclic_sub(T, e, a)
+        if H is None:
+            lines.append('<' + str(a) + '> never returns to e')
+            a += 1
+            continue
+        lines.append('<' + str(a) + '> = ' + _sstr(H) + '   order ' +
+                     str(len(H)) + ',  ord(' + str(a) + ') = ' + str(len(H)))
+        key = _sstr(H)
+        if key not in found:
+            found.append(key)
+        a += 1
+    lines.append('')
+    lines.append('distinct cyclic subgroups: ' + str(len(found)))
+    # every subgroup, by testing each subset for closure
+    subs = []
+    mask = 0
+    while mask < (1 << n):
+        if not (mask & (1 << e)):
+            mask += 1
+            continue
+        mem = []
+        i = 0
+        while i < n:
+            if mask & (1 << i):
+                mem.append(i)
+            i += 1
+        ok = True
+        for i in mem:
+            for j in mem:
+                if T[i][j] not in mem:
+                    ok = False
+                    break
+            if not ok:
+                break
+        if ok:
+            for i in mem:
+                if inv[i] not in mem:
+                    ok = False
+                    break
+        if ok:
+            subs.append(mem)
+        mask += 1
+    # smallest subgroup first; an insertion pass, so no sort key is needed
+    ordered = []
+    for H in subs:
+        pos = 0
+        while pos < len(ordered) and len(ordered[pos]) <= len(H):
+            pos += 1
+        ordered.insert(pos, H)
+    subs = ordered
+    lines.append('')
+    lines.append('ALL SUBGROUPS H <= G: ' + str(len(subs)) + ' of them')
+    counts = [0] * (n + 1)
+    lag = True
+    for H in subs:
+        k = len(H)
+        counts[k] += 1
+        if n % k:
+            lag = False
+        lines.append(_sstr(H) + '   |H| = ' + str(k) + ',  [G:H] = ' +
+                     (str(n // k) if k and n % k == 0 else '?'))
+    lines.append('')
+    lines.append('LAGRANGE')
+    k = 1
+    while k <= n:
+        if counts[k]:
+            lines.append('subgroups of order ' + str(k) + ': ' +
+                         str(counts[k]) +
+                         ('  (' + str(n) + '/' + str(k) + ' = ' +
+                          str(n // k) + ')' if n % k == 0
+                          else '  DOES NOT DIVIDE ' + str(n)))
+        k += 1
+    lines.append('every |H| divides |G| = ' + str(n) + ': ' +
+                 ('YES' if lag else 'NO'))
+    divs = []
+    d = 1
+    while d <= n:
+        if n % d == 0:
+            divs.append(str(d))
+        d += 1
+    lines.append('divisors of ' + str(n) + ': ' + ' '.join(divs))
+    lines.append('The converse of Lagrange is false in')
+    lines.append('general: a divisor of |G| need not be')
+    lines.append('the order of any subgroup.')
+    if selfinv:
+        lines.append('')
+        lines.append('Every element is its own inverse,')
+        lines.append('so every non-identity element has')
+        lines.append('order 2 and the group is abelian.')
+    _pages('Subgroups and Lagrange', lines)
+
+
+# ============== a8: an isomorphism between two groups ====================
+def t_isomorph():
+    _show('Group isomorphism', [
+        'Two groups of the same order are',
+        'isomorphic when there is a bijection',
+        'phi: G -> H with',
+        '  phi(a b) = phi(a) phi(b)',
+        'for every a and b.',
+        '',
+        'phi must send the identity to the',
+        'identity and preserve the order of',
+        'every element, which is what makes',
+        'the search fast enough to do here.'])
+    n = _askint('order of both groups (<=8)')
+    if n is None or n < 1 or n > 8:
+        _show('Group isomorphism', ['Need 1..8.'])
+        return
+    G = _readtable('G', n)
+    if G is None:
+        _show('Group isomorphism', ['G: each row needs ' + str(n) +
+                                    ' indices 0..' + str(n - 1) + '.'])
+        return
+    H = _readtable('H', n)
+    if H is None:
+        _show('Group isomorphism', ['H: each row needs ' + str(n) +
+                                    ' indices 0..' + str(n - 1) + '.'])
+        return
+    eg = _identity(G)
+    eh = _identity(H)
+    if eg < 0 or eh < 0:
+        _show('Group isomorphism', ['One of the tables has no',
+                                    'identity, so it is not a group.'])
+        return
+    og = _orders(G, eg)
+    oh = _orders(H, eh)
+    lines = ['|G| = |H| = ' + str(n),
+             'identity of G is ' + str(eg) + ', of H is ' + str(eh), '',
+             'element orders in G: ' + ' '.join([str(v) for v in og]),
+             'element orders in H: ' + ' '.join([str(v) for v in oh])]
+    if sorted(og) != sorted(oh):
+        lines.append('')
+        lines.append('The two order lists do not match, and')
+        lines.append('an isomorphism must preserve orders,')
+        lines.append('so G and H are NOT isomorphic.')
+        _pages('Group isomorphism', lines)
+        return
+    # backtracking over bijections, kept iterative: only elements of matching
+    # order are ever tried, and every product already determined is checked
+    phi = [-1] * n
+    used = [False] * n
+    phi[eg] = eh
+    used[eh] = True
+    order_g = []
+    a = 0
+    while a < n:
+        if a != eg:
+            order_g.append(a)
+        a += 1
+    cand = [0] * len(order_g)
+    depth = 0
+    ok = False
+    while depth >= 0:
+        if depth >= len(order_g):
+            ok = True
+            break
+        g = order_g[depth]
+        if phi[g] >= 0:
+            used[phi[g]] = False
+            phi[g] = -1
+        h = cand[depth]
+        placed = False
+        while h < n:
+            if not used[h] and og[g] == oh[h]:
+                phi[g] = h
+                used[h] = True
+                if _partial_ok(G, H, phi):
+                    placed = True
+                    break
+                used[h] = False
+                phi[g] = -1
+            h += 1
+        if placed:
+            cand[depth] = h + 1
+            depth += 1
+            if depth < len(order_g):
+                cand[depth] = 0
+        else:
+            cand[depth] = 0
+            depth -= 1
+    if not ok:
+        lines.append('')
+        lines.append('Every order-preserving bijection was')
+        lines.append('tried and none is a homomorphism, so')
+        lines.append('G and H are NOT isomorphic.')
+        _pages('Group isomorphism', lines)
+        return
+    bad = 0
+    i = 0
+    while i < n:
+        j = 0
+        while j < n:
+            if phi[G[i][j]] != H[phi[i]][phi[j]]:
+                bad += 1
+            j += 1
+        i += 1
+    lines.append('')
+    lines.append('G and H are ISOMORPHIC.')
+    lines.append('phi:')
+    a = 0
+    while a < n:
+        lines.append('  ' + str(a) + ' -> ' + str(phi[a]) +
+                     '   (order ' + str(og[a]) + ')')
+        a += 1
+    lines.append('')
+    lines.append('checked phi(ab) = phi(a)phi(b) for all ' +
+                 str(n * n) + ' products:')
+    lines.append('mismatches = ' + str(bad) +
+                 ('  (a genuine isomorphism)' if bad == 0 else '  (FAILED)'))
+    _pages('Group isomorphism', lines)
+
+
+def _orders(T, e):
+    n = len(T)
+    out = []
+    a = 0
+    while a < n:
+        cur = a
+        k = 1
+        while cur != e and k <= n:
+            cur = T[a][cur]
+            k += 1
+        out.append(k if cur == e else 0)
+        a += 1
+    return out
+
+
+def _partial_ok(G, H, phi):
+    # every product whose three entries are already mapped must agree
+    n = len(G)
+    i = 0
+    while i < n:
+        if phi[i] >= 0:
+            j = 0
+            while j < n:
+                if phi[j] >= 0:
+                    k = G[i][j]
+                    if phi[k] >= 0 and phi[k] != H[phi[i]][phi[j]]:
+                        return False
+                j += 1
+        i += 1
+    return True
+
+
+# ================= c2: contours and sections of a surface ================
+def _cross(pts, x, y, ex, ey, za, zb, k):
+    # where the level k crosses one side of a cell, if it does at all
+    if (za - k) * (zb - k) > 0 or za == zb:
+        return
+    t = (k - za) / (zb - za)
+    pts.append((x + ex * t, y + ey * t))
+
+
+def t_contours():
+    _show('Contours and sections', [
+        'A CONTOUR of z = f(x, y) is a curve',
+        'f(x, y) = k: the points at one',
+        'height, like a line on a map.',
+        '',
+        'A SECTION is what you see when one',
+        'variable is held fixed: z against x',
+        'with y = c is an ordinary curve.',
+        '',
+        'grad f is perpendicular to the',
+        'contour through a point, and points',
+        'the way z increases fastest.'])
+    f = _mvparse('z = f(x,y) =')
+    if f is None:
+        return
+    xlo = _asknum('x from [-3]')
+    if xlo is None:
+        xlo = -3.0
+    xhi = _asknum('x to [3]')
+    if xhi is None:
+        xhi = 3.0
+    if xhi <= xlo:
+        xhi = xlo + 1.0
+    ylo = _asknum('y from [-3]')
+    if ylo is None:
+        ylo = -3.0
+    yhi = _asknum('y to [3]')
+    if yhi is None:
+        yhi = 3.0
+    if yhi <= ylo:
+        yhi = ylo + 1.0
+    NX = 36
+    NY = 24
+    grid = []
+    zlo = None
+    zhi = None
+    j = 0
+    while j <= NY:
+        yv = ylo + (yhi - ylo) * j / NY
+        row = []
+        i = 0
+        while i <= NX:
+            xv = xlo + (xhi - xlo) * i / NX
+            v = _at(f, {'x': xv, 'y': yv})
+            row.append(v)
+            if v is not None:
+                if zlo is None or v < zlo:
+                    zlo = v
+                if zhi is None or v > zhi:
+                    zhi = v
+            i += 1
+        grid.append(row)
+        j += 1
+    if zlo is None:
+        _show('Contours', ['f could not be evaluated anywhere',
+                           'on that rectangle.'])
+        return
+    lines = ['z = ' + caseng.tostr(caseng.simplify(f)),
+             'x in [' + _fn(xlo) + ', ' + _fn(xhi) + '], y in [' +
+             _fn(ylo) + ', ' + _fn(yhi) + ']',
+             'on a ' + str(NX + 1) + ' x ' + str(NY + 1) + ' grid',
+             'z runs from ' + _fn(zlo) + ' to ' + _fn(zhi), '']
+    levels = []
+    m = 1
+    while m <= 5:
+        levels.append(zlo + (zhi - zlo) * m / 6.0)
+        m += 1
+    ls = []
+    for k in levels:
+        ls.append(_fn(k))
+    lines.append('contour levels: ' + ', '.join(ls))
+    if zhi - zlo < 1e-12:
+        lines.append('z is constant here, so every point')
+        lines.append('is on the same contour and there is')
+        lines.append('nothing to draw.')
+        _pages('Contours and sections', lines)
+        return
+    ysec = []
+    m = 1
+    while m <= 3:
+        ysec.append(ylo + (yhi - ylo) * m / 4.0)
+        m += 1
+    ss = []
+    for yv in ysec:
+        ss.append(_fn(yv))
+    lines.append('sections drawn at y = ' + ', '.join(ss))
+    lines.append('')
+    lines.append('the middle section, z against x at')
+    lines.append('y = ' + _fn(ysec[1]) + ':')
+    i = 0
+    while i <= 6:
+        xv = xlo + (xhi - xlo) * i / 6.0
+        v = _at(f, {'x': xv, 'y': ysec[1]})
+        lines.append('  x = ' + _fn(xv) + '   z = ' +
+                     ('undefined' if v is None else _fn(v)))
+        i += 1
+    lines.append('')
+    lines.append('Closed contours around a point mean a')
+    lines.append('maximum or a minimum there; contours')
+    lines.append('that cross mean a saddle. Contours')
+    lines.append('close together mean a steep surface.')
+    _pages('Contours and sections', lines)
+    # the contour map
+    fr = casutil.frame(xlo, xhi, ylo, yhi)
+    casutil.axes(fr, 'contours of z = f(x,y)', 'x', 'y')
+    # Marching squares: in each little cell, find where the level crosses the
+    # four sides and join those points up. Marking the crossings as single
+    # dots instead leaves a contour so broken you cannot see the curve.
+    dx = (xhi - xlo) / NX
+    dy = (yhi - ylo) / NY
+    for k in levels:
+        j = 0
+        while j < NY:
+            i = 0
+            while i < NX:
+                z00 = grid[j][i]
+                z10 = grid[j][i + 1]
+                z01 = grid[j + 1][i]
+                z11 = grid[j + 1][i + 1]
+                if (z00 is None or z10 is None or z01 is None or
+                        z11 is None):
+                    i += 1
+                    continue
+                x0 = xlo + i * dx
+                y0 = ylo + j * dy
+                pts = []
+                _cross(pts, x0, y0, dx, 0.0, z00, z10, k)
+                _cross(pts, x0 + dx, y0, 0.0, dy, z10, z11, k)
+                _cross(pts, x0, y0 + dy, dx, 0.0, z01, z11, k)
+                _cross(pts, x0, y0, 0.0, dy, z00, z01, k)
+                if len(pts) >= 2:
+                    casutil.seg(fr, pts[0][0], pts[0][1], pts[1][0],
+                                pts[1][1], casui.ACC)
+                if len(pts) == 4:
+                    casutil.seg(fr, pts[2][0], pts[2][1], pts[3][0],
+                                pts[3][1], casui.ACC)
+                i += 1
+            j += 1
+    casutil.chart_hold('levels ' + ls[0] + ' .. ' + ls[4])
+    # the sections
+    fr2 = casutil.frame(xlo, xhi, zlo, zhi)
+    casutil.axes(fr2, 'sections z against x', 'x', 'z')
+    for yv in ysec:
+        px = None
+        pz = None
+        i = 0
+        while i <= NX:
+            xv = xlo + (xhi - xlo) * i / NX
+            v = _at(f, {'x': xv, 'y': yv})
+            if v is not None and pz is not None:
+                casutil.seg(fr2, px, pz, xv, v, casui.ACC)
+            px = xv
+            pz = v
+            i += 1
+    casutil.chart_hold('y = ' + ', '.join(ss))
+
+
 TOOLS = [
     ('Recurrence relation', t_recur),
+    ('Recurrence 1st order', t_recur_nonhom),
+    ('Recurrence 2nd order', t_recur_nonhom2),
+    ('Verify a recurrence', t_recur_verify),
+    ('Recurrence behaviour', t_recur_behave),
+    ('Sets and notation', t_sets),
     ('Group theory', t_group),
+    ('Subgroups & Lagrange', t_subgroups),
+    ('Group isomorphism', t_isomorph),
     ('2x2 Eigen/diag', t_eigen),
     ('Modular arithmetic', t_mod),
     ('Partial derivatives', t_partial),
     ('Surface stationary pts', t_surface_stat),
     ('Tangent plane / normal', t_tangent_plane),
+    ('Contours & sections', t_contours),
     ('3x3 Eigen/diag', t_eigen3),
 ]
 
