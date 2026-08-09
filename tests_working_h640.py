@@ -90,7 +90,7 @@ def test_pure640_modes(h):
     # rationalising: the conjugate step is working, the surd form is the answer
     _split(h, "rationalise a denominator", pure640.t_surds,
            ["1", "1", "1", "2"], [3],
-           "= (1 - sqrt(2)) / -1", "CONJUGATE 1 - sqrt(2)")
+           "= -1 + sqrt(2)", "CONJUGATE 1 - sqrt(2)")
 
 
 # -------------------------------------------------------------- purecalc ----

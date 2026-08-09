@@ -2780,6 +2780,40 @@ def test_surds_and_circle():
     o = drive(pure640.t_surds, ["2", "3", "5", "6"], [2])
     has("product simplified", o, "= 30sqrt(2)")
 
+    # SIGNS. A negative coefficient used to be pasted after a '+' or a '-' that
+    # was already there, so the answer to 1/(1+sqrt2) printed as
+    # "-1 - -sqrt(2)". The value was right; nobody writes it down that way, and
+    # a student copying it out is copying something a marker will not accept.
+    # Every one of these drives a branch where a sign is negative.
+    def signs_are_clean(label, lines):
+        for ln in lines:
+            truthy(label + ": no '+ -' in " + repr(ln), "+ -" not in ln)
+            truthy(label + ": no '- -' in " + repr(ln), "- -" not in ln)
+
+    # 1/(1+sqrt2): bottom is 1-2 = -1, so the fraction is negative all through
+    o = drive(pure640.t_surds, ["1", "1", "1", "2"], [3])
+    has("negative bottom folded into the top", o, "= -1 + sqrt(2)")
+    signs_are_clean("1/(1+sqrt2)", o)
+    num("value of 1/(1+sqrt2)", o, "decimal check: ",
+        1.0 / (1.0 + math.sqrt(2.0)), 1e-5)
+    # 6/(4-sqrt2): q is negative, so the conjugate ADDS and q^2 needs brackets
+    o = drive(pure640.t_surds, ["6", "4", "-1", "2"], [3])
+    has("conjugate of a minus is a plus", o, "CONJUGATE 4 + sqrt(2)")
+    has("a negative q is bracketed before squaring", o, "(-1)^2")
+    has("fraction reduced by the common factor", o, "= (12 + 3sqrt(2)) / 7")
+    signs_are_clean("6/(4-sqrt2)", o)
+    num("value of 6/(4-sqrt2)", o, "decimal check: ",
+        6.0 / (4.0 - math.sqrt(2.0)), 1e-5)
+    # 2/(2+sqrt2): the bottom cancels completely, so the exact answer has no
+    # fraction at all and must not be left as (4 - 2sqrt(2)) / 2
+    o = drive(pure640.t_surds, ["2", "2", "1", "2"], [3])
+    has("bottom cancels away", o, "= 2 - sqrt(2)")
+    signs_are_clean("2/(2+sqrt2)", o)
+    # unlike surds, second coefficient negative
+    o = drive(pure640.t_surds, ["2", "3", "-3", "2"], [1])
+    has("negative term subtracted, not added", o, "2sqrt(3) - 3sqrt(2)")
+    signs_are_clean("2sqrt(3) - 3sqrt(2)", o)
+
     # x^2+y^2=25 meets y=x+1 where 2x^2+2x-24=0, i.e. x = 3 and x = -4
     o = drive(pure640.t_linecircle, ["0", "0", "5", "1", "1"], [0])
     has("substituted quadratic", o, "2x^2 + 2x - 24 = 0")

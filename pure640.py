@@ -1435,6 +1435,31 @@ def _surdstr(a, b):
     return _fn(a) + 'sqrt(' + str(b) + ')'
 
 
+def _br(v):
+    # bracket a negative so "-1^2" cannot be read as -(1^2)
+    s = _fn(v)
+    return ('(' + s + ')') if s[:1] == '-' else s
+
+
+def _pmsurd(b, n):
+    # ' + b sqrt(n)', or ' - |b| sqrt(n)' when b is negative. The sign belongs
+    # to the operator, not to the term: joining with a bare ' + ' or ' - ' and
+    # letting _surdstr carry the minus prints '1 - -sqrt(2)', which is right
+    # but is not how anyone writes it down.
+    if b < 0:
+        return ' - ' + _surdstr(-b, n)
+    return ' + ' + _surdstr(b, n)
+
+
+def _sumstr(a, b, n):
+    # a + b sqrt(n) in exact form, with the degenerate terms dropped
+    if abs(b) < 1e-12:
+        return _fn(a)
+    if abs(a) < 1e-12:
+        return _surdstr(b, n)
+    return _fn(a) + _pmsurd(b, n)
+
+
 def t_surds():
     # Manipulating surds, and rationalising a denominator. These are exact-form
     # marks, and the CAS holds numbers as floats with exact folding only for
@@ -1478,7 +1503,7 @@ def t_surds():
             return
         pa, ra = _sqsplit(m)
         pb, rb = _sqsplit(n)
-        lines = [_w(_surdstr(a, m) + '  +  ' + _surdstr(b, n)), '',
+        lines = [_w(_surdstr(a, m) + _pmsurd(b, n)), '',
                  _w('simplify each first:'),
                  _w('  ' + _surdstr(a, m) + ' = ' + _surdstr(a * pa, ra)),
                  _w('  ' + _surdstr(b, n) + ' = ' + _surdstr(b * pb, rb)), '']
@@ -1490,7 +1515,7 @@ def t_surds():
             lines.append(_warn('sqrt(' + str(ra) + ') and sqrt(' + str(rb) + ') are'))
             lines.append(_warn('different surds, so this does NOT'))
             lines.append(_warn('collect - leave it as'))
-            lines.append('  ' + _surdstr(a * pa, ra) + ' + ' + _surdstr(b * pb, rb))
+            lines.append('  ' + _surdstr(a * pa, ra) + _pmsurd(b * pb, rb))
         lines.append('')
         lines.append(_w('decimal check: ' +
                         _fn(a * math.sqrt(m) + b * math.sqrt(n), 6)))
@@ -1533,12 +1558,12 @@ def t_surds():
     if n is None:
         return
     den = p * p - q * q * n
-    lines = [_w(_fn(k) + ' / (' + _fn(p) + ' + ' + _surdstr(q, n) + ')'), '',
+    lines = [_w(_fn(k) + ' / (' + _sumstr(p, q, n) + ')'), '',
              _w('Multiply top and bottom by the'),
-             _w('CONJUGATE ' + _fn(p) + ' - ' + _surdstr(q, n) + '.'),
+             _w('CONJUGATE ' + _sumstr(p, -q, n) + '.'),
              _w('The bottom becomes p^2 - q^2 n, which'),
              _w('has no surd in it - that is the point.'), '',
-             _w('  bottom = ' + _fn(p) + '^2 - ' + _fn(q) + '^2 x ' + str(n) +
+             _w('  bottom = ' + _br(p) + '^2 - ' + _br(q) + '^2 x ' + str(n) +
                 ' = ' + _fn(den))]
     if abs(den) < 1e-12:
         lines.append('')
@@ -1546,19 +1571,35 @@ def t_surds():
         lines.append('original expression is undefined.')
         _pages('Surds', lines)
         return
-    lines.append(_w('  top    = ' + _fn(k) + '(' + _fn(p) + ' - ' + _surdstr(q, n) + ')'))
+    lines.append(_w('  top    = ' + _fn(k) + '(' + _sumstr(p, -q, n) + ')'))
     lines.append('')
-    # the fraction form is what goes on the paper; the decimals are the check
+    # the fraction form is what goes on the paper; the decimals are the check.
+    # num2 is the coefficient of sqrt(n), sign included, and a negative bottom
+    # is negated away rather than printed as "/ -1".
     num1 = k * p
-    num2 = k * q
-    lines.append('  = (' + _fn(num1) + ' - ' + _surdstr(num2, n) + ') / ' + _fn(den))
-    g = casutil.gcd(int(round(num1)), casutil.gcd(int(round(num2)), int(round(den)))) \
+    num2 = -k * q
+    d = den
+    if d < 0:
+        num1 = -num1
+        num2 = -num2
+        d = -d
+    g = casutil.gcd(int(round(num1)), casutil.gcd(int(round(num2)), int(round(d)))) \
         if (abs(num1 - round(num1)) < 1e-9 and abs(num2 - round(num2)) < 1e-9
-            and abs(den - round(den)) < 1e-9) else 1
-    if g > 1:
-        lines.append('  = (' + _fn(num1 / g) + ' - ' + _surdstr(num2 / g, n) +
-                     ') / ' + _fn(den / g) + '   (divided by ' + str(g) + ')')
-    lines.append('  = ' + _fn(num1 / den) + ' - ' + _surdstr(num2 / den, n))
+            and abs(d - round(d)) < 1e-9) else 1
+    if abs(d - 1) < 1e-12:
+        lines.append('  = ' + _sumstr(num1, num2, n))
+    elif abs(d / g - 1) < 1e-12:
+        # the bottom cancels away entirely, so the exact form has no fraction
+        lines.append(_w('  = (' + _sumstr(num1, num2, n) + ') / ' + _fn(d)))
+        lines.append('  = ' + _sumstr(num1 / g, num2 / g, n))
+    elif g > 1:
+        # the unreduced fraction is a step, not the answer
+        lines.append(_w('  = (' + _sumstr(num1, num2, n) + ') / ' + _fn(d)))
+        lines.append('  = (' + _sumstr(num1 / g, num2 / g, n) +
+                     ') / ' + _fn(d / g) +
+                     '   (top and bottom divided by ' + str(g) + ')')
+    else:
+        lines.append('  = (' + _sumstr(num1, num2, n) + ') / ' + _fn(d))
     lines.append('')
     lines.append(_w('decimal check: ' +
                     _fn(k / (p + q * math.sqrt(n)), 6)))
