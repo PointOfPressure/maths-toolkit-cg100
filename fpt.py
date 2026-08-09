@@ -1,10 +1,14 @@
 # fpt.py - Further Pure with Technology (OCR B MEI Y436) section for the
 # fx-CG100 maths toolkit. Curve plotter, complex investigation (De Moivre,
-# nth roots), Euler numeric exploration, and an integer number-theory pack.
+# nth roots), Euler and Runge-Kutta numeric exploration, tangent fields, the
+# curve-sketching pack (limits, asymptotes, cusps, families and envelopes) and
+# an integer number-theory pack.
 # Stock CASIO MicroPython 1.9.4: ASCII only, no f-strings, iterative only.
 import math
 import casui
 import caseng
+import cascalc
+import caspoly
 import casutil
 
 def _finite(v):
@@ -25,6 +29,11 @@ def _f8(x):
     # the point of RK4 is the digits Euler gets wrong, so the comparison
     # tables need more than the shared 4 d.p. default
     return casutil.fmt(x, 8)
+
+def _f6(x):
+    # limits and integrated solution curves are quoted to 6 d.p.: enough to see
+    # that y(1) is e and not merely 2.7
+    return casutil.fmt(x, 6)
 
 def _fc(z):
     return casutil.fmtc(z.real, z.imag)
@@ -818,6 +827,1099 @@ def t_fermat():
             lines.append('Wilson fails, so p is not prime.')
     _pages('Fermat & Wilson', lines)
 
+# ---- 7. TANGENT FIELD (c6) -----------------------------------------------
+# A tangent field is only readable if every dash is the SAME LENGTH ON SCREEN.
+# Stepping a fixed dx and rising by dx*m makes a steep dash long and a flat one
+# short, so the eye reads the gradient twice over and the picture lies about
+# where the solutions are crowded. So the direction (1, m) is normalised - and
+# normalised in PIXEL space, because the frame is not square: what has to look
+# like 45 degrees is the picture, not the data.
+FIELD_NX = 15
+FIELD_NY = 11
+FIELD_LEN = 9.0     # dash length in pixels, end to end
+FIELD_STEPS = 120   # RK4 steps from the given point to each edge
+SLOPE_CAP = 1e6
+
+def _scale(fr):
+    # data units -> pixels, x and y separately
+    return ((fr[2] - fr[0]) / (fr[5] - fr[4]),
+            (fr[3] - fr[1]) / (fr[7] - fr[6]))
+
+def _fseg(fr, x, y, m, length):
+    # The two ends, in DATA coordinates, of a dash of `length` PIXELS centred on
+    # (x, y) whose gradient in data coordinates is m. None if it degenerates.
+    sx, sy = _scale(fr)
+    ux = sx
+    uy = -sy * m          # screen y grows downwards
+    n = math.sqrt(ux * ux + uy * uy)
+    if n <= 0.0 or not _finite(n):
+        return None
+    ux = ux * length / (2.0 * n)
+    uy = uy * length / (2.0 * n)
+    dx = ux / sx
+    dy = -uy / sy
+    return (x - dx, y - dy, x + dx, y + dy)
+
+def _field(fr, tree, nx, ny, colour):
+    # cell centres, so no dash is half off the edge of the frame
+    drawn = 0
+    j = 0
+    while j < ny:
+        y = fr[6] + (fr[7] - fr[6]) * (j + 0.5) / ny
+        i = 0
+        while i < nx:
+            x = fr[4] + (fr[5] - fr[4]) * (i + 0.5) / nx
+            try:
+                m = _slope(tree, x, y)
+            except:
+                m = None
+            if m is not None and _finite(m):
+                if m > SLOPE_CAP:
+                    m = SLOPE_CAP
+                if m < -SLOPE_CAP:
+                    m = -SLOPE_CAP
+                e = _fseg(fr, x, y, m, FIELD_LEN)
+                if e is not None:
+                    casutil.seg(fr, e[0], e[1], e[2], e[3], colour)
+                    drawn += 1
+            i += 1
+        j += 1
+    return drawn
+
+def _rkpath(tree, x0, y0, xend, n):
+    # RK4 from (x0, y0) to xend in n equal steps. Negative h when xend < x0, so
+    # the same routine walks the solution backwards. Stops early if the
+    # solution runs away, and the caller reports where it got to.
+    pts = [(x0, y0)]
+    if n < 1 or xend == x0:
+        return pts
+    h = (xend - x0) / n
+    y = y0
+    i = 0
+    while i < n:
+        xa = x0 + (xend - x0) * i / n
+        try:
+            y = _st_rk4(tree, xa, y, h)
+        except:
+            break
+        if not _finite(y) or y > 1e12 or y < -1e12:
+            break
+        pts.append((x0 + (xend - x0) * (i + 1) / n, y))
+        i += 1
+    return pts
+
+def _trim(xa, ya, xb, yb, lo, hi):
+    # segment clipped to the band lo <= y <= hi, or None. casutil.seg clips in
+    # pixel space, but a solution that has run off to 1e12 would first be turned
+    # into a pixel coordinate of 1e13 and Bresenham would walk every one of them.
+    t0 = 0.0
+    t1 = 1.0
+    d = yb - ya
+    if d == 0.0:
+        if ya < lo or ya > hi:
+            return None
+    else:
+        ta = (lo - ya) / d
+        tb = (hi - ya) / d
+        if ta > tb:
+            ta, tb = tb, ta
+        if ta > t0:
+            t0 = ta
+        if tb < t1:
+            t1 = tb
+        if t0 > t1:
+            return None
+    return (xa + (xb - xa) * t0, ya + d * t0,
+            xa + (xb - xa) * t1, ya + d * t1)
+
+def _drawpath(fr, pts, colour):
+    i = 1
+    while i < len(pts):
+        c = _trim(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1],
+                  fr[6], fr[7])
+        if c is not None:
+            casutil.seg(fr, c[0], c[1], c[2], c[3], colour)
+        i += 1
+
+MAX_CURVES = 4
+
+def t_tangentfield():
+    tree = _askexpr('dy/dx = f(x,y)')
+    if tree is None:
+        _show('Tangent field', ['Could not read f(x,y).'])
+        return
+    xlo = _asknum('x min')
+    if xlo is None:
+        return
+    xhi = _asknum('x max')
+    if xhi is None or xhi <= xlo:
+        _show('Tangent field', ['Need x max > x min.'])
+        return
+    ylo = _asknum('y min')
+    if ylo is None:
+        return
+    yhi = _asknum('y max')
+    if yhi is None or yhi <= ylo:
+        _show('Tangent field', ['Need y max > y min.'])
+        return
+    # every prompt is asked BEFORE anything is drawn: the input screen owns the
+    # whole display, so a prompt after the plot would wipe the plot
+    starts = []
+    while len(starts) < MAX_CURVES:
+        x0 = _asknum('solution through x0 (EXIT=no more)')
+        if x0 is None:
+            break
+        y0 = _asknum('y0 = y(x0)')
+        if y0 is None:
+            break
+        starts.append((x0, y0))
+    fr = casutil.frame(xlo, xhi, ylo, yhi)
+    casutil.axes(fr, 'dy/dx = ' + caseng.tostr(tree)[:40], 'x', 'y')
+    drawn = _field(fr, tree, FIELD_NX, FIELD_NY, casui.ACC)
+    lines = ['tangent field of',
+             'dy/dx = ' + caseng.tostr(tree),
+             'x in [' + _fn(xlo) + ', ' + _fn(xhi) + ']',
+             'y in [' + _fn(ylo) + ', ' + _fn(yhi) + ']',
+             'grid ' + str(FIELD_NX) + ' x ' + str(FIELD_NY) +
+             ', dashes: ' + str(drawn),
+             'every dash is the same length,',
+             'so only its slant carries f.',
+             '------------------']
+    k = 0
+    while k < len(starts):
+        x0, y0 = starts[k]
+        fwd = _rkpath(tree, x0, y0, xhi, FIELD_STEPS)
+        bwd = _rkpath(tree, x0, y0, xlo, FIELD_STEPS)
+        _drawpath(fr, fwd, casui.RED)
+        _drawpath(fr, bwd, casui.RED)
+        k += 1
+        lines.append('curve ' + str(k) + ' through (' + _fn(x0) + ', ' +
+                     _fn(y0) + ')')
+        lines.append('  y(' + _fn(bwd[len(bwd) - 1][0]) + ') = ' +
+                     _f6(bwd[len(bwd) - 1][1]))
+        lines.append('  y(' + _fn(fwd[len(fwd) - 1][0]) + ') = ' +
+                     _f6(fwd[len(fwd) - 1][1]))
+    if not starts:
+        lines.append('no solution curve was asked for.')
+    else:
+        lines.append('curves are RK4, forwards from')
+        lines.append('the point and backwards.')
+    casutil.chart_hold('RK4 solution curves in red')
+    _pages('Tangent field', lines)
+
+# ---- 8. LIMITS (C10) ------------------------------------------------------
+# There is no symbolic limit in the CAS, so this is the numerical definition
+# done honestly: walk in towards the point, print the values, and only call it
+# a limit if they settle. The table is the evidence and is printed with the
+# answer, because "it looked like it was heading for 2" is the whole technique.
+LIM_H = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]
+LIM_HS = ['1e-1', '1e-2', '1e-3', '1e-4', '1e-5']
+LIM_X = [1e2, 1e3, 1e4, 1e5, 1e6]
+LIM_XS = ['1e2', '1e3', '1e4', '1e5', '1e6']
+
+def _ev(tree, x):
+    v = caseng.evalf(tree, x)
+    if isinstance(v, complex) or not _finite(v):
+        raise ValueError('not a real finite value')
+    return v
+
+def _samples(tree, pts):
+    out = []
+    i = 0
+    while i < len(pts):
+        try:
+            out.append(_ev(tree, pts[i]))
+        except:
+            out.append(None)
+        i += 1
+    return out
+
+def _at_pts(a, sgn):
+    out = []
+    i = 0
+    while i < len(LIM_H):
+        out.append(a + sgn * LIM_H[i])
+        i += 1
+    return out
+
+def _inf_pts(sgn):
+    out = []
+    i = 0
+    while i < len(LIM_X):
+        out.append(sgn * LIM_X[i])
+        i += 1
+    return out
+
+def _verdict(vals):
+    # ('num', L) | ('inf', +1/-1) | ('none', None) from a sequence that should
+    # be closing in on its limit. Successive sample points are a factor of ten
+    # apart, so one Richardson step kills a tail of the form L + K/n.
+    n = len(vals)
+    if n < 3:
+        return ('none', None)
+    a = vals[n - 3]
+    b = vals[n - 2]
+    c = vals[n - 1]
+    if a is None or b is None or c is None:
+        return ('none', None)
+    d1 = abs(c - b)
+    d2 = abs(b - a)
+    if d1 <= 1e-3 * (1.0 + abs(c)) and d2 <= 1e-2 * (1.0 + abs(b)):
+        L = (10.0 * c - b) / 9.0
+        if abs(L - c) > 10.0 * d1 + 1e-9:
+            L = c
+        return ('num', _snap(L))
+    # diverging: each sample at least trebles the one before it and the last is
+    # already large. A plain size test would call ln(x) bounded and 1/x at
+    # h = 1e-5 (only 1e5) unbounded-but-not-yet-big-enough.
+    if abs(c) > 1e4 and abs(c) >= 3.0 * abs(b) and abs(b) >= 3.0 * abs(a) \
+            and (c < 0) == (b < 0):
+        return ('inf', 1.0 if c > 0 else -1.0)
+    return ('none', None)
+
+def _snap(v):
+    # 1.9999999996 is 2; printing the noise as if it were the answer is worse
+    # than printing the answer
+    if v != v or abs(v) > 1e12:
+        return v
+    r = float(int(round(v)))
+    if abs(v - r) < 1e-6:
+        return r
+    return v
+
+def _vstr(k):
+    if k[0] == 'num':
+        return _f6(k[1])
+    if k[0] == 'inf':
+        return '+infinity' if k[1] > 0 else '-infinity'
+    return 'no limit found'
+
+def _limtable(lines, labels, la, lb):
+    lines.append('h        f(a-h) then f(a+h)')
+    i = 0
+    while i < len(labels):
+        sa = 'undefined' if la[i] is None else _f6(la[i])
+        sb = 'undefined' if lb[i] is None else _f6(lb[i])
+        lines.append(labels[i] + ' below ' + sa)
+        lines.append('     above ' + sb)
+        i += 1
+
+def t_limit():
+    tree = _askexpr('f(x)')
+    if tree is None:
+        _show('Limit of f(x)', ['Could not read f(x).'])
+        return
+    c = casui.menu('Limit of f(x)', ['x -> a  (a finite)',
+                                     'x -> +infinity',
+                                     'x -> -infinity'])
+    if c < 0:
+        return
+    lines = ['f(x) = ' + caseng.tostr(tree), '------------------']
+    if c == 0:
+        a = _asknum('a')
+        if a is None:
+            return
+        lv = _samples(tree, _at_pts(a, -1.0))
+        rv = _samples(tree, _at_pts(a, 1.0))
+        kl = _verdict(lv)
+        kr = _verdict(rv)
+        lines.append('x -> ' + _fn(a))
+        _limtable(lines, LIM_HS, lv, rv)
+        lines.append('------------------')
+        lines.append('from below: ' + _vstr(kl))
+        lines.append('from above: ' + _vstr(kr))
+        if kl[0] == 'num' and kr[0] == 'num' and \
+                abs(kl[1] - kr[1]) <= 1e-6 * (1.0 + abs(kr[1])):
+            L = (kl[1] + kr[1]) / 2.0
+            lines.append('limit = ' + _f6(_snap(L)))
+            try:
+                fa = _ev(tree, a)
+                if abs(fa - L) <= 1e-6 * (1.0 + abs(L)):
+                    lines.append('f(a) = ' + _f6(fa) + ', so f is')
+                    lines.append('continuous at x = ' + _fn(a) + '.')
+                else:
+                    lines.append('but f(a) = ' + _f6(fa) + ', so there')
+                    lines.append('is a removable discontinuity.')
+            except:
+                lines.append('f(a) itself is undefined, so the')
+                lines.append('point is a hole in the curve.')
+        elif kl[0] == 'inf' and kr[0] == 'inf' and kl[1] == kr[1]:
+            lines.append('limit = ' + ('+infinity' if kl[1] > 0 else '-infinity'))
+            lines.append('so x = ' + _fn(a) + ' is a vertical')
+            lines.append('asymptote.')
+        elif kl[0] == 'inf' or kr[0] == 'inf':
+            lines.append('the two sides disagree, so there')
+            lines.append('is no limit: x = ' + _fn(a) + ' is a')
+            lines.append('vertical asymptote.')
+        else:
+            lines.append('the two sides disagree, so the')
+            lines.append('limit does not exist.')
+    else:
+        sgn = 1.0 if c == 1 else -1.0
+        vv = _samples(tree, _inf_pts(sgn))
+        k = _verdict(vv)
+        lines.append('x -> ' + ('+' if sgn > 0 else '-') + 'infinity')
+        i = 0
+        while i < len(LIM_XS):
+            s = 'undefined' if vv[i] is None else _f6(vv[i])
+            lines.append(('x=' if sgn > 0 else 'x=-') + LIM_XS[i] + '  f = ' + s)
+            i += 1
+        lines.append('------------------')
+        lines.append('limit = ' + _vstr(k))
+        if k[0] == 'num':
+            lines.append('so y = ' + _f6(k[1]) + ' is a horizontal')
+            lines.append('asymptote in that direction.')
+    _pages('Limit of f(x)', lines)
+
+# ---- 9. ASYMPTOTES (C11) --------------------------------------------------
+VA_LO = -20.0
+VA_HI = 20.0
+VA_N = 400
+
+def _absev(tree, x):
+    # eval failure means "enormous" here: the searches below are all hunting a
+    # pole, and the pole is exactly where evaluation fails
+    try:
+        return abs(_ev(tree, x))
+    except:
+        return 1e300
+
+def _peak(tree, lo, hi):
+    # ternary search for the largest |f| in the bracket; |f| is unimodal on a
+    # bracket that holds one simple pole, which is how the bracket was chosen
+    i = 0
+    while i < 90 and (hi - lo) > 1e-11:
+        m1 = lo + (hi - lo) / 3.0
+        m2 = hi - (hi - lo) / 3.0
+        if _absev(tree, m1) < _absev(tree, m2):
+            lo = m1
+        else:
+            hi = m2
+        i += 1
+    return _snap((lo + hi) / 2.0)
+
+def _blowup(tree, c, sgn):
+    # does |f| run away as x -> c from one side? Growth is what is tested, not
+    # a fixed size: -ln|x| is a vertical asymptote and never reaches 100.
+    ds = [1e-2, 1e-4, 1e-6, 1e-8]
+    prev = None
+    i = 0
+    while i < len(ds):
+        try:
+            v = abs(_ev(tree, c + sgn * ds[i]))
+        except:
+            return False
+        if prev is not None and v <= prev * 1.2:
+            return False
+        prev = v
+        i += 1
+    return prev > 10.0
+
+def _brackets(tree, lo, hi, n):
+    # intervals of the scan that may hold a pole
+    xs = []
+    vs = []
+    i = 0
+    while i <= n:
+        x = lo + (hi - lo) * i / n
+        xs.append(x)
+        try:
+            vs.append(_ev(tree, x))
+        except:
+            vs.append(None)
+        i += 1
+    out = []
+    i = 1
+    while i < n:
+        a = vs[i - 1]
+        b = vs[i]
+        d = vs[i + 1]
+        hit = False
+        if b is None and (a is not None or d is not None):
+            hit = True
+        elif b is not None and abs(b) > 50.0:
+            if (a is None or abs(b) > 5.0 * abs(a)) or \
+                    (d is None or abs(b) > 5.0 * abs(d)):
+                hit = True
+        if not hit and b is not None and d is not None:
+            # a sign change between two large values is a pole, not a root
+            if abs(b) > 10.0 and abs(d) > 10.0 and ((b < 0) != (d < 0)):
+                out.append((xs[i], xs[i + 1]))
+        if hit:
+            out.append((xs[i - 1], xs[i + 1]))
+        i += 1
+    return out
+
+def _gridundef(tree, lo, hi, n):
+    # scan points where the tree cannot be evaluated but its neighbours can.
+    # _peak cannot find these: |f'| is flat either side of a corner, so there
+    # is no peak to climb, but the grid point itself is exactly the corner.
+    out = []
+    prev = True
+    i = 0
+    while i <= n:
+        x = lo + (hi - lo) * i / n
+        try:
+            _ev(tree, x)
+            ok = True
+        except:
+            ok = False
+        if not ok and prev:
+            out.append(x)
+        prev = ok
+        i += 1
+    return out
+
+def _addnear(vals, v, tol):
+    for w in vals:
+        if abs(w - v) < tol:
+            return
+    vals.append(v)
+
+MAX_VA = 12
+
+def _verticals(tree, lo, hi):
+    # every pole found is confirmed by _blowup, so a hole (|x|/x at 0) or a
+    # jump is not reported as an asymptote
+    out = []
+    for br in _brackets(tree, lo, hi, VA_N):
+        if len(out) >= MAX_VA:
+            break
+        c = _peak(tree, br[0], br[1])
+        if c < lo or c > hi:
+            continue
+        if _blowup(tree, c, 1.0) or _blowup(tree, c, -1.0):
+            _addnear(out, c, 1e-3)
+    out.sort()
+    return out
+
+def _side(tree, c, sgn):
+    # one-sided limit, with _blowup as the fallback: a tail that diverges like
+    # h^(-1/3) is still under 40 at h = 1e-5, so the sampled sequence alone
+    # cannot tell it from noise, but its growth down to 1e-8 can.
+    k = _verdict(_samples(tree, _at_pts(c, sgn)))
+    if k[0] != 'none':
+        return _vstr(k)
+    if _blowup(tree, c, sgn):
+        try:
+            v = _ev(tree, c + sgn * 1e-8)
+        except:
+            return 'no limit found'
+        return '+infinity' if v > 0 else '-infinity'
+    return 'no limit found'
+
+def _linstr(m, b):
+    s = 'y = '
+    if m == 1.0:
+        s += 'x'
+    elif m == -1.0:
+        s += '-x'
+    else:
+        s += _f6(m) + 'x'
+    if abs(b) < 1e-9:
+        return s
+    if b < 0:
+        return s + ' - ' + _f6(-b)
+    return s + ' + ' + _f6(b)
+
+def _numden(tree):
+    if tree[0] == '/':
+        return (tree[1], tree[2])
+    return (tree, ('n', 1))
+
+def _rval(r):
+    return float(r[0]) / float(r[1])
+
+def t_asympt():
+    tree = _askexpr('f(x)')
+    if tree is None:
+        _show('Asymptotes', ['Could not read f(x).'])
+        return
+    lines = ['f(x) = ' + caseng.tostr(tree), '------------------']
+    vs = _verticals(tree, VA_LO, VA_HI)
+    if vs:
+        for c in vs:
+            lines.append('vertical: x = ' + _fn(c))
+            lines.append('  from below f -> ' + _side(tree, c, -1.0))
+            lines.append('  from above f -> ' + _side(tree, c, 1.0))
+    else:
+        lines.append('no vertical asymptote in')
+        lines.append('[' + _fn(VA_LO) + ', ' + _fn(VA_HI) + '].')
+    lines.append('------------------')
+    # exact route: for a rational function the quotient of the long division IS
+    # the horizontal or oblique asymptote, with the remainder as the error term
+    num, den = _numden(tree)
+    pn = caspoly.poly(num, 'x')
+    pd = caspoly.poly(den, 'x')
+    done = False
+    if pn is not None and pd is not None and len(pd) >= 2:
+        qr = caspoly.pdivmod(pn, pd)
+        if qr is not None:
+            q = qr[0]
+            if len(q) <= 1:
+                v = 0.0 if not q else _rval(q[0])
+                lines.append('horizontal: y = ' + _fn(v) + '  (exact)')
+                if not q:
+                    lines.append('deg(num) < deg(den), so f -> 0')
+                    lines.append('at both ends.')
+                else:
+                    lines.append('deg(num) = deg(den), so f tends')
+                    lines.append('to the ratio of the leading')
+                    lines.append('coefficients at both ends.')
+                done = True
+            elif len(q) == 2:
+                lines.append('oblique: y = ' +
+                             caseng.tostr(caspoly.ptree(q, 'x')) + '  (exact)')
+                lines.append('num = q(x).den + r(x) with')
+                lines.append('r = ' + caseng.tostr(caspoly.ptree(qr[1], 'x')))
+                lines.append('and r/den -> 0, so y = q(x).')
+                done = True
+            else:
+                lines.append('deg(num) - deg(den) = ' + str(len(q) - 1) + ',')
+                lines.append('so there is no horizontal or')
+                lines.append('oblique asymptote.')
+                done = True
+    kp = _verdict(_samples(tree, _inf_pts(1.0)))
+    km = _verdict(_samples(tree, _inf_pts(-1.0)))
+    lines.append('lim x->+inf f = ' + _vstr(kp))
+    lines.append('lim x->-inf f = ' + _vstr(km))
+    if not done:
+        i = 0
+        while i < 2:
+            sgn = 1.0 if i == 0 else -1.0
+            k = kp if i == 0 else km
+            name = '+inf' if i == 0 else '-inf'
+            i += 1
+            if k[0] == 'num':
+                lines.append('horizontal as x->' + name + ': y = ' + _f6(k[1]))
+                continue
+            mk = _verdict(_samples(('/', tree, ('v', 'x')), _inf_pts(sgn)))
+            if mk[0] != 'num' or abs(mk[1]) < 1e-9:
+                lines.append('no asymptote as x->' + name + '.')
+                continue
+            m = _snap(mk[1])
+            bk = _verdict(_samples(('-', tree, ('*', ('n', m), ('v', 'x'))),
+                                   _inf_pts(sgn)))
+            if bk[0] == 'num':
+                lines.append('oblique as x->' + name + ': ' +
+                             _linstr(m, _snap(bk[1])))
+                lines.append('  m = lim f(x)/x = ' + _f6(m))
+                lines.append('  c = lim f(x) - mx = ' + _f6(_snap(bk[1])))
+            else:
+                lines.append('no asymptote as x->' + name + '.')
+    _pages('Asymptotes', lines)
+
+# ---- 10. STATIONARY POINTS AND CUSPS (C12) --------------------------------
+def t_statcusp():
+    tree = _askexpr('f(x)')
+    if tree is None:
+        _show('Stationary pts & cusps', ['Could not read f(x).'])
+        return
+    try:
+        d1 = caseng.diff(tree, 'x')
+    except:
+        _show('Stationary pts & cusps', ['Cannot differentiate f.'])
+        return
+    try:
+        d2 = caseng.diff(d1, 'x')
+    except:
+        d2 = None
+    lines = ['f(x) = ' + caseng.tostr(tree),
+             "f'(x) = " + caseng.tostr(caseng.simplify(d1)),
+             '------------------']
+    roots = cascalc.solve(d1, 'x')
+    if roots:
+        for r in roots:
+            try:
+                y = _ev(tree, r)
+            except:
+                continue
+            # The sign of f' either side decides it, and it decides the
+            # inflection case too. f'' is only the tie-break: the root is
+            # located to about 5e-8, so for y = x^3 the second derivative 6x
+            # comes out at -3e-7 there and would report a MAXIMUM.
+            word = None
+            dd = 0.01 * (1.0 + abs(r))
+            for rr in roots:
+                if rr != r and abs(rr - r) / 3.0 < dd:
+                    dd = abs(rr - r) / 3.0
+            try:
+                la = _ev(d1, r - dd)
+                rb = _ev(d1, r + dd)
+                if la < 0.0 and rb > 0.0:
+                    word = 'MINIMUM'
+                elif la > 0.0 and rb < 0.0:
+                    word = 'MAXIMUM'
+                elif (la > 0.0 and rb > 0.0) or (la < 0.0 and rb < 0.0):
+                    word = 'INFLECTION'
+            except:
+                word = None
+            if word is None and d2 is not None:
+                try:
+                    s = _ev(d2, r)
+                    if s > 0.0:
+                        word = 'MINIMUM'
+                    elif s < 0.0:
+                        word = 'MAXIMUM'
+                except:
+                    word = None
+            if word is None:
+                word = 'INFLECTION'
+            lines.append('x = ' + _fn(r) + '  y = ' + _fn(y) + '  ' + word)
+            if d2 is not None:
+                try:
+                    lines.append("  f'' = " + _fn(_ev(d2, r)) +
+                                 ' (supporting only)')
+                except:
+                    pass
+    else:
+        lines.append('no stationary point in')
+        lines.append('[' + _fn(VA_LO) + ', ' + _fn(VA_HI) + '].')
+    lines.append('------------------')
+    # A cusp is a point where the curve carries on but the gradient does not:
+    # f is continuous there and the one-sided limits of f' disagree. So look
+    # for the places where f' blows up and f does not.
+    found = 0
+    cands = []
+    for br in _brackets(d1, VA_LO, VA_HI, VA_N):
+        c = _peak(d1, br[0], br[1])
+        if VA_LO <= c <= VA_HI:
+            _addnear(cands, c, 1e-3)
+    for c in _gridundef(d1, VA_LO, VA_HI, VA_N):
+        _addnear(cands, c, 1e-3)
+    cands.sort()
+    for c in cands:
+        try:
+            fa = _ev(tree, c - 1e-6)
+            fb = _ev(tree, c + 1e-6)
+        except:
+            continue
+        if abs(fa - fb) > 1e-3 * (1.0 + abs(fa)):
+            continue  # f jumps too: this is an asymptote, not a cusp
+        if _blowup(tree, c, 1.0) or _blowup(tree, c, -1.0):
+            # 1/x^2 has gradients of opposite infinite sign either side and
+            # matching values at +-1e-6, so the "does f jump" test alone calls
+            # it continuous. It is a pole: the curve does not carry on through
+            # the point, so it is an asymptote and not a cusp.
+            continue
+        sl = _side(d1, c, -1.0)
+        sr = _side(d1, c, 1.0)
+        if sl == sr:
+            continue  # the gradient agrees from both sides: nothing to report
+        if sl == 'no limit found' and sr == 'no limit found':
+            continue
+        try:
+            fc = _ev(tree, c)
+        except:
+            fc = (fa + fb) / 2.0
+        if 'infinity' in sl and 'infinity' in sr:
+            word = 'CUSP'          # both gradients infinite, opposite ways
+        elif 'infinity' in sl or 'infinity' in sr:
+            word = 'VERTICAL TANGENT ONE SIDE'
+        else:
+            word = 'CORNER'        # both gradients finite but different
+        found += 1
+        lines.append(word + ' at x = ' + _fn(c) + ', y = ' + _fn(fc))
+        lines.append("  f' from below -> " + sl)
+        lines.append("  f' from above -> " + sr)
+    if found == 0:
+        lines.append('no cusp: the gradient has the')
+        lines.append('same finite limit from both')
+        lines.append('sides everywhere it was tested.')
+    else:
+        lines.append('a cusp is where f carries on but')
+        lines.append("f' does not: the two one-sided")
+        lines.append('limits of the gradient differ.')
+    _pages('Stationary pts & cusps', lines)
+
+# ---- 11. FAMILY OF CURVES (C4, TC1) ---------------------------------------
+FAM_N = 120
+FAM_MAX = 6
+FAM_COLS = [casui.BLACK, casui.RED, casui.ACC, casui.GREY]
+
+def _fam_ev(tree, x, a):
+    v = caseng.evalf(tree, x, False, {'x': x, 'a': a})
+    if isinstance(v, complex) or not _finite(v):
+        raise ValueError('not a real finite value')
+    return v
+
+def _fam_curve(tree, a, xlo, xhi, n):
+    pts = []
+    i = 0
+    while i <= n:
+        x = xlo + (xhi - xlo) * i / n
+        try:
+            pts.append((x, _fam_ev(tree, x, a)))
+        except:
+            pts.append((x, None))
+        i += 1
+    return pts
+
+def t_family():
+    tree = _askexpr('family y = f(x,a), in x and a')
+    if tree is None:
+        _show('Family of curves', ['Could not read f(x,a).'])
+        return
+    xlo = _asknum('x min')
+    if xlo is None:
+        return
+    xhi = _asknum('x max')
+    if xhi is None or xhi <= xlo:
+        _show('Family of curves', ['Need x max > x min.'])
+        return
+    avs = casutil.asklist('values of a (e.g. -2 0 2)')
+    if not avs:
+        _show('Family of curves', ['Give at least one value of a.'])
+        return
+    if len(avs) > FAM_MAX:
+        avs = avs[:FAM_MAX]
+    curves = []
+    ys = []
+    for a in avs:
+        pts = _fam_curve(tree, a, xlo, xhi, FAM_N)
+        curves.append(pts)
+        for p in pts:
+            if p[1] is not None:
+                ys.append(p[1])
+    if not ys:
+        _show('Family of curves', ['No finite values in that', 'x range.'])
+        return
+    ylo, yhi = casutil.nice_range(ys, 0.08)
+    fr = casutil.frame(xlo, xhi, ylo, yhi)
+    casutil.axes(fr, 'y = ' + caseng.tostr(tree)[:40], 'x', 'y')
+    lines = ['family y = ' + caseng.tostr(tree),
+             'x in [' + _fn(xlo) + ', ' + _fn(xhi) + ']',
+             '------------------']
+    k = 0
+    while k < len(curves):
+        colour = FAM_COLS[k % len(FAM_COLS)]
+        pts = curves[k]
+        i = 1
+        while i < len(pts):
+            if pts[i - 1][1] is not None and pts[i][1] is not None:
+                c = _trim(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1],
+                          ylo, yhi)
+                if c is not None:
+                    casutil.seg(fr, c[0], c[1], c[2], c[3], colour)
+            i += 1
+        a = avs[k]
+        k += 1
+        fin = [p[1] for p in pts if p[1] is not None]
+        lines.append('a=' + _fn(a) + ' y in [' + _fn(min(fin)) + ', ' +
+                     _fn(max(fin)) + ']')
+        try:
+            sub = caseng.subst(tree, 'a', ('n', a))
+            rts = [r for r in cascalc.solve(sub, 'x') if xlo <= r <= xhi]
+        except:
+            rts = []
+        if rts:
+            lines.append('a=' + _fn(a) + ' roots: ' +
+                         ', '.join([_fn(r) for r in rts]))
+        else:
+            lines.append('a=' + _fn(a) + ' roots: none in range')
+    lines.append('------------------')
+    lines.append('members drawn: ' + str(len(curves)))
+    lines.append('changing a moves the whole')
+    lines.append('curve; what stays the same is')
+    lines.append('the property of the family.')
+    casutil.chart_hold('one curve per value of a')
+    _pages('Family of curves', lines)
+
+# ---- 12. ENVELOPE OF A FAMILY (C9) ----------------------------------------
+# The envelope touches every member of the family. Along it the member is
+# stationary in the parameter, so it is the curve traced by df/da = 0 with
+# y = f(x, a): solve the first for a at each x, then read off y.
+ENV_NX = 41
+ENV_NA = 40
+ENV_EVERY = 10   # report every tenth column, so the table lands on round x
+
+def t_envelope():
+    tree = _askexpr('family y = f(x,a), in x and a')
+    if tree is None:
+        _show('Envelope', ['Could not read f(x,a).'])
+        return
+    try:
+        g = caseng.diff(tree, 'a')
+    except:
+        _show('Envelope', ['Cannot differentiate in a.'])
+        return
+    xlo = _asknum('x min')
+    if xlo is None:
+        return
+    xhi = _asknum('x max')
+    if xhi is None or xhi <= xlo:
+        _show('Envelope', ['Need x max > x min.'])
+        return
+    alo = _asknum('a min')
+    if alo is None:
+        return
+    ahi = _asknum('a max')
+    if ahi is None or ahi <= alo:
+        _show('Envelope', ['Need a max > a min.'])
+        return
+    env = []
+    i = 0
+    while i < ENV_NX:
+        x = xlo + (xhi - xlo) * i / (ENV_NX - 1)
+        col = i
+        i += 1
+        for a in _aroots(g, x, alo, ahi):
+            try:
+                env.append((x, a, _fam_ev(tree, x, a), col))
+            except:
+                pass
+    if not env:
+        _show('Envelope', ['df/da = 0 has no solution',
+                           'for a in that range, so this',
+                           'family has no envelope here.'])
+        return
+    ys = [p[2] for p in env]
+    ylo, yhi = casutil.nice_range(ys, 0.12)
+    fr = casutil.frame(xlo, xhi, ylo, yhi)
+    casutil.axes(fr, 'envelope of y = ' + caseng.tostr(tree)[:30], 'x', 'y')
+    # a few members in grey, so the envelope can be seen touching them
+    k = 0
+    while k < 7:
+        a = alo + (ahi - alo) * k / 6.0
+        k += 1
+        pts = _fam_curve(tree, a, xlo, xhi, 60)
+        j = 1
+        while j < len(pts):
+            if pts[j - 1][1] is not None and pts[j][1] is not None:
+                c = _trim(pts[j - 1][0], pts[j - 1][1], pts[j][0], pts[j][1],
+                          ylo, yhi)
+                if c is not None:
+                    casutil.seg(fr, c[0], c[1], c[2], c[3], casui.GREY)
+            j += 1
+    for p in env:
+        casutil.marker(fr, p[0], p[2], casui.RED, 1)
+    lines = ['family y = ' + caseng.tostr(tree),
+             'df/da = ' + caseng.tostr(caseng.simplify(g)),
+             'envelope: df/da = 0 and y = f(x,a)',
+             'a in [' + _fn(alo) + ', ' + _fn(ahi) + ']',
+             '------------------']
+    j = 0
+    while j < len(env):
+        p = env[j]
+        j += 1
+        if p[3] % ENV_EVERY:
+            continue
+        lines.append('x=' + _fn(p[0]) + ' a=' + _fn(p[1]) + ' y=' + _fn(p[2]))
+    lines.append('------------------')
+    lines.append('envelope points found: ' + str(len(env)))
+    lines.append('each one is where the member')
+    lines.append('touches the envelope, so the')
+    lines.append('family only reaches it once.')
+    casutil.chart_hold('members grey, envelope red')
+    _pages('Envelope', lines)
+
+def _gev(g, x, a):
+    v = caseng.evalf(g, 0.0, False, {'x': x, 'a': a})
+    if isinstance(v, complex) or not _finite(v):
+        raise ValueError('not a real finite value')
+    return v
+
+def _aroots(g, x, alo, ahi):
+    # roots of df/da = 0 in a, with x held fixed. env is consulted first by
+    # evalf, so no substitution is needed: both letters are simply bound.
+    vals = []
+    i = 0
+    while i <= ENV_NA:
+        a = alo + (ahi - alo) * i / ENV_NA
+        try:
+            vals.append(_gev(g, x, a))
+        except:
+            vals.append(None)
+        i += 1
+    out = []
+    i = 1
+    while i <= ENV_NA and len(out) < 3:
+        pv = vals[i - 1]
+        v = vals[i]
+        if pv is None or v is None:
+            i += 1
+            continue
+        if pv == 0.0:
+            _addnear(out, alo + (ahi - alo) * (i - 1) / ENV_NA, 1e-6)
+        elif (pv < 0) != (v < 0):
+            lo = alo + (ahi - alo) * (i - 1) / ENV_NA
+            hi = alo + (ahi - alo) * i / ENV_NA
+            flo = pv
+            j = 0
+            while j < 60 and (hi - lo) > 1e-12:
+                mid = (lo + hi) / 2.0
+                try:
+                    fm = _gev(g, x, mid)
+                except:
+                    break
+                if fm == 0.0:
+                    lo = mid
+                    hi = mid
+                    break
+                if (fm < 0) == (flo < 0):
+                    lo = mid
+                    flo = fm
+                else:
+                    hi = mid
+                j += 1
+            _addnear(out, _snap((lo + hi) / 2.0), 1e-6)
+        i += 1
+    if vals[ENV_NA] == 0.0:
+        _addnear(out, ahi, 1e-6)
+    return out
+
+# ---- 13. VERIFY A SOLUTION OF A DIFFERENTIAL EQUATION (c4) ----------------
+VDE_X = [-1.3, -0.4, 0.35, 0.9, 1.7]
+
+def t_verifyde():
+    y = _askexpr('proposed y, in x')
+    if y is None:
+        _show('Verify a DE solution', ['Could not read y.'])
+        return
+    res = _askexpr('DE as expr = 0, y p=dy/dx q=d2y/dx2')
+    if res is None:
+        _show('Verify a DE solution', ['Could not read the equation.'])
+        return
+    try:
+        d1 = caseng.diff(y, 'x')
+        d2 = caseng.diff(d1, 'x')
+    except:
+        _show('Verify a DE solution', ['Cannot differentiate y.'])
+        return
+    lines = ['y = ' + caseng.tostr(y),
+             'dy/dx = ' + caseng.tostr(caseng.simplify(d1)),
+             'd2y/dx2 = ' + caseng.tostr(caseng.simplify(d2)),
+             'equation (must be 0):',
+             '  ' + caseng.tostr(res),
+             '------------------']
+    sym = None
+    try:
+        s = caseng.subst(res, 'q', d2)
+        s = caseng.subst(s, 'p', d1)
+        s = caseng.subst(s, 'y', y)
+        s = caseng.simplify(s)
+        sym = caseng.tostr(s)
+        try:
+            sym = caseng.tostr(caspoly.collect(s))
+        except:
+            pass
+    except:
+        sym = None
+    if sym is not None:
+        lines.append('after substituting:')
+        lines.append('  ' + sym[:60])
+    worst = 0.0
+    tested = 0
+    ok = True
+    i = 0
+    while i < len(VDE_X):
+        xv = VDE_X[i]
+        i += 1
+        try:
+            yv = _ev(y, xv)
+            pv = _ev(d1, xv)
+            qv = _ev(d2, xv)
+            rv = caseng.evalf(res, xv, False,
+                              {'x': xv, 'y': yv, 'p': pv, 'q': qv})
+        except:
+            continue
+        if not _finite(rv):
+            continue
+        scale = 1.0 + abs(yv) + abs(pv) + abs(qv)
+        rel = abs(rv) / scale
+        if rel > worst:
+            worst = rel
+        tested += 1
+    if tested == 0:
+        ok = False
+    lines.append('------------------')
+    lines.append('checked at ' + str(tested) + ' values of x')
+    lines.append('largest relative residual')
+    lines.append('  = ' + _f6(worst))
+    if ok and worst < 1e-9:
+        lines.append('VERIFIED: y satisfies the')
+        lines.append('differential equation.')
+    elif not ok:
+        lines.append('NOT CHECKED: the equation could')
+        lines.append('not be evaluated anywhere.')
+    else:
+        lines.append('NOT a solution: the equation')
+        lines.append('does not balance.')
+    _pages('Verify a DE solution', lines)
+
+# ---- 14. LINEAR DIOPHANTINE ax + by = c (T10) -----------------------------
+def _tterm(v):
+    # " + 5t" / " - 5t" / "" - never "+ -5t"
+    if v == 0:
+        return ''
+    if v < 0:
+        return ' - ' + (str(-v) if v != -1 else '') + 't'
+    return ' + ' + (str(v) if v != 1 else '') + 't'
+
+def t_diophantine():
+    a = _askint('a in a x + b y = c')
+    if a is None:
+        return
+    b = _askint('b')
+    if b is None:
+        return
+    c = _askint('c')
+    if c is None:
+        return
+    sb = ' + ' + str(b) if b >= 0 else ' - ' + str(-b)
+    lines = [str(a) + 'x' + sb + 'y = ' + str(c),
+             '------------------']
+    if a == 0 and b == 0:
+        if c == 0:
+            lines.append('every (x, y) is a solution.')
+        else:
+            lines.append('no solutions: 0 = ' + str(c) + ' is false.')
+        _pages('Linear Diophantine', lines)
+        return
+    g, u, v = _egcd(a, b)
+    if g < 0:
+        g, u, v = -g, -u, -v
+    lines.append('gcd(' + str(a) + ', ' + str(b) + ') = ' + str(g))
+    lines.append('Bezout: ' + str(a) + '*' + str(u) + ' + ' + str(b) + '*' +
+                 str(v) + ' = ' + str(g))
+    if c % g != 0:
+        lines.append(str(g) + ' does not divide ' + str(c) + ',')
+        lines.append('so there are NO integer')
+        lines.append('solutions.')
+        _pages('Linear Diophantine', lines)
+        return
+    k = c // g
+    x0 = u * k
+    y0 = v * k
+    bg = b // g
+    ag = a // g
+    lines.append(str(g) + ' divides ' + str(c) + ', so solutions')
+    lines.append('exist. Scaling Bezout by ' + str(k) + ':')
+    lines.append('x0 = ' + str(x0) + ', y0 = ' + str(y0))
+    lines.append('check: ' + str(a * x0 + b * y0) + ' = ' + str(c))
+    lines.append('------------------')
+    lines.append('general solution, t integer:')
+    lines.append('x = ' + str(x0) + _tterm(bg))
+    lines.append('y = ' + str(y0) + _tterm(-ag))
+    if bg != 0:
+        # the member with the smallest x >= 0, which is what a "how many" or
+        # "in positive integers" question is really asking for. Integer
+        # division rounds towards minus infinity in Python, so the exact t is
+        # within one either way and the short sweep settles it.
+        t = -x0 // bg
+        best = None
+        j = -2
+        while j <= 2:
+            xx = x0 + bg * (t + j)
+            yy = y0 - ag * (t + j)
+            if xx >= 0 and (best is None or xx < best[0]):
+                best = (xx, yy, t + j)
+            j += 1
+        if best is not None:
+            lines.append('smallest x >= 0: t = ' + str(best[2]))
+            lines.append('  x = ' + str(best[0]) + ', y = ' + str(best[1]))
+    _pages('Linear Diophantine', lines)
+
 # ---- registry ------------------------------------------------------------
 TOOLS = [
     ('Plot f(x) curve', t_plot),
@@ -825,6 +1927,13 @@ TOOLS = [
     ('nth roots of z', t_roots),
     ('Euler dy/dx=f(x)', t_euler),
     ('Runge-Kutta RK2/RK4', t_rk),
+    ('Tangent field', t_tangentfield),
+    ('Verify a DE solution', t_verifyde),
+    ('Limit of f(x)', t_limit),
+    ('Asymptotes incl oblique', t_asympt),
+    ('Stationary pts & cusps', t_statcusp),
+    ('Family of curves', t_family),
+    ('Envelope of a family', t_envelope),
     ('Arc length', t_arclen),
     ('gcd & lcm', t_gcdlcm),
     ('Prime test', t_prime),
@@ -835,6 +1944,7 @@ TOOLS = [
     ('Fermat & Wilson', t_fermat),
     ('Pythagorean triples', t_pythag),
     ("Pell x^2-n y^2=1", t_pell),
+    ('Linear Diophantine', t_diophantine),
     ('Base -> bin/hex', t_base),
 ]
 
