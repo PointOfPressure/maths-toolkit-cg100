@@ -11,8 +11,8 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-1250%20checks%2C%200%20failures-brightgreen)
-![smoke](https://img.shields.io/badge/smoke-343%20checks%2C%200%20errors-brightgreen)
+![tests](https://img.shields.io/badge/tests-2696%20checks%2C%200%20failures-brightgreen)
+![smoke](https://img.shields.io/badge/smoke-413%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
 
@@ -124,13 +124,14 @@ Every tool below is reached by launching the toolkit and choosing the menu path 
 
 ### A-Level Maths (H640)
 
-Reached via `Maths Toolkit > A-Level Maths`, then `Pure`, `Statistics`, or `Mechanics`.
+Reached via `Maths Toolkit > A-Level Maths`, then `Pure: algebra & trig`, `Pure: functions & calculus`, `Statistics`, or `Mechanics`. Pure is split in two because one menu of nearly thirty entries is worse than two of fifteen.
 
 | Section | Menu path | Tools provided |
 | --- | --- | --- |
-| Pure | A-Level Maths > Pure | Quadratic solver, Simultaneous eqns, Arithmetic seq/sum, Geometric seq/sum, Binomial expansion, Logarithms, Coord geometry, Circle, Trig tools |
-| Statistics | A-Level Maths > Statistics | Summary stats, Freq table mean/var, Discrete RV E,Var, Binomial B(n,p), Normal P(a<X<b), Inverse Normal, HT binomial prop, HT Normal mean z, PMCC + regression, Probability rules, Factorial / nCr |
-| Mechanics | A-Level Maths > Mechanics | SUVAT solver, Projectiles, Resultant of forces, Resolve a force, Equilibrium check, Newton II F=ma, Friction F=mu R, Friction horiz plane, Friction incline, Pulley (connected), Moments / reactions |
+| Pure: algebra & trig | A-Level Maths > Pure: algebra & trig | Quadratic solver, Simultaneous eqns, Arithmetic seq/sum, Geometric seq/sum, Binomial expansion, Logarithms, Coord geometry, Circle, Trig tools, Solve a triangle, Arc length & sector, Inequalities |
+| Pure: functions & calculus | A-Level Maths > Pure: functions & calculus | Composite fg(x), Inverse function, Domain & range, Modulus \|f(x)\|, Graph transformations, Parametric d/dx, Parametric -> Cartesian, Implicit d/dx, Integration by substitution, Separation of variables, Stationary points, Constant of integration, Volume of revolution, Mean value of f, Improper integral, Small-angle approx, Exact trig values |
+| Statistics | A-Level Maths > Statistics | Summary stats, Freq table mean/var, Discrete RV E,Var, Binomial B(n,p), Normal P(a<X<b), Inverse Normal, HT binomial prop, HT Normal mean z, PMCC + regression, Probability rules, Tree diagram + Bayes, Sampling methods, Stratified sample, Factorial / nCr, Box plot, Histogram, Cumulative freq, Scatter + regression |
+| Mechanics | A-Level Maths > Mechanics | SUVAT solver, Projectiles, Resultant of forces, Resolve a force, Equilibrium check, Newton II F=ma, Friction F=mu R, Friction horiz plane, Friction incline, Pulley (connected), Moments / reactions, Projectile: find the launch, Variable acceleration, Distance vs displacement, Connected particles |
 
 Some Pure and Mechanics entries open their own sub-menus: `Simultaneous eqns` offers `Two linear` and `Linear + quadratic`; `Binomial expansion` offers `(a+bx)^n list terms`, `(1+x)^n real n`, `one coeff of x^k`; `Logarithms` offers `Solve a^x = b`, `log base c of v`, `Log-law reference`; `Circle` offers `Centre+r -> equation` and `Equation -> centre+r`; `Trig tools` offers `Solve sin/cos/tan`, `R-form a sin+b cos`, `Exact-value table`. Calculus (differentiation, integration, definite integrals, graphing, tables) is not in these modules; it lives in the `Calculus & Algebra` CAS section off the main menu.
 
@@ -140,14 +141,14 @@ Reached via `Maths Toolkit > Further Maths > Core Pure (compulsory)`.
 
 | Section | Menu path | Tools provided |
 | --- | --- | --- |
-| Complex numbers | Further Maths > Core Pure > Complex numbers | Arithmetic z, w, Modulus & argument, Polar / exp form, From polar (r,theta), Power z^n (De Moivre), nth roots of z, Quadratic complex roots, Argand plot |
-| Matrices | Further Maths > Core Pure > Matrices | Enter A, Enter B, Show A and B, A + B, A - B, k * A, A * B, Transpose A, Determinant A, Inverse A, Solve A x = b, Eigenvalues 2x2, 2D transform builder |
-| Vectors & 3-D | Further Maths > Core Pure > Vectors & 3-D | Magnitude, Dot product a.b, Angle between, Cross product a x b, Unit vector, Scalar projection, Parallel / perp test, Point to line dist, Point to plane dist, Angle between planes, Skew lines distance |
+| Complex numbers | Further Maths > Core Pure > Complex numbers | Arithmetic z, w, Modulus & argument, Polar / exp form, From polar (r,theta), Power z^n (De Moivre), nth roots of z, Quadratic complex roots, Argand plot, Loci in the Argand plane, de Moivre identities |
+| Matrices | Further Maths > Core Pure > Matrices | Enter A, Enter B, Show A and B, A + B, A - B, k * A, A * B, Transpose A, Determinant A, Inverse A, Solve A x = b, Eigenvalues 2x2, 2D transform builder, 3D transform builder, Invariant points/lines |
+| Vectors & 3-D | Further Maths > Core Pure > Vectors & 3-D | Magnitude \|a\|, Dot product a.b, Angle between, Cross product a x b, Unit vector, Scalar projection, Parallel / perp test, Point to line dist, Equation of a line, Line meets plane, Point to plane dist, Angle between planes, Skew lines distance |
 | Roots of polynomials | Further Maths > Core Pure > Roots of polynomials | Vieta quadratic, Vieta cubic, Vieta quartic, Quadratic roots, Numeric roots (x), Shift roots by k |
-| Series & Maclaurin | Further Maths > Core Pure > Series & Maclaurin | Sum of r, Sum of r^2, Sum of r^3, Maclaurin of f(x), Approx + error, Reference card |
+| Series & Maclaurin | Further Maths > Core Pure > Series & Maclaurin | Sum of r, Sum of r^2, Sum of r^3, Maclaurin of f(x), Approx + error, Method of differences, Reference card |
 | Hyperbolic functions | Further Maths > Core Pure > Hyperbolic functions | Evaluate sinh, Evaluate cosh, Evaluate tanh, All three at x, arsinh (inverse), arcosh (inverse), artanh (inverse), Reference card |
 | Polar coordinates | Further Maths > Core Pure > Polar coordinates | (r,theta) -> (x,y), (x,y) -> (r,theta), Plot polar curve, Preset curves, Polar area |
-| Differential equations | Further Maths > Core Pure > Differential equations | First-order linear (IF), Second-order const-coeff, SHM recogniser, Damping classifier |
+| Differential equations | Further Maths > Core Pure > Differential equations | First-order linear (IF), Second-order const-coeff, Particular integral, SHM recogniser, Damping classifier |
 
 The Matrices `2D transform builder` opens a further sub-menu (`Rotation`, `Reflect x-axis`, `Reflect y-axis`, `Reflect y=x`, `Enlargement`, `Stretch`, `Shear`). The Polar `Preset curves` tool offers `Cardioid 1+cos`, `Rose cos(2x)`, `Circle r=3`.
 
@@ -157,12 +158,12 @@ Reached via `Maths Toolkit > Further Maths > Options`.
 
 | Section | Menu path | Tools provided |
 | --- | --- | --- |
-| Mechanics (FM) | Further Maths > Options > Mechanics (FM) | Momentum & impulse, Restitution, Work/Energy/Power, Circular motion, Hookes law / EPE, Centre of mass, Dimensional analysis |
-| Statistics (FM) | Further Maths > Options > Statistics (FM) | Discrete RV E/Var, Poisson pmf/cdf, Binomial pmf/cdf, Normal P(a<X<b), Standardise z, Inverse Normal, PMCC r, Spearman rank, Regression y=a+bx, Chi-squared GOF, CI for mean, CI for proportion, z-test for mean |
-| Numerical Methods | Further Maths > Options > Numerical Methods | Newton-Raphson, Fixed-point iteration, Bisection, Integration (trap/mid/Simp), Numerical derivative, Euler method, Error abs/relative, Round to s.f. |
-| Modelling w/ Algorithms | Further Maths > Options > Modelling w/ Algorithms | Bubble sort, Insertion sort, Bin: first-fit, Bin: first-fit decr, Dijkstra shortest, Prim MST, Kruskal MST, Critical path |
-| Extra Pure | Further Maths > Options > Extra Pure | Recurrence relation, Group theory, 2x2 Eigen/diag, Modular arithmetic, Partial deriv (num) |
-| Further Pure w/ Tech | Further Maths > Options > Further Pure w/ Tech | Plot f(x) curve, De Moivre z^n, nth roots of z, Euler dy/dx=f(x,y), gcd & lcm, Prime test, Prime factorise, a^b mod m, Modular inverse, Base -> bin/hex |
+| Mechanics (FM) | Further Maths > Options > Mechanics (FM) | Momentum & impulse, Restitution, Oblique impact: wall, Oblique impact: spheres, Work/Energy/Power, Projectile path (cartesian), Projectile on an incline, Circular motion, Hookes law / EPE, Elastic equilibrium/energy, Centre of mass, COM by calculus, COM standard bodies, Slide or topple, Couple, Triangle of forces, Relative motion 2-D, Dimensional analysis, Units & conversion |
+| Statistics (FM) | Further Maths > Options > Statistics (FM) | Discrete RV E/Var, Discrete uniform, Poisson pmf/cdf, Binomial pmf/cdf, Geometric dist, Continuous RV E/Var, cdf, median, quartiles, Mode of a pdf, Piecewise pdf, Normal P(a<X<b), Standardise z, Inverse Normal, aX+bY+c combination, nX vs X1+..+Xn, Normal prob plot, PMCC r + test, Spearman rs + test, Regression y=a+bx, Chi-squared GOF, Chi-sq association, CI for mean (z), t interval / paired, CI for proportion, z-test for mean |
+| Numerical Methods | Further Maths > Options > Numerical Methods | Newton-Raphson, Fixed-point iteration, Fixed-point diagnosis, Relaxation iteration, Cobweb / staircase, Order of convergence, Bisection, Integration (trap/mid/Simp), Integration error table, Richardson extrapolation, Aitken acceleration, Numerical derivative, Derivative error table, Newton forward differences, Euler method, Error abs/relative, Error propagation, Error in f(x), Round to s.f., Chop vs round |
+| Modelling w/ Algorithms | Further Maths > Options > Modelling w/ Algorithms | Bubble sort, Insertion sort, Quick sort, Bin: first-fit, Bin: first-fit decr, Graph: degrees/incidence, Dijkstra shortest, Prim MST, Kruskal MST, Max flow / min cut, Cut capacity, Critical path, Simplex (max, <=), Simplex 2-stage (>=, =), LP graph 2-D |
+| Extra Pure | Further Maths > Options > Extra Pure | Recurrence relation, Group theory, 2x2 Eigen/diag, Modular arithmetic, Partial derivatives, Surface stationary pts, Tangent plane / normal, 3x3 Eigen/diag |
+| Further Pure w/ Tech | Further Maths > Options > Further Pure w/ Tech | Plot f(x) curve, De Moivre z^n, nth roots of z, Euler dy/dx=f(x), Runge-Kutta RK2/RK4, Arc length, gcd & lcm, Prime test, Prime factorise, Euler totient phi(n), a^b mod m, Modular inverse, Fermat & Wilson, Pythagorean triples, Pell x^2-n y^2=1, Base -> bin/hex |
 
 In Extra Pure, `Modular arithmetic` opens its own sub-menu (`a mod m`, `a^b mod m`, `gcd(a,b)`, `modular inverse`).
 
@@ -248,7 +249,7 @@ Copy these `.py` files to the calculator's storage (the root of the device, wher
 - UI layer: `casui.py`
 - Engine: `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`
 - Shared section helpers: `casutil.py`
-- The 17 section modules: `vcplx.py`, `matrix.py`, `vectors.py`, `polyroots.py`, `series.py`, `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`, `numeric.py`, `algos.py`, `xpure.py`, `fpt.py`, `pure640.py`, `stat640.py`, `mech640.py`
+- The 18 section modules: `purecalc.py`, `vcplx.py`, `matrix.py`, `vectors.py`, `polyroots.py`, `series.py`, `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`, `numeric.py`, `algos.py`, `xpure.py`, `fpt.py`, `pure640.py`, `stat640.py`, `mech640.py`
 
 To launch the toolkit, run `maths.py` (it just imports `casui` and calls `casui.main()`; the engine and section modules are pulled in from there on demand).
 
@@ -261,9 +262,9 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 1250 checks, 0 failures
-python3 stress.py      # smoke: 343 checks, 0 errors
-python3 devlint.py     # device compliance: 0 problems in 30 files
+python3 tests.py       # correctness: 2696 checks, 0 failures
+python3 stress.py      # smoke: 413 checks, 0 errors
+python3 devlint.py     # device compliance: 0 problems in 31 files
 ```
 
 All three run on every push and pull request via `.github/workflows/ci.yml`, along with a `compileall` pass over the whole repo. No dependencies beyond CPython.
@@ -285,13 +286,23 @@ module's `TOOLS` registry and hammers the engine over ~30 expressions. It proves
 nothing crashes; it does not check that any answer is right. On a PC it writes
 `stress_log.txt`; on the device (no file writes) it prints progress instead.
 
-**`devlint.py` - device compliance.** Parses each of the 30 device files and
+**`devlint.py` - device compliance.** Parses each of the 31 device files and
 reports anything the calculator's MicroPython 1.9.4 cannot run: f-strings,
 non-ASCII bytes, imports beyond `math`/`random`/`casioplot`, `math` members the
 build lacks (`factorial`, `atan2`, the hyperbolics), annotations, walrus,
 `async`, `yield from`, and newer string methods. Everything is an allowlist, so
 a new dependency has to be added to `devlint.py` deliberately. `tests.py` runs
 it too, so a change that would only fail on real hardware fails on the PC first.
+
+Two structural guards were added once each had already let a real defect
+through. `test_every_tool_is_registered` walks every section module and asserts
+each `t_*` function appears in that module's `TOOLS` with a unique label - two
+matrix tools once shipped in a commit that claimed to add them but were never
+listed, so they were unreachable from the menu and invisible to `stress.py`
+while their own tests passed by calling them directly. `test_readme_matches_tools`
+asserts every tool table in this README is exactly its module's labels, because
+a README that has quietly drifted is worse than none: it is a list of tools that
+are not there.
 
 `tests.py`, the `tests_*.py` modules and `devlint.py` are desktop-only (they use
 `ast` and `sys._getframe`) and must not be copied to the calculator. `tests.py`

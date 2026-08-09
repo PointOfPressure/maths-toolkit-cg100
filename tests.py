@@ -2344,6 +2344,60 @@ def test_projectile_inverse():
     num("ux from range and time", o, "ux = R/T  = ", 20.0)
     num("speed from range and time", o, "u = ", math.sqrt(400.0 + 384.16), 1e-3)
 
+# README rows: (table row name, module). The README documents each section's
+# tools verbatim from its TOOLS labels, and a README that has quietly drifted
+# from the code is worse than no README - it is a list of tools that are not
+# there.
+README_ROWS = [
+    ("Pure: algebra & trig", "pure640"),
+    ("Pure: functions & calculus", "purecalc"),
+    ("Statistics", "stat640"),
+    ("Mechanics", "mech640"),
+    ("Complex numbers", "vcplx"),
+    ("Matrices", "matrix"),
+    ("Vectors & 3-D", "vectors"),
+    ("Roots of polynomials", "polyroots"),
+    ("Series & Maclaurin", "series"),
+    ("Hyperbolic functions", "hyper"),
+    ("Polar coordinates", "polar"),
+    ("Differential equations", "diffeq"),
+    ("Mechanics (FM)", "fmmech"),
+    ("Statistics (FM)", "fmstat"),
+    ("Numerical Methods", "numeric"),
+    ("Modelling w/ Algorithms", "algos"),
+    ("Extra Pure", "xpure"),
+    ("Further Pure w/ Tech", "fpt"),
+]
+
+def readme_table_line(name, mod):
+    labels = []
+    for label, fn in mod.TOOLS:
+        labels.append(label.replace("|", "\\|"))
+    return name + " | " + ", ".join(labels)
+
+def test_readme_matches_tools():
+    path = os.path.join(HERE, "README.md")
+    if not os.path.exists(path):
+        truthy("README.md exists", False)
+        return
+    text = open(path).read()
+    for name, modname in README_ROWS:
+        mod = __import__(modname)
+        want = readme_table_line(name, mod)
+        # the README row is "| name | menu path | label, label, ... |"
+        found = None
+        for line in text.split("\n"):
+            if line.startswith("| " + name + " |"):
+                cells = line.split(" | ")
+                if len(cells) >= 3:
+                    found = cells[0][2:].strip() + " | " + cells[len(cells) - 1].rstrip(" |").strip()
+                break
+        truthy("README has a row for " + name, found is not None)
+        if found is None:
+            continue
+        check("README tool list for " + name + " matches " + modname + ".TOOLS",
+              found, want)
+
 def test_every_tool_is_registered():
     # A tool that is not in its module's TOOLS list is unreachable from the
     # menu and invisible to stress.py, however well it works when called
@@ -2425,6 +2479,7 @@ TESTS = [
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
     ("every tool is registered", test_every_tool_is_registered),
+    ("README matches TOOLS", test_readme_matches_tools),
 ]
 
 # ---------------------------------------------------------- extra modules --
