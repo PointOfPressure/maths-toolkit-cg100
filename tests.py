@@ -2344,6 +2344,97 @@ def test_projectile_inverse():
     num("ux from range and time", o, "ux = R/T  = ", 20.0)
     num("speed from range and time", o, "u = ", math.sqrt(400.0 + 384.16), 1e-3)
 
+# Expressions used for the engine's invariant sweep. They deliberately cover
+# every integration route: powers, reciprocals, roots, exponentials, all six
+# trig and reciprocal-trig functions, by parts, the cyclic case, and partial
+# fractions.
+SWEEP = ["x^2", "x^5", "1/x", "1/x^2", "sqrt(x)", "1/sqrt(x)", "exp(x)", "exp(2x)",
+         "exp(-x)", "sin(x)", "cos(3x)", "tan(x)", "sec(x)", "cosec(2x)", "cot(x)",
+         "sec(x)^2", "cosec(x)^2", "sin(x)^2", "cos(x)^2", "tan(x)^2", "ln(x)",
+         "x*ln(x)", "x*sin(x)", "x^2*exp(x)", "x*atan(x)", "exp(x)*sin(x)",
+         "sin(x)*cos(x)", "1/(x^2+1)", "1/(x^2+4)", "1/(x^2-1)", "x/(x^2+1)",
+         "x^2/(x^2+1)", "(3x+5)/((x-1)^2(x+2))", "1/(x(x+1))", "2x/(x^2+1)",
+         "x^3/(x^2-1)", "sinh(x)", "cosh(2x)", "sech(x)^2", "1/(2x+1)",
+         "(x+1)/(x^2+2x+5)", "atan(x)", "asin(x)"]
+SWEEP_ALG = ["(x+1)^3", "(2x-1)(x+4)", "(x+2)(x-2)", "x^3-6x^2+11x-6", "2x^2+7x+3",
+             "3x+2x", "(x-3)^2", "x/2+x/3", "6x^2-x-2", "(x+1)^5", "2x^2+4x", "(a+b)^2"]
+ENV = {'a': 1.3, 'b': 2.1}
+
+def _val(tree, xv):
+    try:
+        v = caseng.evalf(tree, xv, False, ENV)
+    except:
+        return None
+    if isinstance(v, complex) or v != v:
+        return None
+    if v > 1e300 or v < -1e300:
+        return None
+    return v
+
+def _agree(label, f, g, xs, tol=1e-9):
+    # f and g must agree wherever both are defined
+    for xv in xs:
+        a = _val(f, xv)
+        b = _val(g, xv)
+        if a is None or b is None:
+            continue
+        if abs(a - b) > tol * (1.0 + abs(b)):
+            FAILED.append(label + " disagrees at x=" + str(xv) + ": " +
+                          repr(a) + " vs " + repr(b))
+            return False
+    return True
+
+def test_engine_invariants():
+    # Four properties that must hold for EVERY expression, rather than for the
+    # particular answers asserted elsewhere. Named answers catch a wrong rule;
+    # these catch a rule that is wrong somewhere nobody thought to look.
+    XS = (0.37, 1.23, 2.71, 4.13, -0.61, -2.2)
+
+    # 1. differentiating a symbolic integral returns the integrand
+    n = 0
+    for e in SWEEP:
+        t = caslex.parse(e)
+        F = cascalc.integ(t)
+        if F is None:
+            continue
+        n += 1
+        CHECKS[0] += 1
+        _agree("d/dx of int " + e, caseng.simplify(caseng.diff(cascalc.tidy(F))),
+               t, XS, 1e-6)
+    truthy("the sweep actually integrates most of its expressions", n >= 35)
+
+    # 2. simplify never changes a value
+    for e in SWEEP + SWEEP_ALG:
+        t = caslex.parse(e)
+        CHECKS[0] += 1
+        _agree("simplify " + e, caseng.simplify(t), t, XS)
+
+    # 3. expand, collect, cancel and factor never change a value
+    for e in SWEEP_ALG:
+        t = caslex.parse(e)
+        for name, fn in (("expand", caspoly.expand), ("collect", caspoly.collect),
+                         ("cancel", caspoly.cancel)):
+            CHECKS[0] += 1
+            _agree(name + " " + e, fn(t), t, XS)
+        f = caspoly.factor(t)
+        if f is not None:
+            CHECKS[0] += 1
+            _agree("factor " + e, f, t, XS)
+
+    # 4. printing then re-parsing gives the same function. This is the property
+    # that catches a bracketing bug in the printer, which is otherwise invisible
+    # until it silently changes an answer on screen.
+    for e in SWEEP + SWEEP_ALG:
+        t = caslex.parse(e)
+        for form in (t, caseng.simplify(t), cascalc.tidy(t)):
+            s = caseng.tostr(form)
+            r = caslex.parse(s)
+            CHECKS[0] += 1
+            if r is None:
+                FAILED.append("tostr of " + e + " gave unparseable " + repr(s))
+                continue
+            _agree("reparse " + repr(s), r, form, (0.55, 1.9, 3.3))
+
 # README rows: (table row name, module). The README documents each section's
 # tools verbatim from its TOOLS labels, and a README that has quietly drifted
 # from the code is worse than no README - it is a list of tools that are not
@@ -2478,6 +2569,7 @@ TESTS = [
     ("fpt", test_fpt),
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
+    ("engine invariants", test_engine_invariants),
     ("every tool is registered", test_every_tool_is_registered),
     ("README matches TOOLS", test_readme_matches_tools),
 ]
