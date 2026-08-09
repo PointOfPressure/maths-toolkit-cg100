@@ -711,15 +711,561 @@ def critpath():
     lines.append('Critical: ' + (' '.join(crit) if crit else 'none'))
     _pages('Critical Path', lines)
 
+# ---- linear programming ----
+# Variables are called x, y, z, w so the printed tableau reads like the ones in
+# the specification's own examples rather than like matrix output.
+
+VN = ['x', 'y', 'z', 'w']
+
+def _cterm(a, nm):
+    if abs(a - 1.0) < 1e-12:
+        return nm
+    return _num(a) + nm
+
+def _lin(coefs, nms):
+    s = ''
+    for j in range(len(coefs)):
+        v = coefs[j]
+        if abs(v) < 1e-12:
+            continue
+        if s == '':
+            s = ('-' if v < 0 else '') + _cterm(abs(v), nms[j])
+        else:
+            s = s + (' - ' if v < 0 else ' + ') + _cterm(abs(v), nms[j])
+    if s == '':
+        s = '0'
+    return s
+
+def _blab(names, basis):
+    out = []
+    for i in range(len(basis)):
+        out.append(names[basis[i]])
+    return out
+
+def _tabshow(lines, names, basis, tab, wid):
+    hdr = _padl('', 4)
+    for nm in names:
+        hdr = hdr + _padl(nm, wid)
+    lines.append(hdr)
+    lab = _blab(names, basis)
+    for i in range(len(tab)):
+        s = _padl(lab[i], 4)
+        for v in tab[i]:
+            s = s + _padl(_num(v, 3), wid)
+        lines.append(s)
+
+def _pivot_on(tab, r, c):
+    p = tab[r][c]
+    for j in range(len(tab[r])):
+        tab[r][j] = tab[r][j] / p
+    tab[r][c] = 1.0
+    for i in range(len(tab)):
+        if i == r:
+            continue
+        f = tab[i][c]
+        if f == 0.0:
+            continue
+        for j in range(len(tab[i])):
+            tab[i][j] = tab[i][j] - f * tab[r][j]
+        tab[i][c] = 0.0
+
+def _simplex_run(tab, basis, allowed, names, wid, lines, tag):
+    # Row 0 is the objective row, rows 1.. are the constraints. Entering column
+    # is the most negative objective entry; leaving row is the smallest
+    # non-negative ratio. Returns 'optimal' or 'unbounded'.
+    it = 0
+    while it < 40:
+        c = -1
+        best = -EPS
+        for j in range(1, len(tab[0]) - 1):
+            if allowed[j] and tab[0][j] < best:
+                best = tab[0][j]
+                c = j
+        if c < 0:
+            return 'optimal'
+        r = -1
+        bestq = 0.0
+        for i in range(1, len(tab)):
+            if tab[i][c] > EPS:
+                q = tab[i][-1] / tab[i][c]
+                if r < 0 or q < bestq - 1e-12:
+                    bestq = q
+                    r = i
+        if r < 0:
+            return 'unbounded'
+        it += 1
+        if lines is not None:
+            lines.append(tag + 'Pivot ' + str(it) + ': column ' + names[c] +
+                         ', row ' + names[basis[r]] + ', ratio ' + _num(bestq, 3))
+            lines.append('  pivot element ' + _num(tab[r][c], 3) + '; ' +
+                         names[c] + ' enters, ' + names[basis[r]] + ' leaves')
+        _pivot_on(tab, r, c)
+        basis[r] = c
+        if lines is not None:
+            _tabshow(lines, names, basis, tab, wid)
+    return 'optimal'
+
+def _lpreport(lines, names, basis, tab, nv, nother, objname, sign):
+    ncol = len(tab[0])
+    val = [0.0] * ncol
+    for i in range(1, len(tab)):
+        val[basis[i]] = tab[i][-1]
+    lines.append('Optimal tableau reached.')
+    lines.append(objname + ' = ' + _num(sign * tab[0][-1]))
+    for j in range(1, 1 + nv):
+        lines.append(names[j] + ' = ' + _num(val[j]))
+    for j in range(1 + nv, 1 + nv + nother):
+        lines.append(names[j] + ' = ' + _num(val[j]))
+    bas = []
+    non = []
+    for j in range(1, 1 + nv + nother):
+        inb = False
+        for i in range(1, len(tab)):
+            if basis[i] == j:
+                inb = True
+        if inb:
+            bas.append(names[j])
+        else:
+            non.append(names[j])
+    lines.append('Basic variables: ' + (', '.join(bas) if bas else 'none'))
+    lines.append('Non-basic (= 0): ' + (', '.join(non) if non else 'none'))
+
+def simplex():
+    n = _askint('How many variables (1..4)', 1, 4)
+    if n is None:
+        return
+    m = _askint('How many <= constraints (1..4)', 1, 4)
+    if m is None:
+        return
+    obj = _asklist('Objective coeffs (' + str(n) + ')')
+    if obj is None or len(obj) < n:
+        return
+    obj = [obj[j] for j in range(n)]
+    rows = []
+    for i in range(m):
+        r = _asklist('C' + str(i + 1) + ': ' + str(n) + ' coeffs then b')
+        if r is None or len(r) < n + 1:
+            return
+        rows.append([r[j] for j in range(n + 1)])
+    for i in range(m):
+        if rows[i][n] < 0:
+            _show('Simplex', ['Standard form needs every b >= 0.',
+                              'Constraint ' + str(i + 1) + ' has b < 0.',
+                              'Use the 2-stage tool instead.'])
+            return
+    vnames = [VN[j] for j in range(n)]
+    snames = ['s' + str(i + 1) for i in range(m)]
+    names = ['P'] + vnames + snames + ['RHS']
+    ncol = 1 + n + m + 1
+    tab = []
+    o = [0.0] * ncol
+    o[0] = 1.0
+    for j in range(n):
+        o[1 + j] = -obj[j]
+    tab.append(o)
+    for i in range(m):
+        r = [0.0] * ncol
+        for j in range(n):
+            r[1 + j] = rows[i][j]
+        r[1 + n + i] = 1.0
+        r[ncol - 1] = rows[i][n]
+        tab.append(r)
+    basis = [0]
+    for i in range(m):
+        basis.append(1 + n + i)
+    allowed = [True] * ncol
+    lines = ['Standard form (L3):']
+    lines.append('Maximise P = ' + _lin(obj, vnames))
+    for i in range(m):
+        lines.append('  ' + _lin(rows[i][0:n], vnames) + ' <= ' + _num(rows[i][n]))
+    lines.append('  ' + ', '.join(vnames) + ' >= 0')
+    lines.append('Slack form (L4):')
+    for i in range(m):
+        lines.append('  ' + _lin(rows[i][0:n], vnames) + ' + ' + snames[i] +
+                     ' = ' + _num(rows[i][n]))
+    # the objective row is P - c.x = 0, so every coefficient is negated; the
+    # old form printed "P - 5x + 4y" for c = (5, 4), which is the wrong sign
+    negobj = [-v for v in obj]
+    orow = _lin(negobj, vnames)
+    if orow[0] == '-':
+        orow = '- ' + orow[1:]
+    lines.append('Objective row: P ' + orow + ' = 0')
+    lines.append('Initial tableau:')
+    _tabshow(lines, names, basis, tab, 6)
+    st = _simplex_run(tab, basis, allowed, names, 6, lines, '')
+    if st == 'unbounded':
+        lines.append('No leaving row: P is UNBOUNDED.')
+        _pages('Simplex', lines)
+        return
+    _lpreport(lines, names, basis, tab, n, m, 'P', 1.0)
+    lines.append('Shadow prices (post-optimal, L9):')
+    for i in range(m):
+        lines.append('  C' + str(i + 1) + ' (' + snames[i] + '): ' +
+                     _num(tab[0][1 + n + i]))
+    _pages('Simplex', lines)
+
+def simplex2():
+    # Two-stage simplex: phase 1 drives the artificial variables to zero, then
+    # phase 2 optimises the real objective. This is what >= and = constraints
+    # need, and typing a >= constraint is also how L15 is done in practice.
+    n = _askint('How many variables (1..4)', 1, 4)
+    if n is None:
+        return
+    m = _askint('How many constraints (1..4)', 1, 4)
+    if m is None:
+        return
+    mx = _askint('1 = maximise, 0 = minimise', 0, 1)
+    if mx is None:
+        return
+    obj = _asklist('Objective coeffs (' + str(n) + ')')
+    if obj is None or len(obj) < n:
+        return
+    obj = [obj[j] for j in range(n)]
+    rows = []
+    rels = []
+    for i in range(m):
+        r = _asklist('C' + str(i + 1) + ': ' + str(n) + ' coeffs, rel, b')
+        if r is None or len(r) < n + 2:
+            return
+        rel = int(round(r[n]))
+        if rel not in (-1, 0, 1):
+            _show('2-stage simplex', ['rel must be 1 (<=), 0 (=) or -1 (>=).'])
+            return
+        a = [r[j] for j in range(n)]
+        b = r[n + 1]
+        if b < 0:                      # keep every b >= 0
+            a = [-v for v in a]
+            b = -b
+            rel = -rel
+        rows.append(a)
+        rels.append(rel)
+        rows[i].append(b)
+    slack = []                         # slack/surplus column per constraint
+    art = []                           # artificial column per constraint
+    nx = 0
+    na = 0
+    for i in range(m):
+        if rels[i] == 1:
+            slack.append(nx)
+            nx += 1
+            art.append(-1)
+        elif rels[i] == -1:
+            slack.append(nx)
+            nx += 1
+            art.append(na)
+            na += 1
+        else:
+            slack.append(-1)
+            art.append(na)
+            na += 1
+    vnames = [VN[j] for j in range(n)]
+    xnames = []
+    for i in range(m):
+        if slack[i] >= 0:
+            xnames.append(('s' if rels[i] == 1 else 'u') + str(i + 1))
+    anames = []
+    for i in range(m):
+        if art[i] >= 0:
+            anames.append('a' + str(i + 1))
+    names = ['P'] + vnames + xnames + anames + ['RHS']
+    ncol = 1 + n + nx + na + 1
+    acol0 = 1 + n + nx
+    tab = []
+    tab.append([0.0] * ncol)
+    for i in range(m):
+        r = [0.0] * ncol
+        for j in range(n):
+            r[1 + j] = rows[i][j]
+        if slack[i] >= 0:
+            r[1 + n + slack[i]] = 1.0 if rels[i] == 1 else -1.0
+        if art[i] >= 0:
+            r[acol0 + art[i]] = 1.0
+        r[ncol - 1] = rows[i][n]
+        tab.append(r)
+    basis = [0]
+    for i in range(m):
+        basis.append(acol0 + art[i] if art[i] >= 0 else 1 + n + slack[i])
+    relstr = ['>=', '=', '<=']
+    objname = 'P' if mx == 1 else 'C'
+    lines = [('Maximise ' if mx == 1 else 'Minimise ') + objname + ' = ' + _lin(obj, vnames)]
+    for i in range(m):
+        lines.append('  ' + _lin(rows[i][0:n], vnames) + ' ' + relstr[rels[i] + 1] +
+                     ' ' + _num(rows[i][n]))
+    lines.append('  ' + ', '.join(vnames) + ' >= 0')
+    allowed = [True] * ncol
+    if na > 0:
+        # phase 1: maximise -(sum of artificials)
+        tab[0][0] = 1.0
+        for j in range(na):
+            tab[0][acol0 + j] = 1.0
+        for i in range(1, m + 1):
+            if art[i - 1] >= 0:
+                for j in range(ncol):
+                    tab[0][j] = tab[0][j] - tab[i][j]
+        lines.append('Phase 1: minimise ' + ' + '.join(anames))
+        _tabshow(lines, names, basis, tab, 6)
+        _simplex_run(tab, basis, allowed, names, 6, lines, 'P1 ')
+        if tab[0][ncol - 1] < -1e-7:
+            lines.append('Phase 1 value ' + _num(-tab[0][ncol - 1]) + ' > 0:')
+            lines.append('the constraints are INFEASIBLE.')
+            _pages('2-stage simplex', lines)
+            return
+        # push any artificial that is still basic (at 0) out of the basis
+        for i in range(1, m + 1):
+            if basis[i] >= acol0:
+                for j in range(1, acol0):
+                    if abs(tab[i][j]) > EPS:
+                        _pivot_on(tab, i, j)
+                        basis[i] = j
+                        break
+        for j in range(na):
+            allowed[acol0 + j] = False
+        lines.append('Phase 1 done: all artificials are zero.')
+    # phase 2 objective row, then clear the basic columns from it
+    sign = 1.0 if mx == 1 else -1.0
+    o = [0.0] * ncol
+    o[0] = 1.0
+    for j in range(n):
+        o[1 + j] = -sign * obj[j]
+    tab[0] = o
+    for i in range(1, m + 1):
+        f = tab[0][basis[i]]
+        if f != 0.0:
+            for j in range(ncol):
+                tab[0][j] = tab[0][j] - f * tab[i][j]
+    lines.append('Phase 2 tableau:')
+    _tabshow(lines, names, basis, tab, 6)
+    st = _simplex_run(tab, basis, allowed, names, 6, lines, 'P2 ')
+    if st == 'unbounded':
+        lines.append('No leaving row: the objective is UNBOUNDED.')
+        _pages('2-stage simplex', lines)
+        return
+    _lpreport(lines, names, basis, tab, n, nx + na, objname, sign)
+    _pages('2-stage simplex', lines)
+
+# ---- 2-D linear programming, graphically ----
+# Every constraint is stored as a*x + b*y <= c (a >= constraint is negated on
+# the way in), with -x <= 0 and -y <= 0 always present. The extreme points are
+# then the pairwise line intersections that satisfy the whole system.
+
+def _feas(cons, x, y, tol):
+    for cn in cons:
+        if cn[0] * x + cn[1] * y > cn[2] + tol:
+            return False
+    return True
+
+def _lpverts(cons):
+    vs = []
+    for i in range(len(cons)):
+        for j in range(i + 1, len(cons)):
+            a1 = cons[i][0]
+            b1 = cons[i][1]
+            c1 = cons[i][2]
+            a2 = cons[j][0]
+            b2 = cons[j][1]
+            c2 = cons[j][2]
+            det = a1 * b2 - a2 * b1
+            if abs(det) < 1e-12:
+                continue
+            x = (c1 * b2 - c2 * b1) / det
+            y = (a1 * c2 - a2 * c1) / det
+            if not _feas(cons, x, y, 1e-7):
+                continue
+            dup = False
+            for v in vs:
+                if abs(v[0] - x) < 1e-7 and abs(v[1] - y) < 1e-7:
+                    dup = True
+            if not dup:
+                vs.append((x, y))
+    return vs
+
+def _recession(cons):
+    # directions d >= 0 along which the region goes on for ever. In 2-D the
+    # extreme rays are among the axes and the constraint lines themselves.
+    cands = [(1.0, 0.0), (0.0, 1.0)]
+    for cn in cons:
+        cands.append((cn[1], -cn[0]))
+        cands.append((-cn[1], cn[0]))
+    out = []
+    for d in cands:
+        if abs(d[0]) + abs(d[1]) < 1e-12:
+            continue
+        ok = True
+        for cn in cons:
+            if cn[0] * d[0] + cn[1] * d[1] > 1e-9:
+                ok = False
+        if ok:
+            out.append(d)
+    return out
+
+def _lpline(fr, a, b, c, col):
+    if abs(b) >= abs(a) and abs(b) > 1e-12:
+        casutil.seg(fr, fr[4], (c - a * fr[4]) / b, fr[5], (c - a * fr[5]) / b, col)
+    elif abs(a) > 1e-12:
+        casutil.seg(fr, (c - b * fr[6]) / a, fr[6], (c - b * fr[7]) / a, fr[7], col)
+
+def lpgraph():
+    mx = _askint('1 = maximise, 0 = minimise', 0, 1)
+    if mx is None:
+        return
+    obj = _asklist('Objective: p q  (for px + qy)')
+    if obj is None or len(obj) < 2:
+        return
+    nle = _askint('How many <= constraints (0..6)', 0, 6)
+    if nle is None:
+        return
+    cons = [(-1.0, 0.0, 0.0), (0.0, -1.0, 0.0)]
+    shown = []
+    for i in range(nle):
+        r = _asklist('C' + str(i + 1) + ' <=: a b c')
+        if r is None or len(r) < 3:
+            return
+        cons.append((r[0], r[1], r[2]))
+        shown.append(_lin([r[0], r[1]], ['x', 'y']) + ' <= ' + _num(r[2]))
+    nge = _askint('How many >= constraints (0..6)', 0, 6)
+    if nge is None:
+        return
+    for i in range(nge):
+        r = _asklist('G' + str(i + 1) + ' >=: a b c')
+        if r is None or len(r) < 3:
+            return
+        cons.append((-r[0], -r[1], -r[2]))
+        shown.append(_lin([r[0], r[1]], ['x', 'y']) + ' >= ' + _num(r[2]))
+    p = obj[0]
+    q = obj[1]
+    objname = 'P' if mx == 1 else 'C'
+    lines = [('Maximise ' if mx == 1 else 'Minimise ') + objname + ' = ' +
+             _lin([p, q], ['x', 'y'])]
+    lines.append('subject to')
+    for s in shown:
+        lines.append('  ' + s)
+    lines.append('  x >= 0, y >= 0')
+    vs = _lpverts(cons)
+    if not vs:
+        lines.append('The feasible region is EMPTY.')
+        _pages('LP graph 2-D', lines)
+        return
+    cx = 0.0
+    cy = 0.0
+    for v in vs:
+        cx += v[0]
+        cy += v[1]
+    cx = cx / len(vs)
+    cy = cy / len(vs)
+    ang = []
+    for v in vs:
+        ang.append((casutil.atan2(v[1] - cy, v[0] - cx), v[0], v[1]))
+    ang = sorted(ang)
+    vs = [(t[1], t[2]) for t in ang]
+    rec = _recession(cons)
+    lines.append('Vertices of the feasible region:')
+    for v in vs:
+        lines.append('  (' + _num(v[0]) + ', ' + _num(v[1]) + ')  ' + objname +
+                     ' = ' + _num(p * v[0] + q * v[1]))
+    if rec:
+        lines.append('Region is UNBOUNDED; recession directions exist.')
+    bad = False
+    for d in rec:
+        g = p * d[0] + q * d[1]
+        if mx == 1 and g > 1e-9:
+            bad = True
+        if mx == 0 and g < -1e-9:
+            bad = True
+    if bad:
+        lines.append(objname + ' is UNBOUNDED on this region.')
+        _pages('LP graph 2-D', lines)
+        return
+    bv = vs[0]
+    bo = p * bv[0] + q * bv[1]
+    for v in vs:
+        o = p * v[0] + q * v[1]
+        if (mx == 1 and o > bo) or (mx == 0 and o < bo):
+            bo = o
+            bv = v
+    lines.append('Optimal vertex: x = ' + _num(bv[0]) + ', y = ' + _num(bv[1]))
+    lines.append(objname + ' = ' + _num(bo))
+    # integer solution (L10): search the lattice in the vertex bounding box
+    xlo = vs[0][0]
+    xhi = vs[0][0]
+    ylo = vs[0][1]
+    yhi = vs[0][1]
+    for v in vs:
+        if v[0] < xlo:
+            xlo = v[0]
+        if v[0] > xhi:
+            xhi = v[0]
+        if v[1] < ylo:
+            ylo = v[1]
+        if v[1] > yhi:
+            yhi = v[1]
+    ix0 = int(xlo) - 1
+    ix1 = int(xhi) + 1
+    iy0 = int(ylo) - 1
+    iy1 = int(yhi) + 1
+    if (ix1 - ix0 + 1) * (iy1 - iy0 + 1) <= 4000:
+        bix = None
+        bio = 0.0
+        i = ix0
+        while i <= ix1:
+            j = iy0
+            while j <= iy1:
+                if _feas(cons, i * 1.0, j * 1.0, 1e-9):
+                    o = p * i + q * j
+                    if bix is None or (mx == 1 and o > bio) or (mx == 0 and o < bio):
+                        bio = o
+                        bix = (i, j)
+                j += 1
+            i += 1
+        if bix is None:
+            lines.append('No integer point lies in the region.')
+        else:
+            lines.append('Best integer point (L10): x = ' + str(bix[0]) +
+                         ', y = ' + str(bix[1]) + ', ' + objname + ' = ' + _num(bio))
+    _pages('LP graph 2-D', lines)
+    # ---- the picture ----
+    xs = [v[0] for v in vs]
+    ys = [v[1] for v in vs]
+    xs.append(0.0)
+    ys.append(0.0)
+    gx = casutil.nice_range(xs, 0.12, True)
+    gy = casutil.nice_range(ys, 0.12, True)
+    fr = casutil.frame(gx[0], gx[1], gy[0], gy[1])
+    casutil.axes(fr, 'Feasible region', 'x', 'y')
+    nxg = 76
+    nyg = 34
+    i = 0
+    while i <= nxg:
+        x = fr[4] + (fr[5] - fr[4]) * i / nxg
+        j = 0
+        while j <= nyg:
+            y = fr[6] + (fr[7] - fr[6]) * j / nyg
+            if _feas(cons, x, y, 1e-9):
+                casutil.dot(fr, x, y, casui.GREY)
+            j += 1
+        i += 1
+    for cn in cons:
+        _lpline(fr, cn[0], cn[1], cn[2], casui.BLACK)
+    for v in vs:
+        casutil.marker(fr, v[0], v[1], casui.ACC, 2)
+    casutil.marker(fr, bv[0], bv[1], casui.RED, 3)
+    casutil.chart_hold('optimum (' + _num(bv[0]) + ', ' + _num(bv[1]) + ')')
+
 TOOLS = [
     ('Bubble sort', bubble),
     ('Insertion sort', insertion),
+    ('Quick sort', quicksort),
     ('Bin: first-fit', firstfit),
     ('Bin: first-fit decr', firstfitdec),
+    ('Graph: degrees/incidence', graphinfo),
     ('Dijkstra shortest', dijkstra),
     ('Prim MST', prim),
     ('Kruskal MST', kruskal),
+    ('Max flow / min cut', maxflow),
+    ('Cut capacity', cutcap),
     ('Critical path', critpath),
+    ('Simplex (max, <=)', simplex),
+    ('Simplex 2-stage (>=, =)', simplex2),
+    ('LP graph 2-D', lpgraph),
 ]
 
 def run():
