@@ -2461,6 +2461,75 @@ def test_proof():
     has("induction card", o, "PROOF BY INDUCTION")
     has("what not to write", o, "WHAT NOT TO WRITE")
 
+def test_simulation():
+    import fmstat
+    import random
+    # Simulations are random, so these assert that the SAMPLE statistics land
+    # near the theoretical ones - which is the property the tool exists to
+    # demonstrate - with a fixed seed so the suite is reproducible. The
+    # tolerances are several standard errors wide: a failure here means the
+    # sampler is wrong, not that the dice were unkind.
+    #
+    # B(20, 0.3): mean np = 6, variance np(1-p) = 4.2
+    o = drive(fmstat.t_simulate, ["20", "0.3", "2000", "7"], [1])
+    num("binomial theoretical mean", o, "theoretical mean   = ", 6.0)
+    num("binomial theoretical variance", o, "theoretical var    = ", 4.2)
+    num("binomial simulated mean", o, "simulated mean     = ", 6.0, 0.25)
+    num("binomial simulated variance", o, "simulated variance = ", 4.2, 0.6)
+    # Po(4): mean and variance both 4 - the identity that defines a Poisson
+    o = drive(fmstat.t_simulate, ["4", "0", "2000", "7"], [2])
+    num("Poisson theoretical mean", o, "theoretical mean   = ", 4.0)
+    num("Poisson theoretical variance", o, "theoretical var    = ", 4.0)
+    num("Poisson simulated mean", o, "simulated mean     = ", 4.0, 0.25)
+    num("Poisson simulated variance", o, "simulated variance = ", 4.0, 0.7)
+    # N(10, 2^2)
+    o = drive(fmstat.t_simulate, ["10", "2", "2000", "7"], [3])
+    num("normal simulated mean", o, "simulated mean     = ", 10.0, 0.2)
+    num("normal simulated variance", o, "simulated variance = ", 4.0, 0.6)
+    # uniform on [0, 6]: mean 3, variance 36/12 = 3
+    o = drive(fmstat.t_simulate, ["0", "6", "2000", "7"], [0])
+    num("uniform theoretical mean", o, "theoretical mean   = ", 3.0)
+    num("uniform theoretical variance", o, "theoretical var    = ", 3.0)
+    num("uniform simulated mean", o, "simulated mean     = ", 3.0, 0.2)
+    # central limit: the mean of 12 uniforms on [0,1] has mean 1/2 and
+    # variance (1/12)/12 = 1/144 - the variance divided by n is the whole point
+    o = drive(fmstat.t_simulate, ["0", "1", "12", "2000", "7"], [4, 0])
+    num("CLT theoretical mean", o, "theoretical mean   = ", 0.5)
+    num("CLT variance is sigma^2/n", o, "theoretical var    = ", 1.0 / 144.0, 1e-5)
+    num("CLT simulated mean", o, "simulated mean     = ", 0.5, 0.02)
+    num("CLT simulated variance", o, "simulated variance = ", 1.0 / 144.0, 0.002)
+    has("CLT explains the tightening", o, "tends to Normal whatever the parent")
+
+    # the samplers themselves, over many draws, without the UI
+    random.seed(11)
+    for kind, p1, p2, tm, tv, label in ((0, 2.0, 8.0, 5.0, 3.0, "uniform"),
+                                        (1, 10.0, 0.5, 5.0, 2.5, "binomial"),
+                                        (2, 3.0, 0.0, 3.0, 3.0, "Poisson"),
+                                        (3, -2.0, 3.0, -2.0, 9.0, "normal")):
+        tot = 0.0
+        sq = 0.0
+        n = 4000
+        i = 0
+        while i < n:
+            v = fmstat._sim_draw(kind, p1, p2)
+            tot += v
+            sq += v * v
+            i += 1
+        m = tot / n
+        var = sq / n - m * m
+        close(label + " sampler mean", m, tm, 4.0 * math.sqrt(tv / n) + 0.02)
+        close(label + " sampler variance", var, tv, 0.25 * tv)
+    # a binomial draw is always a whole number in 0..n
+    random.seed(3)
+    for i in range(200):
+        v = fmstat._sim_draw(1, 8.0, 0.4)
+        truthy("binomial draw is a whole number in range",
+               v == int(v) and 0 <= v <= 8)
+    # Box-Muller returns two independent values, not the same one twice
+    random.seed(5)
+    a, b = fmstat._normal_pair()
+    truthy("Box-Muller gives two different values", a != b)
+
 def test_circle_and_proportion():
     import pure640
     # (0,0), (4,0), (0,3): the 3-4-5 right angle. Centre (2, 1.5), radius 2.5,
@@ -3131,6 +3200,7 @@ TESTS = [
     ("recursion budget", test_recursion_budget),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
+    ("simulation", test_simulation),
     ("circle properties and proportion", test_circle_and_proportion),
     ("trig equations by identity", test_trig_by_identity),
     ("SHM amplitude and phase", test_shm_fit),

@@ -1,4 +1,5 @@
 import math
+import random
 import casui
 import caseng
 import cascalc
@@ -1446,6 +1447,199 @@ def t_ztest():
     pv = 2.0 * (1.0 - _phi(abs(z)))
     _show('One-sample z-test', ['z = ' + _fn(z), '1-tail crit = +/-' + _fn(zc1), '2-tail crit = +/-' + _fn(zc2), 'p (2-tail) = ' + _fn(pv), '|z|>crit: reject H0'])
 
+# ---------------------------------------------------------- simulation ----
+# Y422 Z2: use simulations to investigate distributions. `random` is one of the
+# three modules this build can import, so this is a real experiment rather than
+# a table lookup - and the point of the statement is that a simulated
+# distribution APPROACHES the theoretical one, which you can only see by
+# running it.
+def _normal_pair():
+    # Box-Muller: two independent standard normals from two uniforms. The
+    # obvious "add twelve uniforms and subtract six" is a central-limit
+    # approximation with visibly short tails, which is the wrong lesson here.
+    u1 = random.random()
+    while u1 <= 0.0:
+        u1 = random.random()
+    u2 = random.random()
+    r = math.sqrt(-2.0 * math.log(u1))
+    return (r * math.cos(2.0 * math.pi * u2), r * math.sin(2.0 * math.pi * u2))
+
+
+def _sim_draw(kind, p1, p2):
+    if kind == 0:                       # uniform on [p1, p2]
+        return p1 + (p2 - p1) * random.random()
+    if kind == 1:                       # binomial B(n, p)
+        k = 0
+        i = 0
+        while i < int(p1):
+            if random.random() < p2:
+                k += 1
+            i += 1
+        return float(k)
+    if kind == 2:                       # Poisson, by Knuth's product method
+        lim = math.exp(-p1)
+        k = 0
+        prod = random.random()
+        while prod > lim and k < 10000:
+            k += 1
+            prod *= random.random()
+        return float(k)
+    if kind == 3:                       # normal N(mu, sigma^2)
+        return p1 + p2 * _normal_pair()[0]
+    return random.random()
+
+
+_SIMNAMES = ('uniform on [a, b]', 'binomial B(n, p)', 'Poisson Po(mu)',
+             'normal N(mu, sigma^2)')
+
+
+def t_simulate():
+    kind = casui.menu('Simulate from', list(_SIMNAMES) +
+                      ['sample means (central limit)'])
+    if kind == -1:
+        return
+    clt = (kind == 4)
+    if clt:
+        base = casui.menu('each observation is', list(_SIMNAMES))
+        if base == -1:
+            return
+    else:
+        base = kind
+    labels = (('a', 'b'), ('n', 'p'), ('mu', '(unused, enter 0)'),
+              ('mu', 'sigma'))[base]
+    p1 = _asknum(labels[0])
+    if p1 is None:
+        return
+    p2 = _asknum(labels[1])
+    if p2 is None:
+        return
+    if base == 1 and (p1 < 1 or p2 < 0 or p2 > 1):
+        _show('Simulation', ['Need n >= 1 and 0 <= p <= 1.'])
+        return
+    if base == 2 and p1 <= 0:
+        _show('Simulation', ['Po(mu) needs mu > 0.'])
+        return
+    if base == 3 and p2 <= 0:
+        _show('Simulation', ['sigma must be positive.'])
+        return
+    n = 1
+    if clt:
+        n = _askint('sample size n (2-50)', 2, 50)
+        if n is None:
+            return
+    trials = _askint('how many trials (10-4000)', 10, 4000)
+    if trials is None:
+        trials = 500
+    seed = _askint('random seed (or cancel for none)', 0, 10 ** 9)
+    if seed is not None:
+        # random.random() is certainly present; random.seed() is not documented
+        # for this build, so a missing one must not take the tool down - it only
+        # costs reproducibility.
+        try:
+            random.seed(seed)
+        except:
+            seed = None
+    vals = []
+    i = 0
+    while i < trials:
+        if clt:
+            tot = 0.0
+            j = 0
+            while j < n:
+                tot += _sim_draw(base, p1, p2)
+                j += 1
+            vals.append(tot / n)
+        else:
+            vals.append(_sim_draw(base, p1, p2))
+        i += 1
+    # empirical summary
+    tot = 0.0
+    for v in vals:
+        tot += v
+    mean = tot / trials
+    sq = 0.0
+    for v in vals:
+        sq += (v - mean) * (v - mean)
+    var = sq / (trials - 1) if trials > 1 else 0.0
+    # theoretical
+    if base == 0:
+        tmean = (p1 + p2) / 2.0
+        tvar = (p2 - p1) * (p2 - p1) / 12.0
+    elif base == 1:
+        tmean = p1 * p2
+        tvar = p1 * p2 * (1.0 - p2)
+    elif base == 2:
+        tmean = p1
+        tvar = p1
+    else:
+        tmean = p1
+        tvar = p2 * p2
+    if clt:
+        tvar = tvar / n
+    lines = [_SIMNAMES[base] + ('  sample means, n = ' + str(n) if clt else ''),
+             str(trials) + ' trials' +
+             ('' if seed is None else '  (seed ' + str(seed) + ')'), '',
+             'simulated mean     = ' + _fn(mean, 5),
+             'theoretical mean   = ' + _fn(tmean, 5),
+             'simulated variance = ' + _fn(var, 5),
+             'theoretical var    = ' + _fn(tvar, 5), '']
+    se = math.sqrt(tvar / trials) if tvar > 0 else 0.0
+    if se > 0:
+        z = (mean - tmean) / se
+        lines.append('the simulated mean is ' + _fn(z, 2) + ' standard errors')
+        lines.append('from the theoretical one.')
+        lines.append('|z| under 2 is what you expect; a big')
+        lines.append('|z| means a bug, not bad luck.')
+    lines.append('')
+    lines.append('More trials narrows the gap like')
+    lines.append('1/sqrt(trials) - four times as many')
+    lines.append('trials halves the error.')
+    if clt:
+        lines.append('')
+        lines.append('The sample MEAN has variance sigma^2/n,')
+        lines.append('so it clusters ' + _fn(math.sqrt(float(n)), 3) +
+                     ' times more tightly')
+        lines.append('than one observation, and its shape')
+        lines.append('tends to Normal whatever the parent is.')
+    _show('Simulation', lines)
+    _sim_histogram(vals, tmean, math.sqrt(tvar) if tvar > 0 else 0.0,
+                   _SIMNAMES[base] + (' sample means' if clt else ''))
+
+
+def _sim_histogram(vals, tmean, tsd, title):
+    lo, hi = casutil.nice_range(vals, 0.05, False)
+    if hi - lo < 1e-12:
+        return
+    bins = 16
+    counts = []
+    i = 0
+    while i < bins:
+        counts.append(0)
+        i += 1
+    for v in vals:
+        b = int((v - lo) / (hi - lo) * bins)
+        if b < 0:
+            b = 0
+        if b >= bins:
+            b = bins - 1
+        counts[b] += 1
+    top = 1
+    for c in counts:
+        if c > top:
+            top = c
+    fr = casutil.frame(lo, hi, 0.0, top * 1.15)
+    casutil.axes(fr, title + '  (frequency up, value across)', None, None)
+    w = (hi - lo) / bins
+    i = 0
+    while i < bins:
+        x0 = lo + i * w
+        casutil.box(fr, x0, 0.0, x0 + w * 0.92, counts[i], casui.ACC, True)
+        i += 1
+    if tsd > 0:
+        casutil.seg(fr, tmean, 0.0, tmean, top * 1.1, casui.RED)
+    casutil.chart_hold('red = theoretical mean ' + _fn(tmean, 3))
+
+
 TOOLS = [
     ('Discrete RV E/Var', t_drv),
     ('Discrete uniform', t_dunif),
@@ -1471,6 +1665,7 @@ TOOLS = [
     ('t interval / paired', t_tint),
     ('CI for proportion', t_ciprop),
     ('z-test for mean', t_ztest),
+    ('Simulation', t_simulate),
 ]
 
 def run():
