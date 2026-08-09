@@ -145,32 +145,12 @@ def fmt(v):
         return str(int(r))
     return str(r)
 
-# ---------- proportional font metrics (measured on the fx-CG100) ----------
-# medium: narrow glyph ~8px, normal ~10px, wide ~12px, prose avg ~8.8px/char.
-# small is ~0.68 of that. Slightly conservative so a line never overflows.
-_WIDE = "mwMW@%"
-_NARROW = " iIjl1tfr.,;:!'|()[]{}/-"
-
-def char_w(c, size):
-    if size == "small":
-        if c in _WIDE:
-            return 8
-        if c in _NARROW:
-            return 5
-        return 7
-    if size == "large":
-        # large glyphs are ~1.75x medium; without this branch every "large"
-        # measurement silently used medium widths and under-measured the line
-        if c in _WIDE:
-            return 21
-        if c in _NARROW:
-            return 14
-        return 18
-    if c in _WIDE:
-        return 12
-    if c in _NARROW:
-        return 8
-    return 10
+# ---------- proportional font metrics ----------
+# One model, and it lives in casrender because that is the module that has to
+# lay glyphs out precisely. There used to be a second table here that disagreed
+# with it by up to 8 pixels on a single glyph, which is how a fraction bar comes
+# out the wrong length on a screen nobody has looked at.
+char_w = casrender.cw
 
 def text_w(s, size):
     w = 0
@@ -282,6 +262,18 @@ def draw_input(prompt, ex, cur, shift, alpha, palette, psel):
             tree = caslex.parse(s)
         except:
             tree = None
+    raw = "".join(ex[:cur]) + "|" + "".join(ex[cur:])
+    if palette:
+        # The picker panel fills y=100 upwards, so the caret line has to move
+        # above it: otherwise the panel paints over the very expression you are
+        # inserting into, and you pick a symbol blind. The 2D preview is
+        # dropped for the same reason - there is not room for both.
+        draw_string(8, 74, cursor_fit(raw, len("".join(ex[:cur])), 368, "medium"),
+                    BLACK, "medium")
+        hline(0, 383, 96, GREY)
+        draw_palette(psel)
+        show_screen()
+        return
     if tree is not None:
         if not casrender.render(tree, 8, 18, 376, 96, BLACK):
             draw_string(8, 50, tail_fit(s, 368, "medium"), BLACK, "medium")
@@ -290,11 +282,8 @@ def draw_input(prompt, ex, cur, shift, alpha, palette, psel):
     else:
         draw_string(8, 50, "...", GREY, "medium")
     hline(0, 383, 108, GREY)
-    raw = "".join(ex[:cur]) + "|" + "".join(ex[cur:])
     draw_string(8, 120, cursor_fit(raw, len("".join(ex[:cur])), 368, "medium"), BLACK, "medium")
     draw_string(6, 178, "OK run  DEL del  UP last  CATALOG symbols", GREY, "small")
-    if palette:
-        draw_palette(psel)
     show_screen()
 
 _last_expr = []   # most recent submitted entry, recalled with UP
@@ -455,8 +444,17 @@ def menu(title, opts):
         draw_menu(title, opts, sel)
 
 # ---------- results ----------
-def hold():
-    draw_string(6, 178, "Press any key", GREY, "small")
+def hold(note=None):
+    # An optional note shares the bottom strip with the prompt. Before this,
+    # graph() drew its axis ranges at y=176 and then called hold(), which drew
+    # its own prompt at y=178 - two pixels apart in an 11-pixel font, so on the
+    # real screen they overprinted into an unreadable smudge. Nothing in a text
+    # assertion could see that.
+    if note:
+        draw_string(6, 178, note, GREY, "small")
+        draw_string(318, 178, "any key", GREY, "small")
+    else:
+        draw_string(6, 178, "Press any key", GREY, "small")
     show_screen()
     wait_release()
     wait_press()
@@ -560,6 +558,19 @@ def _yrange(vals):
     pad = (hi - lo) * 0.08
     return lo - pad, hi + pad
 
+def _gfmt(v):
+    # short axis-label form: the bottom strip is shared with the key prompt, so
+    # six decimal places would run into it
+    if v != v:
+        return "?"
+    av = v if v >= 0 else -v
+    if av >= 1000 or (av < 0.01 and av != 0):
+        return _sci(v)
+    r = round(v, 2)
+    if r == int(r):
+        return str(int(r))
+    return str(r)
+
 def graph(tree):
     XLO = -12.0
     XHI = 12.0
@@ -614,8 +625,7 @@ def graph(tree):
         prev = (xs[i], cy)
         i += 1
     draw_string(4, 1, "y = f(x)   " + ("DEG" if ANGLE_DEG else "RAD"), GREY, "small")
-    draw_string(4, 176, "x[-12,12]  y[" + fmt(ylo) + "," + fmt(yhi) + "]", GREY, "small")
-    hold()
+    hold("x[-12,12] y[" + _gfmt(ylo) + "," + _gfmt(yhi) + "]")
 
 def do_solve(s):
     if '=' in s:

@@ -9,29 +9,38 @@ DESC = {'large': 5, 'medium': 4, 'small': 2}
 EM   = {'large': 18, 'medium': 17, 'small': 10}
 AXIS = {'large': 5, 'medium': 4, 'small': 3}
 
+# THE font metric for the whole toolkit. There used to be two: this one and a
+# separate table in casui, disagreeing by up to 8 pixels on a single glyph at
+# large size and disagreeing about which glyphs are wide - casui had '1' at 8px
+# medium, this had it at 11. Only one of them can match the hardware, and two
+# models is how a fraction bar comes out the wrong length on a screen nobody
+# has looked at. casui.char_w now delegates here.
+#
+# The numbers are fontmetrics2.py's measurements on a real fx-CG100: medium is
+# about 8px for a narrow glyph, 10 for a normal one and 12 for a wide one, with
+# a prose average near 8.8; small is about 0.68 of that and large about 1.75.
+# Slightly conservative, so a measured line never overflows in practice.
+_WIDE = "mwMW@%"
+_NARROW = " iIjl1tfr.,;:!'|()[]{}/-"
+
 def cw(ch, size):
-    if size == 'large':
-        return 18
-    if ch == ' ':
-        b = 6
-    elif ch in "iIl|.,'":
-        b = 5
-    elif ch in "fjtr()[]":
-        b = 7
-    elif ch in "mwMW":
-        b = 15
-    elif ch in "0123456789":
-        b = 11
-    elif ch in "+-=<>":
-        b = 12
-    elif 'A' <= ch <= 'Z':
-        b = 12
-    else:
-        b = 11
     if size == 'small':
-        v = b * 6 // 10
-        return v if v > 4 else 4
-    return b
+        if ch in _WIDE:
+            return 8
+        if ch in _NARROW:
+            return 5
+        return 7
+    if size == 'large':
+        if ch in _WIDE:
+            return 21
+        if ch in _NARROW:
+            return 14
+        return 18
+    if ch in _WIDE:
+        return 12
+    if ch in _NARROW:
+        return 8
+    return 10
 
 def strw(s, size):
     w = 0

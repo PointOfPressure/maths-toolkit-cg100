@@ -18,7 +18,7 @@ Built and verified on real hardware. The whole toolkit also runs unmodified on a
 
 ## Quick start
 
-1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`, `stress.py`, `devlint.py` and any `tests*.py`). See [Installing on the calculator](#installing-on-the-calculator).
+1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`, `casioshot.py`, `stress.py`, `devlint.py` and any `tests*.py`). See [Installing on the calculator](#installing-on-the-calculator).
 2. In the calculator's Python app, run **`maths.py`**.
 3. Navigate with the arrow keys and OK; the curved-arrow back key goes back. Type expressions on the normal keys; use ALPHA for letters and the CATALOG key for the few symbols with no key of their own.
 
@@ -316,6 +316,24 @@ picks up any `tests_*.py` file automatically: each defines
 `SECTIONS = [(label, function)]` and each function takes the harness object as
 its only argument, which is how several areas can be worked on at once without
 fighting over one file.
+
+**`casioshot.py` renders the screens to PNG on a PC** (`python3 casioshot.py`,
+needs Pillow, never copied to the calculator). The repo's `casioplot.py` stub
+draws nothing, which is what the harnesses want - they assert what a screen
+*says* - but that leaves layout faults invisible: text off the right edge, a
+row clipped at the bottom, one label printed on top of another. `casioshot`
+installs a real framebuffer, drives each screen with scripted keys and writes
+what it drew. Its glyph advances come from the toolkit's own font metric rather
+than from the TTF it draws with, so an overflow in the picture is a real
+overflow; the letterforms are not Casio's, but the geometry is the toolkit's.
+
+It found two faults on its first run. `graph()` drew its axis ranges at y=176
+and then called `hold()`, which drew "Press any key" at y=178 - two pixels
+apart in an eleven-pixel font, so on the real screen they overprinted into a
+smudge. And the CATALOG picker panel painted over the very line you are
+inserting into, so you picked a symbol without being able to see the
+expression. `tests.py` now carries the same geometry check without Pillow, so
+CI catches an overlap or an overflow even though it draws nothing.
 
 `calib_screen.py`, `fontmetrics.py`, and `fontmetrics2.py` are one-off hardware probes that were run on the real device to measure its display. `calib_screen.py` walks black pixels off each edge to detect the screen size (found to be 384x192). `fontmetrics.py` measures per-character advance and glyph height for the small/medium/large fonts and how many characters fit across the 384px width. `fontmetrics2.py` measures proportional glyph widths (narrow `i`, normal `o`, wide `m`) plus a real-prose average. These are not part of the toolkit; they were used to calibrate the layout constants.
 

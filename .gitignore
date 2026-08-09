@@ -9,3 +9,6 @@ stress_log.txt
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Rendered screens from casioshot.py
+shots/

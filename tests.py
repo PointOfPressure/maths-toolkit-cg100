@@ -2512,6 +2512,84 @@ def test_engine_invariants():
                 continue
             _agree("reparse " + repr(s), r, form, (0.55, 1.9, 3.3))
 
+# ------------------------------------------------- screen layout (no Pillow) --
+# casioshot.py renders these screens to PNG so they can be looked at, but that
+# needs Pillow and CI should not. This records only the GEOMETRY: where each
+# string starts and how wide casui believes it is. A string that runs past 384
+# is clipped on the real device, and no text assertion can see that.
+_LAYOUT = []
+
+def _rec_draw_string(x, y, s, c=None, size=None):
+    _LAYOUT.append((x, y, str(s), size or "medium"))
+
+def _layout(fn):
+    del _LAYOUT[:]
+    real = {}
+    mods = [casui]
+    import casrender
+    mods.append(casrender)
+    for m in mods:
+        real[m] = m.draw_string
+        m.draw_string = _rec_draw_string
+    try:
+        fn()
+    finally:
+        for m in real:
+            m.draw_string = real[m]
+    return list(_LAYOUT)
+
+def test_screen_layout():
+    import casrender
+    scenes = [
+        ("graph 1/x", lambda: casui.graph(caslex.parse("1/x"))),
+        ("graph tan", lambda: casui.graph(caslex.parse("tan(x)"))),
+        ("graph of a big-range function",
+         lambda: casui.graph(caslex.parse("100000x^2"))),
+        # menu() and result_screen() are stubbed at the top of this file so
+        # tools can be driven, so the drawing functions underneath them are
+        # what has to be exercised here
+        ("menu", lambda: casui.draw_menu("MATHS TOOLKIT",
+                                         ["Calculate", "Calculus & Algebra",
+                                          "A-Level Maths", "Further Maths",
+                                          "Angle mode: RADIANS"], 1)),
+        ("long result screen", lambda: casui._paged(
+            "A long result",
+            [(ln, "medium") for ln in
+             ["line " + str(i) + ": some result text" for i in range(1, 17)]],
+            casui.BLACK)),
+        ("input with a fraction preview", lambda: casui.draw_input(
+            "Type an expression:", "(x+1)/(x-2)", 5, False, False, False, 0)),
+        ("input with a long expression", lambda: casui.draw_input(
+            "Type an expression:", "sin(2x)+cos(3x)-tan(x)/sqrt(x^2+1)+exp(-x)",
+            21, False, False, False, 0)),
+        ("the CATALOG picker", lambda: casui.draw_input(
+            "Type an expression:", "2x+", 3, False, False, True, 5)),
+    ]
+    for label, fn in scenes:
+        rows = _layout(fn)
+        truthy(label + " draws something", len(rows) > 0)
+        for x, y, s, size in rows:
+            w = casui.text_w(s, size)
+            truthy(label + ": " + repr(s[:24]) + " fits the 384px width",
+                   x + w <= 384)
+            truthy(label + ": " + repr(s[:24]) + " is on screen vertically",
+                   0 <= y <= 191)
+        # nothing may be drawn on top of something else on the same baseline
+        for i in range(len(rows)):
+            for j in range(i + 1, len(rows)):
+                xa, ya, sa, za = rows[i]
+                xb, yb, sb, zb = rows[j]
+                if abs(ya - yb) > 6:
+                    continue
+                ea = xa + casui.text_w(sa, za)
+                eb = xb + casui.text_w(sb, zb)
+                if xa < eb and xb < ea:
+                    FAILED.append(label + ": " + repr(sa[:20]) + " at y=" +
+                                  str(ya) + " overprints " + repr(sb[:20]) +
+                                  " at y=" + str(yb))
+                    CHECKS[0] += 1
+                    return
+
 # README rows: (table row name, module). The README documents each section's
 # tools verbatim from its TOOLS labels, and a README that has quietly drifted
 # from the code is worse than no README - it is a list of tools that are not
@@ -2666,6 +2744,7 @@ TESTS = [
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
     ("engine invariants", test_engine_invariants),
+    ("screen layout", test_screen_layout),
     ("every tool is registered", test_every_tool_is_registered),
     ("README matches TOOLS", test_readme_matches_tools),
     ("README install list", test_readme_install_list),
