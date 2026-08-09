@@ -27,8 +27,28 @@ DEVICE_FILES = [
     "hwcheck.py",
 ]
 
-# math members present in this build. The device has no factorial, no atan2 and
-# no hyperbolics - those are hand-implemented in caseng/casutil.
+# math members the toolkit is allowed to use. This is an ALLOWLIST, deliberately
+# narrower than what the build probably has: nothing here has to be proved
+# absent, only what is used has to be proved present.
+#
+# What is actually known, as of the last research pass:
+#  - MicroPython 1.9.4's py/modmath.c defines 28 members unconditionally
+#    (e pi sqrt pow exp log cos sin tan acos asin atan ATAN2 ceil copysign
+#    fabs floor fmod frexp ldexp modf isfinite isinf isnan trunc radians
+#    degrees) and 13 more behind MICROPY_PY_MATH_SPECIAL_FUNCTIONS
+#    (expm1 log2 log10 cosh sinh tanh acosh asinh atanh erf erfc gamma lgamma).
+#  - math.factorial is in NEITHER list, so "the device has no factorial" is
+#    confirmed by upstream source.
+#  - atan2 is UNCONDITIONAL, so a build with atan has atan2. The long-standing
+#    claim that this device lacks atan2 looks wrong.
+#  - The fx-CG100 manual's Python key-input table (page 125) gives log10() its
+#    own keystroke, and log10 is in the SPECIAL group - which implies that
+#    group is enabled, and therefore that the hyperbolics exist too.
+# Both of those are inference from upstream source plus a manual table, not
+# measurement. hwcheck.py probes all 41 names on the device and settles it.
+# Until it has been run, casutil keeps its own atan2 and hyperbolics: they are
+# correct and tested either way, and ripping them out on an inference would be
+# a change with no upside.
 MATH_OK = set([
     "sqrt", "pow", "exp", "log", "pi", "e",
     "sin", "cos", "tan", "asin", "acos", "atan",
