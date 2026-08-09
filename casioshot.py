@@ -173,6 +173,17 @@ def _scenes():
                                      "A-Level Maths", "Further Maths",
                                      "Angle mode: RADIANS",
                                      "Working: SHOWN"])),
+        ("menu-standard-bodies", lambda: casui.menu('Standard bodies',
+            ['Rod, length L', 'Triangular lamina, height h',
+             'Circular arc, r, half-angle A', 'Semicircular arc, r',
+             'Circular sector, r, half-angle A', 'Semicircular lamina, r',
+             'Solid hemisphere, r', 'Hollow hemisphere, r',
+             'Solid cone or pyramid, height h', 'Hollow cone, height h'])),
+        ("intro-recurrence", lambda: casui.result_screen(
+            'First order recurrence',
+            ['u(n+1) = a u(n) + f(n)',
+             'Solved as A a^n plus a particular',
+             'term whose shape follows f(n).'])),
         ("working-shown", lambda: _both_modes(True)),
         ("working-hidden", lambda: _both_modes(False)),
         ("result-paged", lambda: casui.result_screen(

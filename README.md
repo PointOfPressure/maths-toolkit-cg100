@@ -4,7 +4,7 @@ A calculator app in stock MicroPython 1.9.4 using the built-in `casioplot`.
 Three parts: an expression calculator, a computer algebra system, and 263 tools
 mapped to OCR B (MEI) A-Level Maths (H640) and Further Maths (H645).
 
-![tests](https://img.shields.io/badge/tests-6752%20checks%2C%200%20failures-brightgreen)
+![tests](https://img.shields.io/badge/tests-7108%20checks%2C%200%20failures-brightgreen)
 ![smoke](https://img.shields.io/badge/smoke-443%20checks%2C%200%20errors-brightgreen)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
@@ -162,7 +162,7 @@ pairs.
 Runs unmodified under desktop CPython; `casioplot.py` stubs the graphics.
 
 ```
-python3 tests.py       # 6752 checks
+python3 tests.py       # 7108 checks
 python3 stress.py      # 443 checks, drives every tool
 python3 devlint.py     # MicroPython compliance, 32 files
 ```

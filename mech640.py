@@ -386,12 +386,9 @@ def _tparse(prompt):
     return tree
 
 def kinematics():
-    _show('Variable acceleration', ['SUVAT only works when a is',
-                                    'constant. Here a, v or s is a',
-                                    'function of t and calculus does',
-                                    'the work:',
-                                    '  v = ds/dt   a = dv/dt',
-                                    '  v = int a dt   s = int v dt'])
+    _show('Variable acceleration', ['For a that is not constant:',
+          'v = ds/dt, a = dv/dt,',
+          'and integrate to go back.'])
     which = casui.menu('You are given', ['s(t) displacement', 'v(t) velocity',
                                          'a(t) acceleration'])
     if which == -1:

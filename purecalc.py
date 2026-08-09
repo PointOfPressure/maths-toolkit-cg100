@@ -464,12 +464,9 @@ def t_implicit():
     _show('Implicit d/dx', lines)
 
 def t_substitution():
-    _show('Integration by substitution', ['Enter the integrand and your',
-                                          'choice of u = g(x). Then',
-                                          'du = g\'(x) dx, so the integral',
-                                          'becomes f(x)/g\'(x) du - which',
-                                          'is only progress if every x',
-                                          'disappears into u.'])
+    _show('Integration by substitution', ['Enter the integrand and u = g(x).',
+          'Every x must disappear into u,',
+          'or the substitution has not helped.'])
     f = _parse('integrand f(x) =')
     if f is None:
         return
@@ -989,11 +986,9 @@ def t_improper():
     _show('Improper integral', lines)
 
 def t_small_angle():
-    _show('Small angles', ['For small x IN RADIANS:',
-                           '  sin x = x', '  tan x = x',
-                           '  cos x = 1 - x^2/2',
-                           'These come from the Maclaurin',
-                           'series with the later terms dropped.'])
+    _show('Small angles', ['For small x in RADIANS:',
+          'sin x = x, tan x = x,',
+          'cos x = 1 - x^2/2.'])
     x = _asknum('x in radians =')
     if x is None:
         return

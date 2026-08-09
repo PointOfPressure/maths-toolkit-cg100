@@ -117,12 +117,9 @@ def t_induction_sum():
 
 
 def t_induction_divis():
-    _show('Induction: divisibility', ['To prove that d divides f(n).',
-                                      'Base: f(1) divisible by d.',
-                                      'Step: f(k+1) - m f(k) must also be',
-                                      'divisible, for a multiplier m you',
-                                      'pick (often the base of the',
-                                      'exponential in f).'])
+    _show('Induction: divisibility', ['To prove d divides f(n).',
+          'You pick the multiplier m; the step',
+          'needs f(k+1) - m f(k) divisible by d.'])
     f = _parse('f(n) = (type n)')
     if f is None:
         return

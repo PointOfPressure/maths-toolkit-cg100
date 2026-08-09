@@ -156,13 +156,13 @@ def test_projectile_incline(h):
 def test_elastic(h):
     import fmmech
 
-    out = h.drive(fmmech.t_elastic, ["1", "2", "49", "1", "9.8"], [])
+    out = h.drive(fmmech.t_elastic, ["2", "49", "1", "9.8"], [0])
     h.num("elastic: equilibrium extension", out, "extension x = ", 0.4, 1e-9)
     h.num("elastic: tension is the weight", out, "tension T = ", 19.6, 1e-9)
     h.num("elastic: total length", out, "total length = ", 1.4, 1e-9)
     h.num("elastic: EPE at equilibrium", out, "EPE there = ", 3.92, 1e-9)
 
-    out = h.drive(fmmech.t_elastic, ["2", "2", "49", "1", "0", "9.8"], [])
+    out = h.drive(fmmech.t_elastic, ["2", "49", "1", "0", "9.8"], [1])
     h.num("elastic: max extension from rest", out, "max extension x = ",
           0.8, 1e-9)
     h.num("elastic: GPE lost", out, "GPE lost = ", 15.68, 1e-6)
@@ -173,14 +173,14 @@ def test_elastic(h):
     h.num("elastic: total length at maximum extension", out,
           "total length = ", 1.8, 1e-9)
 
-    out = h.drive(fmmech.t_elastic, ["2", "2", "49", "1", "2.8", "9.8"], [])
+    out = h.drive(fmmech.t_elastic, ["2", "49", "1", "2.8", "9.8"], [1])
     h.num("elastic: max extension with initial KE", out,
           "max extension x = ", 0.4 + math.sqrt(0.48), 1e-4)
     h.num("elastic: initial KE", out, "KE at that instant = ", 7.84, 1e-6)
     h.num("elastic: energy equation balances", out, "EPE stored = ",
           7.84 + 19.6 * (0.4 + math.sqrt(0.48)), 1e-3)
 
-    out = h.drive(fmmech.t_elastic, ["3", "2", "1", "0.4", "9.8"], [])
+    out = h.drive(fmmech.t_elastic, ["2", "1", "0.4", "9.8"], [2])
     h.num("elastic: modulus from the extension", out, "lambda = ", 49.0, 1e-6)
     h.num("elastic: stiffness", out, "stiffness k = lam/l = ", 49.0, 1e-6)
 
@@ -188,30 +188,30 @@ def test_elastic(h):
 def test_com_calculus(h):
     import fmmech
 
-    out = h.drive(fmmech.t_com_calculus, ["1", "x^2", "0", "1"], [])
+    out = h.drive(fmmech.t_com_calculus, ["x^2", "0", "1"], [0])
     h.num("lamina: area under x^2", out, "area A = ", 1.0 / 3.0, 1e-3)
     h.num("lamina: x_bar under x^2", out, "x_bar = ", 0.75, 1e-6)
     h.num("lamina: y_bar under x^2", out, "y_bar = ", 0.3, 1e-6)
 
-    out = h.drive(fmmech.t_com_calculus, ["1", "sqrt(1-x^2)", "-1", "1"], [])
+    out = h.drive(fmmech.t_com_calculus, ["sqrt(1-x^2)", "-1", "1"], [0])
     h.num("lamina: area of a unit semicircle", out, "area A = ",
           math.pi / 2.0, 1e-3)
     h.num("lamina: semicircle x_bar is zero", out, "x_bar = ", 0.0, 1e-6)
     h.num("lamina: semicircle y_bar is 4r/(3pi)", out, "y_bar = ",
           4.0 / (3.0 * math.pi), 1e-3)
 
-    out = h.drive(fmmech.t_com_calculus, ["2", "x", "0", "1"], [])
+    out = h.drive(fmmech.t_com_calculus, ["x", "0", "1"], [1])
     h.num("solid: volume of a unit cone", out, "volume V = ",
           math.pi / 3.0, 1e-4)
     h.num("solid: cone COM is 3h/4 from the apex", out, "x_bar = ",
           0.75, 1e-6)
 
-    out = h.drive(fmmech.t_com_calculus, ["2", "x/2", "0", "4"], [])
+    out = h.drive(fmmech.t_com_calculus, ["x/2", "0", "4"], [1])
     h.num("solid: volume of the r=2 h=4 cone", out, "volume V = ",
           math.pi * 16.0 / 3.0, 1e-3)
     h.num("solid: 3h/4 for h = 4", out, "x_bar = ", 3.0, 1e-6)
 
-    out = h.drive(fmmech.t_com_calculus, ["3", "sqrt(1-y^2)", "0", "1"], [])
+    out = h.drive(fmmech.t_com_calculus, ["sqrt(1-y^2)", "0", "1"], [2])
     h.num("solid: hemisphere volume", out, "volume V = ",
           2.0 * math.pi / 3.0, 1e-3)
     h.num("solid: hemisphere COM is 3r/8", out, "y_bar = ", 0.375, 1e-4)
@@ -220,43 +220,43 @@ def test_com_calculus(h):
 def test_com_standard(h):
     import fmmech
 
-    out = h.drive(fmmech.t_com_standard, ["9", "4"], [])
+    out = h.drive(fmmech.t_com_standard, ["4"], [8])
     h.num("standard: solid cone 3h/4", out, "distance = ", 3.0, 1e-9)
     h.has("standard: cone measured from the apex", out, "APEX")
 
-    out = h.drive(fmmech.t_com_standard, ["6", "3"], [])
+    out = h.drive(fmmech.t_com_standard, ["3"], [5])
     h.num("standard: semicircular lamina 4r/(3pi)", out, "distance = ",
           4.0 / math.pi, 1e-3)
 
-    out = h.drive(fmmech.t_com_standard, ["7", "8"], [])
+    out = h.drive(fmmech.t_com_standard, ["8"], [6])
     h.num("standard: solid hemisphere 3r/8", out, "distance = ", 3.0, 1e-9)
-    out = h.drive(fmmech.t_com_standard, ["8", "8"], [])
+    out = h.drive(fmmech.t_com_standard, ["8"], [7])
     h.num("standard: hollow hemisphere r/2", out, "distance = ", 4.0, 1e-9)
 
-    out = h.drive(fmmech.t_com_standard, ["4", "1"], [])
+    out = h.drive(fmmech.t_com_standard, ["1"], [3])
     h.num("standard: semicircular arc 2r/pi", out, "distance = ",
           2.0 / math.pi, 1e-3)
-    out = h.drive(fmmech.t_com_standard, ["3", "1", "90"], [])
+    out = h.drive(fmmech.t_com_standard, ["1", "90"], [2])
     h.num("standard: arc r sinA/A agrees at A = 90", out, "distance = ",
           2.0 / math.pi, 1e-3)
 
-    out = h.drive(fmmech.t_com_standard, ["5", "1", "90"], [])
+    out = h.drive(fmmech.t_com_standard, ["1", "90"], [4])
     h.num("standard: sector agrees with the semicircular lamina", out,
           "distance = ", 4.0 / (3.0 * math.pi), 1e-3)
 
-    out = h.drive(fmmech.t_com_standard, ["1", "7"], [])
+    out = h.drive(fmmech.t_com_standard, ["7"], [0])
     h.num("standard: rod L/2", out, "distance = ", 3.5, 1e-9)
-    out = h.drive(fmmech.t_com_standard, ["10", "6"], [])
+    out = h.drive(fmmech.t_com_standard, ["6"], [9])
     h.num("standard: hollow cone 2h/3", out, "distance = ", 4.0, 1e-9)
 
-    out = h.drive(fmmech.t_com_standard, ["2", "9"], [])
+    out = h.drive(fmmech.t_com_standard, ["9"], [1])
     h.num("standard: triangular lamina h/3", out, "distance = ", 3.0, 1e-9)
 
 
 def test_topple(h):
     import fmmech
 
-    out = h.drive(fmmech.t_topple, ["1", "0.5", "1", "0.4", "30"], [])
+    out = h.drive(fmmech.t_topple, ["0.5", "1", "0.4", "30"], [0])
     h.num("topple: toppling angle arctan(a/h)", out, "topple angle = ",
           26.565051, 1e-4)
     h.num("topple: sliding angle arctan(mu)", out, "slide angle = ",
@@ -266,12 +266,12 @@ def test_topple(h):
     h.has("topple: at 30 deg it topples", out, "  topples")
     h.has("topple: at 30 deg it slides", out, "  slides")
 
-    out = h.drive(fmmech.t_topple, ["1", "0.5", "1", "0.8", None], [])
+    out = h.drive(fmmech.t_topple, ["0.5", "1", "0.8", None], [0])
     h.num("topple: sliding angle for mu = 0.8", out, "slide angle = ",
           38.659808, 1e-4)
     h.has("topple: rough surface topples first", out, "topples first")
 
-    out = h.drive(fmmech.t_topple, ["2", "100", "0.3", "1.2", "0.5"], [])
+    out = h.drive(fmmech.t_topple, ["100", "0.3", "1.2", "0.5"], [1])
     h.num("push: force to slide", out, "P to slide = ", 50.0, 1e-9)
     h.num("push: force to topple", out, "P to topple = ", 25.0, 1e-9)
     h.has("push: topples before it slides", out, "topples first")
@@ -292,7 +292,7 @@ def test_couple(h):
 def test_triangle_of_forces(h):
     import fmmech
 
-    out = h.drive(fmmech.t_triangle_forces, ["1", "3 4 5"], [])
+    out = h.drive(fmmech.t_triangle_forces, ["3 4 5"], [0])
     h.num("triangle: 3 and 4 are perpendicular", out, "F1 to F2 = ",
           90.0, 1e-4)
     h.num("triangle: angle between 4 and 5", out, "F2 to F3 = ",
@@ -302,17 +302,17 @@ def test_triangle_of_forces(h):
     h.close("triangle: the three angles close at 360",
             90.0 + 143.130102 + 126.869898, 360.0, 1e-4)
 
-    out = h.drive(fmmech.t_triangle_forces, ["1", "5 12 13"], [])
+    out = h.drive(fmmech.t_triangle_forces, ["5 12 13"], [0])
     h.num("triangle: 5-12-13 right angle", out, "F1 to F2 = ", 90.0, 1e-4)
     h.num("triangle: 5-12-13 second angle", out, "F2 to F3 = ",
           157.380135, 1e-4)
     h.num("triangle: 5-12-13 third angle", out, "F3 to F1 = ",
           112.619865, 1e-4)
 
-    out = h.drive(fmmech.t_triangle_forces, ["1", "1 2 5"], [])
+    out = h.drive(fmmech.t_triangle_forces, ["1 2 5"], [0])
     h.has("triangle: rejects an impossible set", out, "cannot close")
 
-    out = h.drive(fmmech.t_triangle_forces, ["2", "3", "0", "4", "90"], [])
+    out = h.drive(fmmech.t_triangle_forces, ["3", "0", "4", "90"], [1])
     h.num("triangle: third force magnitude", out, "F3 = ", 5.0, 1e-6)
     h.num("triangle: third force direction", out, "direction = ",
           233.130102, 1e-4)
@@ -321,20 +321,20 @@ def test_triangle_of_forces(h):
 def test_units(h):
     import fmmech
 
-    out = h.drive(fmmech.t_units, ["1", "1 1 -2"], [])
+    out = h.drive(fmmech.t_units, ["1 1 -2"], [0])
     h.has("units: force units", out, "kg m s^-2")
     h.has("units: names the quantity", out, "force")
-    out = h.drive(fmmech.t_units, ["1", "1 2 -2"], [])
+    out = h.drive(fmmech.t_units, ["1 2 -2"], [0])
     h.has("units: energy units", out, "kg m^2 s^-2")
     h.has("units: names energy", out, "energy")
-    out = h.drive(fmmech.t_units, ["1", "0 0 0"], [])
+    out = h.drive(fmmech.t_units, ["0 0 0"], [0])
     h.has("units: recognises dimensionless", out, "dimensionless")
 
-    out = h.drive(fmmech.t_units, ["2", "0 1 -1", "20", "1 1000 3600"], [])
+    out = h.drive(fmmech.t_units, ["0 1 -1", "20", "1 1000 3600"], [1])
     h.num("units: conversion factor", out, "factor = ", 1000.0 / 3600.0, 1e-3)
     h.num("units: 20 m/s is 72 km/h", out, "new value = ", 72.0, 1e-6)
 
-    out = h.drive(fmmech.t_units, ["2", "1 1 -2", "5", "0.001 0.01 1"], [])
+    out = h.drive(fmmech.t_units, ["1 1 -2", "5", "0.001 0.01 1"], [1])
     h.num("units: 5 N is 5e5 dyne", out, "new value = ", 500000.0, 1e-3)
 
 
@@ -367,7 +367,7 @@ def test_relative(h):
 def test_tangential(h):
     import fmmech
 
-    out = h.drive(fmmech.t_circular, ["5", "2", "3", "4"], [])
+    out = h.drive(fmmech.t_circular, ["2", "3", "4"], [4])
     h.num("tangential: radial acceleration", out, "a_r = ", 18.0, 1e-9)
     h.num("tangential: tangential acceleration", out, "a_t = ", 8.0, 1e-9)
     h.num("tangential: resultant acceleration", out, "total a = ",
@@ -376,7 +376,7 @@ def test_tangential(h):
           23.962489, 1e-4)
     h.num("tangential: speed", out, "v = omega r = ", 6.0, 1e-9)
 
-    out = h.drive(fmmech.t_circular, ["5", "2", "3", "0"], [])
+    out = h.drive(fmmech.t_circular, ["2", "3", "0"], [4])
     h.num("tangential: zero alpha gives no a_t", out, "a_t = ", 0.0, 1e-9)
     h.num("tangential: zero alpha leaves a = a_r", out, "total a = ",
           18.0, 1e-9)

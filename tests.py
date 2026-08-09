@@ -1376,21 +1376,21 @@ def test_fmmech():
     num("restitution v2", o, 'v2 = ', 3.0)
     num("restitution KE lost", o, 'KE lost = ', 11.25)
 
-    o = drive(fmmech.t_momentum, ['1', '2', '5', '3', '0', '1'])
+    o = drive(fmmech.t_momentum, ['2', '5', '3', '0', '1'], [0])
     num("conservation v2", o, 'v2 = ', (2 * 5 + 3 * 0 - 2 * 1) / 3.0)
 
     o = drive(fmmech.t_hooke, ['100', '0.2', '2'])
     num("hooke T", o, 'T = lam x/l = ', 10.0)
     num("hooke EPE", o, 'EPE = ', 1.0)
 
-    o = drive(fmmech.t_com, ['1', '1 3', '0 4'])
+    o = drive(fmmech.t_com, ['1 3', '0 4'], [0])
     num("com x", o, 'x_bar = ', 3.0)
 
-    o = drive(fmmech.t_circular, ['1', '2', '10', '5'])
+    o = drive(fmmech.t_circular, ['2', '10', '5'], [0])
     num("circular a", o, 'a = v^2/r = ', 20.0)
     num("circular F", o, 'F = m a = ', 40.0)
 
-    o = drive(fmmech.t_work, ['1', '4', '3'])
+    o = drive(fmmech.t_work, ['4', '3'], [0])
     num("KE", o, 'KE = ', 18.0)
 
     o = drive(fmmech.t_dim, ['1 1 -2', '1 1 -2'])
@@ -1687,6 +1687,69 @@ def hwcheck_names():
 def _here(name):
     import os
     return os.path.join(os.path.dirname(os.path.abspath(__file__)) or ".", name)
+
+REFERENCE_CARDS = set([
+    "pure640._log_laws", "pure640._trig_exact", "pure640._trig_compound",
+    "proof.t_methods", "series.t_reference", "hyper.t_ref", "fmmech.t_dim",
+    "xpure.t_sets",
+])
+
+def test_intro_screens_fit_one_page():
+    # An intro is the screen a tool shows BEFORE it asks for anything. It costs
+    # a keypress every time the tool is opened, so it has to fit one page:
+    # casui.PER_PAGE lines, and no line wider than the screen. Anything longer
+    # pages, which means two keypresses before you can type a number.
+    # Reference cards are exempt - there the card IS the tool's output.
+    import ast
+    PROMPTS = set(["_asknum", "_askint", "_askexpr", "_parse", "input_expr",
+                   "menu", "asknum", "askint", "askexpr", "_pick", "_choose",
+                   "_getlist", "_askg", "_mvparse", "_readtable"])
+    MAXLINES = 5
+    mods = list(casui.MATHS_MODS) + list(casui.FM_CORE_MODS) + list(casui.FM_OPT_MODS)
+    seen = 0
+    for name in mods:
+        tree = ast.parse(open(os.path.join(HERE, name + ".py")).read())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or not node.body:
+                continue
+            first = node.body[0]
+            if not (isinstance(first, ast.Expr) and isinstance(first.value, ast.Call)):
+                continue
+            fname = getattr(first.value.func, "id", None) or \
+                    getattr(first.value.func, "attr", None)
+            if fname not in ("_show", "_pages", "show"):
+                continue
+            args = first.value.args
+            if len(args) < 2 or not isinstance(args[1], ast.List):
+                continue
+            lits = []
+            for e in args[1].elts:
+                if isinstance(e, ast.Constant) and isinstance(e.value, str):
+                    lits.append(e.value)
+            if len(lits) != len(args[1].elts) or not lits:
+                continue
+            rest = ast.Module(body=node.body[1:], type_ignores=[])
+            asks = False
+            for n in ast.walk(rest):
+                if isinstance(n, ast.Call):
+                    nm = getattr(n.func, "id", None) or getattr(n.func, "attr", None)
+                    if nm in PROMPTS:
+                        asks = True
+                        break
+            if not asks:
+                continue
+            key = name + "." + node.name
+            if key in REFERENCE_CARDS:
+                continue
+            seen += 1
+            truthy(key + ": intro is at most " + str(MAXLINES) + " lines, got " +
+                   str(len(lits)), len(lits) <= MAXLINES)
+            truthy(key + ": intro never pages",
+                   len(lits) <= casui.PER_PAGE)
+            for ln in lits:
+                truthy(key + ": intro line fits the screen: " + repr(ln),
+                       casui.text_w(ln, "medium") <= 372)
+    truthy("the sweep found the intro screens", seen >= 50)
 
 def test_devlint():
     import os
@@ -2823,6 +2886,7 @@ TESTS = [
     ("xpure", test_xpure),
     ("fpt", test_fpt),
     ("recursion budget", test_recursion_budget),
+    ("intro screens fit one page", test_intro_screens_fit_one_page),
     ("math allowlist is measured", test_math_allowlist_is_the_measured_set),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),

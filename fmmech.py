@@ -16,6 +16,10 @@ _deg = casutil.deg
 _rad = casutil.rad
 _atan2 = casutil.atan2
 
+def _pick(title, options):
+    c = casui.menu(title, options)
+    return None if c == -1 else c + 1
+
 def _choose(prompt):
     v = _asknum(prompt)
     if v is None or v != v or v > 1e9 or v < -1e9:
@@ -40,12 +44,11 @@ def _defi(tree, a, b, var):
     return cascalc.defint(tree, a, b, False, 400, var)
 
 def t_momentum():
-    _show('Momentum/Impulse', ['1 conservation (find v2)',
-        '2 impulse = m(v-u)', 'Enter 1 or 2 next'])
-    k = _asknum('Choose 1 or 2')
+    k = _pick('Momentum / impulse', ['Conservation: find v2',
+                                     'Impulse = m(v - u)'])
     if k is None:
         return
-    if int(k) == 2:
+    if k == 2:
         m = _asknum('mass m')
         u = _asknum('initial u')
         v = _asknum('final v')
@@ -97,12 +100,11 @@ def t_restitution():
         'v2 = ' + _fn(v2) + ' m/s', 'KE lost = ' + _fn(ke0 - ke1) + ' J'])
 
 def t_work():
-    _show('Work/Energy/Power', ['1 KE = 0.5 m v^2', '2 GPE = m g h',
-        '3 Work = F d', '4 Power = F v', '5 Power = W / t'])
-    k = _asknum('Choose 1-5')
+    k = _pick('Work, energy, power', ['KE = 0.5 m v^2', 'GPE = m g h',
+                                      'Work = F d', 'Power = F v',
+                                      'Power = W / t'])
     if k is None:
         return
-    k = int(k)
     if k == 1:
         m = _asknum('mass m')
         v = _asknum('speed v')
@@ -138,13 +140,13 @@ def t_work():
         _show('Power', [_w('P = W / t'), 'P = ' + _fn(w / t) + ' W'])
 
 def t_circular():
-    _show('Circular motion', ['1 a,F from v & r', '2 a,F from omega & r',
-        '3 conical pendulum', '4 vertical circle top',
-        '5 tangential acceleration'])
-    k = _asknum('Choose 1-5')
+    k = _pick('Circular motion', ['a and F from v and r',
+                                  'a and F from omega and r',
+                                  'Conical pendulum',
+                                  'Vertical circle, at the top',
+                                  'Tangential acceleration'])
     if k is None:
         return
-    k = int(k)
     if k == 1:
         m = _asknum('mass m')
         v = _asknum('speed v')
@@ -221,9 +223,7 @@ def t_hooke():
         _w('EPE = lam x^2/(2l)'), 'EPE = ' + _fn(epe) + ' J'])
 
 def t_com():
-    _show('Centre of mass', ['1 one dimension', '2 two dimensions',
-        'enter masses then coords'])
-    k = _asknum('Choose 1 or 2')
+    k = _pick('Centre of mass', ['One dimension', 'Two dimensions'])
     if k is None:
         return
     masses = _getlist('masses m (space sep)')
@@ -284,14 +284,10 @@ def t_dim():
     _show('Dimensions', [_w('LHS ' + lhs), _w('RHS ' + rhs), res])
 
 def t_oblique_wall():
-    _show('Oblique: sphere/wall', ['Sphere hits a SMOOTH fixed surface.',
-        'Resolve u along the surface and',
-        'along the normal.',
-        'SMOOTH => no impulse along the',
-        'surface, so that part is',
-        'UNCHANGED.',
-        'NEL on the normal part only:',
-        'normal out = e x normal in.'])
+    _show('Oblique: sphere/wall', ['Sphere onto a smooth wall.',
+          'The component along the wall is',
+          'unchanged; the normal component',
+          'is multiplied by e.'])
     u = _asknum('speed u')
     a = _asknum('angle to surface (deg)')
     e = _asknum('e (0..1)')
@@ -329,15 +325,10 @@ def t_oblique_wall():
     _show('Oblique: sphere/wall', lines)
 
 def t_oblique_spheres():
-    _show('Oblique: two spheres', ['Two SMOOTH spheres. Resolve along',
-        'the line of centres (LOC).',
-        'SMOOTH => no impulse',
-        'perpendicular to the LOC, so',
-        'each perpendicular part is',
-        'UNCHANGED.',
-        'Along the LOC: conservation of',
-        'momentum and NEL.',
-        'Angles are measured from the LOC.'])
+    _show('Oblique: two spheres', ['Two smooth spheres.',
+          'Angles are measured from the line',
+          'of centres. Perpendicular parts',
+          'are unchanged.'])
     m1 = _asknum('m1')
     u1 = _asknum('speed u1')
     a1 = _asknum('angle of u1 to LOC (deg)')
@@ -381,12 +372,8 @@ def t_oblique_spheres():
         'KE lost = ' + _fn(kel) + ' J'])
 
 def t_proj_path():
-    _show('Projectile path', ['x = u cos(a) t',
-        'y = u sin(a) t - g t^2 / 2',
-        'from the first, t = x/(u cos a),',
-        'and substituting gives',
-        'y = x tan a - g x^2/(2u^2cos^2a)',
-        'a parabola through the origin.'])
+    _show('Projectile path', ['Path of a projectile from O:',
+          'y = x tan a - g x^2/(2u^2cos^2 a)'])
     u = _asknum('speed u')
     a = _asknum('angle to horizontal (deg)')
     if None in (u, a):
@@ -408,6 +395,8 @@ def t_proj_path():
     lines = [_w('u = ' + _fn(u) + ' m/s at ' + _fn(a) + ' deg'),
         _w('g = ' + _fn(g)), '',
         'y = ' + _fn(ta) + ' x - ' + _fn(kk) + ' x^2', '',
+        _w('x = u cos a t, so t = x/(u cos a)'),
+        _w('substituted into y = u sin a t - g t^2/2:'),
         _w('tan a = ' + _fn(ta)),
         _w('g/(2u^2cos^2a) = ' + _fn(kk)), '',
         'range = ' + _fn(rng) + ' m',
@@ -442,14 +431,10 @@ def t_proj_path():
     casutil.chart_hold('range ' + _fn(rng) + ' m')
 
 def t_proj_incline():
-    _show('Projectile: incline', ['Plane at b deg to the horizontal.',
-        'b > 0 fires UP the slope,',
-        'b < 0 fires DOWN the slope,',
-        'b = 0 is level ground.',
-        'a is measured from the',
-        'HORIZONTAL.',
-        'R = 2u^2 cos a sin(a-b)',
-        '        / (g cos^2 b)'])
+    _show('Projectile: incline', ['Projectile onto a slope.',
+          'Angle a is from the HORIZONTAL.',
+          'Slope b: + fires up the slope,',
+          '- fires down, 0 is level ground.'])
     u = _asknum('speed u')
     a = _asknum('angle a to horizontal (deg)')
     b = _asknum('slope b (deg, + up, - down)')
@@ -488,10 +473,9 @@ def t_proj_incline():
     _show('Projectile: incline', lines)
 
 def t_elastic():
-    _show('Elastic: equil/energy', ['1 equilibrium: m g = lam x / l',
-        '2 max extension by energy',
-        '3 modulus from a known extension'])
-    k = _choose('Choose 1-3')
+    k = _pick('Elastic string', ['Equilibrium: m g = lambda x / l',
+                                 'Max extension by energy',
+                                 'Modulus from a known extension'])
     if k is None:
         return
     if k == 2:
@@ -551,13 +535,9 @@ def t_elastic():
         'EPE there = ' + _fn(lam * x * x / (2.0 * l)) + ' J'])
 
 def t_com_calculus():
-    _show('COM by calculus', ['1 lamina under y = f(x)',
-        '2 solid of revolution about Ox',
-        '3 solid of revolution about Oy',
-        'strips: mass is proportional to',
-        'y dx for a lamina and to y^2 dx',
-        'for a solid.'])
-    k = _choose('Choose 1-3')
+    k = _pick('Centre of mass by calculus', ['Lamina under y = f(x)',
+                                             'Solid of revolution about Ox',
+                                             'Solid of revolution about Oy'])
     if k is None:
         return
     if k == 3:
@@ -619,18 +599,17 @@ def t_com_calculus():
         other + '_bar = 0 by symmetry'])
 
 def t_com_standard():
-    _show('Standard bodies', ['1 rod, length L',
-        '2 triangular lamina, height h',
-        '3 circular arc, r, half-angle A',
-        '4 semicircular arc, r',
-        '5 circular sector, r, half-angle A',
-        '6 semicircular lamina, r',
-        '7 solid hemisphere, r',
-        '8 hollow hemisphere, r',
-        '9 solid cone/pyramid, height h',
-        '10 hollow cone, height h'])
-    k = _choose('Choose 1-10')
-    if k is None or k < 1 or k > 10:
+    k = _pick('Standard bodies', ['Rod, length L',
+                                  'Triangular lamina, height h',
+                                  'Circular arc, r, half-angle A',
+                                  'Semicircular arc, r',
+                                  'Circular sector, r, half-angle A',
+                                  'Semicircular lamina, r',
+                                  'Solid hemisphere, r',
+                                  'Hollow hemisphere, r',
+                                  'Solid cone or pyramid, height h',
+                                  'Hollow cone, height h'])
+    if k is None:
         return
     if k in (3, 5):
         r = _asknum('radius r')
@@ -702,11 +681,8 @@ def t_com_standard():
             ' i.e. ' + _fn(s / 3.0) + ')'])
 
 def t_topple():
-    _show('Slide or topple', ['1 body on a plane being tilted',
-        '2 horizontal force on a block',
-        'toppling turns about the far',
-        'edge; sliding needs F > mu R.'])
-    k = _choose('Choose 1 or 2')
+    k = _pick('Slide or topple', ['Body on a plane being tilted',
+                                  'Horizontal force on a block'])
     if k is None:
         return
     if k == 2:
@@ -760,13 +736,10 @@ def t_topple():
     _show('Tilting plane', lines)
 
 def t_couple():
-    _show('Couple', ['A couple is two equal, opposite,',
-        'parallel forces F a distance d',
-        'apart (d measured at right',
-        'angles to them).',
-        'Resultant force = 0, so it',
-        'cannot be balanced by one force.',
-        'Moment G = F d about any point.'])
+    _show('Couple', ['Two equal opposite parallel forces F,',
+          'a distance d apart measured at right',
+          'angles. Moment G = F d about any',
+          'point; the resultant force is zero.'])
     f = _asknum('force F')
     d = _asknum('distance d apart')
     if None in (f, d):
@@ -787,12 +760,8 @@ def t_couple():
     _show('Couple', lines)
 
 def t_triangle_forces():
-    _show('Triangle of forces', ['Three forces in equilibrium draw',
-        'a CLOSED triangle head to tail.',
-        '1 three magnitudes -> the angles',
-        '  between the forces',
-        '2 two forces -> the third'])
-    k = _choose('Choose 1 or 2')
+    k = _pick('Triangle of forces', ['Three magnitudes: find the angles',
+                                     'Two forces: find the third'])
     if k is None:
         return
     if k == 2:
@@ -908,11 +877,8 @@ def _unitstr(p):
     return out
 
 def t_units():
-    _show('Units', ['1 SI units from M L T powers',
-        '2 change the units used',
-        'e.g. force is M L T^-2, so it is',
-        'measured in kg m s^-2.'])
-    k = _choose('Choose 1 or 2')
+    k = _pick('Units', ['SI units from M L T powers',
+                        'Change the units used'])
     if k is None:
         return
     p = _getlist('M L T powers, e.g. 1 1 -2')
@@ -963,11 +929,8 @@ def t_units():
 
 def t_relative():
     _show('Relative motion', ['Enter each vector as  x y .',
-        'r_B rel A = r_B - r_A',
-        'v_B rel A = v_B - v_A',
-        'B seen from A moves in a',
-        'straight line at the relative',
-        'velocity.'])
+          'B relative to A is B - A, for',
+          'position and for velocity.'])
     ra = _getlist('A position  x y')
     va = _getlist('A velocity  x y')
     rb = _getlist('B position  x y')

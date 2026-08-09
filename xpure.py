@@ -996,21 +996,9 @@ def _asknz(prompt):
 
 
 def t_recur_nonhom():
-    _show('First order recurrence', [
-        'u(n+1) = a u(n) + f(n)',
-        '',
-        'The general solution is the',
-        'complementary function A a^n (what',
-        'solves the equation with f = 0)',
-        'plus any one particular solution',
-        'p(n). The shape of p follows f:',
-        '  constant   -> constant',
-        '  polynomial -> same degree',
-        '  k b^n      -> C b^n',
-        'and when b = a that trial term is',
-        'already a solution of the',
-        'homogeneous equation, so it needs',
-        'an extra factor of n.'])
+    _show('First order recurrence', ['u(n+1) = a u(n) + f(n)',
+          'Solved as A a^n plus a particular',
+          'term whose shape follows f(n).'])
     a = _asknum('a in u(n+1) = a u(n) + f(n)')
     if a is None:
         return
@@ -1143,20 +1131,10 @@ def _cbasis(kind, p, q, idx, n):
 
 
 def t_recur_nonhom2():
-    _show('Second order recurrence', [
-        'u(n+2) = a u(n+1) + b u(n) + f(n)',
-        '',
-        'The auxiliary equation',
-        '  x^2 - a x - b = 0',
-        'gives the complementary function:',
-        '  distinct roots  A r1^n + B r2^n',
-        '  repeated root   (A + B n) r^n',
-        '  complex roots   R^n (A cos(n t)',
-        '                  + B sin(n t))',
-        'A particular solution is added on',
-        'top, its shape following f(n), and',
-        'the two given terms then fix A',
-        'and B.'])
+    _show('Second order recurrence', ['u(n+2) = a u(n+1) + b u(n) + f(n)',
+          'x^2 - a x - b = 0 gives the',
+          'complementary function; a particular',
+          'term is added on top.'])
     ca = _asknum('a in u(n+2)=a u(n+1)+b u(n)+f(n)')
     if ca is None:
         return
@@ -1424,17 +1402,10 @@ def t_recur_verify():
 
 
 def t_recur_behave():
-    _show('Behaviour of a sequence', [
-        'For u(n+1) = f(u(n)), this reports',
-        'whether the sequence converges (and',
-        'to what), diverges, is periodic (and',
-        'with what period), oscillates, or',
-        'is increasing or decreasing.',
-        '',
-        'It also finds the fixed points, the',
-        'u with f(u) = u, and says whether',
-        'each attracts or repels: a fixed',
-        'point attracts when |f\'(u)| < 1.'])
+    _show('Behaviour of a sequence', ['u(n+1) = f(u(n)).',
+          'Reports convergence, divergence,',
+          'period and oscillation, and the',
+          'fixed points where f(u) = u.'])
     f = casutil.askexpr('u(n+1) = f(u) = (in u)')
     if f is None:
         return
@@ -1834,16 +1805,10 @@ def _cyclic_sub(T, e, a):
 
 
 def t_subgroups():
-    _show('Subgroups and Lagrange', [
-        'A subgroup H of G is a subset that',
-        'is a group in its own right: it',
-        'holds the identity, it is closed',
-        'under the operation, and it holds',
-        'the inverse of each of its members.',
-        '',
-        "Lagrange's theorem: |H| always",
-        'divides |G|. The index [G:H] is',
-        '|G| / |H|.'])
+    _show('Subgroups and Lagrange', ['Enter the order, then the Cayley',
+          'table row by row.',
+          'Lists every subgroup with its',
+          'index [G:H]. |H| divides |G|.'])
     n = _askint('Group order n (<=8)')
     if n is None or n < 1 or n > 8:
         _show('Subgroups', [_warn('Need 1..8.')])
@@ -1967,17 +1932,10 @@ def t_subgroups():
 
 
 def t_isomorph():
-    _show('Group isomorphism', [
-        'Two groups of the same order are',
-        'isomorphic when there is a bijection',
-        'phi: G -> H with',
-        '  phi(a b) = phi(a) phi(b)',
-        'for every a and b.',
-        '',
-        'phi must send the identity to the',
-        'identity and preserve the order of',
-        'every element, which is what makes',
-        'the search fast enough to do here.'])
+    _show('Group isomorphism', ['Enter the order, then a Cayley table',
+          'for G and one for H.',
+          'Searches for a bijection phi with',
+          'phi(ab) = phi(a) phi(b).'])
     n = _askint('order of both groups (<=8)')
     if n is None or n < 1 or n > 8:
         _show('Group isomorphism', [_warn('Need 1..8.')])
@@ -2123,18 +2081,10 @@ def _cross(pts, x, y, ex, ey, za, zb, k):
 
 
 def t_contours():
-    _show('Contours and sections', [
-        'A CONTOUR of z = f(x, y) is a curve',
-        'f(x, y) = k: the points at one',
-        'height, like a line on a map.',
-        '',
-        'A SECTION is what you see when one',
-        'variable is held fixed: z against x',
-        'with y = c is an ordinary curve.',
-        '',
-        'grad f is perpendicular to the',
-        'contour through a point, and points',
-        'the way z increases fastest.'])
+    _show('Contours and sections', ['z = f(x, y).',
+          'A contour is f = k; a section holds',
+          'one variable fixed.',
+          'Enter f, then the x and y ranges.'])
     f = _mvparse('z = f(x,y) =')
     if f is None:
         return
