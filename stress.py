@@ -9,8 +9,8 @@
 
 import casui
 
-INPUTS = ["3", "4", "2", "5 6 7 8", "1", "0.5", "2", "sin(x)", "3",
-          "2 3 4", "6", "4", "1", "x^2", "9"]
+import stress_inputs
+INPUTS = stress_inputs.INPUTS[:15]
 _ic = [0]
 
 def _stub_input(prompt):

@@ -99,6 +99,11 @@ EXTRAS = [
 # global angle mode for Calculate + CAS evaluate/graph/table (FM modules stay radians)
 ANGLE_DEG = False
 
+# Whether result screens show the working as well as the answer. Off gives the
+# answer and any caveat attached to it and nothing else; on gives the method
+# too. See casutil.w / casutil.warn for how a tool marks its lines.
+SHOW_WORKING = True
+
 def wait_release():
     while readkey():
         pass
@@ -1005,6 +1010,7 @@ def maths_section():
 
 def main():
     global ANGLE_DEG
+    global SHOW_WORKING
     clear_screen()
     draw_string(70, 28, "MATHS", BLACK, "large")
     draw_string(52, 58, "TOOLKIT", BLACK, "large")
@@ -1016,8 +1022,10 @@ def main():
     wait_release()
     while True:
         mode = "Angle mode: DEGREES" if ANGLE_DEG else "Angle mode: RADIANS"
+        work = "Working: SHOWN" if SHOW_WORKING else "Working: HIDDEN"
         c = menu("MATHS TOOLKIT", ["Calculate", "Calculus & Algebra",
-                                    "A-Level Maths", "Further Maths", mode])
+                                    "A-Level Maths", "Further Maths", mode,
+                                    work])
         if c == -1:
             return  # EXIT at the top level leaves the app, as the key implies
         if c == 0:
@@ -1030,3 +1038,5 @@ def main():
             fm_section()
         elif c == 4:
             ANGLE_DEG = not ANGLE_DEG
+        elif c == 5:
+            SHOW_WORKING = not SHOW_WORKING

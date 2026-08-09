@@ -110,10 +110,55 @@ def fmtc(re, im, dp=4):
         return fmt(re, dp) + ' - ' + fmt(-im, dp) + 'i'
     return fmt(re, dp) + ' + ' + fmt(im, dp) + 'i'
 
+# ------------------------------------------------------- answer vs working ----
+# Every section module sends its output through show(), which makes this the one
+# place a "hide the working" setting can be applied. Tools mark their lines:
+#
+#   'plain string'   the ANSWER. Always shown.
+#   w('...')         WORKING - the method, the intermediate steps, the reasoning.
+#                    Hidden when the home menu's Working setting is off.
+#   warn('...')      A CAVEAT that changes whether the answer can be trusted:
+#                    "that point is not on the curve", "checked back in the
+#                    original: all satisfy it", "no counterexample found - that
+#                    is NOT a proof". ALWAYS shown, in both modes.
+#
+# The third category is the one that matters. A caveat is not working, it is
+# part of the answer's validity, and a mode that hid it would turn a careful
+# tool into a confident wrong one. Marked lines are tuples, and no ordinary
+# line can be a tuple, so there is nothing to mis-detect.
+def w(text):
+    return ('w', text)
+
+def warn(text):
+    return ('!', text)
+
 def show(title, lines):
     # casui.result_screen pages by itself now, so the old per-module _pages
     # chunking helpers are no longer needed.
-    casui.result_screen(title, lines)
+    casui.result_screen(title, filter_lines(lines))
+
+def filter_lines(lines):
+    keep = []
+    blank_run = 0
+    for ln in lines:
+        if isinstance(ln, tuple):
+            kind = ln[0]
+            text = ln[1]
+            if kind == 'w' and not casui.SHOW_WORKING:
+                continue
+            ln = text
+        if ln == '':
+            # collapse the blank lines that separated removed working, so
+            # answer-only output does not come out full of gaps
+            blank_run += 1
+            if blank_run > 1 or not keep:
+                continue
+        else:
+            blank_run = 0
+        keep.append(ln)
+    while keep and keep[len(keep) - 1] == '':
+        keep.pop()
+    return keep
 
 def run_tools(title, tools):
     # The identical run() loop every section ended with.

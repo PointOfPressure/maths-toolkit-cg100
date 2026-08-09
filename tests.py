@@ -3119,6 +3119,100 @@ def test_readme_install_list():
     for f in ("casioplot.py", "tests.py", "devlint.py", "stress.py"):
         truthy("README warns not to copy " + f, f in text)
 
+def test_working_filter():
+    # The mechanism: a plain line is the answer and is always shown; w() marks
+    # working and disappears when the setting is off; warn() marks a caveat
+    # that changes whether the answer can be trusted and is shown in BOTH
+    # modes. That third category is the point - a caveat is not working, it is
+    # part of the answer's validity, and hiding it would turn a careful tool
+    # into a confidently wrong one.
+    lines = ["x = 3", casutil.w("by the quadratic formula"), "",
+             casutil.warn("but check the domain"), casutil.w("disc = 25")]
+    real = casui.SHOW_WORKING
+    try:
+        casui.SHOW_WORKING = True
+        full = casutil.filter_lines(lines)
+        casui.SHOW_WORKING = False
+        brief = casutil.filter_lines(lines)
+    finally:
+        casui.SHOW_WORKING = real
+    check("working shown keeps everything", len(full), 5)
+    truthy("the answer survives both modes", "x = 3" in full and "x = 3" in brief)
+    truthy("working is hidden when off", "by the quadratic formula" not in brief)
+    truthy("working is shown when on", "by the quadratic formula" in full)
+    truthy("a caveat survives BOTH modes",
+           "but check the domain" in full and "but check the domain" in brief)
+    # answer-only output must not be full of the gaps left by removed working
+    truthy("blank runs are collapsed", "" not in brief[:1])
+    check("no trailing blank", brief[len(brief) - 1] != "", True)
+    # an untagged tool is unaffected: every line is an answer
+    plain = ["a", "b", "c"]
+    casui.SHOW_WORKING = False
+    try:
+        check("untagged output is untouched", casutil.filter_lines(plain), plain)
+    finally:
+        casui.SHOW_WORKING = real
+
+_RESLINES = []
+
+def _cap_lines(title, lines):
+    for ln in lines:
+        _RESLINES.append(str(ln))
+
+def _drive_lines(fn, inputs, menus):
+    # Capture only the LINES a tool emits, not the screen titles. The ordinary
+    # drive() records the title too, which made the first version of this guard
+    # useless: a tool whose every line was mis-marked as working still came back
+    # with one element - its title - so "not empty" was always true. Measuring
+    # the thing the setting actually filters is the whole point.
+    del _RESLINES[:]
+    real = casui.result_screen
+    casui.result_screen = _cap_lines
+    _inputs[:] = list(inputs)
+    _menus[:] = list(menus)
+    try:
+        fn()
+    finally:
+        casui.result_screen = real
+    return list(_RESLINES)
+
+def test_answer_mode_never_empties_a_tool():
+    # THE safety property for the whole setting, and the reason it can be
+    # rolled out tool by tool without risk: for every tool in every section,
+    # answer-only output must be a SUBSET of full output and must never lose
+    # every line. A tool whose answer got marked as working would vanish in
+    # answer mode, which is worse than having no setting at all.
+    import stress_inputs
+    real = casui.SHOW_WORKING
+    mods = list(casui.MATHS_MODS) + list(casui.FM_CORE_MODS) + list(casui.FM_OPT_MODS)
+    checked = 0
+    for name in mods:
+        mod = __import__(name)
+        for label, fn in mod.TOOLS:
+            try:
+                casui.SHOW_WORKING = True
+                full = _drive_lines(fn, stress_inputs.INPUTS, stress_inputs.MENUS)
+                casui.SHOW_WORKING = False
+                brief = _drive_lines(fn, stress_inputs.INPUTS, stress_inputs.MENUS)
+            except Exception:
+                continue
+            finally:
+                casui.SHOW_WORKING = real
+            if not full:
+                continue
+            checked += 1
+            seen = {}
+            for ln in full:
+                seen[ln] = 1
+            extra = []
+            for ln in brief:
+                if ln not in seen:
+                    extra.append(ln)
+            truthy(name + " / " + label + ": answer mode adds nothing", not extra)
+            truthy(name + " / " + label + ": answer mode keeps something",
+                   len(brief) > 0)
+    truthy("the sweep actually exercised the toolkit", checked >= 150)
+
 def test_menu_tree_reachable():
     # Every section module must be reachable from the launcher's menus, have a
     # help entry, and expose a working registry. A module can be perfectly
@@ -3249,6 +3343,8 @@ TESTS = [
     ("screen layout", test_screen_layout),
     ("every tool is registered", test_every_tool_is_registered),
     ("menu tree reachable", test_menu_tree_reachable),
+    ("answer/working filter", test_working_filter),
+    ("answer mode never empties a tool", test_answer_mode_never_empties_a_tool),
     ("README matches TOOLS", test_readme_matches_tools),
     ("README install list", test_readme_install_list),
 ]
