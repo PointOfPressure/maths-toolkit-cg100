@@ -186,9 +186,32 @@ SECTIONS = [
 ]
 
 def modules_load():
+    # This sweep compiles about 750 KB of source to bytecode on a handheld and
+    # is SLOW - the better part of a minute, with no output while it runs. The
+    # first hardware run looked like a hang for exactly that reason. So it now
+    # draws each module as it starts, which turns a dead screen into progress,
+    # and EXIT abandons it.
+    #
+    # It is also the least important page here. The toolkit loads section
+    # modules ONE AT A TIME on demand and never holds them all; that pattern is
+    # already proved by maths.py running. This measures the worst case, which
+    # is a nice-to-know, not a requirement.
     out = []
     loaded = 0
+    stopped = False
     for name in SECTIONS:
+        clear_screen()
+        draw_string(6, 4, "HARDWARE CHECK", ACC, "medium")
+        draw_string(6, 30, "Loading every section at once.", BLACK, "small")
+        draw_string(6, 48, "This is slow - about 750 KB to", GREY, "small")
+        draw_string(6, 62, "compile. EXIT abandons it.", GREY, "small")
+        draw_string(6, 88, str(loaded + 1) + " of " + str(len(SECTIONS)) +
+                    ":  " + name, BLACK, "medium")
+        show_screen()
+        if getkey() == 22:                       # EXIT
+            stopped = True
+            out.append((name, "skipped by EXIT"))
+            break
         try:
             __import__(name)
             loaded += 1
@@ -199,7 +222,9 @@ def modules_load():
             out.append((name, "FAILED: " + str(e)))
             break
     out.append(("loaded in sequence", str(loaded) + " of " + str(len(SECTIONS))))
-    if loaded == len(SECTIONS):
+    if stopped:
+        out.append(("verdict", "abandoned - no verdict"))
+    elif loaded == len(SECTIONS):
         out.append(("verdict", "all fit AT ONCE"))
     else:
         out.append(("verdict", "one at a time is still fine"))
@@ -271,7 +296,7 @@ def main():
          "all must say ok at the ceiling above")
 
     page("Section modules", modules_load(),
-         "the toolkit loads these one at a time")
+         "worst case only - the app loads one")
 
     clear_screen()
     draw_string(6, 4, "HARDWARE CHECK", ACC, "medium")

@@ -11,7 +11,7 @@ all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-styl
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-6742%20checks%2C%200%20failures-brightgreen)
+![tests](https://img.shields.io/badge/tests-6752%20checks%2C%200%20failures-brightgreen)
 ![smoke](https://img.shields.io/badge/smoke-443%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
@@ -316,7 +316,7 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 6742 checks, 0 failures
+python3 tests.py       # correctness: 6752 checks, 0 failures
 python3 stress.py      # smoke: 443 checks, 0 errors
 python3 devlint.py     # device compliance: 0 problems in 32 files
 ```
@@ -407,7 +407,9 @@ the `casioplot` chapter is pages 141-143.
 | Recursion ceiling | **Measured: 92 frames** | `hwcheck.py` on the hardware, 2026-08-09: the interpreter refused a 93rd frame. The long-standing "~38" in this table was inherited guesswork and was wrong by a factor of 2.4. `tests.py` still caps CPython at **38** on purpose - it is a deliberate margin, not the device figure, and passing under it means the engine has roughly 2.4x the headroom it needs. The same run re-executed the engine's deepest operations at the real ceiling: deeply nested parse, a 200-term flat sum, simplify, differentiate, evaluate, print and integration by parts all completed, and nothing was reported in red. |
 | Pixel-level screen layout | **Unverified** | The autoscaling graph, the paged result screens, the CATALOG picker grid and caret windowing in long expressions were written from measured font metrics, not from screenshots. |
 
-**`hwcheck.py` settles the three remaining rows in one run.** Copy it to the
+**`hwcheck.py` settles the remaining rows in one run.** Its last page - loading all 19 section modules at once - takes the better part of a minute on the handheld, because that is 750 KB of source compiled to bytecode. It now shows each module as it starts, and EXIT abandons it. That page is a worst case, not a requirement: the toolkit loads section modules one at a time on demand and never holds them all.
+
+ Copy it to the
 calculator and run it: it measures the recursion ceiling by counting frames
 until the interpreter refuses another, reports what `getkey()` returns with
 nothing held, walks the screen bounds, enumerates which of 43 possible `math`
