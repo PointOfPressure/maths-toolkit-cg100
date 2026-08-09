@@ -274,6 +274,24 @@ def test_asymptotes(h):
     h.has("so no horizontal or oblique asymptote", o, "no horizontal or")
     h.has("(x^3+1)/(x-1) has a vertical asymptote at 1", o, "vertical: x = 1")
 
+    # |x|/x is undefined at 0 and jumps from -1 to +1 there, but it does not
+    # run away, so that is a jump and NOT a vertical asymptote. The horizontal
+    # asymptotes are y = 1 at +infinity and y = -1 at -infinity.
+    o = h.drive(fpt.t_asympt, ["abs(x)/x"])
+    h.has("a jump is not a vertical asymptote", o, "no vertical asymptote")
+    h.num("|x|/x -> 1 at +infinity", o, "horizontal as x->+inf: y = ", 1.0, 1e-6)
+    h.num("|x|/x -> -1 at -infinity", o, "horizontal as x->-inf: y = ",
+          -1.0, 1e-6)
+
+    # (x^2-1)/(x-1) is x+1 with a hole at x = 1: a removable discontinuity is
+    # not a vertical asymptote either, and the exact division gives y = x+1
+    # with remainder 0.
+    o = h.drive(fpt.t_asympt, ["(x^2-1)/(x-1)"])
+    h.has("a removable discontinuity is not an asymptote", o,
+          "no vertical asymptote")
+    h.has("(x^2-1)/(x-1) divides exactly to x+1", o, "oblique: y = x+1")
+    h.has("with remainder 0", o, "r = 0")
+
     # a polynomial has no asymptotes of any kind
     o = h.drive(fpt.t_asympt, ["x^2-4"])
     h.has("x^2-4 has no vertical asymptote", o, "no vertical asymptote")
@@ -349,6 +367,13 @@ def test_stationary_and_cusps(h):
     o = h.drive(fpt.t_statcusp, ["1/x"])
     h.has("a pole is not a cusp", o, "no cusp")
     h.has("and 1/x has no stationary point", o, "no stationary point")
+
+    # (|x|/x).e^x jumps from -1 to +1 at x = 0 and its gradient really does
+    # tend to -1 from below and +1 from above. It is still not a corner: the
+    # curve does not join up at all, so there is no point on it to have a
+    # corner AT.
+    o = h.drive(fpt.t_statcusp, ["abs(x)/x*exp(x)"])
+    h.has("a jump discontinuity is not a corner", o, "no cusp")
 
     # 1/x^2 is the harder version of the same thing: f' = -2/x^3 really does
     # run to +infinity on one side and -infinity on the other, and f takes the
