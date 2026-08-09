@@ -185,6 +185,22 @@ def reset():
     SCREEN.clear()
 
 
+def _both_modes(show):
+    # drive one induction proof with the Working setting either way
+    import casui
+    import proof
+    real = casui.SHOW_WORKING
+    ask = casui.input_expr
+    casui.input_expr = lambda p: {"u(r) = (type r as n)": "n",
+                                  "claimed S(n) =": "n(n+1)/2"}.get(p)
+    casui.SHOW_WORKING = show
+    try:
+        proof.t_induction_sum()
+    finally:
+        casui.SHOW_WORKING = real
+        casui.input_expr = ask
+
+
 # ------------------------------------------------------------------ scenes --
 def _scenes():
     import casui
@@ -196,7 +212,13 @@ def _scenes():
         ("menu", lambda: casui.menu("MATHS TOOLKIT",
                                     ["Calculate", "Calculus & Algebra",
                                      "A-Level Maths", "Further Maths",
-                                     "Angle mode: RADIANS"])),
+                                     "Angle mode: RADIANS",
+                                     "Working: SHOWN"])),
+        # the same tool in both modes, so the setting can be looked at rather
+        # than only asserted on. Induction is the clearest case: the spot-check
+        # caveat under "PROVED" must be in BOTH pictures.
+        ("working-shown", lambda: _both_modes(True)),
+        ("working-hidden", lambda: _both_modes(False)),
         ("result-paged", lambda: casui.result_screen(
             "A long result",
             ["line " + str(i) + ": some result text that is moderately long"
