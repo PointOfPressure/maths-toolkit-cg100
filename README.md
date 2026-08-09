@@ -4,15 +4,15 @@ A from-scratch visual mathematics toolkit for the Casio fx-CG100 graphing calcul
 
 - an everyday scientific **Calculate** mode,
 - a from-scratch **computer algebra system (CAS)** that differentiates, integrates, simplifies, solves and graphs, and
-- full tool coverage of the **OCR B (MEI) A-Level Maths (H640)** and **Further Maths (H645)** specifications,
+- tool coverage of the **OCR B (MEI) A-Level Maths (H640)** and **Further Maths (H645)** specifications, checked statement by statement in [`SPEC_AUDIT.md`](SPEC_AUDIT.md), with everything still missing listed [below](#specification-points-not-covered) and a reason given for each,
 
-all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-style fractions, exponents and radicals).
+all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-style fractions, exponents and radicals). 263 tools across 20 sections.
 
 ![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
 ![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
-![tests](https://img.shields.io/badge/tests-3365%20checks%2C%200%20failures-brightgreen)
-![smoke](https://img.shields.io/badge/smoke-418%20checks%2C%200%20errors-brightgreen)
+![tests](https://img.shields.io/badge/tests-5405%20checks%2C%200%20failures-brightgreen)
+![smoke](https://img.shields.io/badge/smoke-443%20checks%2C%200%20errors-brightgreen)
 
 Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
 
@@ -177,90 +177,40 @@ In Extra Pure, `Modular arithmetic` opens its own sub-menu (`a mod m`, `a^b mod 
 
 ## Specification points not covered
 
-`SPEC_AUDIT.md` checks all 730 content statements in H640 and H645 against the code, one statement at a time. Thirty-seven of them have nothing behind them at all, and they are listed here with the actual reason rather than a blank. Statements that a tool half-serves are recorded as PARTIAL in the audit, with the gap stated, and are not repeated here.
+`SPEC_AUDIT.md` checks all 730 content statements in H640 and H645 against the code, one statement at a time. This is what is left after that: every statement with nothing behind it, and the actual reason rather than a blank. Statements that a tool half-serves are recorded as PARTIAL in the audit, with the gap stated, and are not repeated here.
 
-Four components have no uncovered statements left: H640 Mechanics, Mechanics Minor (Y431), Statistics Minor (Y432) and Numerical Methods (Y434).
-
-### H640 Pure Mathematics
-
-| Code | Content statement | Why not covered |
-| --- | --- | --- |
-| `a10` | Use and manipulate surds | Not built. The engine holds numbers as floats with exact folding for integers and fractions only, so `sqrt(8)` cannot become `2 sqrt(2)`. Doing this properly means a second number type carried through `simplify`, `tostr` and the 2D renderer, not a special case in one function. |
-| `a11` | Rationalise the denominator of a surd | Not built, and blocked behind `a10` for the same reason. |
-| `a14` | Understand and use proportional relationships (y = kx, y = k/x) | Not built. Finding k from one pair of values is a division you can do in `Calculate`; a tool that recognises the model and reports k does not exist. |
-| `g9` | Find the point(s) of intersection of a line and a circle | Not built. `Simultaneous eqns` handles a line with a parabola by substituting and taking the discriminant; the circle case needs the same routine with a different second equation and has not been added. |
-| `g11` | Circle properties: angle in a semicircle, perpendicular bisector of a chord, tangent perpendicular to a radius | Not built. These are geometric arguments about a configuration you set up; there is no circle-geometry tool to hold that configuration. |
-| `g14` | Equation of a circle in parametric form | Not built. `Parametric -> Cartesian` will plot x = a + r cos t, y = b + r sin t if you type it, but `Circle` offers no parametric option. |
-| `s7` | Generate a sequence from a formula for the kth term or from a recurrence | Not built. Only the arithmetic and geometric closed forms exist, plus the second-order linear recurrence in Extra Pure. |
-| `s10` | Recognise increasing, decreasing and periodic sequences | Not built. Nothing classifies a sequence's behaviour. |
-| `E7` | Reduce y = a x^n and y = a b^x to linear form by taking logs | Not built. `Scatter + regression` and `PMCC + regression` take the raw x and y lists; there is no option to take logs of a list first, which is the whole of this technique. |
+The list is short because most of it has been built. Four whole components have no uncovered statements at all, and the three weakest option papers in the first audit - Modelling with Algorithms, Numerical Methods and Statistics Major - are no longer among them.
 
 ### H640 Statistics
 
 | Code | Content statement | Why not covered |
 | --- | --- | --- |
-| `D4` | Describe frequency distributions (symmetric, unimodal, bimodal, skewed) | Not built. `Histogram` and `Box plot` draw the shape, but nothing names it or reports a skew measure. |
-| `D14` | Clean data: missing values, errors, outliers | Not a calculator task. Deciding whether 250 cm is a typing error or a real measurement, and whether to drop it, is a judgement about where the data came from. You have to say what you think the value is and justify keeping or removing it. The toolkit will flag outliers by the 1.5 x IQR rule in `Summary stats` and `Box plot`, which is the computable part. |
-| `u5` | Use Venn diagrams for up to three events | Not built. `Probability rules` computes every quantity a Venn diagram is used to find, but draws nothing. |
+| `D14` | Clean data: missing values, errors, outliers | Not a calculator task. Deciding whether a height of 250 cm is a typing error, a different unit, or a real outlier is a judgement about the data's provenance, and a tool that guessed would be worse than no tool. `Box plot` marks statistical outliers by the 1.5 x IQR rule, which is the part that IS mechanical; what to do about them is yours. |
 
-### Further Maths Core Pure (Y420)
+### H645 Statistics Major (Y422)
 
 | Code | Content statement | Why not covered |
 | --- | --- | --- |
-| `c18` | Analyse and interpret coupled first order simultaneous differential equations | Not built. The specification's own route is to eliminate one variable to get a single second order equation, and `Particular integral` will then finish it, but nothing performs the elimination. |
+| `SH5` | Hypothesis test for an average using the Wilcoxon signed rank test | Needs an exact critical-value table that could not be verified to the standard the PMCC and Spearman tables were held to. Those two were checked by exhaustive enumeration of all n! rankings up to n = 10 and by Monte Carlo above that; the Wilcoxon table could not be, and shipping an unverified hypothesis test is worse than shipping none - it would give a confident answer with nothing behind it. This is the precedent for every other "needs a table we cannot check" case. |
 
-### Further Maths Mechanics Major (Y421)
-
-| Code | Content statement | Why not covered |
-| --- | --- | --- |
-| `v9` | Verify a general or particular solution of a differential equation of motion | Not built. `caseng.subst` can put a candidate solution into an expression, but no menu entry differentiates a proposed y, substitutes it and reports whether the equation balances. The same missing tool would also serve Extra Pure `s4` and Further Pure with Technology `c4`. |
-
-### Further Maths Statistics Major (Y422)
+### H645 Modelling with Algorithms (Y433)
 
 | Code | Content statement | Why not covered |
 | --- | --- | --- |
-| `SH5` | Carry out a hypothesis test for an average using the Wilcoxon signed rank test | Needs a table the toolkit cannot verify. The test is decided against printed critical values of W whose distribution is not computed anywhere here, so the numbers would have to be transcribed and trusted. Every other test in the toolkit is either computed from a distribution it implements (chi-squared, t, Normal) or read from a table small enough to be transcribed and then asserted in `tests_stats.py`. Wilcoxon is deliberately absent on that rule, and that is the precedent for anything else that would need an unverifiable table. |
-| `Z2` | Use simulations to investigate distributions | Not built. There is no random number source anywhere in the toolkit, so nothing can draw a sample to simulate with. |
+| `L5` | Recognise when a linear programming problem requires an integer solution | Not a calculator task. Whether you can buy 2.5 lorries is a fact about the problem, not about the arithmetic. `LP graph 2-D` reports the best integer point separately from the continuous optimum whenever they differ, so the consequence is visible once you have decided. |
+| `L6` | Formulate a range of network problems as linear programming problems | Not a calculator task. Choosing the variables and writing the constraints is the whole exercise; once it is formulated, `Simplex` and `LP graph 2-D` solve it. |
+| `N13` | Explore network algorithms through their LP formulations | Not a calculator task, for the same reason as `L6`. |
+| `L11` | Use a visualisation of a three-dimensional linear programming problem | Out of scope for the hardware. The screen is 384 x 192 pixels with no 3-D projection and no pointing device to rotate a view with, and a fixed 2-D projection of a 3-D feasible region is harder to read than the constraint list. |
+| `L16` | Handle variables which may be negative | Not built. Every LP tool assumes the variables are at least zero. The standard fix is to replace a free variable x with u - v where both are non-negative, which doubles the columns; the substitution is mechanical but has not been added. |
 
-### Further Maths Modelling with Algorithms (Y433)
-
-| Code | Content statement | Why not covered |
-| --- | --- | --- |
-| `L5` | Recognise when an LP requires an integer solution | Not a calculator task. You decide from the context whether the variables have to be whole numbers, because they count buses or people. Once you have decided, `LP graph 2-D` reports the best integer point in the feasible region. |
-| `L6` | Formulate a range of network problems as LPs | Not a calculator task. Choosing the variables and writing the flow conservation and capacity constraints is the modelling step. Both halves exist once you have written them down: the network tools solve the network, and `Simplex` solves the LP. |
-| `N13` | Explore network algorithms via LP formulations | Not a calculator task, for the same reason as `L6`: the point of the statement is to set the two views of a problem side by side and comment. |
-| `L11` | Use a visualisation of a 3-D LP | Out of scope for the hardware. The screen is 384 x 192 pixels with no 3-D projection anywhere in the toolkit, and a wireframe polytope at that size would not be readable. |
-| `L16` | Handle variables which may be negative | Not built. Every LP tool assumes all variables are at least zero; the substitution x = u - v that removes the assumption has not been added. |
-
-### Further Maths Extra Pure (Y435)
+### H645 Further Pure with Technology (Y436)
 
 | Code | Content statement | Why not covered |
 | --- | --- | --- |
-| `s4` | Verify a given solution of a recurrence relation | Not built. See Y421 `v9`: one substitute-and-check tool would cover all three of these statements. |
-| `s6` | Solve first order linear non-homogeneous recurrence relations u(n+1) = a u(n) + f(n) | Not built. `Recurrence relation` solves the homogeneous case only. |
-| `s8` | Solve second order linear non-homogeneous recurrence relations | Not built, for the same reason: there is no particular-solution step to add to the complementary one. |
-| `XS1` | Language and notation of sets: subset, union, intersection, complement, empty set | Not built. There is no set type and no set tool. |
-| `a5` | Understand and work with subgroups | Not built. `Group theory` already holds the Cayley table and would only need to enumerate closed subsets, but it does not. |
-| `a8` | Specify an isomorphism between two groups of the same order | Not built. Searching every bijection between two groups of order 8 means testing 40320 maps against 64 products each, which the handheld can do but slowly, and the answer wanted is the map itself rather than a yes or no. |
-| `c2` | Sketch contours and sections of a surface z = f(x, y) | Not built. The graphing routine plots one variable against one value; drawing level curves needs a contour tracer that does not exist. |
+| `c2` | Use software to produce a tangent to a curve at a variable point | Out of scope for the hardware. There is no pointing device and a full screen redraw per frame, so a tangent you drag along a curve cannot be offered. The fixed-point version is in `Implicit d/dx`, `Parametric d/dx` and `Stationary pts & cusps`. |
+| `T10` | Solve other Diophantine equations | Partly, and open-ended as stated. The three the specification names have tools - `Linear Diophantine`, `Pythagorean triples` and `Pell x^2-n y^2=1` - but "other Diophantine equations" is a family with no single algorithm, so which method to use is part of the question. |
 
-### Further Maths Further Pure with Technology (Y436)
-
-This paper is sat with a computer, and the specification requires graphing software with a slider, a CAS and a programming language. Several of the gaps below are that requirement rather than an oversight.
-
-| Code | Content statement | Why not covered |
-| --- | --- | --- |
-| `C4` | Find, describe and generalise properties of a family of curves | Not built. Several curves could be overlaid on this screen, but the paper's method is to drag a parameter and watch, and the UI redraws a whole screen per plot with no continuous control to drag. |
-| `C9` | Understand the meaning of an envelope of a family of curves | Not built, and blocked behind `C4`. |
-| `C10` | Use the limit of an expression | Not built. The CAS has no limit operation. `Improper integral` takes one specific limit numerically, but there is no general one. |
-| `C11` | Determine asymptotes, including oblique asymptotes | Not built. `Graph` will show you where the curve runs off, but nothing detects an asymptote or reports its equation. |
-| `C12` | Identify cusps by examining the limit of the gradient | Not built, and blocked behind `C10`. |
-| `c2` | Use software to produce a tangent to a curve at a variable point | Out of scope for the hardware. There is no pointing device and a full screen redraw per frame, so a tangent you drag along the curve cannot be offered. The fixed-point version is in `Implicit d/dx` and `Parametric d/dx`. |
-| `c4` | Verify a given solution of a differential equation | Not built. See Y421 `v9`. |
-| `c6` | Sketch a tangent field for a first order differential equation | Not built. This is one of the paper's signature techniques and the plotting primitives are all there; the tool has simply not been written. |
-| `T10` | Solve other Diophantine equations | Not a calculator task as stated. "Other Diophantine equations" is an open-ended family with no single algorithm, so you have to pick a method for the equation in front of you. The two the specification names, Pell and Pythagorean triples, both have tools. |
-
-Of the 730 content statements, 424 are covered, 121 are partially covered with the gap recorded, 37 are not covered, and 148 are not calculator tasks.
+Of the 730 content statements, 9 are not covered: 6 are not calculator tasks or are out of scope for the hardware, 1 is deliberately absent because its critical values could not be verified, and 2 are simply not built. Everything else is either covered by a tool or recorded as PARTIAL in `SPEC_AUDIT.md` with the gap stated.
 
 ---
 
@@ -357,8 +307,8 @@ The entire toolkit runs unmodified under desktop CPython. The only device-specif
 There are three harnesses, all PC-side. Run them together before any change lands:
 
 ```
-python3 tests.py       # correctness: 3365 checks, 0 failures
-python3 stress.py      # smoke: 418 checks, 0 errors
+python3 tests.py       # correctness: 5405 checks, 0 failures
+python3 stress.py      # smoke: 443 checks, 0 errors
 python3 devlint.py     # device compliance: 0 problems in 32 files
 ```
 
@@ -376,7 +326,7 @@ recursion-depth guard that caps the interpreter at the handheld's ~38-frame
 ceiling and confirms the engine still runs inside it.
 
 **`stress.py` - smoke.** Stubs the UI (canned input, no-op drawing, auto-exiting
-menus) so nothing blocks, then calls every tool in all 17 sections via each
+menus) so nothing blocks, then calls every tool in all 20 sections via each
 module's `TOOLS` registry and hammers the engine over ~30 expressions. It proves
 nothing crashes; it does not check that any answer is right. On a PC it writes
 `stress_log.txt`; on the device (no file writes) it prints progress instead.
