@@ -559,14 +559,21 @@ def _yrange(vals):
     return lo - pad, hi + pad
 
 def _gfmt(v):
-    # short axis-label form: the bottom strip is shared with the key prompt, so
-    # six decimal places would run into it
+    # Short axis-label form: the bottom strip is shared with the key prompt, so
+    # six decimal places would run into it. Scientific notation only where a
+    # plain number would be worse - "1.427468e3" is longer AND harder to read
+    # than "1427", which is what the old threshold of 1000 produced.
     if v != v:
         return "?"
     av = v if v >= 0 else -v
-    if av >= 1000 or (av < 0.01 and av != 0):
+    if av >= 1e6 or (av < 1e-3 and av != 0):
         return _sci(v)
-    r = round(v, 2)
+    if av >= 100:
+        return str(int(round(v)))
+    if av >= 1:
+        r = round(v, 2)
+    else:
+        r = round(v, 4)
     if r == int(r):
         return str(int(r))
     return str(r)
