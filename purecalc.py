@@ -1,11 +1,3 @@
-# purecalc.py - OCR B MEI H640 Pure: functions and the calculus techniques that
-# are about rewriting rather than about a single derivative or integral.
-# pure640.py keeps the algebra and trig; the plain d/dx and integral live in the
-# CAS section. What is here is composite and inverse functions, domain and
-# range, the modulus function, graph transformations, parametric and implicit
-# differentiation, integration by substitution, small-angle approximations and
-# the exact trig values.
-# Stock CASIO MicroPython 1.9.4: ASCII only, no f-strings, iterative only.
 import math
 import casui
 import caslex
@@ -18,8 +10,8 @@ _asknum = casutil.asknum
 _askexpr = casutil.askexpr
 _fn = casutil.fmt
 _show = casutil.show
-_w = casutil.w             # working: hidden when the Working setting is off
-_warn = casutil.warn       # a caveat on the answer: always shown
+_w = casutil.w
+_warn = casutil.warn
 
 def _ts(tree):
     return caseng.tostr(cascalc.tidy(tree))
@@ -28,8 +20,6 @@ def _tidy(tree):
     return cascalc.tidy(tree)
 
 def _parse(prompt):
-    # ask for an expression and report a parse failure rather than returning
-    # silently, which reads as "the tool did nothing"
     s = casui.input_expr(prompt)
     if s is None:
         return None
@@ -51,7 +41,6 @@ def _safe(tree, xv, env=None):
         return None
     return v
 
-# 1. COMPOSITE FUNCTIONS ----------------------------------------------------
 def t_composite():
     _show('Composite functions', ['Enter f(x) and g(x).',
                                   'You get fg(x) = f(g(x))', 'and gf(x) = g(f(x)).'])
@@ -80,7 +69,6 @@ def t_composite():
         lines.append('  gf = ' + ('undefined' if b is None else _fn(b)))
     _show('Composite', lines)
 
-# 2. INVERSE FUNCTION -------------------------------------------------------
 def t_inverse():
     _show('Inverse function', ['Enter f(x). If x appears once,',
                                'the inverse is found exactly by',
@@ -96,7 +84,6 @@ def t_inverse():
         lines.append('')
         lines.append('f-inverse(x) =')
         lines.append('  ' + caseng.tostr(inv))
-        # a check the student can repeat: f(f-inverse(a)) should be a
         ok = True
         for a in (0.7, 1.9, 3.3):
             r = _safe(inv, a)
@@ -137,7 +124,6 @@ def t_inverse():
                 lines.append('no x found with f(x) = ' + _fn(v))
     _show('Inverse', lines)
 
-# 3. DOMAIN AND RANGE -------------------------------------------------------
 def t_domain_range():
     _show('Domain and range', ['Enter f(x) and an interval.',
                                'The tool samples the interval,',
@@ -206,7 +192,6 @@ def t_domain_range():
     lines.append(_warn(' samples could be missed)'))
     _show('Domain and range', lines)
 
-# 4. MODULUS FUNCTION -------------------------------------------------------
 def t_modulus():
     _show('Modulus |f(x)|', ['Enter f(x), then a value k.',
                              'Solves |f(x)| = k by solving',
@@ -246,7 +231,6 @@ def t_modulus():
     _show('Modulus', lines)
     casui.graph(caseng.simplify(('abs', f)))
 
-# 5. GRAPH TRANSFORMATIONS --------------------------------------------------
 def t_transform():
     _show('Graph transformations', ['From y = f(x) to y = a f(bx + c) + d.',
                                     'a stretches vertically (scale a),',
@@ -289,7 +273,6 @@ def t_transform():
     _show('Transformations', lines)
     casui.graph(g)
 
-# 6. PARAMETRIC: DIFFERENTIATE ----------------------------------------------
 def t_param_diff():
     _show('Parametric differentiation', ['Enter x(t) and y(t), typing t as t.',
                                          'dy/dx = (dy/dt) / (dx/dt), and',
@@ -349,7 +332,6 @@ def t_param_diff():
                 lines.append('  d2y/dx2 = ' + _fn(sv))
     _show('Parametric d/dx', lines)
 
-# 7. PARAMETRIC: CONVERT AND SKETCH -----------------------------------------
 def t_param_cartesian():
     _show('Parametric to Cartesian', ['Enter x(t) and y(t).',
                                       'If x(t) can be undone for t,',
@@ -369,8 +351,6 @@ def t_param_cartesian():
         lines.append('')
         lines.append('y = ' + caseng.tostr(cart))
     else:
-        # the identity route: for x = a cos t, y = b sin t there is no single
-        # inverse, but cos^2 + sin^2 = 1 gives the Cartesian form
         lines.append(_warn('x(t) cannot be undone for t on its own.'))
         lines.append(_w('If x and y are a cos t and'))
         lines.append(_w('b sin t, use cos^2 t + sin^2 t = 1:'))
@@ -422,7 +402,6 @@ def t_param_cartesian():
         i += 1
     casutil.chart_hold('t from ' + _fn(lo) + ' to ' + _fn(hi))
 
-# 8. IMPLICIT DIFFERENTIATION -----------------------------------------------
 def t_implicit():
     _show('Implicit differentiation', ['Enter the equation, using x and y,',
                                        'for example x^2+y^2=25 or',
@@ -484,7 +463,6 @@ def t_implicit():
                     lines.append('  normal gradient ' + _fn(-1.0 / gv))
     _show('Implicit d/dx', lines)
 
-# 9. INTEGRATION BY SUBSTITUTION --------------------------------------------
 def t_substitution():
     _show('Integration by substitution', ['Enter the integrand and your',
                                           'choice of u = g(x). Then',
@@ -543,7 +521,6 @@ def t_substitution():
     lines.append('')
     lines.append(_w('back-substituting u = ' + caseng.tostr(gs) + ':'))
     lines.append('  ' + caseng.tostr(back) + ' + C')
-    # differentiate the answer as a check the student can repeat
     try:
         chk = caseng.simplify(caseng.diff(back, 'x'))
         agree = True
@@ -561,7 +538,6 @@ def t_substitution():
         pass
     _show('Substitution', lines)
 
-# 10. SEPARATION OF VARIABLES -----------------------------------------------
 def t_separable():
     _show('Separation of variables', ['For dy/dx = f(x) g(y):',
                                       '  integral 1/g(y) dy',
@@ -615,9 +591,6 @@ def t_separable():
                 lines.append('at (' + _fn(x0) + ', ' + _fn(y0) + '):  C = ' + _fn(C))
                 lines.append('  ' + caseng.tostr(A) + ' = ' + caseng.tostr(B) +
                              ' + ' + _fn(C))
-                # make y explicit where A can be undone. ln|y| has to lose its
-                # modulus first - the initial condition is what settles the
-                # sign, and the check below confirms the branch is the right one.
                 Aplain = caseng.strip_abs(A)
                 if Aplain != A:
                     lines.append(_warn('  (y keeps the sign it has at the'))
@@ -628,7 +601,6 @@ def t_separable():
                     expl = cascalc.tidy(caseng.subst(inv, 'w', rhs))
                     lines.append('')
                     lines.append('explicit:  y = ' + caseng.tostr(expl))
-                    # check it satisfies the equation at the given point
                     yv = _safe(expl, x0)
                     if yv is not None and abs(yv - y0) < 1e-6:
                         lines.append(_warn('(checked: it passes through the'))
@@ -639,11 +611,7 @@ def t_separable():
                         lines.append(_warn(' form above)'))
     _show('Separable', lines)
 
-# 11. STATIONARY POINTS -----------------------------------------------------
 def t_stationary():
-    # Solve f'(x) = 0 and classify each root with f''. This is the single most
-    # frequent calculus question and there was no route to it: the CAS could
-    # differentiate and could solve, but nothing joined the two.
     f = _parse('f(x) =')
     if f is None:
         return
@@ -675,10 +643,6 @@ def t_stationary():
         if yv is not None:
             pt += ',  y = ' + _fn(yv)
         lines.append(pt)
-        # The verdict comes from the sign of f' either side, not from f''.
-        # solve returns a root to about 1e-7, and at a degenerate point like
-        # x^3 that error alone makes f'' come out slightly negative - which
-        # reported a point of inflection as a maximum.
         h = 0.01 * (1.0 + (r if r >= 0 else -r))
         left = _safe(d1, r - h)
         right = _safe(d1, r + h)
@@ -693,7 +657,6 @@ def t_stationary():
         else:
             lines.append("    f' keeps its sign: POINT OF")
             lines.append('    INFLECTION (stationary)')
-    # non-stationary points of inflection are where f'' changes sign
     infl = cascalc.solve(d2, 'x')
     if infl:
         lines.append('')
@@ -710,10 +673,7 @@ def t_stationary():
             lines.append('  x = ' + _fn(r) + note)
     _show('Stationary points', lines)
 
-# 12. CONSTANT OF INTEGRATION -----------------------------------------------
 def t_constant():
-    # Integrate f'(x) and fix the constant from a point on the curve. Small on
-    # its own, but attached to almost every integration question.
     _show('Find the curve', ["Enter f'(x) and one point the",
                              'curve passes through. The constant',
                              'of integration is then fixed.'])
@@ -757,7 +717,6 @@ def t_constant():
         lines.append('f(' + _fn(v) + ') = ' + ('undefined' if r is None else _fn(r)))
     _show('Find the curve', lines)
 
-# 13. VOLUMES OF REVOLUTION AND MEAN VALUE ----------------------------------
 def _numint(tree, a, b, var='x'):
     return cascalc.defint(tree, a, b, False, 400, var)
 
@@ -857,7 +816,6 @@ def t_meanvalue():
     lines.append('')
     lines.append('mean value = ' + _fn(area) + ' / ' + _fn(b - a))
     lines.append('           = ' + _fn(mean))
-    # where the function actually takes its mean value
     hits = cascalc.solve(caseng.simplify(('-', f, ('n', mean))), 'x')
     inside = []
     for r in hits:
@@ -871,11 +829,6 @@ def t_meanvalue():
     _show('Mean value', lines)
 
 def _graded(f, a, b, var='x'):
-    # Integral over [a, b] split into chunks that get much finer towards a.
-    # One Simpson pass over [1, 40000] has a step of 100, which for 1/x^2 is
-    # nonsense - it reported that a convergent integral diverges. Grading the
-    # sub-intervals cubically towards the awkward end keeps the step
-    # proportional to how fast the function is actually changing.
     total = 0.0
     n = 24
     prev = a
@@ -892,7 +845,6 @@ def _graded(f, a, b, var='x'):
     return total
 
 def _graded_right(f, a, b, var='x'):
-    # the same, graded towards b
     total = 0.0
     n = 24
     prev = b
@@ -909,9 +861,6 @@ def _graded_right(f, a, b, var='x'):
     return total
 
 def t_improper():
-    # An improper integral is a limit, not a number you can just evaluate.
-    # Where there is an antiderivative the limit is taken on it exactly;
-    # otherwise the partial integrals are computed and watched.
     _show('Improper integral', ['Improper because a limit is infinite,',
                                 'or because f blows up at an end.',
                                 'The value is a LIMIT: the tool',
@@ -995,12 +944,6 @@ def t_improper():
         lines.append(_warn('Not enough of the partial integrals'))
         lines.append(_warn('could be computed to decide.'))
     else:
-        # Judge convergence on how the SUCCESSIVE CHANGES behave, not on how
-        # big the last change is. int 1/sqrt(x) from 0 to 1 converges to 2, but
-        # slowly: the last step is still 0.0015, and an absolute threshold
-        # called it divergent. The differences shrink by a constant factor when
-        # it converges and stay put when it does not - which is also exactly
-        # how the tail is argued on paper.
         diffs = []
         i = 1
         while i < len(good):
@@ -1031,7 +974,6 @@ def t_improper():
             lines.append('This integral DIVERGES - there is')
             lines.append('no finite value.')
         else:
-            # a geometric tail sums to d1*r/(1-r) beyond the last value
             limit = last + d1 * ratio / (1.0 - ratio)
             lines.append(_w('The changes shrink by a factor of'))
             lines.append(_w('about ' + _fn(ratio, 3) + ' each step, so the tail'))
@@ -1046,7 +988,6 @@ def t_improper():
                 lines.append(_warn('proof - write the limit out properly.'))
     _show('Improper integral', lines)
 
-# 14. SMALL-ANGLE APPROXIMATIONS --------------------------------------------
 def t_small_angle():
     _show('Small angles', ['For small x IN RADIANS:',
                            '  sin x = x', '  tan x = x',
@@ -1084,7 +1025,6 @@ def t_small_angle():
         lines.append(_warn('do not use these here.'))
     _show('Small angles', lines)
 
-# 12. EXACT TRIG VALUES -----------------------------------------------------
 _EXACT = [
     ('0', '0', '0', '1', '0'),
     ('30', 'pi/6', '1/2', 'sqrt(3)/2', '1/sqrt(3)'),

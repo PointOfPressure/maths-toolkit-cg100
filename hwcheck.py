@@ -1,17 +1,3 @@
-# hwcheck.py - one-off hardware probe. Run THIS on the calculator to settle the
-# device facts the desktop cannot answer, and paste what it prints into an
-# issue or straight into the README table.
-#
-# It measures, in order:
-#   1. the real recursion ceiling (README claims about 38 frames)
-#   2. what getkey() returns with nothing held
-#   3. the drawing screen size
-#   4. which math members this build actually has
-#   5. whether the toolkit's own deepest operations survive the real ceiling
-#
-# Nothing here is part of the toolkit; it is a sibling of keyprobe.py,
-# calib_screen.py and fontmetrics.py, and is held to the same MicroPython
-# limits by devlint.
 from casioplot import *
 import math
 
@@ -21,16 +7,6 @@ ACC = (40, 120, 220)
 RED = (205, 60, 60)
 OK = (30, 140, 60)
 
-# ---------------------------------------------------------------- the keys --
-# The first run of this file on real hardware reported the idle getkey value as
-# None, not 0 - and the paging loops below were written as "while getkey() != 0",
-# which cannot ever exit when the idle value is None. They did exit, so the two
-# observations disagree and the idle value is not a single constant. Rather than
-# guess, this file now (a) never compares against a presumed idle value and
-# (b) samples the idle value properly instead of once.
-#
-# The rule is casui.readkey()'s: a real key code is row*10+col with row 1-9 and
-# col 1-6, and ANYTHING else - 0, None, whatever - is "no key".
 def _held():
     k = getkey()
     if k is None:
@@ -51,10 +27,6 @@ def wait_key():
 
 
 def idle_values(n=400):
-    # Every distinct thing getkey() returns with nothing held, as text, so 0 and
-    # None and anything else are told apart. If this reports more than one value
-    # the idle return is not a constant, which is exactly what a toolkit must
-    # not depend on.
     seen = []
     i = 0
     while i < n:
@@ -68,14 +40,9 @@ def idle_values(n=400):
         i += 1
     return seen
 
-# ---------------------------------------------------------------- recursion --
 DEPTH = [0]
 
 def _sink():
-    # Count frames until the interpreter refuses another one. The counter is a
-    # list so the increment does not need a global statement, which keeps the
-    # frame as small as this build can make it - a bigger frame would measure
-    # this function rather than the ceiling.
     DEPTH[0] += 1
     _sink()
 
@@ -87,11 +54,7 @@ def recursion_limit():
         pass
     return DEPTH[0]
 
-# ------------------------------------------------------------------- screen --
 def screen_size():
-    # Walk a black pixel outwards until set_pixel stops taking. Out-of-range
-    # coordinates are ignored rather than raising (manual page 141), so the
-    # test is whether get_pixel reads back what was written.
     w = 0
     x = 0
     while x < 1024:
@@ -111,9 +74,6 @@ def screen_size():
     clear_screen()
     return (w, h)
 
-# --------------------------------------------------------------------- math --
-# Everything MicroPython 1.9.4 might expose. Probed by name through getattr so
-# this file does not have to reference members that may not exist.
 MATH_NAMES = [
     "e", "pi", "sqrt", "pow", "exp", "log", "log2", "log10",
     "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
@@ -133,11 +93,7 @@ def math_members():
             have.append(name)
     return (have, lack)
 
-# ------------------------------------------------------------- the toolkit --
 def engine_survives():
-    # The property that actually matters: the engine recurses on expression
-    # NESTING, never on input length. A long flat sum and a deeply bracketed
-    # one both have to parse on the real machine.
     out = []
     try:
         import caslex
@@ -172,13 +128,6 @@ def engine_survives():
             out.append((label, "FAILED: " + str(e)))
     return out
 
-# ------------------------------------------------------------- memory ----
-# The section modules are large - the biggest is over 70 KB of source - and
-# MicroPython has to compile each one to bytecode in RAM. The toolkit loads
-# them ONE AT A TIME on demand, so the real requirement is only the largest
-# plus the always-loaded core. This imports them in sequence, which is the
-# worst case (they accumulate), so getting through all of them proves the
-# device can certainly manage the real pattern. Where it stops is the answer.
 SECTIONS = [
     "pure640", "purecalc", "stat640", "mech640", "proof",
     "vcplx", "matrix", "vectors", "polyroots", "series", "hyper", "polar",
@@ -186,16 +135,6 @@ SECTIONS = [
 ]
 
 def modules_load():
-    # This sweep compiles about 750 KB of source to bytecode on a handheld and
-    # is SLOW - the better part of a minute, with no output while it runs. The
-    # first hardware run looked like a hang for exactly that reason. So it now
-    # draws each module as it starts, which turns a dead screen into progress,
-    # and EXIT abandons it.
-    #
-    # It is also the least important page here. The toolkit loads section
-    # modules ONE AT A TIME on demand and never holds them all; that pattern is
-    # already proved by maths.py running. This measures the worst case, which
-    # is a nice-to-know, not a requirement.
     out = []
     loaded = 0
     stopped = False
@@ -208,7 +147,7 @@ def modules_load():
         draw_string(6, 88, str(loaded + 1) + " of " + str(len(SECTIONS)) +
                     ":  " + name, BLACK, "medium")
         show_screen()
-        if getkey() == 22:                       # EXIT
+        if getkey() == 22:
             stopped = True
             out.append((name, "skipped by EXIT"))
             break
@@ -230,7 +169,6 @@ def modules_load():
         out.append(("verdict", "one at a time is still fine"))
     return out
 
-# --------------------------------------------------------------------- run --
 def page(title, rows, note):
     clear_screen()
     draw_string(6, 4, "HARDWARE CHECK", ACC, "medium")

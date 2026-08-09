@@ -49,9 +49,6 @@ def t_sum_r3():
 
 
 def _build_terms(f):
-    # Iteratively build Maclaurin coefficients c_k for k = 0..5.
-    # k-th coefficient = (k-th derivative at 0) / k!. Derivatives are taken
-    # by repeatedly applying caseng.diff then caseng.simplify - NO recursion.
     terms = []
     d = f
     k = 0
@@ -178,9 +175,6 @@ def t_reference():
 
 
 def t_differences():
-    # Method of differences. If f(r) = g(r) - g(r+1) then the sum from r=1 to n
-    # telescopes to g(1) - g(n+1). For a term like 1/(r(r+k)) the partial
-    # fractions give A/(r+a) - A/(r+b) directly, and g follows from them.
     _show('Method of differences', ['Enter the term f(r), typed in r,',
                                     'for example 1/(r(r+1)).',
                                     'If it splits as g(r) - g(r+1) the',
@@ -221,7 +215,7 @@ def t_differences():
             ok = False
             break
         coefs.append(c)
-        shifts.append(p)              # [const, coeff of r]
+        shifts.append(p)
     if not ok:
         _show('Differences', [_warn('The two pieces are not both'),
                               _warn('simple linear fractions.')])
@@ -231,14 +225,12 @@ def t_differences():
                               _warn('and opposite, so the terms do not'),
                               _warn('cancel in pairs.')])
         return
-    # write both as A/(k r + c); they telescope only if k matches
     if shifts[0][1] != shifts[1][1]:
         _show('Differences', [_warn('The two denominators have'),
                               _warn('different coefficients of r,'),
                               _warn('so nothing cancels.')])
         return
     k = shifts[0][1]
-    # order so the positive numerator comes first
     if coefs[0][0] < 0:
         coefs = [coefs[1], coefs[0]]
         shifts = [shifts[1], shifts[0]]
@@ -253,7 +245,6 @@ def t_differences():
                               _warn('number of steps, so the sum does'),
                               _warn('not telescope.')])
         return
-    # g(r) = A/k * sum over j of 1/(r + ca + j), j = 0 .. d-1
     Ak = caspoly.rdiv(A, k)
     pieces = []
     j = 0
@@ -280,7 +271,6 @@ def t_differences():
     lines.append('')
     lines.append('take g(r) = ' + caseng.tostr(g))
     lines.append(_w('then f(r) = g(r) - g(r+1)'))
-    # verify that claim numerically before printing a sum built on it
     bad = False
     for rv in (1.0, 2.0, 3.5, 7.0):
         try:
@@ -315,7 +305,6 @@ def t_differences():
                   caseng.evalf(g, 0.0, False, {'r': float(n) + 1.0})
             lines.append('')
             lines.append('S(' + str(n) + ') = ' + _fn(tot))
-            # brute-force the same sum as an independent check
             if n <= 2000:
                 acc = 0.0
                 i = 1

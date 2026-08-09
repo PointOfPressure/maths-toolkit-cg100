@@ -8,8 +8,8 @@ _asknum = casutil.asknum
 _askg = casutil.askg
 _fn = casutil.fmt
 _show = casutil.show
-_w = casutil.w             # method / intermediate steps, hidden in answer mode
-_warn = casutil.warn       # caveat about the answer, shown in both modes
+_w = casutil.w
+_warn = casutil.warn
 _getlist = casutil.asklist
 _askexpr = casutil.askexpr
 _deg = casutil.deg
@@ -17,16 +17,12 @@ _rad = casutil.rad
 _atan2 = casutil.atan2
 
 def _choose(prompt):
-    # Menu index typed as a number. int() raises on nan and on inf, and a
-    # mistyped entry can be either, so both are turned into "cancelled".
     v = _asknum(prompt)
     if v is None or v != v or v > 1e9 or v < -1e9:
         return None
     return int(v)
 
 def _defi(tree, a, b, var):
-    # Definite integral: symbolic when the CAS manages it (exact, and it is
-    # what the student would write down), numeric Simpson otherwise.
     s = None
     try:
         s = cascalc.integ(caseng.simplify(tree), var)
@@ -43,7 +39,6 @@ def _defi(tree, a, b, var):
             pass
     return cascalc.defint(tree, a, b, False, 400, var)
 
-# ---------- momentum & impulse ----------
 def t_momentum():
     _show('Momentum/Impulse', ['1 conservation (find v2)',
         '2 impulse = m(v-u)', 'Enter 1 or 2 next'])
@@ -77,7 +72,6 @@ def t_momentum():
     _show('Conservation', ['total p = ' + _fn(p) + ' kg m/s',
         'v1 = ' + _fn(v1) + ' m/s', 'v2 = ' + _fn(v2) + ' m/s'])
 
-# ---------- coefficient of restitution ----------
 def t_restitution():
     _show('Restitution', ['e = (v2-v1)/(u1-u2)',
         '1 behind 2: u1 > u2.', 'Solve v1,v2 from',
@@ -93,9 +87,6 @@ def t_restitution():
     if tot == 0:
         _show('Restitution', [_warn('total mass 0')])
         return
-    # conservation: m1 v1 + m2 v2 = m1 u1 + m2 u2 = P
-    # restitution:  v2 - v1 = e (u1 - u2) = sep
-    # => (m1+m2) v1 = P - m2 sep ;  v2 = v1 + sep
     p = m1 * u1 + m2 * u2
     sep = e * (u1 - u2)
     v1 = (p - m2 * sep) / tot
@@ -105,7 +96,6 @@ def t_restitution():
     _show('Restitution', ['v1 = ' + _fn(v1) + ' m/s',
         'v2 = ' + _fn(v2) + ' m/s', 'KE lost = ' + _fn(ke0 - ke1) + ' J'])
 
-# ---------- work, energy, power ----------
 def t_work():
     _show('Work/Energy/Power', ['1 KE = 0.5 m v^2', '2 GPE = m g h',
         '3 Work = F d', '4 Power = F v', '5 Power = W / t'])
@@ -147,7 +137,6 @@ def t_work():
             return
         _show('Power', [_w('P = W / t'), 'P = ' + _fn(w / t) + ' W'])
 
-# ---------- circular motion ----------
 def t_circular():
     _show('Circular motion', ['1 a,F from v & r', '2 a,F from omega & r',
         '3 conical pendulum', '4 vertical circle top',
@@ -200,8 +189,6 @@ def t_circular():
         _show('Vertical circle', ['min speed at top',
             _w('v = sqrt(g r)'), 'v = ' + _fn(vmin) + ' m/s'])
     elif k == 5:
-        # r6: the speed is changing, so there is a component of acceleration
-        # along the tangent as well as the v^2/r towards the centre.
         r = _asknum('radius r')
         w = _asknum('omega (rad/s)')
         al = _asknum('angular accel alpha (rad/s2)')
@@ -220,7 +207,6 @@ def t_circular():
             'angle to radius = ' + _fn(th) + ' deg',
             'v = omega r = ' + _fn(w * r) + ' m/s'])
 
-# ---------- Hooke's law / elastic PE ----------
 def t_hooke():
     _show('Hooke / elastic', ['T = lambda x / l', 'EPE = lambda x^2/(2 l)',
         'enter lambda, x, l'])
@@ -234,7 +220,6 @@ def t_hooke():
     _show('Hooke / elastic', ['T = lam x/l = ' + _fn(tens) + ' N',
         _w('EPE = lam x^2/(2l)'), 'EPE = ' + _fn(epe) + ' J'])
 
-# ---------- centre of mass ----------
 def t_com():
     _show('Centre of mass', ['1 one dimension', '2 two dimensions',
         'enter masses then coords'])
@@ -274,7 +259,6 @@ def t_com():
         _show('COM (2-D)', [_w('total m = ' + _fn(sm)),
             'x_bar = ' + _fn(sx / sm), 'y_bar = ' + _fn(sy / sm)])
 
-# ---------- dimensional analysis ----------
 def t_dim():
     _show('Dimensions', ['Enter M L T powers for', 'LHS and RHS, check',
         'they are consistent', 'e.g. force = 1 1 -2'])
@@ -299,12 +283,7 @@ def t_dim():
         res = 'NOT consistent'
     _show('Dimensions', [_w('LHS ' + lhs), _w('RHS ' + rhs), res])
 
-# ---------- oblique impact: sphere and a smooth surface ----------
 def t_oblique_wall():
-    # i15/i17. The whole question turns on one modelling assumption: the
-    # surface is SMOOTH, so it can exert no impulse along itself and the
-    # component of velocity parallel to the surface is unchanged. Newton's
-    # Experimental Law is applied to the normal component only.
     _show('Oblique: sphere/wall', ['Sphere hits a SMOOTH fixed surface.',
         'Resolve u along the surface and',
         'along the normal.',
@@ -319,11 +298,11 @@ def t_oblique_wall():
     if None in (u, a, e):
         return
     ra = _rad(a)
-    tang = u * math.cos(ra)          # along the surface
-    nin = u * math.sin(ra)           # into the surface, along the normal
-    nout = e * nin                   # NEL, and it reverses
+    tang = u * math.cos(ra)
+    nin = u * math.sin(ra)
+    nout = e * nin
     v = math.sqrt(tang * tang + nout * nout)
-    aout = _deg(_atan2(nout, tang))  # to the surface
+    aout = _deg(_atan2(nout, tang))
     lines = [_w('u = ' + _fn(u) + ' m/s at ' + _fn(a) + ' deg'),
         _w('  to the surface'),
         _w('  (= ' + _fn(90.0 - a) + ' deg to the normal)'),
@@ -349,10 +328,7 @@ def t_oblique_wall():
         lines.append('  along the normal')
     _show('Oblique: sphere/wall', lines)
 
-# ---------- oblique impact: two smooth spheres ----------
 def t_oblique_spheres():
-    # i14/i16/i17. Resolve along the line of centres: that is the only
-    # direction in which the spheres push each other, because they are smooth.
     _show('Oblique: two spheres', ['Two SMOOTH spheres. Resolve along',
         'the line of centres (LOC).',
         'SMOOTH => no impulse',
@@ -404,9 +380,7 @@ def t_oblique_spheres():
         'angle 2 = ' + _fn(d2) + ' deg to LOC', '',
         'KE lost = ' + _fn(kel) + ' J'])
 
-# ---------- projectile: cartesian equation of the path ----------
 def t_proj_path():
-    # Mv3/v4/v5: eliminate t between x = u cos(a) t and y = u sin(a) t - gt^2/2.
     _show('Projectile path', ['x = u cos(a) t',
         'y = u sin(a) t - g t^2 / 2',
         'from the first, t = x/(u cos a),',
@@ -467,13 +441,7 @@ def t_proj_path():
         i += 1
     casutil.chart_hold('range ' + _fn(rng) + ' m')
 
-# ---------- projectile up or down an inclined plane ----------
 def t_proj_incline():
-    # v6/v7. Plane at b to the horizontal, launch angle a from the HORIZONTAL.
-    # Landing when y = x tan b gives t = 2u sin(a-b)/(g cos b), so the range
-    # measured up the slope is R = 2u^2 cos a sin(a-b)/(g cos^2 b).
-    # dR/da = 0 at 2a - b = 90 deg, giving R_max = u^2/(g(1+sin b)).
-    # b = 0 recovers the level-ground results: 45 deg and u^2/g.
     _show('Projectile: incline', ['Plane at b deg to the horizontal.',
         'b > 0 fires UP the slope,',
         'b < 0 fires DOWN the slope,',
@@ -519,9 +487,7 @@ def t_proj_incline():
         lines.append(_w('level ground: 45 deg, u^2/g'))
     _show('Projectile: incline', lines)
 
-# ---------- elastic strings and springs: equilibrium and energy ----------
 def t_elastic():
-    # h5 and h7.
     _show('Elastic: equil/energy', ['1 equilibrium: m g = lam x / l',
         '2 max extension by energy',
         '3 modulus from a known extension'])
@@ -537,7 +503,6 @@ def t_elastic():
             _show('Elastic: max extension', [_warn('need m, lambda, l all > 0')])
             return
         g = _askg()
-        # 0.5 m v^2 + m g x = lam x^2 / (2 l)   (KE + GPE = EPE)
         q = l * m * g / lam
         disc = q * q + l * m * v * v / lam
         if disc < 0:
@@ -585,9 +550,7 @@ def t_elastic():
         'total length = ' + _fn(l + x) + ' m',
         'EPE there = ' + _fn(lam * x * x / (2.0 * l)) + ' J'])
 
-# ---------- centre of mass by calculus ----------
 def t_com_calculus():
-    # G7/G9/MG6.
     _show('COM by calculus', ['1 lamina under y = f(x)',
         '2 solid of revolution about Ox',
         '3 solid of revolution about Oy',
@@ -655,10 +618,7 @@ def t_com_calculus():
         var + '_bar = ' + _fn(i1 / i0),
         other + '_bar = 0 by symmetry'])
 
-# ---------- centres of mass of standard uniform bodies ----------
 def t_com_standard():
-    # G3. Distances are measured along the axis of symmetry from the point
-    # named on each line.
     _show('Standard bodies', ['1 rod, length L',
         '2 triangular lamina, height h',
         '3 circular arc, r, half-angle A',
@@ -741,10 +701,7 @@ def t_com_standard():
             '(= h/3 above the base,',
             ' i.e. ' + _fn(s / 3.0) + ')'])
 
-# ---------- sliding versus toppling ----------
 def t_topple():
-    # d16, G5, G10. Two ways equilibrium can break, and the one that happens
-    # is whichever needs the smaller tilt (or the smaller push).
     _show('Slide or topple', ['1 body on a plane being tilted',
         '2 horizontal force on a block',
         'toppling turns about the far',
@@ -802,10 +759,7 @@ def t_topple():
         lines.append('  ' + ('slides' if t > mu else 'does not slide'))
     _show('Tilting plane', lines)
 
-# ---------- couples ----------
 def t_couple():
-    # d13. Two equal, opposite, parallel forces: zero resultant, but a turning
-    # effect of the same size about EVERY point.
     _show('Couple', ['A couple is two equal, opposite,',
         'parallel forces F a distance d',
         'apart (d measured at right',
@@ -832,10 +786,7 @@ def t_couple():
         lines.append(_w('  size F d whatever p is'))
     _show('Couple', lines)
 
-# ---------- triangle of forces ----------
 def t_triangle_forces():
-    # d9. Three forces in equilibrium have zero resultant, so drawn head to
-    # tail they close up into a triangle.
     _show('Triangle of forces', ['Three forces in equilibrium draw',
         'a CLOSED triangle head to tail.',
         '1 three magnitudes -> the angles',
@@ -921,7 +872,6 @@ def _draw_polygon(pts, title):
         i += 1
     casutil.chart_hold('it closes: resultant is zero')
 
-# ---------- units from dimensions, and changing units ----------
 _NAMED = [
     (0.0, 0.0, 0.0, 'dimensionless (e, mu, an angle)'),
     (1.0, 0.0, 0.0, 'mass'),
@@ -958,7 +908,6 @@ def _unitstr(p):
     return out
 
 def t_units():
-    # q3 (units from dimensions) and q4 (changing the units used).
     _show('Units', ['1 SI units from M L T powers',
         '2 change the units used',
         'e.g. force is M L T^-2, so it is',
@@ -1012,9 +961,7 @@ def t_units():
         'factor = ' + _fn(d),
         'new value = ' + _fn(v / d)])
 
-# ---------- relative position and velocity in 2-D ----------
 def t_relative():
-    # Mk1.
     _show('Relative motion', ['Enter each vector as  x y .',
         'r_B rel A = r_B - r_A',
         'v_B rel A = v_B - v_A',

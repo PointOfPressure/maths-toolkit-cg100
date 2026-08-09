@@ -1,12 +1,3 @@
-# proof.py - proof methods. Induction is H645 Core Pure; contradiction,
-# exhaustion and disproof by counterexample are H640.
-#
-# A calculator cannot write a proof, and this module does not pretend to. What
-# it does is the part a machine is genuinely better at: CHECKING the step you
-# claim. The induction tools verify the base case and then verify the inductive
-# step symbolically, so if the algebra you were about to write down is wrong,
-# you find out here rather than three lines into the answer.
-# Stock CASIO MicroPython 1.9.4: ASCII only, no f-strings, iterative only.
 import math
 import casui
 import caslex
@@ -19,8 +10,8 @@ _asknum = casutil.asknum
 _askint = casutil.askint
 _fn = casutil.fmt
 _show = casutil.show
-_w = casutil.w             # working: hidden when the Working setting is off
-_warn = casutil.warn       # a caveat on the answer: always shown
+_w = casutil.w
+_warn = casutil.warn
 
 
 def _parse(prompt):
@@ -46,10 +37,6 @@ def _at(tree, val, name='n'):
 
 
 def t_induction_sum():
-    # Prove sum from r=1 to n of u(r) = S(n).
-    # The inductive step is exactly S(k+1) - S(k) = u(k+1), and that is an
-    # algebraic identity the engine can settle. If it does not hold, the
-    # formula is wrong and no amount of writing will fix it.
     _show('Induction: a sum', ['To prove sum r=1..n of u(r) = S(n).',
                                'Base case: S(1) = u(1).',
                                'Step: assume it holds at k, then',
@@ -63,7 +50,6 @@ def t_induction_sum():
         return
     lines = [_w('u(r) = ' + caseng.tostr(caseng.simplify(u))),
              _w('S(n) = ' + caseng.tostr(caseng.simplify(S))), '']
-    # --- base case
     u1 = _at(u, 1.0)
     s1 = _at(S, 1.0)
     lines.append(_w('BASE CASE n = 1'))
@@ -79,7 +65,6 @@ def t_induction_sum():
         lines.append('  formula is wrong before you start.')
         _show('Induction', lines)
         return
-    # --- inductive step, symbolically
     Sk1 = caseng.subst(S, 'n', ('+', ('v', 'n'), ('n', 1)))
     uk1 = caseng.subst(u, 'n', ('+', ('v', 'n'), ('n', 1)))
     diff = caspoly.expand(('-', Sk1, S))
@@ -90,7 +75,6 @@ def t_induction_sum():
     lines.append(_w('  u(k+1)        = ' + caseng.tostr(want)))
     same = caseng.tostr(diff) == caseng.tostr(want)
     if not same:
-        # the printed forms can differ while the functions agree; test values
         same = True
         for kv in (1.0, 2.0, 3.0, 7.0, 11.5):
             a = _at(diff, kv)
@@ -133,11 +117,6 @@ def t_induction_sum():
 
 
 def t_induction_divis():
-    # Prove that d divides f(n) for all n >= 1.
-    # The step is: f(k+1) - m f(k) must be divisible by d for some multiplier m
-    # you choose - usually the ratio of the leading exponentials. The tool
-    # checks the base case, checks divisibility over a range, and works out
-    # f(k+1) - m f(k) symbolically so you can see what is left.
     _show('Induction: divisibility', ['To prove that d divides f(n).',
                                       'Base: f(1) divisible by d.',
                                       'Step: f(k+1) - m f(k) must also be',
@@ -152,7 +131,6 @@ def t_induction_divis():
         return
     lines = [_w('f(n) = ' + caseng.tostr(caseng.simplify(f))),
              _w('claim: ' + str(d) + ' divides f(n) for all n >= 1'), '']
-    # base case and a numeric sweep
     bad = None
     rows = []
     i = 1
@@ -221,9 +199,6 @@ def t_induction_divis():
 
 
 def t_induction_matrix():
-    # Prove a claimed formula for M^n by induction: check n = 1, then check
-    # that M^(k+1) built from the formula equals M times the formula at k.
-    # The entries are given as expressions in n.
     _show('Induction: M^n', ['Enter a 2x2 M, then the four',
                              'entries of the claimed M^n as',
                              'expressions in n.',
@@ -264,7 +239,6 @@ def t_induction_matrix():
                         caseng.tostr(caseng.simplify(F[i][1])) + ' ]'))
         i += 1
     lines.append('')
-    # base case: the formula at n = 1 must be M itself
     lines.append(_w('BASE CASE n = 1'))
     okbase = True
     i = 0
@@ -282,7 +256,6 @@ def t_induction_matrix():
         lines.append('  The formula is wrong before you start.')
         _show('Induction: M^n', lines)
         return
-    # step: M * F(k) must equal F(k+1), checked at several k
     lines.append('')
     lines.append(_w('INDUCTIVE STEP  M * F(k) = F(k+1)?'))
     okstep = True
@@ -331,8 +304,6 @@ def t_induction_matrix():
 
 
 def t_counterexample():
-    # Disproof by counterexample. A machine is very good at this and it is the
-    # one proof technique where finding the answer IS the whole proof.
     _show('Disprove by counterexample', ['Enter a claim as an expression in n',
                                          'that should always be positive,',
                                          'or pick a standard claim to test.',

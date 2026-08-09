@@ -1,25 +1,3 @@
-# casioshot.py - DESKTOP ONLY. Renders the toolkit's screens to PNG files so
-# their layout can be inspected without the calculator.
-#
-# The repo's casioplot.py is a no-op stub, which is what the test harnesses
-# want: they assert what a screen SAYS, and drawing would only slow them down.
-# But several screens were written from measured font metrics and never looked
-# at - the autoscaling graph, the paged result screens, the CATALOG picker grid
-# and the caret windowing in a long expression - and layout faults (text off the
-# right edge, a row clipped at the bottom, a caret scrolled out of view) are
-# invisible to a text assertion.
-#
-# This module installs a real framebuffer over casioplot, drives a screen with
-# scripted key input, and writes each show_screen() to a numbered PNG.
-#
-#   python3 casioshot.py            # render the standard set into shots/
-#   python3 casioshot.py --list     # list the scenes it knows about
-#
-# It needs Pillow, runs only on a PC, and is NEVER copied to the calculator.
-# The glyph widths are matched to casui.char_w rather than to any particular
-# font file, so what you see here is what the toolkit BELIEVES it is drawing.
-# A string that overflows on screen overflows here too - which is the whole
-# point - but the letterforms are not Casio's.
 import os
 import sys
 
@@ -31,7 +9,7 @@ except ImportError:
 
 W = 384
 H = 192
-SCALE = 3                     # PNGs are written at 3x so text is readable
+SCALE = 3
 
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -39,7 +17,6 @@ FONT_CANDIDATES = [
     "/Library/Fonts/Arial.ttf",
 ]
 
-# glyph pixel heights that go with casui's small/medium/large advance widths
 FONT_PX = {"small": 11, "medium": 15, "large": 26}
 
 
@@ -64,7 +41,6 @@ class Screen(object):
         self.draw.rectangle([0, 0, W - 1, H - 1], fill=(255, 255, 255))
 
     def set_pixel(self, x, y, c=None):
-        # the manual: out-of-range coordinates are ignored, not an error
         if not (0 <= x <= W - 1 and 0 <= y <= H - 1):
             return
         self.img.putpixel((int(x), int(y)), tuple(c) if c else (0, 0, 0))
@@ -79,9 +55,6 @@ class Screen(object):
             return
         size = size or "medium"
         col = tuple(c) if c else (0, 0, 0)
-        # Advance per character comes from casui.char_w, NOT from the font
-        # metrics, so the rendering reproduces what the toolkit thinks the
-        # width is. That is what makes an overflow here a real overflow.
         import casui
         pen = x
         f = self.fonts.get(size, self.fonts["medium"])
@@ -111,13 +84,6 @@ PATCH = {
 
 
 def install(*extra):
-    # Every module that does "from casioplot import *" gets its OWN module-level
-    # binding for each drawing function, so patching casioplot alone is not
-    # enough - casrender does exactly that, and the live 2D preview rendered
-    # into the no-op stub while everything else drew into the framebuffer. The
-    # screen looked blank and the fault was in this file, not the toolkit.
-    # So: patch casioplot, then sweep every already-imported project module
-    # that has a binding of the same name.
     import casioplot
     for name in PATCH:
         setattr(casioplot, name, PATCH[name]())
@@ -142,11 +108,6 @@ def install(*extra):
 _TOGGLE = [False]
 
 def _getkey():
-    # Each queued key is delivered once and then released, so wait_release and
-    # wait_press both terminate. Once the queue runs out, alternate between a
-    # held EXIT and nothing: a wait_press that never sees a key, and a
-    # wait_release that never sees one released, are both infinite loops, and a
-    # renderer that hangs is useless. EXIT also unwinds whatever menu it is in.
     if KEYS:
         k = KEYS[0]
         if k is None:
@@ -186,7 +147,6 @@ def reset():
 
 
 def _both_modes(show):
-    # drive one induction proof with the Working setting either way
     import casui
     import proof
     real = casui.SHOW_WORKING
@@ -201,7 +161,6 @@ def _both_modes(show):
         casui.input_expr = ask
 
 
-# ------------------------------------------------------------------ scenes --
 def _scenes():
     import casui
     import caslex
@@ -214,9 +173,6 @@ def _scenes():
                                      "A-Level Maths", "Further Maths",
                                      "Angle mode: RADIANS",
                                      "Working: SHOWN"])),
-        # the same tool in both modes, so the setting can be looked at rather
-        # than only asserted on. Induction is the clearest case: the spot-check
-        # caveat under "PROVED" must be in BOTH pictures.
         ("working-shown", lambda: _both_modes(True)),
         ("working-hidden", lambda: _both_modes(False)),
         ("result-paged", lambda: casui.result_screen(

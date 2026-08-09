@@ -1,3 +1,4 @@
+# device has sinh/cosh/tanh but no asinh/acosh/atanh - inverses are built here
 import math
 import casutil
 
@@ -23,8 +24,6 @@ def _tanh(x):
     return (e - f) / (e + f)
 
 def _arsinh(x):
-    # ln(x + sqrt(x^2+1)) loses every significant digit for large negative x
-    # (x + sqrt(x^2+1) cancels to 0 and ln blows up), so mirror via odd symmetry
     a = x if x >= 0 else -x
     v = math.log(a + math.sqrt(a * a + 1.0))
     return v if x >= 0 else -v

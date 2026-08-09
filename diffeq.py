@@ -27,16 +27,13 @@ def _evalx(tree, xv):
     return v
 
 def t_first_order():
-    # dy/dx + P(x) y = Q(x). Finding the integrating factor is half the
-    # question; the marks are in performing int (IF * Q) dx and then applying
-    # the condition, so this now carries it through to y = ...
     casui.show_text('First order linear',
                     'dy/dx + P(x)y = Q(x).\nEnter P(x), then Q(x).\n'
                     'IF = e^(int P dx); multiply through,\nintegrate, divide back.',
                     casui.BLACK)
     s = casui.input_expr('P(x):')
     if s is None:
-        return                      # cancelled - say nothing
+        return
     P = caslex.parse(s)
     if P is None:
         _show('FIRST ORDER LINEAR', [_warn('Could not read P(x).')])
@@ -55,9 +52,6 @@ def t_first_order():
         _show('FIRST ORDER LINEAR', lines)
         return
     ip = cascalc.tidy(ip)
-    # int P dx comes out with a modulus (int 1/x dx = ln|x|); the integrating
-    # factor conventionally drops it, because any constant multiple of the IF
-    # works and the sign is absorbed by the arbitrary constant.
     plain = caseng.strip_abs(ip)
     IF = caseng.simplify(('exp', plain))
     lines.append(_w('int P dx = ' + caseng.tostr(ip)))
@@ -141,10 +135,6 @@ def t_second_order():
     _show('SECOND ORDER CF', lines)
 
 def t_shm():
-    # Simple harmonic motion, x'' = -w^2 x. The general solution is
-    # C cos wt + D sin wt, but the form that answers the questions is
-    # R cos(wt - phi): R is the amplitude and phi the phase. Fitting those two
-    # from the initial conditions is the part the toolkit never did.
     w = _asknum('angular frequency w (>0):')
     if w is None:
         return
@@ -169,7 +159,6 @@ def t_shm():
     if v0 is None:
         _show('SHM', lines)
         return
-    # x = C cos wt + D sin wt, so x(0) = C and x'(0) = wD
     C = x0
     D = v0 / w
     R = math.sqrt(C * C + D * D)
@@ -190,10 +179,8 @@ def t_shm():
     lines.append(_w('v^2 = w^2(R^2 - x^2) at any point,'))
     lines.append(_w('so v = 0 at x = +/-' + _fn(R) + ' and'))
     lines.append(_w('|v| is greatest at x = 0.'))
-    # first time at the centre and at the extreme
     lines.append('')
     if R > 1e-12:
-        # x = 0 when wt - phi = pi/2 + k pi
         tc = (math.pi / 2.0 + phi) / w
         while tc < -1e-12:
             tc += math.pi / w
@@ -244,8 +231,6 @@ def t_damping():
     _show('DAMPING CLASSIFIER', lines)
 
 def _ex(k, v='x'):
-    # e^(kv) written the way it is on paper. The variable matters: the coupled
-    # system is in t, and printing e^(3x) there is simply the wrong equation.
     if abs(k - 1.0) < 1e-12:
         return 'e^' + v
     if abs(k + 1.0) < 1e-12:
@@ -256,7 +241,6 @@ def _ex(k, v='x'):
 
 
 def _coefstr(c, body, sep=' '):
-    # c * body, with 1 and -1 written as nothing and a minus sign
     if abs(c - 1.0) < 1e-12:
         return body
     if abs(c + 1.0) < 1e-12:
@@ -265,19 +249,16 @@ def _coefstr(c, body, sep=' '):
 
 
 def _term(c, body):
-    # the same, but with no space - "3x", not "3 x"
     return _coefstr(c, body, '')
 
 
 def _amp(letter, k):
-    # "A e^(2x)", but just "A" when the exponential is 1
     if abs(k) < 1e-12:
         return letter
     return letter + ' ' + _ex(k)
 
 
 def _cf_lines(a, b):
-    # complementary function of y'' + a y' + b y = 0, plus the auxiliary roots
     disc = a * a - 4.0 * b
     if disc > 1e-9:
         rt = math.sqrt(disc)
@@ -301,7 +282,6 @@ def _cf_lines(a, b):
 
 
 def _sgn(v, body=''):
-    # "+ 3x" / "- 3x" / "+ x", so nothing prints "+ -3x" or "+ 1x"
     m = -v if v < 0 else v
     s = '- ' if v < 0 else '+ '
     if body and abs(m - 1.0) < 1e-12:
@@ -310,7 +290,6 @@ def _sgn(v, body=''):
 
 
 def _coef(v, body):
-    # "x", "-x", "3x" - a coefficient of 1 is not written
     if abs(v - 1.0) < 1e-12:
         return body
     if abs(v + 1.0) < 1e-12:
@@ -319,7 +298,6 @@ def _coef(v, body):
 
 
 def _trigstr(P, Q, w):
-    # P cos wx + Q sin wx, dropping a zero term rather than printing "0 cos x"
     ang = 'x' if abs(w - 1.0) < 1e-12 else _fn(w) + 'x'
     parts = []
     if abs(P) > 1e-12:
@@ -340,15 +318,6 @@ def _solve2(m11, m12, m21, m22, r1, r2):
 
 
 def _poly_pi(a, b, coeffs):
-    # Particular integral for y'' + a y' + b y = polynomial, given the
-    # right-hand side lowest-power-first.
-    #
-    # The trial STARTS at x^bump rather than carrying a free constant term.
-    # When b = 0 a constant already solves the homogeneous equation, so leaving
-    # c_0 as an unknown makes the linear system singular - it has no unique
-    # solution because the CF's own constant can absorb any value. Forcing the
-    # trial to begin at x (or x^2 when a = b = 0) is the same step as
-    # "multiply the trial by x because it is already in the CF".
     n = len(coeffs) - 1
     bump = 0
     if abs(b) < 1e-12:
@@ -357,10 +326,9 @@ def _poly_pi(a, b, coeffs):
             bump = 2
     if n + bump > 6:
         return None
-    size = n + 1                      # unknowns c_bump .. c_{n+bump}
+    size = n + 1
 
     def coef(k):
-        # column index of c_k, or -1 if that power is not an unknown
         if k < bump or k > n + bump:
             return -1
         return k - bump
@@ -386,7 +354,6 @@ def _poly_pi(a, b, coeffs):
         M.append(row)
         rhs.append(coeffs[j] if j < len(coeffs) else 0.0)
         j += 1
-    # Gaussian elimination with partial pivoting
     i = 0
     while i < size:
         piv = i
@@ -413,7 +380,7 @@ def _poly_pi(a, b, coeffs):
     out = []
     i = 0
     while i < bump:
-        out.append(0.0)               # the forced zero low-order terms
+        out.append(0.0)
         i += 1
     i = 0
     while i < size:
@@ -448,9 +415,6 @@ def _polystr(cs):
 
 
 def t_particular():
-    # Particular integral for y'' + a y' + b y = f(x). Without it the second
-    # order equation never gets a general solution, and that question is on
-    # every Core Pure paper.
     casui.show_text('Particular integral',
                     "y'' + a y' + b y = f(x).\\nThe general solution is\\n"
                     'CF + PI. Pick the shape of f(x).', casui.BLACK)
@@ -529,8 +493,6 @@ def t_particular():
         if w is None:
             return
         lines.append(_w('f(x) = ' + _trigstr(m, n, w)))
-        # trial P cos wx + Q sin wx gives
-        #   (b - w^2)P + a w Q = m ,  -a w P + (b - w^2)Q = n
         r = _solve2(b - w * w, a * w, -a * w, b - w * w, m, n)
         if r is not None:
             pistr = _trigstr(r[0], r[1], w)
@@ -539,8 +501,6 @@ def t_particular():
             lines.append(_warn('equation, so cos/sin at that'))
             lines.append(_warn('frequency is already in the CF -'))
             lines.append(_warn('multiply the trial by x.'))
-            # y = x(P cos + Q sin): substituting gives
-            #   (2Qw + aP) cos + (-2Pw + aQ) sin, once b = w^2 and a w terms cancel
             r = _solve2(a, 2.0 * w, -2.0 * w, a, m, n)
             if r is None:
                 lines.append(_warn('The system is degenerate; solve by'))
@@ -563,14 +523,6 @@ def t_particular():
 
 
 def t_coupled():
-    # Coupled first order simultaneous DEs:
-    #     dx/dt = a x + b y
-    #     dy/dt = c x + d y
-    # Differentiating the first and substituting the second eliminates y:
-    #     x'' - (a+d) x' + (ad - bc) x = 0
-    # so the auxiliary equation is m^2 - (trace)m + (det) = 0 and its roots are
-    # the eigenvalues of the matrix. That is the whole method, and it is the
-    # only Core Pure statement the toolkit had nothing for.
     _show('Coupled equations', ["dx/dt = a x + b y",
                                 "dy/dt = c x + d y",
                                 'Differentiate the first and substitute',
@@ -650,7 +602,6 @@ def t_coupled():
     if y0 is None:
         _show('Coupled equations', lines)
         return
-    # x'(0) comes straight from the first equation
     xp0 = a * x0 + b * y0
     lines.append('')
     lines.append(_w('at t = 0:  x = ' + _fn(x0) + ', y = ' + _fn(y0)))
@@ -662,7 +613,6 @@ def t_coupled():
         rt = math.sqrt(disc)
         m1 = (tr + rt) / 2.0
         m2 = (tr - rt) / 2.0
-        # A + B = x0 ; m1 A + m2 B = xp0
         A = (xp0 - m2 * x0) / (m1 - m2)
         B = x0 - A
         lines.append(_w('  A + B = ' + _fn(x0)))
@@ -676,7 +626,6 @@ def t_coupled():
     elif kind == 2:
         p = tr / 2.0
         q = math.sqrt(-disc) / 2.0
-        # x = e^(pt)(A cos qt + B sin qt); x(0) = A ; x'(0) = pA + qB
         A = x0
         B = (xp0 - p * A) / q
         lines.append('  A = x(0) = ' + _fn(A))
@@ -687,7 +636,6 @@ def t_coupled():
         B = xp0 - m * A
         lines.append('  A = x(0) = ' + _fn(A))
         lines.append("  x'(0) = mA + B, so B = " + _fn(B))
-    # check the constants really do reproduce the initial conditions
     lines.append('')
     lines.append(_warn('(check at t = 0: x = ' + _fn(_coupled_x(kind, tr, disc, A, B, 0.0)) +
                  ', y = ' +
@@ -722,7 +670,6 @@ def _coupled_x(kind, tr, disc, A, B, t):
 
 
 def _coupled_xp(kind, tr, disc, A, B, t):
-    # dx/dt, by hand rather than numerically - it is needed for y
     if kind == 1:
         rt = math.sqrt(disc)
         m1 = (tr + rt) / 2.0

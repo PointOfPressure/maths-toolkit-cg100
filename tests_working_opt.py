@@ -1,21 +1,3 @@
-# tests_working_opt.py - the Working setting, tool by tool, for the six
-# Options/Further Pure modules: algos, numeric, fmmech, fmstat, xpure, fpt.
-#
-# Every tool below is driven TWICE with identical input, once with the working
-# shown and once with it hidden, and three things are asserted:
-#
-#   1. the ANSWER is still there when the working is hidden
-#   2. a named WORKING line is gone
-#   3. a named CAVEAT is still there
-#
-# The third is the one that matters. A caveat is not working: hiding "3 does
-# not divide 7, so there are NO integer solutions" or "the constraints are
-# INFEASIBLE" would turn a careful tool into a confidently wrong one, and no
-# amount of tidy output is worth that.
-#
-# casui.SHOW_WORKING is restored in a finally in every helper: leaving it off
-# would silently poison every test that runs after this file.
-
 import algos
 import numeric
 import fmmech
@@ -25,7 +7,6 @@ import fpt
 
 
 def _modes(h, fn, inputs, menus=()):
-    # (answer-only lines, full lines) for one tool and one set of answers
     try:
         h.casui.SHOW_WORKING = False
         brief = h.drive(fn, inputs, menus)
@@ -47,7 +28,6 @@ def _subset(brief, full):
 
 
 def _split(h, label, fn, inputs, menus, answer, working, caveat):
-    # the whole contract for one tool, in one call
     brief, full = _modes(h, fn, inputs, menus)
     h.truthy(label + ": answer mode invents nothing", _subset(brief, full))
     h.truthy(label + ": answer mode keeps something", len(brief) > 0)
@@ -58,11 +38,7 @@ def _split(h, label, fn, inputs, menus, answer, working, caveat):
     h.has(label + ": the caveat survives answer mode", brief, caveat)
 
 
-# ---------------------------------------------------------------- algos ----
 def test_simplex_modes(h):
-    # the shape the whole setting was built for: the optimum is the answer and
-    # the tableaux are the working, even though the tableaux are what the mark
-    # scheme wants to see
     ins = ['2', '2', '5 4', '6 4 24', '1 2 6']
     try:
         h.casui.SHOW_WORKING = False
@@ -83,8 +59,6 @@ def test_simplex_modes(h):
 
 
 def test_simplex2_infeasible(h):
-    # x + y >= 4 and x + y <= 2 cannot both hold: phase 1 cannot clear the
-    # artificials, and THAT is the answer
     _split(h, "2-stage simplex (infeasible)", algos.simplex2,
            ['2', '2', '1', '3 2', '1 1 -1 4', '1 1 1 2'], [],
            'the constraints are INFEASIBLE.',
@@ -93,8 +67,6 @@ def test_simplex2_infeasible(h):
 
 
 def test_lpgraph_unbounded_region(h):
-    # minimise x + y over x + y >= 2: the optimum exists, but the region does
-    # not close, which is exactly the kind of thing answer mode must not eat
     _split(h, "LP graph (unbounded region)", algos.lpgraph,
            ['0', '1 1', '0', '1', '1 1 2'], [],
            'Optimal vertex: x = 2, y = 0',
@@ -103,7 +75,6 @@ def test_lpgraph_unbounded_region(h):
 
 
 def test_prim_disconnected(h):
-    # node 4 is joined to nothing, so the "tree" does not span the graph
     ins = ['4', '0 1 0 0', '1 0 1 0', '0 1 0 0', '0 0 0 0']
     brief, full = _modes(h, algos.prim, ins, [])
     h.has("Prim: the total weight survives", brief, 'Total weight: 2')
@@ -113,7 +84,6 @@ def test_prim_disconnected(h):
 
 
 def test_dijkstra_working(h):
-    # the route and the distances are the answer; the labelling is the working
     ins = ['4', '0 3 0 0', '3 0 2 5', '0 2 0 1', '0 5 1 0', '1', '4']
     brief, full = _modes(h, algos.dijkstra, ins, [])
     h.has("Dijkstra: the route survives", brief, 'Route 1 to 4: 1 - 2 - 3 - 4')
@@ -124,10 +94,7 @@ def test_dijkstra_working(h):
           'Working values (in order tried):')
 
 
-# -------------------------------------------------------------- numeric ----
 def test_fixed_point_diverges(h):
-    # g(x) = 2x has |g'| = 2, so the iteration runs away; the diagnosis is the
-    # answer and the divergence warning must never be filed as working
     _split(h, "fixed-point diagnosis (divergent)", numeric.t_fixed_diag,
            ['2*x', '1', '1e-10'], [],
            "g'(x) = 2",
@@ -144,8 +111,6 @@ def test_order_of_convergence_diverges(h):
 
 
 def test_integration_odd_n(h):
-    # Simpson needs an even number of strips: with n = 3 there is no Simpson
-    # value at all, and saying so is part of the answer
     _split(h, "integration (odd n)", numeric.t_integ,
            ['x^2', '0', '1', '3'], [],
            'trapezium=0.351852',
@@ -162,7 +127,6 @@ def test_error_propagation_cancellation(h):
 
 
 def test_newton_forward_extrapolation(h):
-    # p(5) is outside the table that built p, so it is an extrapolation
     _split(h, "forward differences (extrapolating)", numeric.t_newton_fwd,
            ['1 8 27 64', '1', '1', '5'], [],
            'p(x) = x^3',
@@ -178,10 +142,7 @@ def test_derivative_error_table(h):
            'h too small: subtracting nearly')
 
 
-# --------------------------------------------------------------- fmmech ----
 def test_oblique_wall_smoothness(h):
-    # "the surface is smooth, so the tangential part is unchanged" is the
-    # modelling assumption the whole answer rests on
     _split(h, "oblique impact with a wall", fmmech.t_oblique_wall,
            ['10', '30', '0.5', '2'], [],
            'speed = 9.0139 m/s',
@@ -198,7 +159,6 @@ def test_oblique_spheres_smoothness(h):
 
 
 def test_projectile_below_the_slope(h):
-    # fired at 5 degrees up a 10 degree slope: it never travels up the plane
     _split(h, "projectile on an incline (a < b)", fmmech.t_proj_incline,
            ['20', '5', '10', '9.8'], [],
            'max range = 34.7773 m',
@@ -206,9 +166,7 @@ def test_projectile_below_the_slope(h):
            'a is not above the slope, so the')
 
 
-# --------------------------------------------------------------- fmstat ----
 def test_pmcc_not_significant(h):
-    # r = 0.8 looks convincing and is not significant at 5% with n = 5
     _split(h, "pmcc (not significant)", fmstat.t_pmcc,
            ['1 2 3 4 5', '1 3 2 5 4', '5', '1'], [],
            'r = 0.8',
@@ -225,7 +183,6 @@ def test_spearman_ties(h):
 
 
 def test_chi_squared_no_df(h):
-    # 3 cells with 2 parameters fitted leaves df = 0: there is no test to do
     _split(h, "chi-squared (df < 1)", fmstat.t_chi,
            ['10 20 30', '20 20 20', '2', '5'], [],
            'df = 0 is not >= 1',
@@ -242,7 +199,6 @@ def test_ci_for_mean_uses_z(h):
 
 
 def test_linear_combination_independence(h):
-    # Var(aX + bY) = a^2VarX + b^2VarY is only true for independent X and Y
     _split(h, "aX+bY+c", fmstat.t_lincomb,
            ['2', '1', '3', '4', '1', '1', '0', None], [],
            'Var(W) = 5',
@@ -250,9 +206,7 @@ def test_linear_combination_independence(h):
            'X, Y assumed INDEPENDENT')
 
 
-# ---------------------------------------------------------------- xpure ----
 def test_verify_recurrence_fails(h):
-    # u(n) = 2n does not satisfy u(n+1) = u(n) + 1
     _split(h, "verify a recurrence (fails)", xpure.t_recur_verify,
            ['u+1', '2*n', '0'], [0],
            'VERDICT: the closed form does NOT',
@@ -269,8 +223,6 @@ def test_recurrence_behaviour_diverges(h):
 
 
 def test_eigen_repeated(h):
-    # a repeated eigenvalue may or may not be diagonalisable, and the tool
-    # refuses to pretend otherwise
     _split(h, "2x2 eigen (repeated root)", xpure.t_eigen,
            ['1', '0', '0', '1'], [],
            'lambda1 = 1',
@@ -310,9 +262,7 @@ def test_second_order_recurrence(h):
            'checked against the recurrence for')
 
 
-# ------------------------------------------------------------------ fpt ----
 def test_diophantine_no_solution(h):
-    # 3 does not divide 7, so 3x + 6y = 7 has no integer solution at all
     _split(h, "Diophantine (no solution)", fpt.t_diophantine,
            ['3', '6', '7'], [],
            'so there are NO integer',
@@ -337,7 +287,6 @@ def test_asymptotes_none_vertical(h):
 
 
 def test_limit_hole(h):
-    # the limit exists at x = 1 but f(1) does not: the curve has a hole
     _split(h, "limit at a hole", fpt.t_limit,
            ['(x^2-1)/(x-1)', '1'], [0],
            'limit = 2',
@@ -362,7 +311,6 @@ def test_pell(h):
 
 
 def test_fermat_gcd_not_one(h):
-    # gcd(3, 6) = 3, so Fermat's little theorem says nothing about this pair
     _split(h, "Fermat & Wilson (gcd not 1)", fpt.t_fermat,
            ['6', '3'], [],
            'p is NOT prime.',
@@ -378,11 +326,7 @@ def test_modular_inverse_check(h):
            'check: a*inv mod m')
 
 
-# ------------------------------------------------------------ the sweep ----
 def test_six_modules_never_empty(h):
-    # the module-level version of the guard in tests.py, run over exactly the
-    # six modules this file is responsible for, with every tool driven from the
-    # shared canned input
     import stress_inputs
     mods = [algos, numeric, fmmech, fmstat, xpure, fpt]
     checked = 0

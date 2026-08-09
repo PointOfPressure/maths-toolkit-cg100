@@ -10,8 +10,8 @@ _askint = casutil.askint
 _askexpr = casutil.askexpr
 _fn = casutil.fmt
 _show = casutil.show
-_w = casutil.w             # method / intermediate steps, hidden in answer mode
-_warn = casutil.warn       # caveat about the answer, shown in both modes
+_w = casutil.w
+_warn = casutil.warn
 _ncr = casutil.ncr
 _erf = casutil.erf
 _phi = casutil.phi
@@ -20,36 +20,26 @@ _poispmf = casutil.poisson_pmf
 _binpmf = casutil.binom_pmf
 
 def _asklist(prompt):
-    # this module treats "nothing entered" as a cancel
     v = casutil.asklist(prompt)
     if not v:
         return None
     return v
 
-# ------------------------------------------------- sampling distributions --
-# The normal distribution itself is NOT re-implemented here: phi/invphi/erf
-# come from casutil, which is the single copy. What follows is the chi-squared
-# and Student t machinery, which casutil does not carry.
 
 def _chi2_sf(x, k):
-    # P(X > x) for chi-squared on k degrees of freedom, from the standard
-    # two-step recurrence
-    #   Q(x,k) = Q(x,k-2) + (x/2)^((k-2)/2) e^(-x/2) / Gamma(k/2),
-    # started at Q(x,1) = 2(1-phi(sqrt x)) and Q(x,2) = e^(-x/2). Successive
-    # terms satisfy t(k+2) = t(k) * x/k, so no gamma function is ever needed.
     if k < 1:
         return 1.0
     if x <= 0.0:
         return 1.0
     if x > 1500.0:
-        return 0.0          # e^(-x/2) has underflowed to zero anyway
+        return 0.0
     if k % 2 == 0:
         q = math.exp(-x / 2.0)
-        t = (x / 2.0) * q                                   # the k = 4 term
+        t = (x / 2.0) * q
         j = 4
     else:
         q = 2.0 * (1.0 - _phi(math.sqrt(x)))
-        t = math.sqrt(2.0 * x / math.pi) * math.exp(-x / 2.0)   # the k = 3 term
+        t = math.sqrt(2.0 * x / math.pi) * math.exp(-x / 2.0)
         j = 3
     while j <= k:
         q += t
@@ -62,8 +52,6 @@ def _chi2_sf(x, k):
     return q
 
 def _chi2_crit(k, a):
-    # upper-tail critical value: the x with P(X > x) = a. Bisection is safe
-    # because the survivor function is strictly decreasing in x.
     lo = 0.0
     hi = 4.0
     i = 0
@@ -81,9 +69,6 @@ def _chi2_crit(k, a):
     return 0.5 * (lo + hi)
 
 def _t_sf(t, v):
-    # P(T > t) on v degrees of freedom, from the classic finite-sum expression
-    # for A(t|v) = P(-t < T < t) with theta = atan(t/sqrt(v)). Exact for every
-    # integer v, and no gamma function or continued fraction is involved.
     if v < 1:
         return 0.5
     a = t if t >= 0 else -t
@@ -120,7 +105,6 @@ def _t_sf(t, v):
     return p
 
 def _t_crit(v, a):
-    # one-tail critical value of t on v degrees of freedom
     lo = 0.0
     hi = 4.0
     i = 0
@@ -137,7 +121,6 @@ def _t_crit(v, a):
         i += 1
     return 0.5 * (lo + hi)
 
-# --- tools ---
 
 def t_drv():
     xs = _asklist('Values x (csv):')
@@ -169,7 +152,7 @@ def t_pois():
     if k is None or k < 0:
         return
     pmf = _poispmf(mu, k)
-    cdf = casutil.poisson_cdf(mu, k)   # one pass, not k passes
+    cdf = casutil.poisson_cdf(mu, k)
     _show('Poisson', [_w('mu = ' + _fn(mu) + '  k = ' + str(k)),
                       'P(X=k) = ' + _fn(pmf),
                       'P(X<=k) = ' + _fn(cdf),
@@ -200,8 +183,6 @@ def t_bin():
              'P(X>=k) = ' + _fn(1.0 - cdf + pmf),
              'mean np = ' + _fn(n * p),
              'var npq = ' + _fn(n * p * (1.0 - p))]
-    # when n is large and p small the Poisson with mu = np is the standard
-    # approximation; say so only when the usual conditions actually hold
     if n >= 50 and p <= 0.1:
         mu = n * p
         lines.append(_w('n>=50, p<=0.1 so Poisson'))
@@ -259,8 +240,6 @@ def t_normplot():
     n = len(xs)
     srt = list(xs)
     srt.sort()
-    # plot the ordered data against the normal scores z_i = invphi((i-0.5)/n);
-    # points close to a straight line support a normal model
     zs = []
     i = 0
     while i < n:
@@ -366,83 +345,71 @@ def _stats2(xs, ys):
     Syy = syy - sy * sy / n
     return n, sx, sy, Sxy, Sxx, Syy
 
-# One-tail critical values of the pmcc, rows n = 4 to 30, columns
-# 5%, 2.5%, 1%, 0.5%. Under H0 (no correlation, bivariate normal) the exact
-# relation is r = t / sqrt(t^2 + n - 2) with t the critical value of Student's
-# t on n - 2 degrees of freedom, and this table was generated from that
-# identity; it agrees to 4 d.p. with the printed pmcc table at every n checked.
 _RCRIT_MIN = 4
 _RCRIT = [
-    (0.9000, 0.9500, 0.9800, 0.9900),   # n = 4
-    (0.8054, 0.8783, 0.9343, 0.9587),   # n = 5
-    (0.7293, 0.8114, 0.8822, 0.9172),   # n = 6
-    (0.6694, 0.7545, 0.8329, 0.8745),   # n = 7
-    (0.6215, 0.7067, 0.7887, 0.8343),   # n = 8
-    (0.5822, 0.6664, 0.7498, 0.7977),   # n = 9
-    (0.5494, 0.6319, 0.7155, 0.7646),   # n = 10
-    (0.5214, 0.6021, 0.6851, 0.7348),   # n = 11
-    (0.4973, 0.5760, 0.6581, 0.7079),   # n = 12
-    (0.4762, 0.5529, 0.6339, 0.6835),   # n = 13
-    (0.4575, 0.5324, 0.6120, 0.6614),   # n = 14
-    (0.4409, 0.5140, 0.5923, 0.6411),   # n = 15
-    (0.4259, 0.4973, 0.5742, 0.6226),   # n = 16
-    (0.4124, 0.4821, 0.5577, 0.6055),   # n = 17
-    (0.4000, 0.4683, 0.5425, 0.5897),   # n = 18
-    (0.3887, 0.4555, 0.5285, 0.5751),   # n = 19
-    (0.3783, 0.4438, 0.5155, 0.5614),   # n = 20
-    (0.3687, 0.4329, 0.5034, 0.5487),   # n = 21
-    (0.3598, 0.4227, 0.4921, 0.5368),   # n = 22
-    (0.3515, 0.4132, 0.4815, 0.5256),   # n = 23
-    (0.3438, 0.4044, 0.4716, 0.5151),   # n = 24
-    (0.3365, 0.3961, 0.4622, 0.5052),   # n = 25
-    (0.3297, 0.3882, 0.4534, 0.4958),   # n = 26
-    (0.3233, 0.3809, 0.4451, 0.4869),   # n = 27
-    (0.3172, 0.3739, 0.4372, 0.4785),   # n = 28
-    (0.3115, 0.3673, 0.4297, 0.4705),   # n = 29
-    (0.3061, 0.3610, 0.4226, 0.4629),   # n = 30
+    (0.9000, 0.9500, 0.9800, 0.9900),
+    (0.8054, 0.8783, 0.9343, 0.9587),
+    (0.7293, 0.8114, 0.8822, 0.9172),
+    (0.6694, 0.7545, 0.8329, 0.8745),
+    (0.6215, 0.7067, 0.7887, 0.8343),
+    (0.5822, 0.6664, 0.7498, 0.7977),
+    (0.5494, 0.6319, 0.7155, 0.7646),
+    (0.5214, 0.6021, 0.6851, 0.7348),
+    (0.4973, 0.5760, 0.6581, 0.7079),
+    (0.4762, 0.5529, 0.6339, 0.6835),
+    (0.4575, 0.5324, 0.6120, 0.6614),
+    (0.4409, 0.5140, 0.5923, 0.6411),
+    (0.4259, 0.4973, 0.5742, 0.6226),
+    (0.4124, 0.4821, 0.5577, 0.6055),
+    (0.4000, 0.4683, 0.5425, 0.5897),
+    (0.3887, 0.4555, 0.5285, 0.5751),
+    (0.3783, 0.4438, 0.5155, 0.5614),
+    (0.3687, 0.4329, 0.5034, 0.5487),
+    (0.3598, 0.4227, 0.4921, 0.5368),
+    (0.3515, 0.4132, 0.4815, 0.5256),
+    (0.3438, 0.4044, 0.4716, 0.5151),
+    (0.3365, 0.3961, 0.4622, 0.5052),
+    (0.3297, 0.3882, 0.4534, 0.4958),
+    (0.3233, 0.3809, 0.4451, 0.4869),
+    (0.3172, 0.3739, 0.4372, 0.4785),
+    (0.3115, 0.3673, 0.4297, 0.4705),
+    (0.3061, 0.3610, 0.4226, 0.4629),
 ]
 
-# One-tail critical values of Spearman's rs, rows n = 4 to 30, same columns.
-# rs has no closed form under H0 - these are the published exact-permutation
-# table values. None marks a level that cannot be reached at that n at all
-# (with n = 4 there are only 24 rankings, so the smallest one-tail probability
-# is 1/24 = 0.0417 and nothing below 5% exists).
 _SCRIT_MIN = 4
 _SCRIT = [
-    (1.0000, None,   None,   None),     # n = 4
-    (0.9000, 1.0000, 1.0000, None),     # n = 5
-    (0.8286, 0.8857, 0.9429, 1.0000),   # n = 6
-    (0.7143, 0.7857, 0.8929, 0.9286),   # n = 7
-    (0.6429, 0.7381, 0.8333, 0.8810),   # n = 8
-    (0.6000, 0.7000, 0.7833, 0.8333),   # n = 9
-    (0.5636, 0.6485, 0.7455, 0.7939),   # n = 10
-    (0.5364, 0.6182, 0.7091, 0.7545),   # n = 11
-    (0.5035, 0.5874, 0.6783, 0.7273),   # n = 12
-    (0.4835, 0.5604, 0.6484, 0.6978),   # n = 13
-    (0.4637, 0.5385, 0.6264, 0.6747),   # n = 14
-    (0.4464, 0.5214, 0.6036, 0.6536),   # n = 15
-    (0.4294, 0.5029, 0.5824, 0.6324),   # n = 16
-    (0.4142, 0.4877, 0.5662, 0.6152),   # n = 17
-    (0.3987, 0.4716, 0.5501, 0.5975),   # n = 18
-    (0.3893, 0.4596, 0.5351, 0.5825),   # n = 19
-    (0.3789, 0.4466, 0.5218, 0.5684),   # n = 20
-    (0.3688, 0.4364, 0.5091, 0.5545),   # n = 21
-    (0.3597, 0.4252, 0.4975, 0.5426),   # n = 22
-    (0.3518, 0.4160, 0.4862, 0.5306),   # n = 23
-    (0.3435, 0.4070, 0.4757, 0.5200),   # n = 24
-    (0.3362, 0.3977, 0.4662, 0.5100),   # n = 25
-    (0.3299, 0.3901, 0.4571, 0.5002),   # n = 26
-    (0.3236, 0.3828, 0.4487, 0.4915),   # n = 27
-    (0.3175, 0.3755, 0.4401, 0.4828),   # n = 28
-    (0.3113, 0.3685, 0.4325, 0.4744),   # n = 29
-    (0.3059, 0.3624, 0.4251, 0.4665),   # n = 30
+    (1.0000, None,   None,   None),
+    (0.9000, 1.0000, 1.0000, None),
+    (0.8286, 0.8857, 0.9429, 1.0000),
+    (0.7143, 0.7857, 0.8929, 0.9286),
+    (0.6429, 0.7381, 0.8333, 0.8810),
+    (0.6000, 0.7000, 0.7833, 0.8333),
+    (0.5636, 0.6485, 0.7455, 0.7939),
+    (0.5364, 0.6182, 0.7091, 0.7545),
+    (0.5035, 0.5874, 0.6783, 0.7273),
+    (0.4835, 0.5604, 0.6484, 0.6978),
+    (0.4637, 0.5385, 0.6264, 0.6747),
+    (0.4464, 0.5214, 0.6036, 0.6536),
+    (0.4294, 0.5029, 0.5824, 0.6324),
+    (0.4142, 0.4877, 0.5662, 0.6152),
+    (0.3987, 0.4716, 0.5501, 0.5975),
+    (0.3893, 0.4596, 0.5351, 0.5825),
+    (0.3789, 0.4466, 0.5218, 0.5684),
+    (0.3688, 0.4364, 0.5091, 0.5545),
+    (0.3597, 0.4252, 0.4975, 0.5426),
+    (0.3518, 0.4160, 0.4862, 0.5306),
+    (0.3435, 0.4070, 0.4757, 0.5200),
+    (0.3362, 0.3977, 0.4662, 0.5100),
+    (0.3299, 0.3901, 0.4571, 0.5002),
+    (0.3236, 0.3828, 0.4487, 0.4915),
+    (0.3175, 0.3755, 0.4401, 0.4828),
+    (0.3113, 0.3685, 0.4325, 0.4744),
+    (0.3059, 0.3624, 0.4251, 0.4665),
 ]
 
-# the one-tail levels the two tables above are indexed by
 _CORR_A = [0.05, 0.025, 0.01, 0.005]
 
 def _corr_col(a1):
-    # column index for a one-tail level, or -1 if it is not a tabulated one
     i = 0
     while i < len(_CORR_A):
         if abs(a1 - _CORR_A[i]) < 1e-9:
@@ -451,7 +418,6 @@ def _corr_col(a1):
     return -1
 
 def _corr_test(lines, coef, name, n, tab, tabmin, alpha, tail, src):
-    # shared critical-value comparison for both correlation coefficients
     a1 = alpha if tail != 3 else alpha / 2.0
     if tail == 1:
         lines.append(_w('H1: positive correlation'))
@@ -494,12 +460,9 @@ def _corr_test(lines, coef, name, n, tab, tabmin, alpha, tail, src):
         lines.append('REJECT H0: correlation')
         lines.append(' is significant')
     else:
-        # "not significant" is a caveat, not just an answer: it is the line that
-        # stops a big-looking r being read as evidence
         lines.append(_warn('accept H0: not significant'))
 
 def _ask_corr_test():
-    # (alpha, tail) or (None, None) when the test is to be skipped
     al = _asknum('alpha % (blank skip test):')
     if al is None:
         return (None, None)
@@ -534,8 +497,6 @@ def t_pmcc():
         else:
             _corr_test(lines, r, 'r', n, _RCRIT, _RCRIT_MIN, alpha, tail,
                        '(pmcc table, = t/sqrt(t^2+n-2))')
-            # the t statistic is the same test written the other way round,
-            # and it works for any n, including past the end of the table
             if abs(r) < 1.0:
                 tst = r * math.sqrt((n - 2) / (1.0 - r * r))
                 p1 = _t_sf(abs(tst), n - 2)
@@ -544,7 +505,6 @@ def t_pmcc():
                 lines.append('p (1-tail) = ' + _fp(p1))
                 lines.append('p (2-tail) = ' + _fp(2.0 * p1))
     _show('PMCC r', lines)
-    # a scatter plot: correlation is meaningless without looking at the shape
     xlo, xhi = casutil.nice_range(xs)
     ylo, yhi = casutil.nice_range(ys)
     fr = casutil.frame(xlo, xhi, ylo, yhi)
@@ -560,8 +520,6 @@ def t_pmcc():
     casutil.chart_hold('EXIT to go back')
 
 def _ranks(v):
-    # rank ascending, ties take the average rank. Sort (value, index)
-    # pairs directly so we do not depend on sorted(key=...) support.
     n = len(v)
     pairs = []
     i = 0
@@ -640,9 +598,6 @@ def t_reg():
         r = Sxy / math.sqrt(Sxx * Syy)
         lines.append('r = ' + _fn(r))
         lines.append('r^2 = ' + _fn(r * r))
-        # the OTHER least squares line, x on y. It minimises horizontal
-        # distances, so it is the one to use when predicting x from y; the two
-        # lines coincide only when r^2 = 1 and both pass through (xbar, ybar).
         d = Sxy / Syy
         cc = sx / n - d * sy / n
         lines.append('x on y: x = c + d y')
@@ -653,7 +608,6 @@ def t_reg():
         lines.append('means point (' + _fn(sx / n) + ', ' + _fn(sy / n) + ')')
     if xv is not None:
         lines.append('at x=' + _fn(xv) + ': y=' + _fn(a + b * xv))
-    # residuals y - (a + bx): the model-fit check the audit flagged as missing
     lines.append(_w('residuals y-(a+bx):'))
     i = 0
     ssr = 0.0
@@ -669,21 +623,16 @@ def t_reg():
     _show('Least squares', lines)
 
 def _fp(p):
-    # a p-value rounded to 4 d.p. prints as plain "0" once it drops below
-    # 5e-5, which reads as if the tail were empty. Say "< 0.0001" instead.
     if p < 0.0001:
         return '< 0.0001'
     return _fn(p)
 
 def _signed(v, name):
-    # "2X - 3Y" rather than "2X + -3Y"
     if v < 0:
         return ' - ' + _fn(-v) + name
     return ' + ' + _fn(v) + name
 
 def _chi_verdict(lines, chi, df, a):
-    # shared reporting for both chi-squared tools, so the goodness-of-fit test
-    # and the association test can never disagree about the decision rule
     cv = _chi2_crit(df, a)
     p = _chi2_sf(chi, df)
     lines.append(_w('alpha = ' + _fn(a * 100.0) + '%'))
@@ -705,14 +654,9 @@ def t_chi():
     if len(O) != len(E):
         _show('Chi-squared', [_warn('Lists differ in length')])
         return
-    # The degrees of freedom are cells - 1 - (parameters estimated from the
-    # data). This used to be hard-coded as cells - 1, which is right only when
-    # the model is fully specified in advance; fitting a Poisson mean, or a
-    # binomial p, or a normal mu and sigma from the sample costs one degree of
-    # freedom each, and using the wrong df makes the whole test wrong. So ask.
     m = _askint('params estimated (0):')
     if m is None:
-        m = 0                      # blank means "none estimated", the common case
+        m = 0
     if m < 0:
         _show('Chi-squared', [_warn('Params cannot be negative')])
         return
@@ -756,7 +700,6 @@ def t_chi():
     _show('Chi-squared GOF', lines)
 
 def t_assoc():
-    # chi-squared test for association in an r x c contingency table
     r = _askint('rows r (2-8):')
     if r is None or r < 2 or r > 8:
         return
@@ -812,8 +755,6 @@ def t_assoc():
     if tot <= 0:
         _show('Association', [_warn('Table total is 0')])
         return
-    # E = row total * column total / grand total, which is what independence
-    # predicts; the flat-list goodness-of-fit tool cannot form these at all
     lines = [_w('H0: no association'), _w('grand total = ' + _fn(tot))]
     chi = 0.0
     small = 0
@@ -849,26 +790,14 @@ def t_assoc():
         lines.append('no evidence of association')
     _show('Chi-sq association', lines)
 
-# ----------------------------------------------- continuous random variables
-# A model is held as a list of pieces, each (f, lo, hi, F), where f is the pdf
-# on [lo, hi] as a parse tree and F is its antiderivative or None. An ordinary
-# one-line pdf is just a one-piece list, so the piecewise case and the simple
-# case share every routine below and cannot drift apart.
-#
-# Integration is exact where cascalc.integ can find an antiderivative and falls
-# back to cascalc.defint (composite Simpson) where it cannot. integ returns
-# None rather than a wrong answer when it is stuck, so trusting it is safe.
 
 def _prep(f):
-    # antiderivative once per piece: the quantile search integrates repeatedly
-    # and re-deriving it inside the loop would be much slower on the handheld
     try:
         return cascalc.integ(f, 'x')
     except:
         return None
 
 def _defint(f, F, a, b):
-    # (value, exact_flag); (None, False) if it cannot be evaluated at all
     if b == a:
         return (0.0, True)
     if F is not None:
@@ -877,7 +806,7 @@ def _defint(f, F, a, b):
             if v == v and -1.7e308 < v < 1.7e308:
                 return (v, True)
         except:
-            pass            # e.g. ln|x| at x = 0; fall through to Simpson
+            pass
     v = cascalc.defint(f, a, b, False, 200, 'x')
     if v is None:
         return (None, False)
@@ -887,7 +816,6 @@ def _mkpiece(f, lo, hi):
     return (f, lo, hi, _prep(f))
 
 def _xpow(f, m):
-    # the integrand for the m-th moment: x^m * f(x)
     if m == 0:
         return f
     if m == 1:
@@ -895,7 +823,6 @@ def _xpow(f, m):
     return ('*', ('^', ('v', 'x'), ('n', m)), f)
 
 def _moment(pieces, m):
-    # integral of x^m f(x) over the whole support; (value, exact_flag)
     tot = 0.0
     exact = True
     i = 0
@@ -915,7 +842,6 @@ def _moment(pieces, m):
     return (tot, exact)
 
 def _pdfval(pieces, x):
-    # f(x), or None outside the support / where it will not evaluate
     i = 0
     while i < len(pieces):
         if pieces[i][1] <= x <= pieces[i][2]:
@@ -927,7 +853,6 @@ def _pdfval(pieces, x):
     return None
 
 def _pdf_min(pieces, n):
-    # smallest sampled value of f and where it happens, for the f >= 0 check
     lo = None
     lox = 0.0
     k = 0
@@ -946,7 +871,6 @@ def _pdf_min(pieces, n):
     return (lo, lox)
 
 def _cdf(pieces, t):
-    # F(t) = P(X <= t), accumulated piece by piece
     tot = 0.0
     i = 0
     while i < len(pieces):
@@ -963,10 +887,6 @@ def _cdf(pieces, t):
     return tot
 
 def _quantile(pieces, p):
-    # F is non-decreasing wherever f >= 0, so bisection on F(t) - p cannot
-    # miss the root. cascalc.solve is deliberately not used here: it samples a
-    # fixed [-20, 20] grid at 800 points and would step clean over the root
-    # whenever the support is narrow (a pdf on [0, 0.1], say).
     lo = pieces[0][1]
     hi = pieces[len(pieces) - 1][2]
     i = 0
@@ -983,7 +903,6 @@ def _quantile(pieces, p):
     return 0.5 * (lo + hi)
 
 def _validity(pieces, lines):
-    # the two defining properties of a pdf, each reported either way
     tot, exact = _moment(pieces, 0)
     if tot is None:
         lines.append(_warn('Cannot integrate f here.'))
@@ -1051,7 +970,6 @@ def _draw_pdf(pieces, title):
     casutil.chart_hold('EXIT to go back')
 
 def _ask_pdf(title):
-    # f, a, b -> a one-piece model, or None if anything was cancelled
     f = _askexpr('pdf f(x):')
     if f is None:
         return None
@@ -1073,9 +991,6 @@ def t_pdf():
     lo = pieces[0][1]
     hi = pieces[0][2]
     lines = [_w('f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']')]
-    # the moments are reported even when the check fails: finding E(X) after
-    # solving for an unknown constant k is a normal exam step, and the header
-    # line already says loudly whether f is a pdf
     _validity(pieces, lines)
     _moments_lines(pieces, lines)
     _show('Continuous RV', lines)
@@ -1092,8 +1007,6 @@ def t_cdf():
     lines = [_w('f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']')]
     _validity(pieces, lines)
     if F is not None:
-        # F(x) = int from a to x of f, i.e. the antiderivative shifted so
-        # that F(a) = 0
         try:
             base = caseng.evalf(F, lo)
             expr = F if base == 0 else ('-', F, ('n', base))
@@ -1124,7 +1037,6 @@ def t_cdf():
             lines.append('F(' + _fn(t) + ') = ' + _fn(v))
             lines.append('P(X>t) = ' + _fn(1.0 - v))
     _show('cdf F(x)', lines)
-    # the cdf curve, with the median read off it
     xs = []
     ys = []
     i = 0
@@ -1153,9 +1065,6 @@ def t_pdfmode():
     hi = pieces[0][2]
     lines = [_w('f(x) on [' + _fn(lo) + ', ' + _fn(hi) + ']')]
     _validity(pieces, lines)
-    # coarse scan for the bracket, then a ternary search inside it. A scan is
-    # used rather than solving f'(x) = 0 because the mode of an exam pdf is
-    # very often at an endpoint, where the derivative is not zero at all.
     n = 200
     best = None
     bi = 0
@@ -1248,7 +1157,6 @@ def t_pdfpw():
     _show('Piecewise pdf', lines)
     _draw_pdf(pieces, 'piecewise pdf')
 
-# -------------------------------------- linear combinations of random vars --
 
 def t_lincomb():
     mx = _asknum('E(X):')
@@ -1317,9 +1225,6 @@ def t_nsum():
     n = _askint('n:')
     if n is None or n < 1:
         return
-    # The distinction students lose marks on: nX is ONE observation scaled,
-    # so its spread is scaled too; X1+...+Xn is n INDEPENDENT observations,
-    # whose variances add. Same mean, different variance.
     vscale = n * n * vx
     vsum = n * vx
     lines = [_w('n = ' + str(n)),
@@ -1365,8 +1270,6 @@ def t_cimean():
                           _warn('small n: use t, not z')])
 
 def t_tint():
-    # One-sample / paired t interval. For paired data enter the list of
-    # DIFFERENCES: the paired test is just the one-sample test applied to them.
     a = _asklist('Data (or differences):')
     if a is None or len(a) < 2:
         _show('t interval', [_warn('Need at least 2 values.')])
@@ -1404,7 +1307,6 @@ def t_tint():
              '(' + _fn(mean - m) + ', ' + _fn(mean + m) + ')',
              _w('sigma is estimated from the'),
              _w(' sample, so this uses t, not z')]
-    # a confidence interval doubles as a two-tail test of any given mean
     mu0 = _asknum('test mean mu0 (blank skip):')
     if mu0 is not None:
         lines.append(_w('mu0 = ' + _fn(mu0)))
@@ -1466,16 +1368,7 @@ def t_ztest():
                                 'p (2-tail) = ' + _fn(pv),
                                 _w('|z|>crit: reject H0')])
 
-# ---------------------------------------------------------- simulation ----
-# Y422 Z2: use simulations to investigate distributions. `random` is one of the
-# three modules this build can import, so this is a real experiment rather than
-# a table lookup - and the point of the statement is that a simulated
-# distribution APPROACHES the theoretical one, which you can only see by
-# running it.
 def _normal_pair():
-    # Box-Muller: two independent standard normals from two uniforms. The
-    # obvious "add twelve uniforms and subtract six" is a central-limit
-    # approximation with visibly short tails, which is the wrong lesson here.
     u1 = random.random()
     while u1 <= 0.0:
         u1 = random.random()
@@ -1485,9 +1378,9 @@ def _normal_pair():
 
 
 def _sim_draw(kind, p1, p2):
-    if kind == 0:                       # uniform on [p1, p2]
+    if kind == 0:
         return p1 + (p2 - p1) * random.random()
-    if kind == 1:                       # binomial B(n, p)
+    if kind == 1:
         k = 0
         i = 0
         while i < int(p1):
@@ -1495,7 +1388,7 @@ def _sim_draw(kind, p1, p2):
                 k += 1
             i += 1
         return float(k)
-    if kind == 2:                       # Poisson, by Knuth's product method
+    if kind == 2:
         lim = math.exp(-p1)
         k = 0
         prod = random.random()
@@ -1503,7 +1396,7 @@ def _sim_draw(kind, p1, p2):
             k += 1
             prod *= random.random()
         return float(k)
-    if kind == 3:                       # normal N(mu, sigma^2)
+    if kind == 3:
         return p1 + p2 * _normal_pair()[0]
     return random.random()
 
@@ -1551,9 +1444,6 @@ def t_simulate():
         trials = 500
     seed = _askint('random seed (or cancel for none)', 0, 10 ** 9)
     if seed is not None:
-        # random.random() is certainly present; random.seed() is not documented
-        # for this build, so a missing one must not take the tool down - it only
-        # costs reproducibility.
         try:
             random.seed(seed)
         except:
@@ -1571,7 +1461,6 @@ def t_simulate():
         else:
             vals.append(_sim_draw(base, p1, p2))
         i += 1
-    # empirical summary
     tot = 0.0
     for v in vals:
         tot += v
@@ -1580,7 +1469,6 @@ def t_simulate():
     for v in vals:
         sq += (v - mean) * (v - mean)
     var = sq / (trials - 1) if trials > 1 else 0.0
-    # theoretical
     if base == 0:
         tmean = (p1 + p2) / 2.0
         tvar = (p2 - p1) * (p2 - p1) / 12.0

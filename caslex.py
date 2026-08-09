@@ -1,33 +1,15 @@
-# caslex.py - tokenizer + ITERATIVE shunting-yard parser for the CAS.
-# Turns "2x^2+sin(x)" into a tuple expression tree. Iterative on purpose:
-# MicroPython's call stack dies around ~38 frames, so no recursive-descent.
-# Tree nodes (tuples): ('n',num) ('v',name) ('+',a,b) ('-',a,b) ('*',a,b)
-#   ('/',a,b) ('^',a,b) ('neg',a) ('sin',a) ('cos',a) ('tan',a)
-#   ('ln',a) ('log',a) ('exp',a) ('sqrt',a) ('asin',a) ('acos',a) ('atan',a)
-#   ('abs',a) ('sinh',a) ('cosh',a) ('tanh',a) ('asinh',a) ('acosh',a)
-#   ('atanh',a) ('fact',a)=a!  and 2-arg ('ncr',a,b) ('npr',a,b) ('logb',a,b)
-
-# unary functions that take one bracketed argument
 UFUNCS = ("sqrt", "asinh", "acosh", "atanh", "asin", "acos", "atan",
           "sinh", "cosh", "tanh", "sech", "cosech", "coth",
           "sin", "cos", "tan", "sec", "cosec", "cot",
           "log", "exp", "ln", "abs")
-# two-argument functions: f(a, b)
 BINFUNCS = ("ncr", "npr", "logb")
 FUNCS = UFUNCS + BINFUNCS
-# Matched longest-first, so "cosech" beats "cosec" beats "cos", and "asinh"
-# beats "asin" beats "sin". Getting this order wrong is not a cosmetic problem:
-# before sec/cosec/cot existed at all, "sec(x)" fell through to the
-# single-letter rule and parsed as s*e*c*x, and "cosec(x)" parsed as
-# cos(e*c*x) - a perfectly well-formed tree for a completely different
-# function. Only the rule that an unknown variable raises stopped that becoming
-# a silent wrong answer.
+# longest first: cosech before cosec before cos
 WORDS = ["arcsinh", "arccosh", "arctanh", "arcsin", "arccos", "arctan",
          "asinh", "acosh", "atanh", "cosech", "sqrt", "asin", "acos", "atan",
          "sinh", "cosh", "tanh", "cosec", "sech", "coth", "logb", "ncr", "npr",
          "abs", "log", "exp", "sec", "cot", "sin", "cos", "tan", "ans", "ln",
          "pi", "e", "x", "y"]
-# what a student may write on the left, what the engine calls it on the right
 ALIAS = {"arcsin": "asin", "arccos": "acos", "arctan": "atan",
          "arcsinh": "asinh", "arccosh": "acosh", "arctanh": "atanh"}
 
@@ -46,12 +28,9 @@ def tokenize(s):
             while j < n and (s[j] in "0123456789" or s[j] == '.'):
                 if s[j] == '.':
                     if dot >= 1:
-                        break  # a second '.' starts a new token (2.3.4 -> 2.3, .4)
+                        break
                     dot += 1
                 j += 1
-            # scientific notation: 1e3, 2.5e-3, 6.02e+23. Only consumed when a
-            # digit really follows the e (and optional sign), so "2e" and "3exp(x)"
-            # still read as 2*e and 3*exp(x) with e = Euler's number.
             expo = 0
             if j < n and (s[j] == 'e' or s[j] == 'E'):
                 k = j + 1
@@ -67,7 +46,7 @@ def tokenize(s):
                 try:
                     toks.append(('num', float(txt)))
                 except:
-                    pass  # malformed run like a lone '.' - skip, never raise
+                    pass
             else:
                 toks.append(('num', int(txt)))
             i = j
@@ -115,11 +94,10 @@ def tokenize(s):
             toks.append(('rp',))
             i += 1
             continue
-        i += 1  # ignore anything else
+        i += 1
     return _implicit(toks)
 
 def _implicit(toks):
-    # insert '*' where multiplication is implied: 2x, 2(x), )(, x sin(..., 3!x
     out = []
     prev = None
     for t in toks:
@@ -139,7 +117,6 @@ def parse(s):
     toks = tokenize(s)
     if not toks:
         return None
-    # mark unary minus as op 'u'
     marked = []
     prev = None
     for t in toks:
@@ -149,7 +126,6 @@ def parse(s):
             continue
         marked.append(t)
         prev = t
-    # shunting-yard -> RPN
     rpn = []
     ops = []
     for t in marked:
@@ -165,10 +141,6 @@ def parse(s):
                 rpn.append(ops.pop())
         elif k == 'op':
             o1 = t[1]
-            # A prefix unary minus binds only what follows it, so it must never
-            # pop a pending operator: "2^-3" has to keep '^' on the stack until
-            # its right operand (-3) has been built. Popping here made every
-            # "a^-b" fail to parse.
             if o1 != 'u':
                 while ops and ops[-1][0] == 'op':
                     o2 = ops[-1][1]
@@ -183,15 +155,14 @@ def parse(s):
             while ops and ops[-1][0] != 'lp':
                 rpn.append(ops.pop())
             if not ops:
-                return None  # ')' with no matching '(' - malformed
-            ops.pop()  # discard the 'lp'
+                return None
+            ops.pop()
             if ops and ops[-1][0] == 'fn':
                 rpn.append(ops.pop())
     while ops:
         if ops[-1][0] == 'lp':
-            return None  # mismatched parens
+            return None
         rpn.append(ops.pop())
-    # RPN -> tree (iterative, explicit value stack)
     st = []
     for t in rpn:
         k = t[0]

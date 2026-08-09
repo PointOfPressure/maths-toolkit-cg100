@@ -1,7 +1,3 @@
-# vcplx.py - VISUAL Complex Numbers section for the Maths Toolkit (Further Maths
-# Core Pure). casioplot graphics, reuses casui's menu/keyboard/draw helpers and
-# the builtin complex type. Argand plot is native (no screen flip). run() is the
-# section entry; EXIT returns to the home menu.
 import math
 import casui
 import casutil
@@ -204,11 +200,6 @@ def t_argand():
     casui.wait_release()
 
 def t_loci():
-    # Loci and regions in the Argand diagram. The three the specification
-    # names are |z - a| = r (a circle), |z - a| = |z - b| (the perpendicular
-    # bisector of a and b), and arg(z - a) = theta (a HALF-line, not a whole
-    # line - the half that matters is the one the argument actually points
-    # along, which is the detail most often lost).
     kind = casui.menu('Locus of z', ['|z - a| = r        circle',
                                      '|z - a| = |z - b|  bisector',
                                      'arg(z - a) = th    half-line',
@@ -296,7 +287,6 @@ def t_loci():
             lines.append(_warn('but only the half with x ' +
                          ('>' if math.cos(th) > 0 else '<') + ' ' + casutil.fmt(cx)))
     _show('Locus', lines)
-    # ---- draw it ----
     span = 1.0
     for v in (abs(cx), abs(cy), r):
         if v > span:
@@ -321,7 +311,6 @@ def t_loci():
             prev = (px, py)
             i += 1
         if kind == 3:
-            # shade the interior with a coarse grid of dots
             i = -12
             while i <= 12:
                 j = -12
@@ -354,9 +343,6 @@ def t_loci():
 
 
 def t_demoivre_id():
-    # de Moivre gives the multiple-angle identities: expanding (cos t + i sin t)^n
-    # by the binomial theorem and matching real and imaginary parts turns
-    # cos(nt) and sin(nt) into polynomials in cos t and sin t.
     n = casutil.askint('n in (cos t + i sin t)^n', 2, 8)
     if n is None:
         return
@@ -369,7 +355,6 @@ def t_demoivre_id():
     k = 0
     while k <= n:
         c = casutil.ncr(n, k)
-        # i^k cycles 1, i, -1, -i
         m = k % 4
         body = ''
         if n - k > 0:
@@ -405,7 +390,6 @@ def t_demoivre_id():
     lines.append('')
     lines.append(_w('Use s^2 = 1 - c^2 to write cos ' + str(n) + 't'))
     lines.append(_w('in cosines alone.'))
-    # numeric check at one angle, so the expansion can be trusted
     t = 0.7
     c = math.cos(t)
     s = math.sin(t)

@@ -1,7 +1,3 @@
-# calib_screen.py - measure the REAL casioplot screen size on this fx-CG100.
-# Walks black pixels across the top edge (width) and down the left edge
-# (height) until get_pixel stops reading black (off-screen), then shows the
-# detected WIDTH and HEIGHT. Tell me those two numbers.
 from casioplot import set_pixel, get_pixel, clear_screen, show_screen, draw_string
 
 BLACK = (0, 0, 0)

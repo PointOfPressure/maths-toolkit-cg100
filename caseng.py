@@ -1,10 +1,5 @@
-# caseng.py - the CAS engine: simplify, differentiate, numeric eval, printer.
-# Operates on the tuple trees from caslex.py. Tree walks are recursive but
-# depth = expression nesting (small), so they stay under the ~38-frame ceiling.
 import math
 
-# unary funcs rendered as name(arg); 'fact' (postfix !) and the BFUNCS are
-# handled separately. Inverse-trig answers honour the deg flag in evalf.
 UFUNCS = ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot',
           'ln', 'log', 'exp', 'sqrt', 'asin', 'acos', 'atan',
           'sinh', 'cosh', 'tanh', 'sech', 'cosech', 'coth',
@@ -12,7 +7,7 @@ UFUNCS = ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot',
 BFUNCS = ('ncr', 'npr', 'logb')
 
 PI = 3.141592653589793
-ANS = 0.0  # last Calculate result, reachable as the token "ans"
+ANS = 0.0
 
 def _torad(a, deg):
     return a * PI / 180.0 if deg else a
@@ -20,12 +15,11 @@ def _torad(a, deg):
 def _fromrad(a, deg):
     return a * 180.0 / PI if deg else a
 
-def _factorial(k):
-    # iterative (device has no math.factorial and a ~38-frame recursion ceiling)
+def _factorial(k):  # no math.factorial on device
     if k < 0:
         raise ValueError("factorial of negative")
     if k > 2000:
-        raise ValueError("factorial too large")  # keep the handheld responsive
+        raise ValueError("factorial too large")
     r = 1
     i = 2
     while i <= k:
@@ -34,7 +28,6 @@ def _factorial(k):
     return r
 
 def _ncr(n, k):
-    # stable multiplicative form - avoids building huge factorials
     if n < 0 or k < 0 or k > n:
         return 0
     if k > n - k:
@@ -69,7 +62,6 @@ def gcd(a, b):
     return a
 
 def _isnum(v):
-    # real, finite number? (bool is an int subclass but never appears in trees)
     if isinstance(v, complex):
         return False
     if not isinstance(v, (int, float)):
@@ -83,22 +75,18 @@ def _isnum(v):
     return True
 
 def _fold_pow(a, b):
-    # constant-fold a ** b, but only when the answer is a real finite number we
-    # can keep in a tree. Returns None to leave ('^', a, b) unevaluated.
     if isinstance(a, int) and isinstance(b, int):
         if b >= 0:
-            # a huge integer power would allocate megabytes on the handheld
             if b > 256 and a != 0 and a != 1 and a != -1:
                 return None
             return ('n', a ** b)
-        # negative integer power of an integer stays exact as a fraction
         if a == 0:
             return None
         if -b > 256 and a != 1 and a != -1:
             return None
         return _fold_div(1, a ** (-b))
     if a < 0 and not (isinstance(b, int) or float(b) == int(b)):
-        return None  # fractional power of a negative -> complex, leave symbolic
+        return None
     try:
         r = a ** b
     except:
@@ -108,8 +96,6 @@ def _fold_pow(a, b):
     return ('n', r)
 
 def _sqrt_split(v):
-    # v = a*a*b with b square-free: sqrt(v) = a sqrt(b). Trial division to the
-    # square root of v, which for the sizes a student types is instant.
     a = 1
     b = v
     d = 2
@@ -121,7 +107,6 @@ def _sqrt_split(v):
     return (a, b)
 
 def _basepow(n):
-    # view a node as (base, numeric exponent) so like powers can be combined
     if n[0] == '^' and n[2][0] == 'n':
         return (n[1], n[2][1])
     return (n, 1)
@@ -143,7 +128,6 @@ def _fold_div(a, b):
         return None
     return ('n', a / b)
 
-# ---------- simplify (bottom-up, local rules; terminating) ----------
 def simplify(node):
     return _s(node)
 
@@ -160,9 +144,6 @@ def _s(node):
         return ('neg', a)
     if t in UFUNCS:
         a = _s(node[1])
-        # exp and ln undo each other. Without this the integrating factor of
-        # dy/dx + y/x = x stays as e^(ln|x|) and cannot be multiplied through,
-        # which is the most standard first-order question there is.
         if t == 'exp' and a[0] == 'ln':
             return a[1]
         if t == 'ln' and a[0] == 'exp':
@@ -182,12 +163,6 @@ def _s(node):
             if t == 'sqrt' and v == 0: return ('n', 0)
             if t == 'sqrt' and v == 1: return ('n', 1)
             if t == 'sqrt' and isinstance(v, int) and 0 < v <= 1000000:
-                # Pull the largest square factor out: sqrt(8) is 2 sqrt(2), and
-                # sqrt(4) is 2 as a special case of it. Never turn sqrt(2) into
-                # 1.414214 - "give your answer in exact form" is most of the
-                # marks on an H640 surd question.
-                # deliberately not named a/b: `a` is the simplified argument
-                # node in this scope, and shadowing it returned ('sqrt', 1)
                 sq_out, sq_in = _sqrt_split(v)
                 if sq_in == 1:
                     return ('n', sq_out)
@@ -223,7 +198,6 @@ def _s(node):
         if an and a[1] == 0: return b
         if bn and b[1] == 0: return a
         if a == b: return _s(('*', ('n', 2), a))
-        # x + (-1) is x - 1: adding a negative reads badly on a result screen
         if bn and b[1] < 0: return ('-', a, ('n', -b[1]))
         if a[0] == 'neg': return ('-', b, a[1])
         if b[0] == 'neg': return ('-', a, b[1])
@@ -241,19 +215,14 @@ def _s(node):
         if (an and a[1] == 0) or (bn and b[1] == 0): return ('n', 0)
         if an and a[1] == 1: return b
         if bn and b[1] == 1: return a
-        # -1*X is -X: without this a partial-fraction numerator prints as
-        # "-1*x" where a student would write "-x"
         if an and a[1] == -1: return _s(('neg', b))
         if bn and b[1] == -1: return _s(('neg', a))
-        # re-simplified, so sqrt(3)*sqrt(3) folds to 3 via the sqrt(u)^2 rule
-        # rather than stopping at sqrt(3)^2
         if a == b: return _s(('^', a, ('n', 2)))
-        # x^p * x^q -> x^(p+q); integration by parts leans on this to close
         ba, ea = _basepow(a)
         bb, eb = _basepow(b)
         if ba == bb and ba[0] != 'n':
             return _s(('^', ba, ('n', ea + eb)))
-        if bn and not an: return ('*', b, a)  # constant to the front
+        if bn and not an: return ('*', b, a)
         return ('*', a, b)
     if t == '/':
         if bn and b[1] == 1: return a
@@ -264,22 +233,17 @@ def _s(node):
             if r is not None:
                 return r
         if a == b: return ('n', 1)
-        # x^p / x^q -> x^(p-q)
         ba, ea = _basepow(a)
         bb, eb = _basepow(b)
         if ba == bb and ba[0] != 'n':
             return _s(('^', ba, ('n', ea - eb)))
-        # A/(k*B) -> (A/B)/k: lifting the constant out of a denominator is what
-        # lets x^2/(2x) reach the power rule above and collapse to x/2
         if b[0] == '*' and b[1][0] == 'n' and b[1][1] != 0:
             return _s(('/', _s(('/', a, b[2])), b[1]))
         if bn and b[1] != 0:
-            # (k*X)/m -> (k/m)*X, so an integral's constant lands in lowest terms
             if a[0] == '*' and a[1][0] == 'n':
                 r = _fold_div(a[1][1], b[1])
                 if r is not None:
                     return _s(('*', r, a[2]))
-            # (p/q)/m -> p/(q*m) instead of a stack of divisions
             if a[0] == '/' and a[2][0] == 'n':
                 return _s(('/', a[1], ('n', a[2][1] * b[1])))
         return ('/', a, b)
@@ -287,13 +251,8 @@ def _s(node):
         if bn:
             if b[1] == 0: return ('n', 1)
             if b[1] == 1: return a
-            # sqrt(u)^2 is u - true wherever sqrt(u) is defined at all, and
-            # without it the volume-of-revolution integrand pi*sqrt(x)^2 has
-            # no symbolic integral
             if a[0] == 'sqrt' and b[1] == 2:
                 return a[1]
-            # (u^p)^q folds when q is a whole number; for a fractional q it
-            # does not ((x^2)^(1/2) is |x|, not x), so that case is left alone
             if a[0] == '^' and isinstance(b[1], int) and b[1] > 0 and a[2][0] == 'n':
                 return _s(('^', a[1], ('n', a[2][1] * b[1])))
             if an:
@@ -301,12 +260,10 @@ def _s(node):
                 if r is not None:
                     return r
                 return ('^', a, b)
-        # 1^anything is 1; 0^x is left symbolic because 0^0 is 1, not 0
         if an and a[1] == 1: return ('n', 1)
         return ('^', a, b)
     return node
 
-# ---------- differentiate (full rule set, then caller simplifies) ----------
 def diff(node, var='x'):
     return _d(node, var)
 
@@ -382,10 +339,7 @@ def _d(n, var):
     if t == 'abs':
         return ('*', ('/', n[1], ('abs', n[1])), _d(n[1], var))
     if t == 'logb':
-        # d/dx log_a(u) = u' / (u ln a); the base is treated as constant
         return ('/', _d(n[2], var), ('*', n[2], ('ln', n[1])))
-    # fact/ncr/npr have no elementary derivative: 0 is right only when the
-    # argument does not involve the variable at all.
     if t in ('fact', 'ncr', 'npr'):
         if _hasvar(n, var):
             raise ValueError("cannot differentiate " + t)
@@ -393,8 +347,6 @@ def _d(n, var):
     return ('n', 0)
 
 def subst(n, var, repl):
-    # replace every ('v', var) with the tree repl. Composite functions, implicit
-    # differentiation and integration by substitution all need this.
     t = n[0]
     if t == 'v':
         return repl if n[1] == var else n
@@ -407,10 +359,6 @@ def subst(n, var, repl):
     return n
 
 def subst_tree(n, target, repl):
-    # replace every occurrence of the subtree `target` with `repl`. This is how
-    # a substitution u = g(x) is checked: rewrite, then see whether any x is
-    # left. Compared structurally, so g(x) has to be written the same way it
-    # appears in the integrand - which is what a student does anyway.
     if n == target:
         return repl
     t = n[0]
@@ -423,10 +371,6 @@ def subst_tree(n, target, repl):
     return n
 
 def strip_abs(n):
-    # drop every abs(...) wrapper. Used where the caller can settle the sign
-    # itself: separating variables gives ln|y| = ..., and the initial condition
-    # says which side of zero y is on, which is exactly the step a student
-    # writes as "y > 0 here, so drop the modulus".
     t = n[0]
     if t == 'abs':
         return strip_abs(n[1])
@@ -439,8 +383,6 @@ def strip_abs(n):
     return n
 
 def count_var(n, var):
-    # how many times var appears; 1 means an expression can be inverted by
-    # peeling operations off the outside one at a time
     t = n[0]
     if t == 'n':
         return 0
@@ -453,7 +395,6 @@ def count_var(n, var):
     return 0
 
 def vars_in(n, out=None):
-    # the variable names an expression mentions, in first-seen order
     if out is None:
         out = []
     t = n[0]
@@ -469,16 +410,12 @@ def vars_in(n, out=None):
         vars_in(n[2], out)
     return out
 
-# ---------- invert y = f(x) by peeling operations off the outside ----------
-# Only valid when x occurs exactly once; with two occurrences the inverse is
-# not obtainable this way and the caller falls back to solving numerically.
 _INVFN = {'sin': 'asin', 'cos': 'acos', 'tan': 'atan', 'asin': 'sin',
           'acos': 'cos', 'atan': 'tan', 'exp': 'ln', 'ln': 'exp',
           'sinh': 'asinh', 'cosh': 'acosh', 'tanh': 'atanh',
           'asinh': 'sinh', 'acosh': 'cosh', 'atanh': 'tanh'}
 
 def invert(f, var='x', yname='y'):
-    # x as a function of y, or None
     if count_var(f, var) != 1:
         return None
     lhs = f
@@ -506,7 +443,7 @@ def invert(f, var='x', yname='y'):
             lhs = lhs[1]
             continue
         if t == 'abs':
-            return None       # not one-to-one: no single inverse
+            return None
         if t in ('+', '-', '*', '/', '^'):
             a = lhs[1]
             b = lhs[2]
@@ -531,7 +468,6 @@ def invert(f, var='x', yname='y'):
                     rhs = ('^', rhs, ('/', ('n', 1), ('n', e)))
                 lhs = a
                 continue
-            # the variable is on the right of the operator
             if t == '+':
                 rhs = ('-', rhs, a)
             elif t == '-':
@@ -541,7 +477,6 @@ def invert(f, var='x', yname='y'):
             elif t == '/':
                 rhs = ('/', a, rhs)
             else:
-                # a^x = y  ->  x = ln y / ln a
                 rhs = ('/', ('ln', rhs), ('ln', a))
             lhs = b
             continue
@@ -558,23 +493,12 @@ def _hasvar(n, var):
         return _hasvar(n[1], var)
     return _hasvar(n[1], var) or _hasvar(n[2], var)
 
-# ---------- numeric evaluation ----------
 def evalf(n, x, deg=False, env=None):
-    # deg=True makes trig take/return degrees (Calculate + CAS honour the mode;
-    # the FM section modules call evalf without deg, so they stay in radians).
-    # env is an optional {name: value} map for variables other than x - it is
-    # what lets Euler's method evaluate dy/dx = f(x, y) on a one-variable engine.
-    # An unknown variable raises rather than silently evaluating to 0, so a
-    # mistyped entry is reported instead of quietly becoming a wrong answer.
     t = n[0]
     if t == 'n':
         return n[1]
     if t == 'v':
-        # env is consulted FIRST, including for x. Checking the positional
-        # argument first made env['x'] silently ignored, so a two-variable
-        # tool that passed {'x': a, 'y': b} evaluated at whatever had been
-        # passed positionally instead - which is how the surface stationary
-        # point tool searched with x pinned at 0 and still reported an answer.
+        # env before the positional x
         if env is not None and n[1] in env:
             return env[n[1]]
         if n[1] == 'x':
@@ -597,7 +521,6 @@ def evalf(n, x, deg=False, env=None):
         expo = evalf(n[2], x, deg, env)
         r = base ** expo
         if isinstance(r, complex):
-            # e.g. (-8)^(1/3): real-valued engine, so report a domain error
             raise ValueError("complex result")
         return r
     if t == 'fact':
@@ -616,10 +539,6 @@ def evalf(n, x, deg=False, env=None):
     if t == 'tan':
         return math.tan(_torad(a, deg))
     if t == 'sec':
-        # Tested against a tolerance, not against exact zero: cos(pi/2) is
-        # 6.1e-17 in floating point, so an exact test would hand back 1.6e16
-        # and print it as an answer. At an asymptote "undefined" is the answer,
-        # and the graph code already draws a gap where evaluation raises.
         c = math.cos(_torad(a, deg))
         if -1e-12 < c < 1e-12:
             raise ValueError("sec undefined here")
@@ -630,7 +549,6 @@ def evalf(n, x, deg=False, env=None):
             raise ValueError("cosec undefined here")
         return 1.0 / s
     if t == 'cot':
-        # cos/sin, not 1/tan: tan is infinite at pi/2 where cot is simply 0
         r = _torad(a, deg)
         s = math.sin(r)
         if -1e-12 < s < 1e-12:
@@ -685,14 +603,12 @@ def evalf(n, x, deg=False, env=None):
         return 0.5 * math.log((1.0 + a) / (1.0 - a))
     return 0.0
 
-# ---------- expression -> string (precedence-aware) ----------
 OPPREC = {'+': 1, '-': 1, '*': 2, '/': 2, 'neg': 3, '^': 4}
 
 def _numstr(v):
     if isinstance(v, int):
         return str(v)
     if not _isnum(v):
-        # int() would raise on nan/inf, taking the whole result screen with it
         if v != v:
             return "undefined"
         return "inf" if v > 0 else "-inf"
@@ -708,11 +624,6 @@ def _str(n, parent, right):
     t = n[0]
     if t == 'n':
         s = _numstr(n[1])
-        # A bare negative literal needs brackets when it is a right operand
-        # ("x+(-3)"), the operand of a unary minus, or the base of a power -
-        # otherwise (-8)^(1/3) would print as -8^(1/3), which reads as
-        # -(8^(1/3)). As a leading left operand it does not: "-1/2" is both
-        # correct and what a student would write, where "(-1)/2" is neither.
         if (right or parent >= 3) and s[:1] == '-':
             return "(" + s + ")"
         return s

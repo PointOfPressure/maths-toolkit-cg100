@@ -10,14 +10,13 @@ _asknum = casutil.asknum
 _askint = casutil.askint
 _fn = casutil.fmt
 _show = casutil.show
-_pages = casutil.show      # result_screen pages by itself now
-_w = casutil.w             # method / intermediate steps, hidden in answer mode
-_warn = casutil.warn       # caveat about the answer, shown in both modes
+_pages = casutil.show
+_w = casutil.w
+_warn = casutil.warn
 
 def _cstr(z):
     return casutil.fmtc(z.real, z.imag)
 
-# ---------- recurrence relation a_n = p a(n-1) + q a(n-2) ----------
 def t_recur():
     p = _asknum('p in a_n=p*a(n-1)+q*a(n-2)')
     if p is None:
@@ -31,7 +30,6 @@ def t_recur():
     a1 = _asknum('a_1')
     if a1 is None:
         return
-    # characteristic: x^2 - p x - q = 0
     disc = p * p + 4 * q
     out = [_w('char: x^2 -(' + _fn(p) + ')x -(' + _fn(q) + ')=0'),
            _w('disc = ' + _fn(disc))]
@@ -39,7 +37,6 @@ def t_recur():
         sd = math.sqrt(disc)
         r1 = (p + sd) / 2.0
         r2 = (p - sd) / 2.0
-        # a0 = A+B, a1 = A r1 + B r2
         det = r1 - r2
         A = (a1 - a0 * r2) / det
         B = a0 - A
@@ -51,14 +48,12 @@ def t_recur():
         re = p / 2.0
         im = sd / 2.0
         mod = math.sqrt(re * re + im * im)
-        # theta = atan(im/re) adjusted for quadrant (no atan2 on this device)
         if re == 0:
             th = math.pi / 2 if im >= 0 else -math.pi / 2
         else:
             th = math.atan(im / re)
             if re < 0:
                 th = th + math.pi
-        # a0 = A , a1 = mod(A cos th + B sin th); im>0 so theta in (0,pi), sin th>0
         A = a0
         st = math.sin(th)
         if abs(st) < 1e-12 or mod == 0:
@@ -71,7 +66,6 @@ def t_recur():
         out.append('A=' + _fn(A) + ' B=' + _fn(B))
     else:
         r = p / 2.0
-        # a0 = A , a1 = (A+B) r
         A = a0
         if r == 0:
             B = 0.0
@@ -81,7 +75,6 @@ def t_recur():
         out.append('a_n = (A + B n) r^n')
         out.append('A=' + _fn(A) + ' B=' + _fn(B))
     _pages('Recurrence', out)
-    # generate terms iteratively
     terms = [a0, a1]
     for n in range(2, 10):
         terms.append(p * terms[n - 1] + q * terms[n - 2])
@@ -90,7 +83,6 @@ def t_recur():
         tl.append('a_' + str(n) + ' = ' + _fn(terms[n]))
     _pages('Terms a_0..a_9', tl)
 
-# ---------- group theory (Cayley table of element indices) ----------
 def t_group():
     n = _askint('Group order n (<=8)')
     if n is None or n < 1 or n > 8:
@@ -113,7 +105,6 @@ def t_group():
             return
         T.append(row)
     out = []
-    # closure: every product index is a valid element 0..n-1
     closed = True
     for i in range(n):
         for j in range(n):
@@ -124,7 +115,6 @@ def t_group():
     if not closed:
         _pages('Group', out)
         return
-    # identity: e with T[e][x]=x and T[x][e]=x for all x (two-sided)
     ident = -1
     for e in range(n):
         good = True
@@ -140,7 +130,6 @@ def t_group():
         _pages('Group', out)
         return
     out.append('Identity: e = ' + str(ident))
-    # inverses: a*b = b*a = e
     inv = [-1] * n
     allinv = True
     for a in range(n):
@@ -151,24 +140,22 @@ def t_group():
         if inv[a] == -1:
             allinv = False
     out.append('All inverses: ' + ('yes' if allinv else 'NO'))
-    # abelian: T symmetric
     ab = True
     for i in range(n):
         for j in range(n):
             if T[i][j] != T[j][i]:
                 ab = False
     out.append('Abelian: ' + ('yes' if ab else 'no'))
-    # order of each element: smallest k>=1 with a^k = e
     orders = []
     cyclic = False
     for a in range(n):
-        cur = a          # a^1
+        cur = a
         k = 1
         while cur != ident and k <= n:
-            cur = T[a][cur]   # multiply by a
+            cur = T[a][cur]
             k += 1
         if cur != ident:
-            k = 0  # no finite order in this table (not a true group element)
+            k = 0
         orders.append(k)
         if k == n:
             cyclic = True
@@ -176,7 +163,6 @@ def t_group():
     ol = []
     for a in range(n):
         ol.append('ord(' + str(a) + ') = ' + str(orders[a]))
-    # Lagrange note: order of every element divides n
     divs = []
     for d in range(1, n + 1):
         if n % d == 0:
@@ -187,16 +173,13 @@ def t_group():
     _pages('Element orders', ol)
     _pages('Lagrange', lag)
 
-# ---------- 2x2 eigenvalues + eigenvectors ----------
 def _eigvec(a, b, c, d, L):
-    # solve (A - L I) v = 0 ; rows: (a-L)x + b y = 0 ; c x + (d-L)y = 0
     r1 = (a - L, b)
     r2 = (c, d - L)
     if abs(r1[0]) > 1e-9 or abs(r1[1]) > 1e-9:
         pp, qq = r1
     else:
         pp, qq = r2
-    # pp x + qq y = 0 -> proportional vector
     if abs(qq) > 1e-12:
         v = (1.0, -pp / qq)
     elif abs(pp) > 1e-12:
@@ -253,7 +236,6 @@ def t_eigen():
         out.append(_warn('(no real eigenvectors)'))
     _pages('2x2 Eigen', out)
 
-# ---------- modular arithmetic ----------
 _gcd = casutil.gcd
 _powmod = casutil.powmod
 _modinv = casutil.modinv
@@ -300,7 +282,6 @@ def t_mod():
                                   _warn('check: ' + str(a) + '*' + str(inv) +
                                         ' mod m =' + str((a * inv) % m))])
 
-# ---------- numerical partial derivative (single-var engine) ----------
 def _mvparse(prompt):
     st = casui.input_expr(prompt)
     if st is None:
@@ -324,11 +305,6 @@ def _at(tree, env):
 
 
 def t_partial():
-    # Real partial derivatives, taken symbolically. This used to be a
-    # single-variable central difference that said so in its own output,
-    # because the engine only bound x - caseng.diff has always taken a
-    # variable, and evalf now takes an environment, so dz/dy is no harder
-    # than dz/dx.
     _show('Partial derivatives', ['Enter z = f(x, y), using both',
                                   'letters, for example x^2*y + y^3.',
                                   'dz/dx treats y as a constant and',
@@ -381,10 +357,6 @@ def t_partial():
 
 
 def t_surface_stat():
-    # Stationary points of z = f(x, y): solve dz/dx = 0 and dz/dy = 0 together
-    # by 2-D Newton from a starting guess, then classify with the discriminant
-    # D = f_xx f_yy - f_xy^2. D < 0 is a saddle, which has no one-variable
-    # analogue and is the case worth naming.
     _show('Stationary points of a surface', ['For z = f(x, y), solve',
                                              '  dz/dx = 0 and dz/dy = 0',
                                              'together, then classify with',
@@ -410,7 +382,6 @@ def t_surface_stat():
     lines = [_w('z = ' + caseng.tostr(caseng.simplify(f))),
              _w('dz/dx = ' + caseng.tostr(cascalc.tidy(fx))),
              _w('dz/dy = ' + caseng.tostr(cascalc.tidy(fy))), '']
-    # 2-D Newton on (fx, fy) = (0, 0)
     x = x0
     y = y0
     ok = False
@@ -487,7 +458,6 @@ def t_surface_stat():
 
 
 def t_tangent_plane():
-    # Tangent plane and normal line to z = f(x, y) at a point.
     _show('Tangent plane', ['At (a, b) on z = f(x, y):',
                             '  z = f(a,b) + fx(a,b)(x-a)',
                             '            + fy(a,b)(y-b)',
@@ -543,7 +513,6 @@ def _det3(m):
 
 
 def _cubic_roots(a, b, c, d):
-    # real roots of a x^3 + b x^2 + c x + d, by trigonometric/Cardano solution
     if abs(a) < 1e-14:
         if abs(b) < 1e-14:
             if abs(c) < 1e-14:
@@ -573,7 +542,6 @@ def _cubic_roots(a, b, c, d):
             return [off]
         u = (-q / 2.0) ** (1.0 / 3.0) if q <= 0 else -((q / 2.0) ** (1.0 / 3.0))
         return sorted([2.0 * u + off, -u + off])
-    # three distinct real roots
     r = math.sqrt(-p * p * p / 27.0)
     phi = math.acos(max(-1.0, min(1.0, -q / (2.0 * r))))
     m = 2.0 * ((-p / 3.0) ** 0.5)
@@ -586,7 +554,6 @@ def _cubic_roots(a, b, c, d):
 
 
 def _nullvec3(m):
-    # a non-zero vector in the null space of the 3x3 matrix m, by elimination
     a = [[m[0][0], m[0][1], m[0][2]],
          [m[1][0], m[1][1], m[1][2]],
          [m[2][0], m[2][1], m[2][2]]]
@@ -639,7 +606,6 @@ def _nullvec3(m):
     n = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
     if n < 1e-12:
         return None
-    # scale so the largest component is 1, which is how they are written down
     big = 0
     k = 1
     while k < 3:
@@ -651,8 +617,6 @@ def _nullvec3(m):
 
 
 def t_eigen3():
-    # 3x3 eigenvalues and eigenvectors. The specification asks for 3x3 work and
-    # both eigen tools in this toolkit were 2x2 only.
     _show('3x3 eigenvalues', ['Enter the nine entries of M.',
                               'The characteristic equation',
                               'det(M - kI) = 0 is a cubic; its',
@@ -672,7 +636,6 @@ def t_eigen3():
         i += 1
     tr = m[0][0] + m[1][1] + m[2][2]
     det = _det3(m)
-    # sum of the 2x2 principal minors
     m2 = ((m[1][1] * m[2][2] - m[1][2] * m[2][1])
           + (m[0][0] * m[2][2] - m[0][2] * m[2][0])
           + (m[0][0] * m[1][1] - m[0][1] * m[1][0]))
@@ -709,7 +672,6 @@ def t_eigen3():
         vecs.append(v)
         lines.append('    eigenvector (' + _fn(v[0]) + ', ' + _fn(v[1]) +
                      ', ' + _fn(v[2]) + ')')
-        # check Mv = kv, which is the definition and worth showing
         mv = [m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
               m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
               m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2]]
@@ -760,26 +722,7 @@ def t_eigen3():
     _pages('3x3 eigen', lines)
 
 
-# ================= non-homogeneous recurrence relations ==================
-# t_recur above solves u(n+2) = p u(n+1) + q u(n) and nothing else: the
-# complementary function on its own. What follows adds the particular solution,
-# so the whole of s5, s6, s7 and s8 is covered, plus s4 (verify a given
-# solution) and s2/s3/s9 (say what the sequence actually does).
-#
-# The method is undetermined coefficients, done once for both orders. Write the
-# recurrence as L[u](n) = f(n) with
-#     L[g](n) = g(n+k) - co[k-1] g(n+k-1) - ... - co[0] g(n)
-# so co = [a] for the first order case and co = [b, a] for the second. If
-# f(n) = P(n) b^n with deg P = d, a particular solution is
-#     p(n) = (c_0 + c_1 n + ... + c_d n^d) n^s b^n
-# where s is the multiplicity of b as a root of the auxiliary equation - the
-# resonant case, and the one everybody drops. The c_j come from a (d+1) square
-# linear system, because L[p] and f are both (polynomial of degree d) times
-# b^n and two of those agree everywhere as soon as they agree at d+1 points.
-
 def _onlyvars(tree, allowed, title):
-    # every letter the expression uses must be one this tool binds; an
-    # unbound letter would otherwise be read as x and silently evaluate to 0
     for v in caseng.vars_in(tree):
         if v not in allowed:
             _show(title, ['That expression uses the letter "' + v + '".',
@@ -789,7 +732,6 @@ def _onlyvars(tree, allowed, title):
 
 
 def _fat(tree, n):
-    # f(n) as a float, or None if it cannot be evaluated there
     return _at(tree, {'n': float(n)})
 
 
@@ -806,10 +748,6 @@ def _fsamples(tree, lo, hi):
 
 
 def _polydeg(vals):
-    # Degree of the polynomial through equally spaced samples, by finite
-    # differences: the (d+1)th difference of a degree d polynomial is zero.
-    # -1 means the zero function; None means the differences never die away,
-    # so the samples are not polynomial at all.
     scale = 0.0
     for v in vals:
         if abs(v) > scale:
@@ -835,8 +773,6 @@ def _polydeg(vals):
 
 
 def _fform(tree):
-    # f(n) written as P(n) b^n: returns (b, deg P), or None for anything else.
-    # b = 1 is the polynomial (and constant) case.
     vals = _fsamples(tree, 0, 8)
     if vals is None:
         return None
@@ -859,7 +795,6 @@ def _fform(tree):
 
 
 def _bstr(b):
-    # a base, bracketed when it is negative so (-1)^n is not read as -(1^n)
     s = _fn(b)
     return '(' + s + ')' if b < 0 else s
 
@@ -877,9 +812,6 @@ def _formname(b, d):
 
 
 def _powf(b, n):
-    # b^n, capped instead of raising: float ** big int is the one operation
-    # here that throws rather than returning inf, and an absurd index is a
-    # typing mistake, not a reason to take the result screen down with it
     try:
         return b ** n
     except:
@@ -887,7 +819,6 @@ def _powf(b, n):
 
 
 def _bval(e, b, n):
-    # n^e b^n, taking 0^0 = 1 as usual
     p = 1.0
     i = 0
     while i < e:
@@ -897,7 +828,6 @@ def _bval(e, b, n):
 
 
 def _lop(co, e, b, n):
-    # L applied to the single trial term n^e b^n, at n
     k = len(co)
     v = _bval(e, b, n + k)
     i = 0
@@ -908,7 +838,6 @@ def _lop(co, e, b, n):
 
 
 def _lsolve(M, v):
-    # Gaussian elimination with partial pivoting; None when singular
     n = len(v)
     A = []
     i = 0
@@ -952,9 +881,6 @@ def _lsolve(M, v):
 
 
 def _particular(co, tree, b, d, s):
-    # coefficients of p(n) = sum_j c_j n^(s+j) b^n, or None if the trial form
-    # does not in fact reproduce f - which is the check that catches a wrong
-    # guess at the shape of f or at the resonance
     m = d + 1
     M = []
     rhs = []
@@ -1006,7 +932,6 @@ def _pval(c, b, s, n):
 
 
 def _mono(coef, e, b, first):
-    # one term coef * n^e * b^n, with its sign, ready to be concatenated
     if abs(coef) < 1e-12:
         return ''
     neg = coef < 0
@@ -1032,12 +957,10 @@ def _mono(coef, e, b, first):
 
 
 def _signed(v):
-    # "+ 3" or "- 2", for writing a recurrence back out readably
     return ('- ' + _fn(-v)) if v < 0 else ('+ ' + _fn(v))
 
 
 def _trigterm(c, name, th, first):
-    # one of A cos(n t), B sin(n t), with its sign
     if abs(c) < 1e-12:
         return ''
     neg = c < 0
@@ -1057,8 +980,6 @@ def _sumstr(terms):
 
 
 def _pterms(c, b, s):
-    # the particular solution as (coef, power of n, base) triples, highest
-    # power first, which is how it would be written down
     out = []
     j = len(c) - 1
     while j >= 0:
@@ -1075,7 +996,6 @@ def _asknz(prompt):
 
 
 def t_recur_nonhom():
-    # s5 and s6: u(n+1) = a u(n) + f(n)
     _show('First order recurrence', [
         'u(n+1) = a u(n) + f(n)',
         '',
@@ -1145,7 +1065,6 @@ def t_recur_nonhom():
     A = (u0 - _pval(c, b, s, n0)) / _powf(a, n0)
     lines.append(_w('u(' + str(n0) + ') = ' + _fn(u0) + ' fixes A = ' + _fn(A)))
     closed = _sumstr([(A, 0, a)] + _pterms(c, b, s))
-    # check before printing: run the recurrence forward and compare
     rows = []
     err = 0.0
     uv = u0
@@ -1182,7 +1101,6 @@ def t_recur_nonhom():
 
 
 def _trialstr(b, d, s):
-    # the trial form written out, e.g. "(C0 + C1 n) n 2^n"
     if d == 0:
         head = 'C'
     else:
@@ -1217,7 +1135,6 @@ def _recur1_terms(a, ft, u0, n0):
 
 
 def _cbasis(kind, p, q, idx, n):
-    # the two complementary basis sequences, for each root case
     if kind == 'real':
         return _powf(p, n) if idx == 0 else _powf(q, n)
     if kind == 'rep':
@@ -1226,7 +1143,6 @@ def _cbasis(kind, p, q, idx, n):
 
 
 def t_recur_nonhom2():
-    # s7 and s8: u(n+2) = a u(n+1) + b u(n) + f(n)
     _show('Second order recurrence', [
         'u(n+2) = a u(n+1) + b u(n) + f(n)',
         '',
@@ -1409,7 +1325,6 @@ def _recur2_terms(ca, cb, ft, u0, u1, n0):
     return out
 
 
-# ---------- s4: verify a given closed form solves a given recurrence ----------
 def t_recur_verify():
     labels = ['u(n+1) = f(n, u)', 'u(n+2) = f(n, u, v)']
     c = casui.menu('Verify a solution', labels)
@@ -1446,7 +1361,6 @@ def t_recur_verify():
     lines = [_w('recurrence: u(n+' + str(order) + ') = ' +
              caseng.tostr(caseng.simplify(rhs))),
              _w('candidate:  u(n) = ' + caseng.tostr(caseng.simplify(cand))), '']
-    # the symbolic substitution, which is what "verify" means on paper
     try:
         nplus = ('+', ('v', 'n'), ('n', 1))
         cn1 = caseng.subst(cand, 'n', nplus)
@@ -1509,7 +1423,6 @@ def t_recur_verify():
     _pages('Verify a solution', lines + rows)
 
 
-# ---------- s2, s3, s9: what does the sequence actually do? ----------
 def t_recur_behave():
     _show('Behaviour of a sequence', [
         'For u(n+1) = f(u(n)), this reports',
@@ -1553,7 +1466,6 @@ def t_recur_behave():
         shown.append(_w('u(' + str(i) + ') = ' + _fn(seq[i])))
         i += 1
     m = len(seq) - 1
-    # convergence: the tail stops moving
     conv = False
     if not diverged and not broke and m > 20:
         conv = True
@@ -1563,7 +1475,6 @@ def t_recur_behave():
                 conv = False
                 break
             k += 1
-    # periodicity: the tail repeats
     period = 0
     if not diverged and not broke and m > 40 and not conv:
         p = 1
@@ -1579,7 +1490,6 @@ def t_recur_behave():
                 period = p
                 break
             p += 1
-    # monotone / oscillating over the terms we have
     inc = True
     dec = True
     osc = True
@@ -1667,7 +1577,6 @@ def t_recur_behave():
     _pages('Behaviour of a sequence', lines + shown)
 
 
-# ============================ XS1: sets ==================================
 def _setnorm(v):
     out = []
     for x in v:
@@ -1758,7 +1667,6 @@ def t_sets():
     A = _setnorm(A)
     B = _setnorm(B)
     C = None if C is None else _setnorm(C)
-    # anything named in A, B or C belongs in E whether it was typed there or not
     E = _sunion(E, _sunion(A, B))
     if C is not None:
         E = _sunion(E, C)
@@ -1848,9 +1756,7 @@ def t_sets():
     _pages('Sets and notation', lines)
 
 
-# =================== a5, a6: subgroups and Lagrange ======================
 def _readtable(tag, n):
-    # a Cayley table typed one row at a time, entries being element indices
     T = []
     i = 0
     while i < n:
@@ -1909,7 +1815,6 @@ def _inverses(T, e):
 
 
 def _cyclic_sub(T, e, a):
-    # <a> = {a, a^2, ...} up to the identity, with the powers in order
     n = len(T)
     out = [a]
     cur = a
@@ -1984,7 +1889,6 @@ def t_subgroups():
         a += 1
     lines.append('')
     lines.append('distinct cyclic subgroups: ' + str(len(found)))
-    # every subgroup, by testing each subset for closure
     subs = []
     mask = 0
     while mask < (1 << n):
@@ -2013,7 +1917,6 @@ def t_subgroups():
         if ok:
             subs.append(mem)
         mask += 1
-    # smallest subgroup first; an insertion pass, so no sort key is needed
     ordered = []
     for H in subs:
         pos = 0
@@ -2063,7 +1966,6 @@ def t_subgroups():
     _pages('Subgroups and Lagrange', lines)
 
 
-# ============== a8: an isomorphism between two groups ====================
 def t_isomorph():
     _show('Group isomorphism', [
         'Two groups of the same order are',
@@ -2109,8 +2011,6 @@ def t_isomorph():
         lines.append('so G and H are NOT isomorphic.')
         _pages('Group isomorphism', lines)
         return
-    # backtracking over bijections, kept iterative: only elements of matching
-    # order are ever tried, and every product already determined is checked
     phi = [-1] * n
     used = [False] * n
     phi[eg] = eh
@@ -2200,7 +2100,6 @@ def _orders(T, e):
 
 
 def _partial_ok(G, H, phi):
-    # every product whose three entries are already mapped must agree
     n = len(G)
     i = 0
     while i < n:
@@ -2216,9 +2115,7 @@ def _partial_ok(G, H, phi):
     return True
 
 
-# ================= c2: contours and sections of a surface ================
 def _cross(pts, x, y, ex, ey, za, zb, k):
-    # where the level k crosses one side of a cell, if it does at all
     if (za - k) * (zb - k) > 0 or za == zb:
         return
     t = (k - za) / (zb - za)
@@ -2328,12 +2225,8 @@ def t_contours():
     lines.append(_w('that cross mean a saddle. Contours'))
     lines.append(_w('close together mean a steep surface.'))
     _pages('Contours and sections', lines)
-    # the contour map
     fr = casutil.frame(xlo, xhi, ylo, yhi)
     casutil.axes(fr, 'contours of z = f(x,y)', 'x', 'y')
-    # Marching squares: in each little cell, find where the level crosses the
-    # four sides and join those points up. Marking the crossings as single
-    # dots instead leaves a contour so broken you cannot see the curve.
     dx = (xhi - xlo) / NX
     dy = (yhi - ylo) / NY
     for k in levels:
@@ -2365,7 +2258,6 @@ def t_contours():
                 i += 1
             j += 1
     casutil.chart_hold('levels ' + ls[0] + ' .. ' + ls[4])
-    # the sections
     fr2 = casutil.frame(xlo, xhi, zlo, zhi)
     casutil.axes(fr2, 'sections z against x', 'x', 'z')
     for yv in ysec:

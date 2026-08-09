@@ -1,8 +1,3 @@
-# pure640.py - OCR B MEI H640 Pure section for the fx-CG100 maths toolkit.
-# Non-calculus pure tools: quadratics, simultaneous equations, sequences/
-# series, binomial, logarithms, coordinate geometry, circles, trig.
-# Calculus lives in the CAS section. Stock CASIO MicroPython 1.9.4:
-# ASCII only, no f-strings, iterative only, hand-built atan2.
 import math
 import casui
 import caslex
@@ -14,13 +9,12 @@ _askint = casutil.askint
 _fn = casutil.fmt
 _fc = casutil.fmtc
 _show = casutil.show
-_pages = casutil.show      # result_screen pages by itself now
-_w = casutil.w             # working: hidden when the Working setting is off
-_warn = casutil.warn       # a caveat on the answer: always shown
+_pages = casutil.show
+_w = casutil.w
+_warn = casutil.warn
 _atan2 = casutil.atan2
 _nCr = casutil.ncr
 
-# 1. QUADRATIC SOLVER -------------------------------------------------------
 def t_quadratic():
     a = _asknum('a (x^2 coeff)')
     if a is None:
@@ -54,7 +48,6 @@ def t_quadratic():
               'vertex (' + _fn(h) + ',' + _fn(k) + ')']
     _pages('Quadratic', lines)
 
-# 2. SIMULTANEOUS EQUATIONS -------------------------------------------------
 def _simul_linear():
     _show('Two linear eqns', ['a1 x + b1 y = c1', 'a2 x + b2 y = c2', 'enter the six values.'])
     vs = []
@@ -81,7 +74,6 @@ def _simul_linquad():
             return
         vs.append(v)
     m, c, p, q, r = vs
-    # p x^2 + q x + r = m x + c  ->  A x^2 + B x + C = 0
     A = p
     B = q - m
     C = r - c
@@ -117,7 +109,6 @@ def t_simul():
         else:
             _simul_linquad()
 
-# 3. ARITHMETIC SEQUENCE / SERIES -------------------------------------------
 def t_arith():
     a = _asknum('a (first term)')
     if a is None:
@@ -135,7 +126,6 @@ def t_arith():
                          _w('Un = a+(n-1)d'), 'Un = ' + _fn(un),
                          _w('Sn = n/2(2a+(n-1)d)'), 'Sn = ' + _fn(sn)])
 
-# 4. GEOMETRIC SEQUENCE / SERIES --------------------------------------------
 def t_geo():
     a = _asknum('a (first term)')
     if a is None:
@@ -160,7 +150,6 @@ def t_geo():
         lines.append('|r|>=1: no sum to inf')
     _pages('Geometric', lines)
 
-# 5. BINOMIAL EXPANSION -----------------------------------------------------
 def _binom_int():
     a = _asknum('a (constant)')
     if a is None:
@@ -238,7 +227,6 @@ def t_binom():
             return
         [_binom_int, _binom_real, _binom_coeff][c]()
 
-# 6. LOGARITHMS -------------------------------------------------------------
 def _log_solve():
     a = _asknum('a (base, a>0)')
     if a is None:
@@ -280,7 +268,6 @@ def t_log():
             return
         [_log_solve, _log_eval, _log_laws][c]()
 
-# 7. COORDINATE GEOMETRY ----------------------------------------------------
 def t_coord():
     _show('Coord geometry', ['enter two points', 'P1=(x1,y1)', 'P2=(x2,y2)'])
     vs = []
@@ -301,7 +288,7 @@ def t_coord():
         b = y1 - m * x1
         eqn = 'line y = ' + _fn(m) + 'x'
         if b < 0:
-            eqn += ' - ' + _fn(-b)      # not "x + -3"
+            eqn += ' - ' + _fn(-b)
         elif b > 0:
             eqn += ' + ' + _fn(b)
         lines += ['gradient m = ' + _fn(m), eqn]
@@ -311,7 +298,6 @@ def t_coord():
             lines.append('perp grad: undefined')
     _pages('Coord geometry', lines)
 
-# 8. CIRCLE -----------------------------------------------------------------
 def _circle_from_cr():
     a = _asknum('centre x = a')
     if a is None:
@@ -351,9 +337,6 @@ def _circle_from_eqn():
                               'radius = ' + _fn(math.sqrt(r2))])
 
 def _circle_3pts():
-    # The circle through three points. Its centre is where the perpendicular
-    # bisectors of two chords meet, which is the "perpendicular bisector of a
-    # chord passes through the centre" property doing actual work.
     _show('Circle through 3 points', ['The centre is where the perpendicular',
                                       'bisectors of two of the chords meet.',
                                       'Enter the three points.'])
@@ -367,7 +350,6 @@ def _circle_3pts():
             return
         pts.append((x, y))
     (x1, y1), (x2, y2), (x3, y3) = pts
-    # |P-A|^2 = |P-B|^2 gives a linear equation; two of them fix the centre
     a1 = 2.0 * (x2 - x1)
     b1 = 2.0 * (y2 - y1)
     c1 = x2 * x2 - x1 * x1 + y2 * y2 - y1 * y1
@@ -390,7 +372,6 @@ def _circle_3pts():
     lines.append('')
     lines.append('(x - ' + _fn(cx) + ')^2 + (y - ' + _fn(cy) + ')^2 = ' +
                  _fn(r * r))
-    # check all three really are on it
     ok = True
     for (px, py) in pts:
         d = math.sqrt((px - cx) ** 2 + (py - cy) ** 2)
@@ -398,7 +379,6 @@ def _circle_3pts():
             ok = False
     lines.append('')
     lines.append(_warn('all three points on the circle: ' + ('yes' if ok else 'NO')))
-    # angle in a semicircle: is any chord a diameter?
     for i in range(3):
         j = (i + 1) % 3
         k = (i + 2) % 3
@@ -414,7 +394,6 @@ def _circle_3pts():
 
 
 def _circle_tangent():
-    # Tangent at a point on a circle: perpendicular to the radius there.
     _show('Tangent to a circle', ['At a point on the circle, the tangent',
                                   'is PERPENDICULAR TO THE RADIUS.',
                                   'So its gradient is -1/(radius gradient).'])
@@ -462,7 +441,6 @@ def _circle_tangent():
 
 
 def _circle_param():
-    # Parametric form of a circle, both ways.
     _show('Circle in parametric form', ['x = a + r cos t',
                                         'y = b + r sin t',
                                         'traces the circle centre (a,b)',
@@ -504,9 +482,6 @@ def _circle_param():
 
 
 def t_proportion():
-    # Proportional relationships. Finding k from one pair is a division, but
-    # recognising the model and using it is the statement, and the log-log
-    # gradient is how you tell y = k x^n from y = k b^x.
     _show('Proportion', ['y = k x      direct',
                          'y = k / x    inverse',
                          'y = k x^n    a power law',
@@ -618,7 +593,6 @@ def t_circle():
         else:
             _circle_from_eqn()
 
-# 9. TRIG -------------------------------------------------------------------
 def _trig_solve():
     labels = ['sin x = k', 'cos x = k', 'tan x = k']
     f = casui.menu('Solve over 0..360', labels)
@@ -670,7 +644,6 @@ def _trig_rform():
     if b is None:
         return
     R = math.sqrt(a * a + b * b)
-    # R sin(x+alpha)=R sin x cos al + R cos x sin al; match a=R cos al, b=R sin al
     alpha = casutil.deg(_atan2(b, a))
     _pages('R-form', [_w('a=' + _fn(a) + '  b=' + _fn(b)), _w('R = sqrt(a^2+b^2)'),
                       'R = ' + _fn(R), '= R sin(x + alpha)', _w('tan alpha = b/a'),
@@ -683,9 +656,6 @@ def _trig_exact():
                             '(r = square root)', 'r2 ~ 1.41421', 'r3 ~ 1.73205'])
 
 def _trig_roots(f, k, lo, hi, full):
-    # every x in [lo, hi] with sin/cos/tan(x) = k, in the unit implied by
-    # `full` (360 for degrees, 2pi for radians). Shared by the plain solver and
-    # the identity-based one so they cannot disagree about the second solution.
     try:
         if f == 0:
             base = math.asin(k)
@@ -736,9 +706,6 @@ _IDFORMS = [
 
 
 def _trig_identity():
-    # Equations that need an identity BEFORE they become a quadratic. This is
-    # the technique H640 t19 is about, and the plain solver cannot touch them:
-    # it only handles sin x = k.
     _show('Trig equations by identity', [
         'These become quadratics once you use',
         '  sin^2 x = 1 - cos^2 x',
@@ -774,21 +741,17 @@ def _trig_identity():
         hi = full
     if hi < lo:
         lo, hi = hi, lo
-    # build the heading from the coefficients rather than patching the template
-    # string, which produced "+ + 1 sin x"
     parts = name.split(' ')
-    sq = parts[1]                      # "sin^2" / "cos^2" / "tan^2" / "sec^2"
-    lin = parts[5]                     # "sin" / "cos" / "tan"
+    sq = parts[1]
+    lin = parts[5]
     lines = [_w(_lead(a, sq + ' x') + ' ' + _signed(b, lin + ' x') + ' ' +
                 _signed(c) + ' = 0'),
              _w('for ' + _fn(lo) + ' <= x <= ' + _fn(hi) + ' ' + unm), '']
-    # apply the identity to get a quadratic in ONE function
     A = a
     B = b
     C = c
     fname = ('sin', 'cos', 'tan')[f]
     if ident == 'sin2':
-        # a(1 - cos^2) + b cos + c = 0  ->  -a cos^2 + b cos + (a + c) = 0
         lines.append(_w('use sin^2 x = 1 - cos^2 x:'))
         A = -a
         C = a + c
@@ -797,7 +760,6 @@ def _trig_identity():
         A = -a
         C = a + c
     elif ident == 'sec2':
-        # a(1 + tan^2) + b tan + c = 0  ->  a tan^2 + b tan + (a + c) = 0
         lines.append(_w('use sec^2 x = 1 + tan^2 x:'))
         C = a + c
     lines.append(_w('  ' + _lead(A, fname + '^2 x') + ' ' +
@@ -872,7 +834,6 @@ def _trig_identity():
         if row:
             lines.append('  ' + row)
         lines.append('(' + str(len(allsols)) + ' solutions)')
-        # independent check: substitute each back into the ORIGINAL equation
         bad = 0
         for x in allsols:
             r = x if unit == 1 else casutil.rad(x)
@@ -903,10 +864,6 @@ def _trig_identity():
 
 
 def _trig_general():
-    # The bare solver above is locked to 0..360 degrees and to sin x = k. This
-    # one takes any interval, either angle unit, and a multiple angle, which is
-    # what the equations on the paper actually look like: sin(2x - 30) = 0.5
-    # over 0 <= x <= 360 has four solutions and the naive route finds one.
     labels = ['sin(px + q) = k', 'cos(px + q) = k', 'tan(px + q) = k']
     f = casui.menu('Solve trig equation', labels)
     if f == -1:
@@ -935,7 +892,6 @@ def _trig_general():
         hi = full
     if hi < lo:
         lo, hi = hi, lo
-    # principal value, in the chosen unit
     try:
         if f == 0:
             base = math.asin(k)
@@ -949,7 +905,6 @@ def _trig_general():
         return
     if unit == 0:
         base = casutil.deg(base)
-    # every angle A with the required value, as base + n*period or its partner
     if f == 0:
         partners = [base, full / 2.0 - base]
         period = full
@@ -961,7 +916,6 @@ def _trig_general():
         period = full / 2.0
     sols = []
     for a0 in partners:
-        # A = p x + q, so x = (A - q)/p; step A by the period both ways
         n = -400
         while n <= 400:
             A = a0 + n * period
@@ -1034,8 +988,6 @@ def _trig_compound():
 
 
 def _trig_expand():
-    # Evaluate a compound-angle expansion numerically, both ways, so the
-    # identity can be checked rather than taken on trust.
     _show('Check an expansion', ['Enter A and B in degrees.',
                                  'Both sides of each identity are',
                                  'worked out separately and compared.'])
@@ -1084,9 +1036,6 @@ def t_trig():
 
 
 def t_triangle():
-    # Sine rule and cosine rule. The audit put this first on the whole missing
-    # list: it appears in essentially every H640 pure paper and there was no
-    # route to it at all. Angles in degrees; sides a, b, c face angles A, B, C.
     labels = ['SSS - three sides', 'SAS - two sides + included angle',
               'ASA - two angles + a side', 'SSA - two sides + non-included angle']
     c = casui.menu('Solve a triangle', labels)
@@ -1160,7 +1109,6 @@ def t_triangle():
         if s > 1.0:
             s = 1.0
         B = casutil.deg(math.asin(s))
-        # the ambiguous case: 180 - B may also work
         B2 = 180.0 - B
         if a < b and A + B2 < 180.0 and abs(B2 - B) > 1e-9:
             warn = B2
@@ -1195,9 +1143,6 @@ def t_triangle():
 
 
 def t_arc_sector():
-    # Arc length and sector area. r theta and (1/2) r^2 theta need theta in
-    # RADIANS; the degree versions carry the pi/180. Mixing them up is the
-    # standard way to lose these marks.
     _show('Arc and sector', ['For a sector of radius r and angle',
                              'theta: arc = r theta and',
                              'area = (1/2) r^2 theta,',
@@ -1237,10 +1182,6 @@ def t_arc_sector():
 
 
 def t_inequality():
-    # Linear and quadratic inequalities. The quadratic case is where the marks
-    # go: the solution set is between the roots or outside them depending on
-    # the sign of a and the direction, and getting that backwards is the
-    # standard error.
     kind = casui.menu('Inequality', ['linear  ax + b  ? 0', 'quadratic ax^2+bx+c ? 0'])
     if kind == -1:
         return
@@ -1266,7 +1207,6 @@ def t_inequality():
             _pages('Inequality', lines)
             return
         root = -b / a
-        # dividing by a negative flips the inequality - the classic slip
         flip = a < 0
         eff = sym
         if flip:
@@ -1304,7 +1244,7 @@ def t_inequality():
     up = a > 0
     lines.append(_w('the parabola opens ' + ('upwards' if up else 'downwards')))
     lines.append('')
-    inside_is_neg = up          # between the roots, an upward parabola is < 0
+    inside_is_neg = up
     if lo is None:
         always = (up == want_pos)
         lines.append('so it is ' + ('always' if always else 'never') +
@@ -1336,9 +1276,6 @@ def t_inequality():
 
 
 def _draw_quad_region(a, b, c, lo, hi, rel, strict, want_pos, up):
-    # Draw y = ax^2+bx+c with the solution set marked ON THE X-AXIS. Sketching
-    # it and shading is the check the specification asks for, and it is the one
-    # that survives getting the inequality direction backwards.
     if lo is None:
         centre = -b / (2.0 * a)
         xa = centre - 5.0
@@ -1359,7 +1296,6 @@ def _draw_quad_region(a, b, c, lo, hi, rel, strict, want_pos, up):
     sym = ('>', '>=', '<', '<=')[rel]
     casutil.axes(fr, 'y = ' + _fn(a) + 'x^2 ' + _signed(b) + 'x ' + _signed(c) +
                  '   solve ' + sym + ' 0', 'x', 'y')
-    # the curve
     prev = None
     i = 0
     while i <= n:
@@ -1369,7 +1305,6 @@ def _draw_quad_region(a, b, c, lo, hi, rel, strict, want_pos, up):
             casutil.seg(fr, prev[0], prev[1], xv, yv, casui.ACC)
         prev = (xv, yv)
         i += 1
-    # the solution set, as a thick band along y = 0
     band = (yhi - ylo) * 0.012
     i = 0
     while i <= n:
@@ -1394,7 +1329,6 @@ def _draw_quad_region(a, b, c, lo, hi, rel, strict, want_pos, up):
 
 
 def _signed(v, body=''):
-    # "+ 3x" / "- 3x" / "+ x", so nothing prints "+ -24" or "+ 1x"
     m = -v if v < 0 else v
     sgn = '- ' if v < 0 else '+ '
     if body and abs(m - 1.0) < 1e-12:
@@ -1403,7 +1337,6 @@ def _signed(v, body=''):
 
 
 def _lead(v, body):
-    # the first term of an expression: "3x", "-x", "x"
     if abs(v - 1.0) < 1e-12:
         return body
     if abs(v + 1.0) < 1e-12:
@@ -1412,7 +1345,6 @@ def _lead(v, body):
 
 
 def _sqsplit(v):
-    # v = a*a*b with b square-free
     a = 1
     b = int(v)
     d = 2
@@ -1425,7 +1357,6 @@ def _sqsplit(v):
 
 
 def _surdstr(a, b):
-    # a*sqrt(b) written the way it goes on paper
     if b == 1:
         return _fn(a)
     if a == 1:
@@ -1436,23 +1367,17 @@ def _surdstr(a, b):
 
 
 def _br(v):
-    # bracket a negative so "-1^2" cannot be read as -(1^2)
     s = _fn(v)
     return ('(' + s + ')') if s[:1] == '-' else s
 
 
-def _pmsurd(b, n):
-    # ' + b sqrt(n)', or ' - |b| sqrt(n)' when b is negative. The sign belongs
-    # to the operator, not to the term: joining with a bare ' + ' or ' - ' and
-    # letting _surdstr carry the minus prints '1 - -sqrt(2)', which is right
-    # but is not how anyone writes it down.
+def _pmsurd(b, n):  # sign on the operator, not the term
     if b < 0:
         return ' - ' + _surdstr(-b, n)
     return ' + ' + _surdstr(b, n)
 
 
 def _sumstr(a, b, n):
-    # a + b sqrt(n) in exact form, with the degenerate terms dropped
     if abs(b) < 1e-12:
         return _fn(a)
     if abs(a) < 1e-12:
@@ -1461,9 +1386,6 @@ def _sumstr(a, b, n):
 
 
 def t_surds():
-    # Manipulating surds, and rationalising a denominator. These are exact-form
-    # marks, and the CAS holds numbers as floats with exact folding only for
-    # integers and fractions, so sqrt(8) reaching 2 sqrt(2) needs its own route.
     what = casui.menu('Surds', ['Simplify sqrt(n)',
                                 'a sqrt(m) +/- b sqrt(n)',
                                 'Multiply two surds',
@@ -1544,7 +1466,6 @@ def t_surds():
                     _fn(a * b * math.sqrt(prod), 6))]
         _pages('Surds', lines)
         return
-    # rationalise k / (p + q sqrt(n))
     k = _asknum('k (numerator)')
     if k is None:
         return
@@ -1573,9 +1494,6 @@ def t_surds():
         return
     lines.append(_w('  top    = ' + _fn(k) + '(' + _sumstr(p, -q, n) + ')'))
     lines.append('')
-    # the fraction form is what goes on the paper; the decimals are the check.
-    # num2 is the coefficient of sqrt(n), sign included, and a negative bottom
-    # is negated away rather than printed as "/ -1".
     num1 = k * p
     num2 = -k * q
     d = den
@@ -1589,11 +1507,9 @@ def t_surds():
     if abs(d - 1) < 1e-12:
         lines.append('  = ' + _sumstr(num1, num2, n))
     elif abs(d / g - 1) < 1e-12:
-        # the bottom cancels away entirely, so the exact form has no fraction
         lines.append(_w('  = (' + _sumstr(num1, num2, n) + ') / ' + _fn(d)))
         lines.append('  = ' + _sumstr(num1 / g, num2 / g, n))
     elif g > 1:
-        # the unreduced fraction is a step, not the answer
         lines.append(_w('  = (' + _sumstr(num1, num2, n) + ') / ' + _fn(d)))
         lines.append('  = (' + _sumstr(num1 / g, num2 / g, n) +
                      ') / ' + _fn(d / g) +
@@ -1607,9 +1523,6 @@ def t_surds():
 
 
 def t_linecircle():
-    # Where a line meets a circle. Simultaneous eqns already substitutes a line
-    # into a parabola and reads the discriminant; this is the same routine with
-    # a circle, and it is on every H640 paper.
     _show('Line and circle', ['Circle (x-a)^2 + (y-b)^2 = r^2',
                               'Line   y = m x + c',
                               'Substitute and read the discriminant:',
@@ -1654,7 +1567,6 @@ def t_linecircle():
     if c is None:
         return
     lines.append(_w('line y = ' + _fn(m) + 'x + ' + _fn(c)))
-    # (x-a)^2 + (mx + c - b)^2 = r^2
     A = 1.0 + m * m
     B = -2.0 * a + 2.0 * m * (c - b)
     C = a * a + (c - b) * (c - b) - r * r
@@ -1699,8 +1611,6 @@ def t_linecircle():
 
 
 def t_sequence():
-    # Generate a sequence from a kth-term formula or a recurrence, then say what
-    # it does: increasing, decreasing, periodic, convergent, divergent.
     how = casui.menu('Sequence given by', ['a formula for u(n)',
                                            'a recurrence u(n+1) = f(u(n))'])
     if how == -1:
@@ -1774,7 +1684,6 @@ def t_sequence():
         lines.append('  u(' + str(start + i) + ') = ' + _fn(terms[i], 6))
         i += 1
     lines.append('')
-    # --- behaviour
     up = True
     down = True
     i = 1
@@ -1788,7 +1697,6 @@ def t_sequence():
     i = 1
     while i < len(terms) and not period:
         if abs(terms[i] - terms[0]) < 1e-9:
-            # confirm the whole block repeats, not just one coincidence
             ok = True
             j = 0
             while j + i < len(terms):
@@ -1824,7 +1732,6 @@ def t_sequence():
             lines.append('bound.')
     _pages('Sequence', lines)
 
-# registry ------------------------------------------------------------------
 TOOLS = [
     ('Quadratic solver', t_quadratic),
     ('Simultaneous eqns', t_simul),

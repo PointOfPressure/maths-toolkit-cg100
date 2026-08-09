@@ -1,21 +1,5 @@
-# caspoly.py - exact rational polynomial algebra for the CAS: collect like
-# terms, expand brackets, factorise, and split a rational function into partial
-# fractions. caseng.simplify only ever applied local rules, so it folded
-# constants and identities but would not gather 3x + 2x, multiply out (x+1)^3,
-# or take (2x-1)(x+4) apart again.
-#
-# Coefficients are exact rationals held as (numerator, denominator) pairs with a
-# positive denominator, reduced. Floats are only used when a coefficient cannot
-# be written exactly, and then the whole route is abandoned rather than silently
-# rounding - a partial fraction decomposition that is right to 6 dp is not an
-# answer a student can write down.
-#
-# Recursion here is on expression nesting, never on the length of a list, so it
-# stays inside the handheld's shallow call stack. Polynomials are lists indexed
-# by power and every loop over one is iterative.
 import caseng
 
-# ---------------------------------------------------------------- rationals --
 def rmake(n, d):
     if d == 0:
         return None
@@ -52,14 +36,9 @@ def rzero(a):
     return a[0] == 0
 
 def rint(a):
-    # the integer value if this rational is one, else None
     return a[0] if a[1] == 1 else None
 
 def ratof(node):
-    # exact rational value of a numeric subtree, or None if it is not one.
-    # A float is accepted only when it is a whole number: 0.5 is exact in
-    # binary but 0.1 is not, and guessing which is which is how a CAS starts
-    # printing 3333333333/10000000000.
     t = node[0]
     if t == 'n':
         v = node[1]
@@ -115,13 +94,9 @@ def ratnode(r):
         return ('n', r[0])
     return ('/', ('n', r[0]), ('n', r[1]))
 
-# ----------------------------------------------------------- term structure --
-# A term is (coefficient, [(basekey, basetree, exponent), ...]) with the factor
-# list sorted by basekey so two terms that are the same product compare equal.
-MAXPOW = 12   # (a+b)^n above this is left alone; the handheld has to stay quick
+MAXPOW = 12
 
 def _factors(node, coef, facs):
-    # split node into a rational coefficient and a list of base**exponent
     t = node[0]
     if t == 'n':
         r = ratof(node)
@@ -158,7 +133,6 @@ def _factors(node, coef, facs):
             c = _factors(node[1], R1, inner)
             if c is None:
                 return None
-            # (k*x)^3 has to send k^3 to the coefficient, not leave it inside
             if ei >= 0:
                 ck = rmake(c[0] ** ei, c[1] ** ei)
             else:
@@ -175,7 +149,6 @@ def _factors(node, coef, facs):
     return coef
 
 def term_of(node):
-    # (coefficient, sorted factor list) or None if the coefficients are not exact
     facs = []
     c = _factors(node, R1, facs)
     if c is None:
@@ -215,8 +188,6 @@ def _mulchain(items):
     return node
 
 def term_node(coef, facs):
-    # Rebuild a term with the negative exponents gathered into a denominator,
-    # so x*y^-1 prints as x/y rather than x*y^(-1).
     top = []
     bot = []
     for key, base, e in facs:
@@ -233,27 +204,18 @@ def term_node(coef, facs):
     if coef[1] != 1:
         den = ('n', coef[1]) if den is None else ('*', ('n', coef[1]), den)
     if neg:
-        num = ('neg', num)      # -x/y, not -(x/y)
+        num = ('neg', num)
     return num if den is None else ('/', num, den)
 
 def cancel(node):
-    # Divide out the factors a quotient has in common, top and bottom.
-    # simplify only cancels x^p/x^q when each side is a bare power, so
-    # 2x(x^2+1)^5 / (2x) came back untouched - and the substitution tool
-    # depends on that cancellation to see that no x is left.
     if node[0] not in ('*', '/', 'neg', '^'):
         return caseng.simplify(node)
     tm = term_of(node)
     if tm is None:
         return caseng.simplify(node)
-    # deliberately not re-simplified: simplify's A/(k*B) -> (A/B)/k rule would
-    # undo the single-quotient form and print 3/t/4 for 3/(4t)
     return term_node(tm[0], tm[1])
 
-# ------------------------------------------------------------------- expand --
 def _addterms(node, sign, out):
-    # flatten a sum/difference chain into signed leaves, iteratively enough that
-    # a hundred-term sum cannot outrun the call stack
     stack = [(node, sign)]
     while stack:
         n, s = stack.pop()
@@ -270,7 +232,6 @@ def _addterms(node, sign, out):
             out.append((n, s))
 
 def _mulout(a, b):
-    # (sum of terms) * (sum of terms), distributed
     ta = []
     tb = []
     _addterms(a, 1, ta)
@@ -288,7 +249,6 @@ def _mulout(a, b):
     return node
 
 def expand(node):
-    # multiply out brackets, then gather like terms
     return collect(_ex(node))
 
 def _ex(n):
@@ -304,8 +264,6 @@ def _ex(n):
     if t == '/':
         a = _ex(n[1])
         b = _ex(n[2])
-        # (p+q)/c splits only over a constant denominator; over a general one it
-        # would not be an expansion, just a longer expression
         if ratof(b) is not None:
             ts = []
             _addterms(a, 1, ts)
@@ -337,11 +295,7 @@ def _ex(n):
         return (n[0], _ex(n[1]), _ex(n[2]))
     return n
 
-# ------------------------------------------------------------------ collect --
 def collect(node):
-    # gather like terms: 3x + 2x -> 5x, x + x^2 - x -> x^2.
-    # Returns the input unchanged if any coefficient is not an exact rational,
-    # so nothing is silently rounded.
     leaves = []
     _addterms(node, 1, leaves)
     if len(leaves) == 1 and leaves[0][1] == 1 and leaves[0][0][0] not in ('*', '/', '^'):
@@ -368,9 +322,6 @@ def collect(node):
             keep.append((term_deg(facs), k, coef, facs))
     if not keep:
         return ('n', 0)
-    # Highest degree first; among equal degrees a positive term leads, so the
-    # answer reads "x-atan(x)" rather than "-atan(x)+x". Alphabetical after
-    # that, so the same expression always prints the same way.
     keep.sort(key=lambda it: (-it[0], 0 if it[2][0] > 0 else 1, it[1]))
     out = None
     for deg, k, coef, facs in keep:
@@ -383,20 +334,14 @@ def collect(node):
             out = ('-', out, term_node(rneg(coef), facs))
         else:
             out = ('+', out, piece)
-    # not re-simplified: each term is already canonical, and simplify's
-    # A/(k*B) -> (A/B)/k rule would turn 3/(4t) back into 3/t/4
     return out
 
-# --------------------------------------------------------------- polynomials --
-# A polynomial is a list of rationals indexed by power: [c0, c1, c2] is
-# c0 + c1 x + c2 x^2. The empty list is the zero polynomial.
 def ptrim(p):
     while p and rzero(p[-1]):
         p.pop()
     return p
 
 def poly(node, var):
-    # coefficient list for a polynomial in var, else None
     t = node[0]
     if t == 'v':
         if node[1] == var:
@@ -440,7 +385,6 @@ def poly(node, var):
             out = pmul(out, a)
             i += 1
         return out
-    # a constant subtree in some other form (pi, sqrt(2)) is not exact here
     return None
 
 def padd(a, b):
@@ -487,7 +431,6 @@ def pscale(a, r):
     return ptrim([rmul(c, r) for c in a])
 
 def pdivmod(a, b):
-    # long division: a = q*b + r with deg(r) < deg(b)
     b = ptrim(list(b))
     if not b:
         return None
@@ -511,7 +454,6 @@ def pdivmod(a, b):
     return (ptrim(q), r)
 
 def ptree(p, var):
-    # coefficient list back to an expression tree, highest power first
     if not p:
         return ('n', 0)
     node = None
@@ -550,9 +492,7 @@ def ptree(p, var):
         i -= 1
     return ('n', 0) if node is None else node
 
-# ------------------------------------------------------------- factorisation --
 def pcontent(p):
-    # the rational g with p = g * (primitive integer polynomial)
     num = 0
     den = 1
     for c in p:
@@ -576,13 +516,12 @@ def _divisors(n):
     return out
 
 def roots_rational(p):
-    # every rational root of p, by the rational root theorem, with multiplicity
     p = ptrim(list(p))
     out = []
     if len(p) < 2:
         return out
     while len(p) >= 2 and rzero(p[0]):
-        out.append(R0)                     # x is a factor
+        out.append(R0)
         p = p[1:]
     if len(p) < 2:
         return out
@@ -620,7 +559,6 @@ def roots_rational(p):
     return out
 
 def peval(p, r):
-    # Horner, exactly
     acc = R0
     i = len(p) - 1
     while i >= 0:
@@ -629,9 +567,6 @@ def peval(p, r):
     return acc
 
 def pfactors(p, var):
-    # p -> (leading rational, [(factor coefficient list, multiplicity), ...])
-    # Factors are monic linear (x - r) or irreducible monic quadratic. Anything
-    # that will not split that far is returned whole.
     p = ptrim(list(p))
     if len(p) < 2:
         return (p[0] if p else R0, [])
@@ -653,25 +588,18 @@ def pfactors(p, var):
         if not placed:
             out.append((f, 1))
     if len(p) > 1:
-        # what is left has no rational root; keep quadratics whole and give up
-        # gracefully on anything higher rather than inventing a factorisation
         out.append((p, 1))
     return (lead, out)
 
 def factor(node, var='x'):
-    # factorise a polynomial; None if it is not one, or will not factor further
     p = poly(node, var)
     if p is None or len(p) < 2:
         return None
     lead, fs = pfactors(p, var)
     if not fs:
         return None
-    # a single factor of full degree means nothing was taken out
     if len(fs) == 1 and fs[0][1] == 1 and len(fs[0][0]) == len(p):
         return None
-    # Clear denominators out of each factor and push them into the leading
-    # coefficient, so 2x^2+7x+3 factorises as (2x+1)(x+3) - what a student
-    # writes - rather than the equally true but useless 2(x+1/2)(x+3).
     parts = []
     for f, m in fs:
         den = 1
@@ -692,9 +620,7 @@ def factor(node, var='x'):
         node2 = ('*', ratnode(lead), node2)
     return caseng.simplify(node2)
 
-# --------------------------------------------------------- partial fractions --
 def solve_rat(A, b):
-    # Gauss-Jordan over the rationals; None if singular
     n = len(A)
     if n == 0:
         return []
@@ -736,9 +662,6 @@ def solve_rat(A, b):
     return [M[i][n] for i in range(n)]
 
 def partial(numn, denn, var='x'):
-    # Split N(x)/D(x) into a polynomial part plus partial fractions.
-    # Returns (polynomial part tree or None, [(numerator tree, factor tree,
-    # power), ...]) or None if the split is not available exactly.
     N = poly(numn, var)
     D = poly(denn, var)
     if N is None or D is None or len(D) < 2:
@@ -754,9 +677,8 @@ def partial(numn, denn, var='x'):
         return None
     for f, m in fs:
         if len(f) > 3:
-            return None          # a cubic or worse we could not split: no answer
-    # unknowns: for factor f of degree d and multiplicity m, d*m of them
-    cols = []                    # (factor, power, degree offset)
+            return None
+    cols = []
     for f, m in fs:
         d = len(f) - 1
         i = 1
@@ -769,7 +691,6 @@ def partial(numn, denn, var='x'):
     deg = len(D) - 1
     if len(cols) != deg:
         return None
-    # basis_j = (D/lead) / f^i * x^k, so sum(c_j basis_j) == rem/lead
     Dm = [rdiv(c, lead) for c in D]
     basis = []
     for f, i, k in cols:
@@ -808,7 +729,6 @@ def partial(numn, denn, var='x'):
         c = sol[j]
         if not rzero(c):
             top = ratnode(c) if k == 0 else caseng.simplify(('*', ratnode(c), ('v', var)))
-            # gather the two halves of a quadratic numerator (Bx + C) as one
             merged = False
             for tix in range(len(terms)):
                 if terms[tix][1] == f and terms[tix][2] == i:

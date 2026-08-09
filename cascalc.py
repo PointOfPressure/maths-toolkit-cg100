@@ -1,7 +1,3 @@
-# cascalc.py - integration + equation solving for the CAS.
-# Symbolic integration (linearity, power rule, table, linear-argument sub) with
-# a numeric solver (grid scan + bisection) as the general fallback. Uses
-# caseng.evalf for all numeric work. Imported by cas.py.
 import caseng
 import caspoly
 
@@ -16,17 +12,15 @@ def has_var(n, var):
     return has_var(n[1], var) or has_var(n[2], var)
 
 def _const(n, var):
-    # numeric value of a subtree that does not involve var, else None
     if has_var(n, var):
         return None
     try:
         v = caseng.evalf(n, 0.0)
     except:
-        return None  # symbolic constant, or a domain error - not usable here
+        return None
     return v
 
 def _lin(n, var):
-    # structural (a, b) for n == a*var + b, else None
     t = n[0]
     if t == 'v' and n[1] == var:
         return (1, 0)
@@ -49,7 +43,7 @@ def _lin(n, var):
         if p is None or q is None:
             return None
         if p[0] != 0 and q[0] != 0:
-            return None  # var*var is quadratic, not linear
+            return None
         if p[0] == 0:
             return (p[1] * q[0], p[1] * q[1])
         return (q[1] * p[0], q[1] * p[1])
@@ -71,8 +65,6 @@ def _lin(n, var):
     return None if c is None else (0, c)
 
 def _ratio(n):
-    # exponent as an exact fraction (p, q), else None. Keeps the power rule
-    # exact for x^(2/3) instead of degrading to x^1.666667/1.666667.
     t = n[0]
     if t == 'n' and isinstance(n[1], int):
         return (n[1], 1)
@@ -87,9 +79,6 @@ def _ratio(n):
     return None
 
 def _negexp(n):
-    # -n, kept in the exact shape _ratio can read: ('n', -v) or ('/', ('n', -p),
-    # ('n', q)). Wrapping in ('neg', ...) instead loses the exact fraction and
-    # the power rule falls back to a float, printing x^0.5/0.5 for 2 sqrt(x).
     if n[0] == 'n':
         return ('n', -n[1])
     if n[0] == 'neg':
@@ -99,17 +88,11 @@ def _negexp(n):
     return ('neg', n)
 
 def _powrule(a, p, q, coef):
-    # int (a)^(p/q) d(var) with a = coef*var + c, coef != 0 and p/q != -1:
-    #   = q * a^((p+q)/q) / ((p+q) * coef)
     num = p + q
     return ('/', ('*', ('n', q), ('^', a, ('/', ('n', num), ('n', q)))),
             ('n', num * coef))
 
 def linear_coeff(arg, var):
-    # returns (a, b) if arg == a*var + b (a, b constant), else None.
-    # Decided structurally: sampling at x = 0, 1, 2 used to accept cubics such
-    # as x^3-3x^2+3x (which agrees with y=x at all three points), and every
-    # integral built on that substitution came out silently wrong.
     r = _lin(arg, var)
     if r is None:
         return None
@@ -122,17 +105,9 @@ def linear_coeff(arg, var):
         b = int(bi)
     return (a, b)
 
-# --- integration by parts -------------------------------------------------
-# int u dv = u v - int v du. The handheld's call stack is the binding limit
-# here, not the algebra: integ already recurses on tree depth and each by-parts
-# level nests another integ inside it, so the depth is capped. Three levels
-# covers x^3 f(x), which is past anything the specification asks for.
 BYPARTS_MAX = 3
 
 def _liate(n, var):
-    # LIATE ordering - the lower score becomes u, the factor we differentiate.
-    # Logs and inverse trig simplify when differentiated, polynomials drop a
-    # degree, and trig/exponentials are the ones worth integrating instead.
     t = n[0]
     if t in ('ln', 'log', 'logb'):
         return 0
@@ -146,13 +121,9 @@ def _liate(n, var):
         return 3
     if t in ('exp', 'sinh', 'cosh'):
         return 4
-    return 6  # not a factor we know how to split
+    return 6
 
 def _cyclic(a, b, var):
-    # int e^(px+q) sin(rx+s) dx and the cos form. Repeated by-parts cycles here
-    # forever and never closes, so use the standard closed form:
-    #   int e^(px) sin(rx) dx = e^(px)(p sin rx - r cos rx) / (p^2 + r^2)
-    #   int e^(px) cos(rx) dx = e^(px)(p cos rx + r sin rx) / (p^2 + r^2)
     for E, T in ((a, b), (b, a)):
         if E[0] != 'exp' or T[0] not in ('sin', 'cos'):
             continue
@@ -171,7 +142,6 @@ def _cyclic(a, b, var):
     return None
 
 def _flatten(n, out):
-    # flatten a product/negation chain into a factor list, returning the sign
     if n[0] == '*':
         return _flatten(n[1], out) * _flatten(n[2], out)
     if n[0] == 'neg':
@@ -180,9 +150,6 @@ def _flatten(n, out):
     return 1
 
 def _prod(v, du):
-    # v * du gathered into a single quotient. Left as a plain product, an
-    # intermediate like (x^2/2) * (1/x) never meets the rule that would cancel
-    # it, and by parts stalls one step short of closing.
     nums = []
     dens = []
     for part in (v, du):
@@ -215,9 +182,6 @@ def _byparts(a, b, var, depth):
         return None
     if rest == ('n', 0):
         return ('*', u, v)
-    # If what is left is a constant multiple of the integrand we started with,
-    # by parts will cycle forever. Solve for it instead: I = uv - kI, so
-    # I = uv/(1+k). This is what closes int sin(x)cos(x) dx.
     try:
         k = caseng.simplify(('/', rest, ('*', a, b)))
         if not has_var(k, var):
@@ -231,22 +195,16 @@ def _byparts(a, b, var, depth):
         return None
     return ('-', ('*', u, v), w)
 
-# --- rational functions, via partial fractions ----------------------------
 def _int_piece(top, fac, power, var):
-    # integrate one partial-fraction term: numerator / factor^power, where the
-    # factor is monic and either linear or an irreducible quadratic
     f = caspoly.poly(fac, var)
     if f is None:
         return None
     if len(f) == 2:
-        # c / (x - r)^k
         c = caspoly.ratof(top)
         if c is None:
             return None
         if power == 1:
             return caseng.simplify(('*', caspoly.ratnode(c), ('ln', ('abs', fac))))
-        # c/(x-r)^k integrates to -c / ((k-1)(x-r)^(k-1)); written as one
-        # quotient it reads as -8/(3(x-1)) instead of 8/3*-(x-1)^(-1)
         cc = caspoly.rdiv(caspoly.rneg(c), (power - 1, 1))
         if cc is None:
             return None
@@ -255,7 +213,6 @@ def _int_piece(top, fac, power, var):
             den = ('*', ('n', cc[1]), den)
         return caseng.simplify(('/', ('n', cc[0]), den))
     if len(f) == 3 and power == 1:
-        # (Bx + C) / (x^2 + px + q) with q - p^2/4 > 0
         p = f[1]
         q = f[0]
         num = caspoly.poly(top, var)
@@ -266,12 +223,10 @@ def _int_piece(top, fac, power, var):
         half = (1, 2)
         k = caspoly.rsub(q, caspoly.rmul(caspoly.rmul(p, p), (1, 4)))
         if k is None or k[0] <= 0:
-            return None      # not irreducible after all; a real factorisation exists
-        # (B/2) ln(x^2+px+q)
+            return None
         out = None
         if not caspoly.rzero(B):
             out = ('*', caspoly.ratnode(caspoly.rmul(B, half)), ('ln', fac))
-        # (C - Bp/2) / sqrt(k) * atan((x + p/2)/sqrt(k))
         rest = caspoly.rsub(C, caspoly.rmul(caspoly.rmul(B, p), half))
         if not caspoly.rzero(rest):
             root = ('sqrt', caspoly.ratnode(k))
@@ -287,10 +242,6 @@ def _int_piece(top, fac, power, var):
     return None
 
 def integ_rational(a, b, var, depth):
-    # N(x)/D(x): split into a polynomial part plus partial fractions and
-    # integrate each piece. This is what makes proper rational integrands work
-    # at all - x/((x+1)(x-2)), 1/(x^2-1), 1/(1+x^2) - and it is also the step
-    # that lets integration by parts finish x atan(x).
     res = caspoly.partial(a, b, var)
     if res is None:
         return None
@@ -309,10 +260,6 @@ def integ_rational(a, b, var, depth):
     return tidy(out)
 
 def tidy(node):
-    # Presentation pass for an answer that is about to be shown: cancel common
-    # factors out of a quotient, fold constants, then gather like terms so a
-    # negative coefficient prints as a subtraction. Kept out of integ itself,
-    # which recurses - this runs once, at the end.
     try:
         return caspoly.collect(caspoly.cancel(caseng.simplify(node)))
     except:
@@ -336,9 +283,6 @@ def integ(n, var='x', depth=0):
         a = integ(n[1], var, depth)
         return ('neg', a) if a is not None else None
     if t == '*':
-        # Flatten first: after one round of by parts an integrand looks like
-        # -cos(x) * (2*x), where neither side is constant but only two of the
-        # three factors actually involve the variable.
         parts = []
         sign = _flatten(n, parts)
         consts = []
@@ -346,13 +290,11 @@ def integ(n, var='x', depth=0):
         for p in parts:
             (consts if not has_var(p, var) else moving).append(p)
         if len(moving) == 0:
-            return None      # wholly constant; handled by the 'n'/'v' cases
+            return None
         if len(moving) == 1:
             F = integ(moving[0], var, depth)
         elif len(moving) == 2:
             if moving[0] == moving[1]:
-                # sin(x)*sin(x) is sin(x)^2; typing it either way has to give
-                # the same answer, so hand it to the power branch
                 F = integ(('^', moving[0], ('n', 2)), var, depth)
             else:
                 F = None
@@ -373,18 +315,12 @@ def integ(n, var='x', depth=0):
         if not has_var(b, var):
             ia = integ(a, var, depth)
             return ('/', ia, b) if ia is not None else None
-        # c / (px+q) -> c ln(px+q) / p  (covers 1/x, 3/x, 1/(2x+1), ...)
         if not has_var(a, var):
             lc = linear_coeff(b, var)
             if lc is not None and lc[0] != 0:
-                # c/(p*var) is (c/p) ln(var), not (c/p) ln(p*var): the two
-                # differ by a constant, but only the first is the answer a
-                # student writes down
                 inner = ('v', var) if lc[1] == 0 else b
                 F = ('*', a, ('ln', ('abs', inner)))
                 return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
-        # k f'(x) / f(x) -> k ln f(x). Tested by dividing the numerator by the
-        # derivative of the denominator and asking whether the variable is gone.
         try:
             db = caseng.simplify(caseng.diff(b, var))
             if db != ('n', 0):
@@ -394,8 +330,6 @@ def integ(n, var='x', depth=0):
                     return F if k == ('n', 1) else ('*', k, F)
         except:
             pass
-        # c/sqrt(u) and c/u^k are powers in disguise; the power rule already
-        # handles negative and fractional exponents, so rewrite and hand over.
         if not has_var(a, var):
             if b[0] == 'sqrt':
                 return integ(('*', a, ('^', b[1], ('/', ('n', -1), ('n', 2)))),
@@ -407,11 +341,6 @@ def integ(n, var='x', depth=0):
         return integ_rational(a, b, var, depth)
     if t == '^':
         a = n[1]; b = n[2]
-        # sin^2 and cos^2 have no elementary antiderivative term by term; the
-        # double-angle form is how the specification asks for them:
-        #   sin^2 u = (1 - cos 2u)/2 and cos^2 u = (1 + cos 2u)/2.
-        # tan^2 u = sec^2 u - 1 integrates to tan(u)/k - x the same way.
-        # sec^2, cosec^2 and sech^2 integrate straight back to tan, -cot, tanh
         if b == ('n', 2) and a[0] in ('sec', 'cosec', 'sech'):
             lc = linear_coeff(a[1], var)
             if lc is not None and lc[0] != 0:
@@ -432,14 +361,11 @@ def integ(n, var='x', depth=0):
                 half = ('/', ('v', var), ('n', 2))
                 wob = ('/', ('sin', dbl), ('n', 4 * k))
                 return ('-', half, wob) if a[0] == 'sin' else ('+', half, wob)
-        # read the exponent through _const so x^-1, x^(2/3) and x^pi all work
-        # (the exponent tree is ('neg', ('n', 1)) here, not ('n', -1))
         e = _const(b, var)
         if e is not None:
             lc = linear_coeff(a, var)
             if lc is not None and lc[0] != 0:
                 if e == -1:
-                    # power rule breaks at -1: the integral is a logarithm
                     F = ('ln', ('abs', a))
                     return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
                 fr = _ratio(b)
@@ -447,8 +373,6 @@ def integ(n, var='x', depth=0):
                     return _powrule(a, fr[0], fr[1], lc[0])
                 p = e + 1
                 return ('/', ('^', a, ('n', p)), ('n', p * lc[0]))
-            # a negative power of something that is not linear, e.g.
-            # (x^2+1)^-1, is a rational function - try partial fractions
             if e < 0 and e == int(e):
                 return integ_rational(('n', 1), ('^', a, ('n', int(-e))), var, depth)
         return None
@@ -479,29 +403,22 @@ def integ(n, var='x', depth=0):
     elif t == 'coth':
         F = ('ln', ('abs', ('sinh', arg)))
     elif t == 'sqrt':
-        return _powrule(arg, 1, 2, lc[0])  # sqrt(u) is u^(1/2)
+        return _powrule(arg, 1, 2, lc[0])
     elif t == 'ln':
-        # int ln u du = u ln u - u
         F = ('-', ('*', arg, ('ln', arg)), arg)
     else:
-        # a lone log or inverse-trig function integrates by parts against dv = 1,
-        # which is how int atan(x) dx reaches x atan(x) - ln(1+x^2)/2
         if _liate(n, var) <= 1:
             return _byparts(n, ('n', 1), var, depth)
         return None
     return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
 
 def _at(tree, val, deg, var):
-    # evaluate with `val` bound to `var`. evalf's positional argument is always
-    # x, so anything solved or integrated in another letter has to go through
-    # the env - without this, solve(v, 't') sampled a tree that mentions t with
-    # only x bound, every sample raised, and it reported no roots at all.
+    # evalf's positional arg is always x
     if var == 'x':
         return caseng.evalf(tree, val, deg)
     return caseng.evalf(tree, val, deg, {var: val})
 
 def defint(tree, a, b, deg=False, n=200, var='x'):
-    # numeric definite integral by composite Simpson's rule; None on domain error
     if n % 2:
         n += 1
     h = (b - a) / n
@@ -516,7 +433,7 @@ def defint(tree, a, b, deg=False, n=200, var='x'):
         return None
     r = s * h / 3.0
     if r != r or r > 1.7e308 or r < -1.7e308:
-        return None  # singularity inside a..b - report it rather than print junk
+        return None
     return r
 
 def _bisect(tree, a, b, deg=False, var='x'):
@@ -547,8 +464,6 @@ MAXROOTS = 24
 SAMPLES = 800
 
 def _touch(tree, lo, hi, deg, var='x'):
-    # ternary search for the minimum of |f| on [lo, hi]; used to catch roots the
-    # curve only touches (x^2, (x-1)^2), which never produce a sign change.
     i = 0
     while i < 60 and (hi - lo) > 1e-9:
         m1 = lo + (hi - lo) / 3.0
@@ -579,14 +494,11 @@ def _add(roots, r):
     roots.append(r)
 
 def solve(tree, var='x', deg=False):
-    # numeric roots of tree == 0; degrees needs a wider window (trig period 360)
     roots = []
     if not has_var(tree, var):
-        return roots  # a constant is zero everywhere or nowhere - no isolated roots
+        return roots
     hi = 360.0 if deg else 20.0
     step = 2.0 * hi / SAMPLES
-    # sample on a computed grid: repeated "x += 0.1" accumulated enough error
-    # that x never landed exactly on 0, so touching roots were missed twice over
     ys = []
     i = 0
     while i <= SAMPLES:
@@ -603,8 +515,6 @@ def solve(tree, var='x', deg=False):
             if (p <= 0 and y >= 0) or (p >= 0 and y <= 0):
                 _add(roots, _bisect(tree, -hi + (i - 1) * step, -hi + i * step, deg, var))
             elif i + 1 <= SAMPLES and ys[i + 1] is not None:
-                # same sign either side but a local minimum of |f| - a possible
-                # tangential root, e.g. x^2 or (x-1)^2
                 ay = y if y >= 0 else -y
                 ap = p if p >= 0 else -p
                 an = ys[i + 1] if ys[i + 1] >= 0 else -ys[i + 1]

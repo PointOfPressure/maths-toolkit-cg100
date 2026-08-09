@@ -1,10 +1,3 @@
-# casutil.py - helpers shared by every section module.
-# Before this file each of the 17 sections carried its own copy of _asknum,
-# _fn, _show, _pages, _atan2, _deg/_rad, gcd, nCr and (twice) a whole normal
-# distribution. The copies had drifted apart and only some of them were correct,
-# so they now live here once.
-# Stock CASIO MicroPython 1.9.4: ASCII only, no f-strings, iterative only,
-# only math / random / casioplot importable.
 import math
 import casui
 import caslex
@@ -12,11 +5,7 @@ import caseng
 
 PI = math.pi
 
-# ---------------------------------------------------------------- input ----
 def asknum(prompt):
-    # Ask for an expression and evaluate it to a number.
-    # None means "cancelled, unreadable, or not a number" - callers treat that
-    # as "no value given".
     s = casui.input_expr(prompt)
     if s is None:
         return None
@@ -32,8 +21,6 @@ def asknum(prompt):
     return v
 
 def askint(prompt, lo=None, hi=None):
-    # Whole number in [lo, hi]. Out-of-range returns None rather than silently
-    # clamping, so the caller can say what it wanted.
     v = asknum(prompt)
     if v is None or v != v:
         return None
@@ -48,7 +35,6 @@ def askint(prompt, lo=None, hi=None):
     return n
 
 def asklist(prompt):
-    # Space- or comma-separated numbers. None on cancel, [] if nothing parsed.
     s = casui.input_expr(prompt)
     if s is None:
         return None
@@ -57,7 +43,7 @@ def asklist(prompt):
         try:
             out.append(float(p))
         except:
-            return None  # a junk entry is an error, not something to skip
+            return None
     return out
 
 def askints(prompt):
@@ -67,7 +53,6 @@ def askints(prompt):
     return [int(round(v)) for v in lst]
 
 def askexpr(prompt):
-    # Parse tree, or None for cancelled/unreadable.
     s = casui.input_expr(prompt)
     if s is None:
         return None
@@ -79,10 +64,7 @@ def askg(default=9.8):
         return default
     return v
 
-# --------------------------------------------------------------- output ----
 def fmt(x, dp=4):
-    # Safe numeric format. Guards nan/inf because int() raises on both and that
-    # would take out the whole result screen.
     if isinstance(x, complex):
         return fmtc(x.real, x.imag, dp)
     if not isinstance(x, (int, float)):
@@ -95,13 +77,12 @@ def fmt(x, dp=4):
         return '-inf'
     r = round(x, dp)
     if r == 0:
-        r = 0.0          # kill "-0"
+        r = 0.0
     if r == int(r):
         return str(int(r))
     return str(r)
 
 def fmtc(re, im, dp=4):
-    # a + bi, dropping a zero part
     if abs(im) < 1e-12:
         return fmt(re, dp)
     if abs(re) < 1e-12:
@@ -110,31 +91,14 @@ def fmtc(re, im, dp=4):
         return fmt(re, dp) + ' - ' + fmt(-im, dp) + 'i'
     return fmt(re, dp) + ' + ' + fmt(im, dp) + 'i'
 
-# ------------------------------------------------------- answer vs working ----
-# The mechanism lives in casui (casutil already imports casui, so defining it
-# the other way round would make the import circular). Re-exported here because
-# every section module already imports casutil and this is where they look.
-#
-#   'plain string'   the ANSWER. Always shown.
-#   w('...')         WORKING - method and intermediate steps. Hidden when the
-#                    home menu's Working setting is off.
-#   warn('...')      a CAVEAT that changes whether the answer can be trusted.
-#                    ALWAYS shown, in both modes.
-#
-# The third category is the one that matters. A caveat is not working, it is
-# part of the answer's validity, and a mode that hid it would turn a careful
-# tool into a confident wrong one.
 w = casui.w
 warn = casui.warn
 filter_lines = casui.filter_lines
 
 def show(title, lines):
-    # casui.result_screen pages by itself now, so the old per-module _pages
-    # chunking helpers are no longer needed.
     casui.result_screen(title, casui.filter_lines(lines))
 
 def run_tools(title, tools):
-    # The identical run() loop every section ended with.
     labels = [t[0] for t in tools]
     while True:
         c = casui.menu(title, labels)
@@ -142,19 +106,10 @@ def run_tools(title, tools):
             return
         tools[c][1]()
 
-# --------------------------------------------------------------- charts ----
-# Shared drawing frame for every diagram in the toolkit. Before this, each
-# plotting tool carried its own copy of "work out the scale, draw the axes,
-# clip the line", and the copies disagreed about the margins.
-#
-# A frame is (x0, y0, x1, y1, xlo, xhi, ylo, yhi): the pixel box on the 384x192
-# screen and the data range mapped onto it. The screen's y axis points down and
-# a graph's points up, so fy inverts.
 SCREEN_W = 384
 SCREEN_H = 192
 
 def frame(xlo, xhi, ylo, yhi, x0=26, y0=16, x1=378, y1=158):
-    # a zero-width range would divide by zero; widen it around its own value
     if xhi - xlo < 1e-12:
         xlo -= 1.0
         xhi += 1.0
@@ -179,7 +134,6 @@ def dot(fr, x, y, c=None):
         casui.set_pixel(px, py, casui.BLACK if c is None else c)
 
 def marker(fr, x, y, c=None, r=2):
-    # a filled blob, so a scatter point is visible at all
     px = fx(fr, x)
     py = fy(fr, y)
     c = casui.BLACK if c is None else c
@@ -193,7 +147,6 @@ def marker(fr, x, y, c=None, r=2):
         dy += 1
 
 def seg(fr, xa, ya, xb, yb, c=None):
-    # data-space line segment, Bresenham in pixel space, clipped to the frame
     c = casui.BLACK if c is None else c
     x0 = fx(fr, xa)
     y0 = fy(fr, ya)
@@ -245,7 +198,6 @@ def box(fr, xa, ya, xb, yb, c=None, fill=False):
     seg(fr, xa, yb, xa, ya, c)
 
 def axes(fr, title=None, xlab=None, ylab=None, ticks=True):
-    # draw the frame's axes with the data range printed along the edges
     casui.clear_screen()
     if title is not None:
         casui.draw_string(4, 2, title, casui.ACC, 'small')
@@ -255,7 +207,6 @@ def axes(fr, title=None, xlab=None, ylab=None, ticks=True):
     while yy <= y1:
         casui.set_pixel(x0, yy, casui.GREY)
         yy += 1
-    # an axis line through zero as well, when zero is inside the range
     if ylo < 0.0 < yhi:
         casui.hline(x0, x1, fy(fr, 0.0), casui.GREY)
     if xlo < 0.0 < xhi:
@@ -273,19 +224,12 @@ def axes(fr, title=None, xlab=None, ylab=None, ticks=True):
     if xlab is not None:
         casui.draw_string(x0 + (x1 - x0) // 2 - 12, y1 + 3, xlab, casui.GREY, 'small')
     if ylab is not None:
-        # halfway up the y-axis, not at the top: the top-left corner already
-        # holds the title and the yhi tick, and three labels do not fit there
         casui.draw_string(2, (y0 + y1) // 2, ylab, casui.GREY, 'small')
 
 def chart_hold(note=None):
-    # The note goes THROUGH hold, not on top of it. Drawing it here at
-    # SCREEN_H-12 put it two pixels from hold's own "Press any key" prompt,
-    # which on an eleven-pixel font is an unreadable smudge - the same fault
-    # graph() had. hold(note) shares the bottom strip properly.
     casui.hold(note)
 
 def nice_range(vals, pad=0.08, zero=False):
-    # data range widened a little so points do not sit on the frame edge
     lo = None
     hi = None
     for v in vals:
@@ -307,9 +251,7 @@ def nice_range(vals, pad=0.08, zero=False):
         span = abs(hi) if abs(hi) > 1e-12 else 1.0
     return (lo - span * pad, hi + span * pad)
 
-# ------------------------------------------------------------ geometry ----
 def atan2(y, x):
-    # math.atan2 is missing from this build
     if x > 0:
         return math.atan(y / x)
     if x < 0:
@@ -329,14 +271,12 @@ def rad(d):
     return d * PI / 180.0
 
 def acos_safe(c):
-    # rounding can push a cosine a hair outside [-1, 1]
     if c > 1.0:
         c = 1.0
     if c < -1.0:
         c = -1.0
     return math.acos(c)
 
-# -------------------------------------------------------- number theory ----
 def gcd(a, b):
     a = abs(int(a))
     b = abs(int(b))
@@ -363,7 +303,6 @@ def powmod(a, e, m):
     return r
 
 def modinv(a, m):
-    # iterative extended Euclid; None when gcd(a, m) != 1
     if m == 0:
         return None
     m = abs(m)
@@ -377,10 +316,9 @@ def modinv(a, m):
         return None
     return old_s % m
 
-FACT_MAX = 500  # above this the handheld stalls building the integer
+FACT_MAX = 500
 
 def fact(n):
-    # exact factorial, None outside 0..FACT_MAX
     if n < 0 or n > FACT_MAX:
         return None
     r = 1
@@ -391,7 +329,6 @@ def fact(n):
     return r
 
 def ncr(n, r):
-    # exact, built multiplicatively so no huge factorial is ever formed
     if n < 0 or r < 0 or r > n:
         return 0
     if r > n - r:
@@ -413,9 +350,7 @@ def npr(n, r):
         i += 1
     return p
 
-# ------------------------------------------------------- distributions ----
 def erf(x):
-    # Abramowitz & Stegun 7.1.26; |error| < 1.5e-7, well inside 4 s.f.
     s = 1.0 if x >= 0 else -1.0
     x = abs(x)
     t = 1.0 / (1.0 + 0.3275911 * x)
@@ -424,7 +359,6 @@ def erf(x):
     return s * y
 
 def phi(z):
-    # standard normal cdf
     if z > 40.0:
         return 1.0
     if z < -40.0:
@@ -432,8 +366,6 @@ def phi(z):
     return 0.5 * (1.0 + erf(z / math.sqrt(2.0)))
 
 def invphi(p):
-    # inverse standard normal by bisection; 60 halvings of [-9, 9] is already
-    # past double precision (the old copies used 80 and 200 iterations)
     if p <= 0.0:
         return -9.0
     if p >= 1.0:
@@ -451,8 +383,6 @@ def invphi(p):
     return 0.5 * (lo + hi)
 
 def poisson_pmf(mu, k):
-    # exp(-mu) * mu^k / k!, accumulated one factor at a time. Computing mu**k
-    # and k! separately overflowed a float for mu around 150 and crashed.
     if k < 0:
         return 0.0
     r = math.exp(-mu)
@@ -475,8 +405,6 @@ def poisson_cdf(mu, k):
     return c
 
 def binom_pmf(n, p, k):
-    # C(n,k) p^k q^(n-k), folding the q factors in as soon as the running
-    # product exceeds 1 so it can neither overflow nor underflow early
     if n < 0 or k < 0 or k > n:
         return 0.0
     q = 1.0 - p
@@ -496,16 +424,6 @@ def binom_pmf(n, p, k):
     return r
 
 def binom_cdf(n, p, k):
-    # Sum of the pmf up to k, but walked with the recurrence
-    #   P(j+1) = P(j) * (n-j)/(j+1) * p/q
-    # rather than by calling binom_pmf k times. Each binom_pmf call is O(k)
-    # itself, so the old loop was O(k^2): binom_cdf(5000, 0.3, 1500) took most
-    # of half a second on a desktop, which on a handheld is a hang.
-    #
-    # The walk starts at the MODE, not at zero, because q**n underflows to
-    # exactly 0 long before n gets interesting - for n = 5000 and q = 0.7 it is
-    # about 1e-774 - and every subsequent term would then be 0 too. Starting
-    # from the largest term and going outwards keeps every ratio near 1.
     if k < 0:
         return 0.0
     if k >= n:
@@ -522,17 +440,14 @@ def binom_cdf(n, p, k):
         m = 0
     pm = binom_pmf(n, p, m)
     if pm <= 0.0:
-        # underflowed even at the mode: the whole tail is negligible either way
         return 0.0 if k < (n * p) else 1.0
     total = pm
-    # down from the mode to 0
     t = pm
     j = m
     while j > 0:
         t = t * j / (n - j + 1) * q / p
         total += t
         j -= 1
-    # up from the mode to k
     t = pm
     j = m
     while j < k:

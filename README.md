@@ -1,441 +1,201 @@
 # Maths Toolkit for the Casio fx-CG100
 
-A from-scratch visual mathematics toolkit for the Casio fx-CG100 graphing calculator, written in stock MicroPython with the built-in `casioplot` graphics module. It bundles three things in one app:
+A calculator app in stock MicroPython 1.9.4 using the built-in `casioplot`.
+Three parts: an expression calculator, a computer algebra system, and 263 tools
+mapped to OCR B (MEI) A-Level Maths (H640) and Further Maths (H645).
 
-- an everyday scientific **Calculate** mode,
-- a from-scratch **computer algebra system (CAS)** that differentiates, integrates, simplifies, solves and graphs, and
-- tool coverage of the **OCR B (MEI) A-Level Maths (H640)** and **Further Maths (H645)** specifications, checked statement by statement in [`SPEC_AUDIT.md`](SPEC_AUDIT.md), with everything still missing listed [below](#specification-points-not-covered) and a reason given for each,
-
-all driven by an on-screen keyboard and a custom 2D math typesetter (Desmos-style fractions, exponents and radicals). 263 tools across 20 sections.
-
-![platform](https://img.shields.io/badge/platform-Casio%20fx--CG100-blue)
-![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
-![license](https://img.shields.io/badge/license-MIT-lightgrey)
 ![tests](https://img.shields.io/badge/tests-6752%20checks%2C%200%20failures-brightgreen)
 ![smoke](https://img.shields.io/badge/smoke-443%20checks%2C%200%20errors-brightgreen)
+![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
+![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
-Built and verified on real hardware. The whole toolkit also runs unmodified on a desktop under CPython (via a small `casioplot` stub) for development and testing.
+## Install
 
-## Quick start
+Copy to the root of the calculator's storage:
 
-1. Copy the device `.py` files to your fx-CG100 (everything **except** `casioplot.py`, `casioshot.py`, `stress.py`, `devlint.py` and any `tests*.py`). See [Installing on the calculator](#installing-on-the-calculator).
-2. In the calculator's Python app, run **`maths.py`**.
-3. Navigate with the arrow keys and OK; the curved-arrow back key goes back. Type expressions on the normal keys; use ALPHA for letters and the CATALOG key for the few symbols with no key of their own.
+- `maths.py`, `casui.py`, `casutil.py`
+- `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`
+- `pure640.py`, `purecalc.py`, `stat640.py`, `mech640.py`, `proof.py`,
+  `vcplx.py`, `matrix.py`, `vectors.py`, `polyroots.py`, `series.py`,
+  `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`,
+  `numeric.py`, `algos.py`, `xpure.py`, `fpt.py`
 
-### Keys
+Do not copy `casioplot.py`. It is a PC stub; the calculator has the real module
+built in and the stub would shadow it. Also skip tests.py, stress.py,
+devlint.py and casioshot.py, which are desktop-only.
 
-| In a menu | |
+Run `maths.py`.
+
+## Keys
+
+| Menu | |
 | --- | --- |
-| up / down | move the selection (wraps) |
-| **1-9** | jump straight to that entry |
-| page up / page down | move seven at a time |
-| `\|<-` / `->\|` | first / last entry |
-| OK or EXE | choose |
-| back (the curved arrow) | back; at the top menu, leave the app |
-| **Working: SHOWN / HIDDEN** | the last home-menu entry - see below |
+| up / down | move, wraps |
+| 1-9 | jump to entry |
+| page up / down | move seven |
+| first / last | `\|<-` and `->\|` |
+| OK, EXE | choose |
+| back | up one level; leaves the app at the top |
 
-| When typing an expression | |
+| Expression entry | |
 | --- | --- |
-| left / right | move the caret |
-| `\|<-` / `->\|` | jump to the start / end of the line |
-| **up** | recall your last entry (instead of retyping it) |
-| down | clear the line |
-| DEL | delete backwards |
-| back | clear the line; press again on an empty line to cancel |
-| ALPHA | the orange letter printed on the key (all of a-z) |
-| SHIFT | the green legend: `sin^-1`, `cos^-1`, `tan^-1`, `ln`, `log`, `pi`, `=`, and a log to a given base |
-| **CATALOG** (the book key) | the symbol picker - see below |
+| left / right | move caret |
+| start / end of line | `\|<-` and `->\|` |
+| up | recall last entry |
+| down | clear |
+| DEL | delete back |
+| back | clear; again on an empty line cancels |
+| ALPHA | letters a-z |
+| SHIFT | `sin^-1`, `cos^-1`, `tan^-1`, `ln`, `log`, `pi`, `=`, log to a base |
+| CATALOG | `!`, `abs(`, `nCr(`, `nPr(`, `sec(`, `cosec(`, `cot(`, the hyperbolics and their inverses, `sech(`, `cosech(`, `coth(`, `logb(`, `pi`, `ans`, `,` |
 
-**The CATALOG picker** holds the tokens the keypad has no key for at all: `!`, `abs(`, `nCr(`, `nPr(`, the reciprocal trig functions `sec(`, `cosec(`, `cot(`, the three hyperbolics and their three inverses, the reciprocal hyperbolics `sech(`, `cosech(`, `coth(`, plus `logb(`, `pi`, `ans` and `,` for convenience. Twenty tokens over two pages; arrows move, page up/down turn the page, OK inserts, back closes. Everything else comes off a real key. `tests.py` asserts every documented function stays reachable one way or the other.
+## Settings
 
-> The key map in `casui.py` had drifted from the hardware. ALPHA ran a whole row out of step - key 42 produced `a` when the key is printed **B** - so 17 of the 26 letters came out as the wrong letter or had no key at all, and `i`, `h`, `g`-`l`, `u` and `y` were unreachable. "EXIT" was bound to code 13, which is the jump-to-line-start key rather than back. And the comma, which has its own key at code 51, was simply never bound, which is what made `nCr`, `nPr` and `logb` impossible to type. `tests.py` now carries the keypad table transcribed independently from Casio's key-code diagram and asserts every binding against it.
+Both are on the home menu and last for the session; the calculator cannot write
+files.
 
-**Working: SHOWN / HIDDEN.** The last entry on the home menu toggles how much a result screen tells you. `SHOWN` gives the method as well as the answer: the substitution, the discriminant, the tableau at each simplex iteration, `let u = sin x`, the running sum against your claimed formula. `HIDDEN` gives the answer alone, for when you already know the method and are checking a number.
+**Angle mode: DEGREES / RADIANS.** Applies to all trig.
 
-A caveat is never hidden. Lines like "that point is not on the curve", "checked back in the original: all satisfy it", "no counterexample in that range - that is NOT a proof", "|sin x| cannot exceed 1, so this root is discarded" and "the tension is indeterminate from these equations alone" appear in **both** modes. They are not working; they are what makes the answer trustworthy, and a setting that hid them would turn a careful tool into a confident wrong one. `tests.py` asserts, for all 263 tools, that answer-only output is a subset of the full output and never loses every line.
+**Working: SHOWN / HIDDEN.** Output lines are one of three kinds. Answers always
+show. Working shows only in SHOWN. Caveats always show, in both modes: warnings,
+domain restrictions, verification results, statements that a tool did not
+finish. 1213 lines are marked working, 640 caveat. `tests.py` asserts for all
+263 tools that HIDDEN output is a subset of SHOWN and never empty.
 
-Across the 20 section modules, 1213 output lines are marked as working and 640 as caveats. Every one of the 263 tools was driven in both modes and read, not just tested: sixteen of them lost the label that made the answer mean anything - `E(W)` with no statement of what `W` is, `a_n = A r1^n + B r2^n` with `r1` and `r2` never given, a sorted list that only ever appeared as the last row of a working table - and were re-tagged. Four had a sentence that began on a hidden line and were reworded.
+## Modes
 
-The setting is per-session: the calculator cannot write files, so it returns to `SHOWN` each time you launch the app. That is the safe default - nothing is hidden until you ask for it.
+**Calculate.** Type an expression, see a 2D preview, press OK. `ans` holds the
+last result. Exact fractions are shown under the decimal. Non-finite results
+report "undefined" or "overflow".
 
-In **Calculus & Algebra** you enter `f(x)` once and then keep picking operations on it - differentiate, then integrate, then graph - without retyping. "New expression" or EXIT returns to the editor.
+**Calculus & Algebra.** Enter `f(x)` once, then apply operations without
+retyping: differentiate, integrate, simplify, expand, factorise, collect,
+partial fractions, solve, definite integral, evaluate, table, graph. The first
+seven are symbolic; the rest are numeric and use the angle mode.
 
----
+**A-Level Maths** and **Further Maths** hold the section tools below.
 
-## Features
+## Tools
 
-### Calculate - everyday scientific calculator
+### A-Level Maths
 
-The `Calculate` mode (`calc_section`) is a free-form expression calculator. Type any expression on the calculator's own keys, see a live 2D preview of it as you type, and press OK to evaluate.
-
-- **Any expression at once.** The whole line is parsed and evaluated in one go (no operator-at-a-time entry). Arithmetic, brackets, powers, functions and constants can all be combined.
-- **`ans` memory.** Every successful result is stored. Type `ans` in the next calculation to reuse your last answer.
-- **Degree / radian toggle.** A shared angle mode (shown as `DEG` or `RAD` on the result screen) is switched from the home menu and applies to all trig in Calculate and in the CAS evaluate/graph/table tools.
-- **Smart number formatting** (`_fmt_num`):
-  - Whole-number results print as plain integers.
-  - Ordinary decimals round to a sensible number of digits.
-  - Very large or very small magnitudes (>= 1e12 or < 1e-5) switch to scientific notation (e.g. `1.23e15`).
-  - Bad results are caught and reported: non-finite, NaN, or overflow values (> 1e308) show "undefined" / "overflow" rather than a garbage number.
-- **Exact form.** When the simplified expression is an exact fraction or rational that differs from the decimal answer, it is shown beneath the result as `exact: ...` (for example a fraction kept in lowest terms instead of a rounded decimal).
-- Math errors (bad brackets, out-of-domain inputs) are reported with a clear message instead of crashing.
-
-### Calculus & Algebra (CAS)
-
-The `Calculus & Algebra` mode (`cas_section`) works on a function of `x`. Type an expression (for example `x^2+3x` or `sin(x)`), press OK, then choose an operation from the menu. Variables other than `x` can be entered with ALPHA (every letter a-z has a key). Differentiation, integration, simplify, expand, factorise, collect and partial fractions are fully symbolic; the rest are numeric and honour the home-menu angle mode.
-
-- **Differentiate (d/dx)** - symbolic derivative with respect to `x`, then simplified. Full rule set: sum, difference, product, quotient and power/chain rules, plus derivatives of sin, cos, tan, exp, ln, log, sqrt, asin, acos, atan, the hyperbolics sinh/cosh/tanh, the inverse hyperbolics asinh/acosh/atanh, and abs.
-- **Gradient at a point** (`do_gradient`) - numeric slope `f'(x)` at a value you supply, computed by a symmetric central difference whose step scales with the size of `x`.
-- **Integrate (+ C)** - symbolic indefinite integral, simplified and shown with the constant of integration. Covers powers (including negative and rational exponents), `c/sqrt(u)` and `c/u^k` recognised as powers in disguise, `1/x` and `c/(px+q)` as logarithms (all logarithmic antiderivatives carry the modulus, so `int 1/x dx` is `ln|x|`), anything of the form `f'(x)/f(x)`, and `sin`, `cos`, `tan`, `sec`, `cosec`, `cot`, `exp`, `sqrt`, `ln`, `sinh`, `cosh` and `sech^2`, each also with a linear argument. `sin^2` and `cos^2` go through the double-angle form and `tan^2` through `sec^2 - 1`. **Integration by parts** handles the products: `x sin x`, `x^2 e^x`, `x ln x`, `x^3 e^x`, `atan x` and so on, including the two that would otherwise cycle forever - `e^(ax) sin(bx)` and `sin x cos x`. **Partial fractions** handle proper rational integrands (`1/(x^2-1)`, `x/((x+1)(x-2))`, `1/(x^2+4)`), and an improper one is divided out first, so `x^2/(x^2+1)` gives `x - atan x`. If there is no elementary form it says so and points you to the definite integral for a numeric area.
-- **Definite integral a..b** (`do_defint`) - numeric area between two limits you enter.
-- **Simplify** - applies the engine's local algebraic simplification rules (folds constants, removes `*1`, `+0`, `^1`, `^0`, reduces fractions to lowest terms, folds `exp(ln u)` to `u` and `sqrt` of a perfect square, and cancels the factors a quotient shares top and bottom).
-- **Expand brackets** - multiplies out products and integer powers, multivariate, then gathers like terms: `(x+1)^3` becomes `x^3+3x^2+3x+1` and `(2x-1)(x+4)` becomes `2x^2+7x-4`.
-- **Factorise** - the rational root theorem over the monic form, with denominators cleared back into the factors, so `2x^2+7x+3` factorises as `(2x+1)(x+3)` rather than the equally true but useless `2(x+1/2)(x+3)`. Something irreducible over the rationals says so instead of inventing a factorisation.
-- **Collect like terms** - gathers by a canonical monomial key, so it folds `3x+2x` and also `2sin(x)+3sin(x)`.
-- **Partial fractions** - long division for the improper case, then an exact rational solve against the ansatz. Handles distinct linear factors, repeated linear factors and an irreducible quadratic. All of this arithmetic is in exact rationals; if a coefficient cannot be written exactly the route is abandoned rather than rounded, because a decomposition correct to 6 dp is not an answer anyone can write down.
-- **Solve f(x)=0** (`do_solve`) - finds real roots over a search range, including roots the curve only touches without crossing (such as `x^2` or `(x-1)^2`). Accepts either an expression (solved against zero) or a full equation with `=` (the two sides are subtracted first). Roots are listed in order; if none are found in range it says so.
-- **Evaluate at x** (`do_eval`) - asks for a value of `x` and prints `f(x)`, formatted with the same smart number rules as Calculate.
-- **Graph** - plots `y = f(x)` over `-12 <= x <= 12` with axes, joining consecutive samples into a continuous curve. The y-axis autoscales to the sampled values, trimming the extreme 5% at each end so a single asymptote (as in `1/x` or `tan x`) cannot squash the rest of the curve into one pixel row. The x and y ranges are printed along the bottom.
-- **Table of values** (`do_table`) - asks for a start `x` and a step, then prints 8 rows of `x` and `f(x)`; out-of-domain rows show "undefined".
-
-Each operation is guarded: expressions that nest too deep for the handheld's small call stack report "Too complex" rather than failing hard.
-
-### Supported functions and operators
-
-The expression parser (`caslex.py`) and engine (`caseng.py`) accept the following, typeable directly on the calculator keys:
-
-**Arithmetic and structure**
-- `+`, `-`, `*`, `/` and unary minus.
-- `^` for powers (right-associative), and a `^2` square key.
-- Round brackets `( )` for grouping, with correct operator precedence.
-- **Implicit multiplication** - `2x`, `2(x+1)`, `(x+1)(x-1)` and `x sin(x)` all insert the `*` automatically.
-- Decimal numbers and integers (integer arithmetic is kept exact where possible, so fractions stay exact).
-- **Scientific notation** in a number literal: `1e3`, `2.5e-3`, `6.02e23`. This is what lets a result shown as `1.23e15` be typed straight back in. A bare `e` not followed by digits is still Euler's number, so `2e` is `2 x 2.71828...`; write `2*e+3` if you mean that rather than `2e+3`.
-
-**Functions**
-- `sqrt(...)` - square root.
-- Trig: `sin`, `cos`, `tan` (take degrees or radians per the angle mode).
-- Reciprocal trig: `sec`, `cosec`, `cot`. `cot` is evaluated as `cos/sin` rather than `1/tan`, because `tan` is infinite at `pi/2` where `cot` is simply 0, and all three raise a domain error at an asymptote rather than handing back 1.6e16.
-- Inverse trig: `asin`, `acos`, `atan`, also spelled `arcsin`, `arccos`, `arctan` (return degrees or radians per the angle mode).
-- `ln` (natural log), `log` (base 10), `exp` (e^x).
-- `logb(a, b)` - logarithm of `b` to base `a`.
-- `abs(...)` - absolute value.
-- `n!` - factorial, entered as a postfix `!` (iterative, capped to keep the device responsive).
-- `nCr(n, r)` and `nPr(n, r)` - combinations and permutations.
-- Hyperbolics: `sinh`, `cosh`, `tanh`, and the reciprocals `sech`, `cosech`, `coth`.
-- Inverse hyperbolics: `asinh`, `acosh`, `atanh`, also spelled `arsinh`/`arcosh`/`artanh` as `arcsinh`, `arccosh`, `arctanh`.
-
-**Constants and memory**
-- `pi` (3.141592653589793) and `e` (2.718281828459045).
-- `ans` - the last Calculate result.
-
-Function names are matched longest-first (so `cosech` beats `cosec` beats `cos`, and `asinh` beats `asin` beats `sin`), and any single letter other than `x` is treated as a symbolic variable. That ordering is asserted rather than assumed: before `sec`, `cosec` and `cot` existed as tokens, `sec(x)` fell through to the single-letter rule and parsed as `s*e*c*x`, and `cosec(x)` parsed as `cos(e*c*x)` - a perfectly well-formed tree for a completely different function.
-
----
-
-## Specification coverage
-
-Every tool below is reached by launching the toolkit and choosing the menu path shown. The top menu is `MATHS TOOLKIT` with entries `Calculate`, `Calculus & Algebra`, `A-Level Maths`, `Further Maths`, and `Angle mode`. The tables list each section module, the menu path to it, and the exact tools it provides (taken verbatim from each module's `TOOLS` labels).
-
-### A-Level Maths (H640)
-
-Reached via `Maths Toolkit > A-Level Maths`, then `Pure: algebra & trig`, `Pure: functions & calculus`, `Statistics`, `Mechanics`, or `Proof`. Pure is split in two because one menu of nearly thirty entries is worse than two of fifteen.
-
-| Section | Menu path | Tools provided |
+| Section | n | Tools |
 | --- | --- | --- |
-| Pure: algebra & trig | A-Level Maths > Pure: algebra & trig | Quadratic solver, Simultaneous eqns, Arithmetic seq/sum, Geometric seq/sum, Binomial expansion, Logarithms, Coord geometry, Circle, Trig tools, Solve a triangle, Arc length & sector, Inequalities, Surds & rationalising, Line meets circle, Sequences & behaviour, Proportion k x, k/x |
-| Pure: functions & calculus | A-Level Maths > Pure: functions & calculus | Composite fg(x), Inverse function, Domain & range, Modulus \|f(x)\|, Graph transformations, Parametric d/dx, Parametric -> Cartesian, Implicit d/dx, Integration by substitution, Separation of variables, Stationary points, Constant of integration, Volume of revolution, Mean value of f, Improper integral, Small-angle approx, Exact trig values |
-| Statistics | A-Level Maths > Statistics | Summary stats, Freq table mean/var, Discrete RV E,Var, Binomial B(n,p), Normal P(a<X<b), Inverse Normal, HT binomial prop, HT Normal mean z, PMCC + regression, Probability rules, Tree diagram + Bayes, Sampling methods, Stratified sample, Factorial / nCr, Box plot, Histogram, Cumulative freq, Scatter + regression, Venn diagram, Reduce to linear form, Distribution shape |
-| Mechanics | A-Level Maths > Mechanics | SUVAT solver, Projectiles, Resultant of forces, Resolve a force, Equilibrium check, Newton II F=ma, Friction F=mu R, Friction horiz plane, Friction incline, Pulley (connected), Moments / reactions, Projectile: find the launch, Variable acceleration, Distance vs displacement, Connected particles |
-| Proof | A-Level Maths > Proof  (also Further Maths > Core Pure > Proof & induction) | Induction: a sum, Induction: divisibility, Induction: M^n, Disprove by counterexample, Proof methods reference |
+| Pure: algebra & trig | 16 | Quadratic solver, Simultaneous eqns, Arithmetic seq/sum, Geometric seq/sum, Binomial expansion, Logarithms, Coord geometry, Circle, Trig tools, Solve a triangle, Arc length & sector, Inequalities, Surds & rationalising, Line meets circle, Sequences & behaviour, Proportion k x, k/x |
+| Pure: functions & calculus | 17 | Composite fg(x), Inverse function, Domain & range, Modulus \|f(x)\|, Graph transformations, Parametric d/dx, Parametric -> Cartesian, Implicit d/dx, Integration by substitution, Separation of variables, Stationary points, Constant of integration, Volume of revolution, Mean value of f, Improper integral, Small-angle approx, Exact trig values |
+| Statistics | 21 | Summary stats, Freq table mean/var, Discrete RV E,Var, Binomial B(n,p), Normal P(a<X<b), Inverse Normal, HT binomial prop, HT Normal mean z, PMCC + regression, Probability rules, Tree diagram + Bayes, Sampling methods, Stratified sample, Factorial / nCr, Box plot, Histogram, Cumulative freq, Scatter + regression, Venn diagram, Reduce to linear form, Distribution shape |
+| Mechanics | 15 | SUVAT solver, Projectiles, Resultant of forces, Resolve a force, Equilibrium check, Newton II F=ma, Friction F=mu R, Friction horiz plane, Friction incline, Pulley (connected), Moments / reactions, Projectile: find the launch, Variable acceleration, Distance vs displacement, Connected particles |
+| Proof | 5 | Induction: a sum, Induction: divisibility, Induction: M^n, Disprove by counterexample, Proof methods reference |
 
-Some Pure and Mechanics entries open their own sub-menus: `Simultaneous eqns` offers `Two linear` and `Linear + quadratic`; `Binomial expansion` offers `(a+bx)^n list terms`, `(1+x)^n real n`, `one coeff of x^k`; `Logarithms` offers `Solve a^x = b`, `log base c of v`, `Log-law reference`; `Circle` offers `Centre+r -> equation` and `Equation -> centre+r`; `Trig tools` offers `Solve sin/cos/tan`, `R-form a sin+b cos`, `Exact-value table`. Calculus (differentiation, integration, definite integrals, graphing, tables) is not in these modules; it lives in the `Calculus & Algebra` CAS section off the main menu.
+### Further Maths core
 
-### Further Maths Core Pure (H645)
-
-Reached via `Maths Toolkit > Further Maths > Core Pure (compulsory)`.
-
-| Section | Menu path | Tools provided |
+| Section | n | Tools |
 | --- | --- | --- |
-| Complex numbers | Further Maths > Core Pure > Complex numbers | Arithmetic z, w, Modulus & argument, Polar / exp form, From polar (r,theta), Power z^n (De Moivre), nth roots of z, Quadratic complex roots, Argand plot, Loci in the Argand plane, de Moivre identities |
-| Matrices | Further Maths > Core Pure > Matrices | Enter A, Enter B, Show A and B, A + B, A - B, k * A, A * B, Transpose A, Determinant A, Inverse A, Solve A x = b, Eigenvalues 2x2, 2D transform builder, 3D transform builder, Invariant points/lines |
-| Vectors & 3-D | Further Maths > Core Pure > Vectors & 3-D | Magnitude \|a\|, Dot product a.b, Angle between, Cross product a x b, Unit vector, Scalar projection, Parallel / perp test, Point to line dist, Equation of a line, Line meets plane, Point to plane dist, Angle between planes, Skew lines distance |
-| Roots of polynomials | Further Maths > Core Pure > Roots of polynomials | Vieta quadratic, Vieta cubic, Vieta quartic, Quadratic roots, Numeric roots (x), Shift roots by k |
-| Series & Maclaurin | Further Maths > Core Pure > Series & Maclaurin | Sum of r, Sum of r^2, Sum of r^3, Maclaurin of f(x), Approx + error, Method of differences, Reference card |
-| Hyperbolic functions | Further Maths > Core Pure > Hyperbolic functions | Evaluate sinh, Evaluate cosh, Evaluate tanh, All three at x, arsinh (inverse), arcosh (inverse), artanh (inverse), Reference card |
-| Polar coordinates | Further Maths > Core Pure > Polar coordinates | (r,theta) -> (x,y), (x,y) -> (r,theta), Plot polar curve, Preset curves, Polar area |
-| Differential equations | Further Maths > Core Pure > Differential equations | First-order linear (IF), Second-order const-coeff, Particular integral, Coupled dx/dt, dy/dt, SHM recogniser, Damping classifier |
+| Complex numbers | 10 | Arithmetic z, w, Modulus & argument, Polar / exp form, From polar (r,theta), Power z^n (De Moivre), nth roots of z, Quadratic complex roots, Argand plot, Loci in the Argand plane, de Moivre identities |
+| Matrices | 15 | Enter A, Enter B, Show A and B, A + B, A - B, k * A, A * B, Transpose A, Determinant A, Inverse A, Solve A x = b, Eigenvalues 2x2, 2D transform builder, 3D transform builder, Invariant points/lines |
+| Vectors & 3-D | 13 | Magnitude \|a\|, Dot product a.b, Angle between, Cross product a x b, Unit vector, Scalar projection, Parallel / perp test, Point to line dist, Equation of a line, Line meets plane, Point to plane dist, Angle between planes, Skew lines distance |
+| Roots of polynomials | 6 | Vieta quadratic, Vieta cubic, Vieta quartic, Quadratic roots, Numeric roots (x), Shift roots by k |
+| Series & Maclaurin | 7 | Sum of r, Sum of r^2, Sum of r^3, Maclaurin of f(x), Approx + error, Method of differences, Reference card |
+| Hyperbolic functions | 8 | Evaluate sinh, Evaluate cosh, Evaluate tanh, All three at x, arsinh (inverse), arcosh (inverse), artanh (inverse), Reference card |
+| Polar coordinates | 5 | (r,theta) -> (x,y), (x,y) -> (r,theta), Plot polar curve, Preset curves, Polar area |
+| Differential equations | 6 | First-order linear (IF), Second-order const-coeff, Particular integral, Coupled dx/dt, dy/dt, SHM recogniser, Damping classifier |
 
-The Matrices `2D transform builder` opens a further sub-menu (`Rotation`, `Reflect x-axis`, `Reflect y-axis`, `Reflect y=x`, `Enlargement`, `Stretch`, `Shear`). The Polar `Preset curves` tool offers `Cardioid 1+cos`, `Rose cos(2x)`, `Circle r=3`.
+### Further Maths options
 
-### Further Maths Options (H645)
-
-Reached via `Maths Toolkit > Further Maths > Options`.
-
-| Section | Menu path | Tools provided |
+| Section | n | Tools |
 | --- | --- | --- |
-| Mechanics (FM) | Further Maths > Options > Mechanics (FM) | Momentum & impulse, Restitution, Oblique impact: wall, Oblique impact: spheres, Work/Energy/Power, Projectile path (cartesian), Projectile on an incline, Circular motion, Hookes law / EPE, Elastic equilibrium/energy, Centre of mass, COM by calculus, COM standard bodies, Slide or topple, Couple, Triangle of forces, Relative motion 2-D, Dimensional analysis, Units & conversion |
-| Statistics (FM) | Further Maths > Options > Statistics (FM) | Discrete RV E/Var, Discrete uniform, Poisson pmf/cdf, Binomial pmf/cdf, Geometric dist, Continuous RV E/Var, cdf, median, quartiles, Mode of a pdf, Piecewise pdf, Normal P(a<X<b), Standardise z, Inverse Normal, aX+bY+c combination, nX vs X1+..+Xn, Normal prob plot, PMCC r + test, Spearman rs + test, Regression y=a+bx, Chi-squared GOF, Chi-sq association, CI for mean (z), t interval / paired, CI for proportion, z-test for mean, Simulation |
-| Numerical Methods | Further Maths > Options > Numerical Methods | Newton-Raphson, Fixed-point iteration, Fixed-point diagnosis, Relaxation iteration, Cobweb / staircase, Order of convergence, Bisection, Integration (trap/mid/Simp), Integration error table, Richardson extrapolation, Aitken acceleration, Numerical derivative, Derivative error table, Newton forward differences, Euler method, Error abs/relative, Error propagation, Error in f(x), Round to s.f., Chop vs round |
-| Modelling w/ Algorithms | Further Maths > Options > Modelling w/ Algorithms | Bubble sort, Insertion sort, Quick sort, Bin: first-fit, Bin: first-fit decr, Graph: degrees/incidence, Dijkstra shortest, Prim MST, Kruskal MST, Max flow / min cut, Cut capacity, Critical path, Simplex (max, <=), Simplex 2-stage (>=, =), LP graph 2-D |
-| Extra Pure | Further Maths > Options > Extra Pure | Recurrence relation, Recurrence 1st order, Recurrence 2nd order, Verify a recurrence, Recurrence behaviour, Sets and notation, Group theory, Subgroups & Lagrange, Group isomorphism, 2x2 Eigen/diag, Modular arithmetic, Partial derivatives, Surface stationary pts, Tangent plane / normal, Contours & sections, 3x3 Eigen/diag |
-| Further Pure w/ Tech | Further Maths > Options > Further Pure w/ Tech | Plot f(x) curve, De Moivre z^n, nth roots of z, Euler dy/dx=f(x), Runge-Kutta RK2/RK4, Tangent field, Verify a DE solution, Limit of f(x), Asymptotes incl oblique, Stationary pts & cusps, Family of curves, Envelope of a family, Arc length, gcd & lcm, Prime test, Prime factorise, Euler totient phi(n), a^b mod m, Modular inverse, Fermat & Wilson, Pythagorean triples, Pell x^2-n y^2=1, Linear Diophantine, Base -> bin/hex |
+| Mechanics (FM) | 19 | Momentum & impulse, Restitution, Oblique impact: wall, Oblique impact: spheres, Work/Energy/Power, Projectile path (cartesian), Projectile on an incline, Circular motion, Hookes law / EPE, Elastic equilibrium/energy, Centre of mass, COM by calculus, COM standard bodies, Slide or topple, Couple, Triangle of forces, Relative motion 2-D, Dimensional analysis, Units & conversion |
+| Statistics (FM) | 25 | Discrete RV E/Var, Discrete uniform, Poisson pmf/cdf, Binomial pmf/cdf, Geometric dist, Continuous RV E/Var, cdf, median, quartiles, Mode of a pdf, Piecewise pdf, Normal P(a<X<b), Standardise z, Inverse Normal, aX+bY+c combination, nX vs X1+..+Xn, Normal prob plot, PMCC r + test, Spearman rs + test, Regression y=a+bx, Chi-squared GOF, Chi-sq association, CI for mean (z), t interval / paired, CI for proportion, z-test for mean, Simulation |
+| Numerical Methods | 20 | Newton-Raphson, Fixed-point iteration, Fixed-point diagnosis, Relaxation iteration, Cobweb / staircase, Order of convergence, Bisection, Integration (trap/mid/Simp), Integration error table, Richardson extrapolation, Aitken acceleration, Numerical derivative, Derivative error table, Newton forward differences, Euler method, Error abs/relative, Error propagation, Error in f(x), Round to s.f., Chop vs round |
+| Modelling w/ Algorithms | 15 | Bubble sort, Insertion sort, Quick sort, Bin: first-fit, Bin: first-fit decr, Graph: degrees/incidence, Dijkstra shortest, Prim MST, Kruskal MST, Max flow / min cut, Cut capacity, Critical path, Simplex (max, <=), Simplex 2-stage (>=, =), LP graph 2-D |
+| Extra Pure | 16 | Recurrence relation, Recurrence 1st order, Recurrence 2nd order, Verify a recurrence, Recurrence behaviour, Sets and notation, Group theory, Subgroups & Lagrange, Group isomorphism, 2x2 Eigen/diag, Modular arithmetic, Partial derivatives, Surface stationary pts, Tangent plane / normal, Contours & sections, 3x3 Eigen/diag |
+| Further Pure w/ Tech | 24 | Plot f(x) curve, De Moivre z^n, nth roots of z, Euler dy/dx=f(x), Runge-Kutta RK2/RK4, Tangent field, Verify a DE solution, Limit of f(x), Asymptotes incl oblique, Stationary pts & cusps, Family of curves, Envelope of a family, Arc length, gcd & lcm, Prime test, Prime factorise, Euler totient phi(n), a^b mod m, Modular inverse, Fermat & Wilson, Pythagorean triples, Pell x^2-n y^2=1, Linear Diophantine, Base -> bin/hex |
 
-In Extra Pure, `Modular arithmetic` opens its own sub-menu (`a mod m`, `a^b mod m`, `gcd(a,b)`, `modular inverse`).
+## Device facts
 
----
+Measured on hardware with `hwcheck.py`, 2026-08-09.
 
-## Specification points not covered
+| | |
+| --- | --- |
+| Recursion ceiling | 92 frames. `tests.py` caps at 38 as a margin. |
+| `getkey()` idle | `None`, not 0, over 400 samples. `casui.readkey` treats anything outside `KEYCODES` as idle. |
+| Screen | 384 x 192 |
+| `math` members | 24 of 43 present. `atan2` yes; `factorial`, `asinh`, `acosh`, `atanh`, `log2`, `trunc`, `degrees`, `radians`, `isnan`, `isinf`, `isfinite`, `copysign` no. `devlint.MATH_OK` is pinned to the measured set. |
+| Section modules | All 19 fit in RAM at once. `casui` still loads on demand. |
+| Key codes | `row*10 + col`, 48 readable. `[ON]` and `[AC]` have no code. |
+| `getkey()` cost | About 0 ms held, 8.3 ms idle ([TI-Planet](https://tiplanet.org/forum/viewtopic.php?t=27228)). Polling loops need no delay. |
 
-`SPEC_AUDIT.md` checks all 730 content statements in H640 and H645 against the code, one statement at a time. This is what is left after that: every statement with nothing behind it, and the actual reason rather than a blank. Statements that a tool half-serves are recorded as PARTIAL in the audit, with the gap stated, and are not repeated here.
+Source: fx-CG100/fx-1AU GRAPH Software User's Guide v2.10, pages 141-143.
 
-The list is short because most of it has been built. Four whole components have no uncovered statements at all, and the three weakest option papers in the first audit - Modelling with Algorithms, Numerical Methods and Statistics Major - are no longer among them.
+Screen layout is checked by `casioshot.py`, which renders any screen to PNG on
+a PC using the toolkit's own `char_w` metric and flags overruns of the 384 px
+width. It draws with a desktop font at matched advances, so it catches
+overflow, not letterforms.
 
-### H640 Statistics
+## Constraints
 
-| Code | Content statement | Why not covered |
-| --- | --- | --- |
-| `D14` | Clean data: missing values, errors, outliers | Not a calculator task. Deciding whether a height of 250 cm is a typing error, a different unit, or a real outlier is a judgement about the data's provenance, and a tool that guessed would be worse than no tool. `Box plot` marks statistical outliers by the 1.5 x IQR rule, which is the part that IS mechanical; what to do about them is yours. |
+Stock MicroPython 1.9.4. No f-strings, walrus, type annotations, async or
+`yield from`. ASCII only. Only `math`, `random` and `casioplot` are importable.
+No file writes. Recursion is on expression nesting, never input length.
+`devlint.py` enforces all of this.
 
-### H645 Statistics Major (Y422)
+## Structure
 
-| Code | Content statement | Why not covered |
-| --- | --- | --- |
-| `SH5` | Hypothesis test for an average using the Wilcoxon signed rank test | Needs an exact critical-value table that could not be verified to the standard the PMCC and Spearman tables were held to. Those two were checked by exhaustive enumeration of all n! rankings up to n = 10 and by Monte Carlo above that; the Wilcoxon table could not be, and shipping an unverified hypothesis test is worse than shipping none - it would give a confident answer with nothing behind it. This is the precedent for every other "needs a table we cannot check" case. |
+| File | |
+| --- | --- |
+| `maths.py` | launcher |
+| `casui.py` | keys, menus, input editor, result screens, settings |
+| `casrender.py` | 2D typesetter; owns the font metric |
+| `caslex.py` | tokeniser and iterative parser |
+| `caseng.py` | simplify, differentiate, evaluate, print |
+| `cascalc.py` | integrate, solve, definite integral |
+| `caspoly.py` | exact rational polynomial algebra |
+| `casutil.py` | shared prompts, formatting, charts |
+| 19 section modules | `TOOLS` list of `(label, function)` plus `run()` |
 
-### H645 Modelling with Algorithms (Y433)
+Expressions are tuples: `('n', 2)`, `('v', 'x')`, `('+', a, b)`, `('sin', a)`.
+The parser is iterative shunting-yard. Rationals are `(numerator, denominator)`
+pairs.
 
-| Code | Content statement | Why not covered |
-| --- | --- | --- |
-| `L5` | Recognise when a linear programming problem requires an integer solution | Not a calculator task. Whether you can buy 2.5 lorries is a fact about the problem, not about the arithmetic. `LP graph 2-D` reports the best integer point separately from the continuous optimum whenever they differ, so the consequence is visible once you have decided. |
-| `L6` | Formulate a range of network problems as linear programming problems | Not a calculator task. Choosing the variables and writing the constraints is the whole exercise; once it is formulated, `Simplex` and `LP graph 2-D` solve it. |
-| `N13` | Explore network algorithms through their LP formulations | Not a calculator task, for the same reason as `L6`. |
-| `L11` | Use a visualisation of a three-dimensional linear programming problem | Out of scope for the hardware. The screen is 384 x 192 pixels with no 3-D projection and no pointing device to rotate a view with, and a fixed 2-D projection of a 3-D feasible region is harder to read than the constraint list. |
-| `L16` | Handle variables which may be negative | Not built. Every LP tool assumes the variables are at least zero. The standard fix is to replace a free variable x with u - v where both are non-negative, which doubles the columns; the substitution is mechanical but has not been added. |
+## Development
 
-### H645 Further Pure with Technology (Y436)
-
-| Code | Content statement | Why not covered |
-| --- | --- | --- |
-| `c2` | Use software to produce a tangent to a curve at a variable point | Out of scope for the hardware. There is no pointing device and a full screen redraw per frame, so a tangent you drag along a curve cannot be offered. The fixed-point version is in `Implicit d/dx`, `Parametric d/dx` and `Stationary pts & cusps`. |
-| `T10` | Solve other Diophantine equations | Partly, and open-ended as stated. The three the specification names have tools - `Linear Diophantine`, `Pythagorean triples` and `Pell x^2-n y^2=1` - but "other Diophantine equations" is a family with no single algorithm, so which method to use is part of the question. |
-
-Of the 730 content statements, 9 are not covered: 6 are not calculator tasks or are out of scope for the hardware, 1 is deliberately absent because its critical values could not be verified, and 2 are simply not built. Everything else is either covered by a tool or recorded as PARTIAL in `SPEC_AUDIT.md` with the gap stated.
-
----
-
-## How it works (architecture)
-
-The CAS is a small pipeline of single-purpose modules. A typed string becomes a tuple expression tree, the engine transforms that tree (simplify / differentiate / evaluate / print), and a separate typesetter draws it as real 2D maths on the screen. Every module is built around one hard constraint: stock MicroPython 1.9.4 on the fx-CG100 dies at a **92-frame** call-stack ceiling (measured on hardware by `hwcheck.py`), so the parser is iterative and the tree walks are kept shallow (depth = expression nesting, never input length). The tests hold the engine to a stricter 38 frames on purpose, which leaves 2.4x headroom.
+Runs unmodified under desktop CPython; `casioplot.py` stubs the graphics.
 
 ```
-keys -> caslex.tokenize -> caslex.parse -> tuple tree
-                                              |
-        caseng (simplify / diff / evalf / tostr)
-        cascalc (integrate / solve / definite integral)
-                                              |
-              casrender.render -> 2D typeset preview
-
-  casui  = menus, keyboard, angle mode, paged result screens
-  casutil = the helpers all 17 section modules share
+python3 tests.py       # 6752 checks
+python3 stress.py      # 443 checks, drives every tool
+python3 devlint.py     # MicroPython compliance, 32 files
 ```
 
-### The tuple node format
+`tests.py` auto-discovers `tests_*.py`, each exposing
+`SECTIONS = [(label, fn)]` where `fn` takes the harness object.
 
-The whole system passes around immutable tuples whose first element is a tag:
+Adding a tool: add it to the module's `TOOLS`, add assertions to `tests.py`,
+add help text to `casui.HELP`, add it to the table above. Tests enforce the
+first and the last.
 
-- Leaves: `('n', num)` for a number (int kept exact where possible), `('v', name)` for a variable or symbolic constant.
-- Binary ops: `('+', a, b)`, `('-', a, b)`, `('*', a, b)`, `('/', a, b)`, `('^', a, b)`, where `a` and `b` are themselves nodes.
-- Unary: `('neg', a)`, plus one-argument functions `('sin', a)`, `('cos', a)`, `('ln', a)`, `('sqrt', a)`, `('exp', a)`, the inverse and hyperbolic trig, `('abs', a)`, and postfix factorial `('fact', a)`.
-- Two-argument functions: `('ncr', a, b)`, `('npr', a, b)`, `('logb', a, b)`.
+## Not covered
 
-Because nodes are plain tuples, the engine tests structure with cheap `node[0]` tag checks and `len(n) == 2` to tell unary from binary, and equality (`a == b`) compares whole subtrees for free.
+`SPEC_AUDIT.md` checks all 730 H640 and H645 content statements against the
+code. Nine have nothing behind them.
 
-### caslex - tokenizer and iterative parser
-
-`tokenize` scans the string left to right into tokens (numbers, function names matched longest-first so `asinh` beats `asin` beats `sin`, single letters as variables, operators, parens, comma, postfix `!`). A number literal may carry a scientific-notation exponent (`1e3`, `2.5e-3`), consumed only when digits actually follow the `e`, so a bare `e` stays Euler's number. `pi` and `e` are folded to numeric tokens at this stage. `_implicit` then inserts explicit `*` tokens wherever multiplication is implied (`2x`, `2(x)`, `)(`, `x sin(...)`, `3!x`).
-
-`parse` does unary-minus marking, then a classic shunting-yard pass to Reverse Polish using a precedence table (`+ - < * / < unary < ^`, with `^` and unary right-associative). A prefix unary minus is pushed straight onto the operator stack without popping: it binds only what follows it, so in `2^-3` the `^` has to stay pending until its right operand `-3` has been built. Popping there is what used to make every `a^-b` fail to parse. The RPN is turned into the tree by a second iterative pass over an explicit value stack: operands push leaves, operators pop their arguments and push a combined node. No recursion is used anywhere, so arbitrarily deep input cannot blow the stack. Malformed input - including an unbalanced `)` - returns `None` rather than raising.
-
-### caseng - the engine over the trees
-
-- `simplify` is a bottom-up rewrite (`_s`): it simplifies children first, then applies local rules (constant folding, identities like `x*1`, `x+0`, `x-x=0`, `a^0=1`, rational reduction via gcd in `_fold_div`, pulling constants to the front of products, folding `(k*X)/m` and `(p/q)/m` so an integral's constant lands in lowest terms, combining like powers `x^p * x^q -> x^(p+q)` and `x^p / x^q -> x^(p-q)`, and lifting a constant out of a denominator so `x^2/(2x)` reaches the power rule and becomes `x/2`. Those last three exist because integration by parts leans on them: without them an intermediate such as `(x^2/2) * (1/x)` never cancels and the method stalls one step short of closing). `_fold_pow` will not fold a power whose value cannot live in a tree: a fractional power of a negative base is complex, and a huge integer power would allocate megabytes on the handheld, so both are left symbolic. `2^-3` folds to the exact `1/8`. Each rule returns a strictly simpler or equal node, so it terminates.
-- `diff` (`_d`) is the full A-Level rule set: sum/product/quotient/chain rules, power rule (including variable exponents), and derivatives of every supported function, `logb` included. It emits an unsimplified tree that the caller then runs through `simplify`. Where no elementary derivative exists and the argument really does involve the variable (`x!`, `nCr(x,2)`) it raises rather than returning a misleading `0`.
-- `evalf` numerically evaluates a tree at a given `x`. A `deg` flag switches trig to degrees for the everyday calculator and the CAS evaluate/gradient/definite-integral/graph/table tools; the Further Maths section modules call it without the flag and stay in radians. An optional `env` map supplies values for variables other than `x`, which is how Euler's method evaluates `dy/dx = f(x, y)` on a one-variable engine. A variable with no value raises rather than evaluating to `0`, so a mistyped entry is reported instead of quietly becoming a wrong answer, and a power that would come out complex (such as `(-8)^(1/3)`) raises as a domain error rather than returning a complex number. Functions the device lacks (`sinh`, `asinh`, `factorial`, etc.) are implemented here iteratively from `math` primitives.
-- `tostr` (`_str`) is the precedence-aware linear printer used for plain-text output, inserting parentheses only where needed.
-
-These walks recurse on expression depth, which is small, so they stay well under the frame ceiling.
-
-### cascalc - integration and solving
-
-- `integ` does symbolic integration: linearity over `+ - neg`, constant factor pull-out, the power rule (with exact rational exponents, so `x^(2/3)` integrates to `3/5 x^(5/3)` rather than a decimal), the `-1` case as a logarithm, `c/(px+q) -> c ln(px+q)/p`, `f'(x)/f(x) -> ln f(x)` (decided by dividing the numerator by the derivative of the denominator and asking whether the variable has gone), and a table covering `sin`, `cos`, `exp`, `tan`, `sqrt`, `ln`, `sinh` and `cosh` - each of which also accepts a linear argument by substitution. Anything it cannot integrate returns `None`, which is the signal for the UI to fall back to numerics.
-- **Integration by parts** (`_byparts`) applies `int u dv = uv - int v du`, picking `u` by LIATE. Two things make it terminate on a handheld. Products are flattened first, so `-cos(x) * (2*x)` is seen as a constant and two moving factors rather than as an opaque pair. And when the remaining integral turns out to be a constant multiple `k` of the one we started with - which is what happens to `sin x cos x`, where naive recursion never closes - it solves `I = uv - kI` for `I` instead of recursing. `e^(ax) sin(bx)` and its cosine form are handled by a direct closed form because their `k` is negative and the general trick is less accurate there. Depth is capped at `BYPARTS_MAX = 3`; the deepest real case measured is 8 stack frames against the device's measured 92-frame ceiling, and `tests.py` asserts it against a stricter 38.
-- `linear_coeff` decides whether an argument is `a*var + b` **structurally**, by walking the tree. It used to sample the argument at `x = 0, 1, 2` and compare, which accepted anything that happened to agree with a straight line at those three points - `x^3-3x^2+3x` among them - so every integral built on that substitution came out silently wrong. `has_var` decides which factor is constant.
-- `defint` is a numeric definite integral by composite Simpson's rule (even panel count, evaluated through `evalf`), returning `None` on a domain error or a non-finite total (a singularity inside the interval is reported rather than printed as junk).
-- `solve` finds numeric roots of `tree == 0` over a computed grid of 800 samples (a wider window in degree mode for the 360 period). Sign changes are refined by bisection; a grid point that is a local minimum of `|f|` without a sign change is refined by ternary search, which is what finds roots the curve only touches, such as `x^2` or `(x-1)^2`. A constant expression returns no roots rather than one per grid point, duplicates within a tolerance are dropped, and the list is capped at `MAXROOTS`.
-
-### casrender - 2D math typesetter
-
-`casrender` turns a tree into a Desmos-style 2D layout instead of a flat string. It is a two-phase box model. `build` converts the tree into layout boxes (`atom`, `row`, `frac`, `sup` for exponents and `e^x`, `root` for radicals, `paren`, `dot`), choosing a smaller font as nesting deepens and inserting parentheses by precedence. `measure` returns each box's `(width, ascent, descent)` relative to a baseline, with stacked fractions sized around an axis line. `draw` then paints pixels (`set_pixel`, Bresenham lines for the surd stroke, drawn parentheses for tall content) at computed coordinates. `render` centres the result in a box and, if it does not fit, retries one font size down before giving up. This is what produces the live input preview as you type.
-
-### casui - the UI hub
-
-`casui.py` is the front end. It owns the key map decoded from the physical keyboard (code = row*10+col, with shift/alpha layers and a CATALOG picker for the few tokens no key produces; `tests.py` holds Casio's keypad table independently and asserts every binding against it, including that no code is claimed by both a navigation key and a character key), the main menus, the on-screen input editor that drives the live `casrender` preview, the global angle mode (shown on the input screen, since it changes what `sin(30)` means), and the pixel-based, word-wrapped result screens. Text layout is calibrated to the measured 384x192 screen using hand-tuned proportional-font width tables (`char_w` / `text_w`), so lines wrap by real pixel width rather than character count. The edit line is windowed around the caret by `cursor_fit`, so moving back into a long expression keeps the caret on screen instead of scrolling it away. Result screens page rather than truncate: output longer than seven lines shows a page counter, any key advances and EXIT stops. A fault inside a section tool is caught and reported, so it returns to the menu instead of dropping the whole toolkit back to the Python shell.
-
-### Files at a glance
-
-- `casutil.py` - helpers every section module shares: value entry, safe number and complex formatting, atan2/degrees/radians, gcd/lcm/modular arithmetic, exact nCr/nPr/factorial, and the normal, binomial and Poisson distributions.
-- `caslex.py` - tokenizer plus iterative shunting-yard parser; produces the tuple tree.
-- `caseng.py` - engine: simplify, differentiate, numeric evaluate, plain-text print.
-- `cascalc.py` - symbolic integration, numeric solve (grid scan + bisection), numeric definite integral (Simpson).
-- `casrender.py` - 2D math typesetter (fractions, exponents, radicals) for the live preview.
-- `casui.py` - UI hub: menus, keyboard input, angle mode, pixel-wrapped result screens.
-- `maths.py` - launcher (imports `casui` and calls `casui.main()`).
-- 17 section modules - the H640 / H645 specification tools. Each one is a registry of `(label, function)` pairs in `TOOLS` plus a `run()` that hands it to `casutil.run_tools`; the test harnesses drive that registry, so a new tool is covered the moment it is listed.
-- `tests.py`, `stress.py`, `devlint.py` - the PC-side harnesses (see [Development and testing](#development-and-testing)).
-
----
-
-## Installing on the calculator
-
-Copy these `.py` files to the calculator's storage (the root of the device, where MicroPython looks for modules):
-
-- Launcher: `maths.py`
-- UI layer: `casui.py`
-- Engine: `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`
-- Shared section helpers: `casutil.py`
-- The 19 section modules: `pure640.py`, `purecalc.py`, `stat640.py`, `mech640.py`, `proof.py`, `vcplx.py`, `matrix.py`, `vectors.py`, `polyroots.py`, `series.py`, `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`, `numeric.py`, `algos.py`, `xpure.py`, `fpt.py`
-
-To launch the toolkit, run `maths.py` (it just imports `casui` and calls `casui.main()`; the engine and section modules are pulled in from there on demand). All 19 sections have since been measured to fit in RAM simultaneously, so the on-demand loading is a choice - lower peak memory, faster startup, and room for a section to grow - rather than a requirement.
-
-**Do NOT copy `casioplot.py` from this repo to the device.** The repo's `casioplot.py` is a PC-only test stub (every function is a no-op). The fx-CG100 already has the real `casioplot` graphics module built in, and copying the stub would shadow it, breaking all drawing. The device runs stock MicroPython 1.9.4 with that built-in `casioplot`.
-
-## Development and testing
-
-The entire toolkit runs unmodified under desktop CPython. The only device-specific dependency is the `casioplot` graphics module, and the repo's `casioplot.py` stub satisfies that import with no-op drawing functions (`set_pixel`, `draw_string`, `clear_screen`, `show_screen`, `getkey`, etc.), so the code imports and executes on a PC.
-
-There are three harnesses, all PC-side. Run them together before any change lands:
-
-```
-python3 tests.py       # correctness: 6752 checks, 0 failures
-python3 stress.py      # smoke: 443 checks, 0 errors
-python3 devlint.py     # device compliance: 0 problems in 32 files
-```
-
-All three run on every push and pull request via `.github/workflows/ci.yml`, along with a `compileall` pass over the whole repo. No dependencies beyond CPython.
-
-**`tests.py` - correctness.** Every check compares against a value worked out
-independently, so it catches wrong answers rather than only crashes. It covers
-the tokenizer and parser, simplification, the full differentiation rule set,
-symbolic and numeric integration (each symbolic integral is also re-checked
-against Simpson's rule over the same interval), root finding, the typesetter,
-the UI's number formatting and word wrap, all of `casutil`, and every section
-module driven through its real entry points with scripted key input - so what
-is asserted is what a student would see on screen. It finishes with a
-recursion-depth guard that caps the interpreter well under the handheld's measured 92-frame
-ceiling and confirms the engine still runs inside it.
-
-**`stress.py` - smoke.** Stubs the UI (canned input, no-op drawing, auto-exiting
-menus) so nothing blocks, then calls every tool in all 20 sections via each
-module's `TOOLS` registry and hammers the engine over ~30 expressions. It proves
-nothing crashes; it does not check that any answer is right. On a PC it writes
-`stress_log.txt`; on the device (no file writes) it prints progress instead.
-
-**`devlint.py` - device compliance.** Parses each of the 32 device files and
-reports anything the calculator's MicroPython 1.9.4 cannot run: f-strings,
-non-ASCII bytes, imports beyond `math`/`random`/`casioplot`, `math` members the
-build lacks (`factorial`, `atan2`, the hyperbolics), annotations, walrus,
-`async`, `yield from`, and newer string methods. Everything is an allowlist, so
-a new dependency has to be added to `devlint.py` deliberately. `tests.py` runs
-it too, so a change that would only fail on real hardware fails on the PC first.
-
-Two structural guards were added once each had already let a real defect
-through. `test_every_tool_is_registered` walks every section module and asserts
-each `t_*` function appears in that module's `TOOLS` with a unique label - two
-matrix tools once shipped in a commit that claimed to add them but were never
-listed, so they were unreachable from the menu and invisible to `stress.py`
-while their own tests passed by calling them directly. `test_readme_matches_tools`
-asserts every tool table in this README is exactly its module's labels, because
-a README that has quietly drifted is worse than none: it is a list of tools that
-are not there.
-
-`tests.py`, the `tests_*.py` modules and `devlint.py` are desktop-only (they use
-`ast` and `sys._getframe`) and must not be copied to the calculator. `tests.py`
-picks up any `tests_*.py` file automatically: each defines
-`SECTIONS = [(label, function)]` and each function takes the harness object as
-its only argument, which is how several areas can be worked on at once without
-fighting over one file.
-
-**`casioshot.py` renders the screens to PNG on a PC** (`python3 casioshot.py`,
-needs Pillow, never copied to the calculator). The repo's `casioplot.py` stub
-draws nothing, which is what the harnesses want - they assert what a screen
-*says* - but that leaves layout faults invisible: text off the right edge, a
-row clipped at the bottom, one label printed on top of another. `casioshot`
-installs a real framebuffer, drives each screen with scripted keys and writes
-what it drew. Its glyph advances come from the toolkit's own font metric rather
-than from the TTF it draws with, so an overflow in the picture is a real
-overflow; the letterforms are not Casio's, but the geometry is the toolkit's.
-
-It found two faults on its first run. `graph()` drew its axis ranges at y=176
-and then called `hold()`, which drew "Press any key" at y=178 - two pixels
-apart in an eleven-pixel font, so on the real screen they overprinted into a
-smudge. And the CATALOG picker panel painted over the very line you are
-inserting into, so you picked a symbol without being able to see the
-expression. `tests.py` now carries the same geometry check without Pillow, so
-CI catches an overlap or an overflow even though it draws nothing.
-
-`calib_screen.py`, `fontmetrics.py`, and `fontmetrics2.py` are one-off hardware probes that were run on the real device to measure its display. `calib_screen.py` walks black pixels off each edge to detect the screen size (found to be 384x192). `fontmetrics.py` measures per-character advance and glyph height for the small/medium/large fonts and how many characters fit across the 384px width. `fontmetrics2.py` measures proportional glyph widths (narrow `i`, normal `o`, wide `m`) plus a real-prose average. These are not part of the toolkit; they were used to calibrate the layout constants.
-
-### Device facts, and how each one was settled
-
-Several constants in this repo used to be assumptions written without hardware
-or documentation to hand. Where they have been settled, this is the evidence.
-The source is the **fx-CG100/fx-1AU GRAPH Software User's Guide, version 2.10**
-(CASIO, published 12/2025), [available from
-CASIO](https://support.casio.com/global/en/calc/manual/fx-CG100_1AUGRAPH_en/);
-the `casioplot` chapter is pages 141-143.
-
-| Assumption | Status | Evidence |
+| Code | Statement | Reason |
 | --- | --- | --- |
-| All 19 section modules fit in RAM at once | **Measured: they do** | `hwcheck.py` imported every section in sequence on 2026-08-09 and reported `all fit AT ONCE` - about 750 KB of source compiled to bytecode and held simultaneously. RAM is therefore **not** a binding constraint on this toolkit. `casui` still loads sections one at a time on demand, which is now a choice rather than a necessity: it keeps peak memory and startup cost down, and it means a section can grow without anyone having to re-measure this. The probe is the worst case; the app's real pattern has far more headroom than it needs. |
-| Screen size 384 x 192 | **Confirmed twice on hardware** | `calib_screen.py` measured it by walking black pixels off each edge, and `hwcheck.py`'s independent bounds walk (write a pixel, read it back, stop when the read-back disagrees) returned the same 384 x 192 on 2026-08-09. Every layout constant in `casui` and `casrender` is calibrated to it. |
-| `draw_string` size argument | **Confirmed** | Page 143: *"Specifies one of the following as the character size: 'large', 'medium', 'small'. 'medium' is applied when this argument is omitted."* The manual's own example passes `"large"`. `tests.py` now walks every device file with `ast` and asserts every literal size argument is one of the three. |
-| Colour argument format | **Confirmed** | Page 143: *"The color argument specifies the drawing color in 256 shades of RGB... to specify black, input (0,0,0) or [0,0,0)."* Tuples of 0-255 are correct, and `(0,0,0)` is the default when omitted. |
-| Key codes are `row*10+col` | **Confirmed** | Page 142 prints the grid: 9 rows, columns 1-6, with row 1 col 1 (`[ON]`) and row 6 col 5 (`[AC]`) greyed out as codeless, and rows 7-9 stopping at column 5. 48 readable keys. The manual's worked example holds the `5` key and prints `72`, which anchors the grid to the physical keypad. |
-| Which key each code is | **Confirmed** | The page-142 diagram is a blank keypad outline, so the codes were matched to the printed keytops against a full-resolution photograph of the fx-CG100 front panel. Every binding in `casui.py` agrees: the cursor cross is 14/23/25/34 around `OK` 24, `EXIT` is the back-arrow at 22 (13 is jump-to-line-start), and the ALPHA letters run A-F on 41-46, G-L on 51-56, M-O on 61-63, P-T on 71-75, U-Y on 81-85, Z on 91, with `Ans` on 94. `tests.py` holds that table independently and asserts `casui` matches it. |
-| `getkey()` cost | **Measured by a third party on OS 2.10** | A [TI-Planet thread on the 2.10 update](https://tiplanet.org/forum/viewtopic.php?t=27228) timed it: `getkey()` returns in about **0 ms when a key is held and about 8.3 ms when none is**, independent of which key. That is why the UI's polling loops need no artificial delay - an idle `while True: k = readkey()` self-throttles to roughly 120 polls a second, and a held key is read instantly. It also means a drawing loop that polls every frame pays 8 ms a frame while the user is not touching anything, so the toolkit polls only where it is actually waiting. |
-| `getkey()` idle value | **Measured as `None` - and not relied on, which is why the toolkit works** | The manual documents `getkey()` as *"returns the key code of the calculator key pressed at the time this function is executed"* and its example polls it in a bare `while True`, so it is non-blocking - but it never states the idle return. `hwcheck.py` on hardware reported **`None`**, not `0`. That vindicates the decision not to depend on it: `casui.KEYCODES` is the set of codes the keypad can produce and `casui.readkey()` reports anything else as "no key", so `None` falls through as idle and the UI runs. Code written the obvious way - `while getkey() != 0` - cannot ever exit, because `None != 0` is true; that is exactly the bug that was in `hwcheck.py` and `keyprobe.py` themselves until this run, and both now use `readkey()`'s rule. `tests.py` pins `None` as an idle value so no rewrite can go back to `== 0`. Confirmed by a second run after the probes were fixed: **400 samples, one distinct value, `None` every time**. The first run could only report the four figures on page 1 precisely because the old paging loop had hung on exactly this. Separately, this row previously recorded a real bug - the old code sampled `getkey()` once at import and called that the idle value, but the key that launches the script is still held at import, which made that key unreadable for the whole session. |
-| `math` members available | **Measured: 24 of 43 present** | `hwcheck.py` probed all 43 candidate names through `getattr` on the hardware, 2026-08-09. **Present (24):** `e pi sqrt pow exp log log10 sin cos tan asin acos atan atan2 sinh cosh tanh ceil floor fabs fmod modf frexp ldexp`. **Absent (19):** `log2 asinh acosh atanh trunc copysign isnan isinf isfinite degrees radians factorial gamma lgamma erf erfc expm1 log1p cbrt`. Three things follow. **`atan2` is real** - the long-standing claim that this device lacks it is wrong, exactly as MicroPython's `py/modmath.c` predicted, since `atan2` is defined there unconditionally. **`factorial` is genuinely absent**, so `caseng._factorial` has to stay hand-rolled. And the build is *not* plain `MICROPY_PY_MATH_SPECIAL_FUNCTIONS`: Casio enabled that group **selectively**, keeping `sinh`/`cosh`/`tanh`/`log10` while dropping `asinh`/`acosh`/`atanh`/`log2`/`erf`/`gamma`. So the hyperbolic *inverses* stay hand-implemented in `hyper.py` from `log` and `sqrt`. `devlint.MATH_OK` is now exactly the measured 24 - the previous list allowed `degrees`, `radians`, `trunc`, `copysign`, `isnan` and `isinf`, all of which are absent and would have passed the lint and then crashed on the handheld; `tests.py` pins the set so it cannot drift back to inference. |
-| Recursion ceiling | **Measured: 92 frames** | `hwcheck.py` on the hardware, 2026-08-09: the interpreter refused a 93rd frame. The long-standing "~38" in this table was inherited guesswork and was wrong by a factor of 2.4. `tests.py` still caps CPython at **38** on purpose - it is a deliberate margin, not the device figure, and passing under it means the engine has roughly 2.4x the headroom it needs. The same run re-executed the engine's deepest operations at the real ceiling: deeply nested parse, a 200-term flat sum, simplify, differentiate, evaluate, print and integration by parts all completed, and nothing was reported in red. |
-| Pixel-level screen layout | **Partly verified** | The autoscaling graph, the paged result screens, the CATALOG picker grid and caret windowing in long expressions were written from measured font metrics, not from screenshots. `casioshot.py` now renders any screen to PNG on a PC using the toolkit's *own* `char_w` metric and flags anything that overruns the 384 px width, so a string that overflows on the handheld overflows in the picture too - that catches the class of fault that matters. What it cannot check is Casio's actual letterforms, since it draws with a desktop font at matched advances. The app has been run on the device without a layout fault being reported, but nobody has compared a photograph against a render pixel for pixel. |
+| `D14` | Clean data: missing values, errors, outliers | Not a calculator task |
+| `SH5` | Hypothesis test for an average using the Wilcoxon signed rank test | Needs an exact critical-value table that could not be verified to the standard the PMCC and Spearman tables were held to |
+| `L5` | Recognise when a linear programming problem requires an integer solution | Not a calculator task |
+| `L6` | Formulate a range of network problems as linear programming problems | Not a calculator task |
+| `N13` | Explore network algorithms through their LP formulations | Not a calculator task, for the same reason as `L6` |
+| `L11` | Use a visualisation of a three-dimensional linear programming problem | Out of scope for the hardware |
+| `L16` | Handle variables which may be negative | Not built |
+| `c2` | Use software to produce a tangent to a curve at a variable point | Out of scope for the hardware |
+| `T10` | Solve other Diophantine equations | Partly, and open-ended as stated |
 
-**Every row above except the last was settled by one `hwcheck.py` run on 2026-08-09.** Its last page - loading all 19 section modules at once - takes the better part of a minute on the handheld, because that is 750 KB of source compiled to bytecode. It now shows each module as it starts, and EXIT abandons it. That page is a worst case, not a requirement: the toolkit loads section modules one at a time on demand and never holds them all.
+## Probes
 
- Copy it to the
-calculator and run it: it measures the recursion ceiling by counting frames
-until the interpreter refuses another, reports what `getkey()` returns with
-nothing held, walks the screen bounds, enumerates which of 43 possible `math`
-members this build has (and which it lacks), and finally re-runs the engine's
-deepest operations - deeply nested parse, a 200-term flat sum, simplify,
-differentiate, evaluate, print and integration by parts - at that real ceiling.
-Write the figures it prints into the table above. `tests.py`'s `BUDGET` is
-deliberately stricter than the device and is not meant to track it.
-
-`keyprobe.py` re-checks the key map on hardware and flags any code outside
-`casui.KEYCODES`; `calib_screen.py`, `fontmetrics.py` and `fontmetrics2.py`
-measured the display.
-
-### Device constraints the code works around
-
-The fx-CG100's MicroPython 1.9.4 is a restricted build, so the code avoids:
-
-- no f-strings (string building uses `+` and `str(...)`),
-- ASCII-only text (no Unicode glyphs),
-- only `math`, `random`, and `casioplot` are importable,
-- no `math.factorial`, `math.atan2`, or `math.sinh`/hyperbolics (these are hand-implemented),
-- a shallow recursion limit (92 frames, measured),
-- the `complex` type has no `.conjugate()` method,
-- file writes are blocked on the device.
+`hwcheck.py`, `keyprobe.py`, `calib_screen.py`, `fontmetrics.py` and
+`fontmetrics2.py` are one-off hardware probes, not part of the app.
 
 ## License
 
-Released under the [MIT License](LICENSE).
+MIT.

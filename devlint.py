@@ -1,19 +1,7 @@
-# devlint.py - static check that the device code stays inside the fx-CG100's
-# stock MicroPython 1.9.4 build. Runs on a PC only (it uses ast); it never ships
-# to the calculator. The point is that a change which would only fail on real
-# hardware fails here first instead.
-#
-#   python3 devlint.py          -> prints findings, exit status 1 if any
-#
-# Everything is an allowlist: anything not known to exist on the device is
-# reported, so a new dependency has to be added here deliberately.
-
 import ast
 import os
 import sys
 
-# Files that run on the calculator. casioplot.py is the PC stub, and the three
-# probes plus the test harnesses are desktop-only.
 DEVICE_FILES = [
     "maths.py", "casui.py", "casutil.py", "caslex.py", "caseng.py",
     "casrender.py", "cascalc.py", "caspoly.py",
@@ -21,36 +9,11 @@ DEVICE_FILES = [
     "hyper.py", "polar.py", "diffeq.py", "fmmech.py", "fmstat.py",
     "numeric.py", "algos.py", "xpure.py", "fpt.py",
     "pure640.py", "purecalc.py", "stat640.py", "mech640.py", "proof.py",
-    # one-off hardware probes: not part of the toolkit, but they do run on the
-    # calculator, so they are held to the same limits
     "calib_screen.py", "fontmetrics.py", "fontmetrics2.py", "keyprobe.py",
     "hwcheck.py",
 ]
 
-# math members the toolkit is allowed to use.
-#
-# MEASURED ON THE DEVICE 2026-08-09 by hwcheck.py, which probed all 43 names
-# through getattr. This list is now exactly the 24 it found, no longer an
-# inference from upstream source. Both halves of the correction mattered:
-#
-#  PRESENT, and previously disallowed: atan2, log10, sinh, cosh, tanh, pow.
-#    atan2 being real settles a long-standing claim that this device lacks it -
-#    it does not. MicroPython 1.9.4 defines atan2 unconditionally in
-#    py/modmath.c, and the hardware agrees.
-#  ABSENT, and previously ALLOWED: degrees, radians, trunc, copysign, isnan,
-#    isinf. Those six would have passed the lint and then crashed on the
-#    handheld. isfinite is absent too and was never allowed.
-#
-# The build is NOT plain MICROPY_PY_MATH_SPECIAL_FUNCTIONS. Casio enabled that
-# group selectively: sinh, cosh, tanh and log10 are present while asinh, acosh,
-# atanh, log2, erf, erfc, gamma and lgamma are not. So the hyperbolic INVERSES
-# have to stay hand-implemented (hyper.py builds them from log and sqrt), and
-# so does factorial, which is in neither upstream list and is absent here as
-# expected.
-#
-# Adding a name to this set is a claim that the hardware has it. The only
-# evidence that counts is a hwcheck.py run; tests.py pins the set against the
-# measured list so it cannot drift back to guesswork.
+# measured on device by hwcheck.py 2026-08-09; adding a name claims hardware has it
 MATH_OK = set([
     "e", "pi", "sqrt", "pow", "exp", "log", "log10",
     "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
@@ -60,13 +23,11 @@ MATH_OK = set([
 
 IMPORT_OK = set(["math", "random", "casioplot"])
 
-# builtins that this MicroPython build does not provide
 BUILTIN_BAD = set([
     "compile", "vars", "breakpoint", "memoryview", "frozenset",
     "classmethod", "staticmethod", "bytearray", "format", "aiter", "anext",
 ])
 
-# string/list methods added after 3.4 or absent from MicroPython 1.9.4
 METHOD_BAD = set([
     "removeprefix", "removesuffix", "casefold", "format_map", "isascii",
     "expandtabs", "maketrans", "translate", "encode", "decode",
@@ -76,13 +37,12 @@ METHOD_BAD = set([
 class Lint(ast.NodeVisitor):
     def __init__(self, path, mods):
         self.path = path
-        self.mods = mods       # project module names, importable on the device
+        self.mods = mods
         self.bad = []
 
     def flag(self, node, msg):
         self.bad.append((self.path, getattr(node, "lineno", 0), msg))
 
-    # --- syntax the device build cannot parse -----------------------------
     def visit_JoinedStr(self, n):
         self.flag(n, "f-string (not supported by MicroPython 1.9.4)")
         self.generic_visit(n)
@@ -123,7 +83,6 @@ class Lint(ast.NodeVisitor):
                 self.flag(n, "argument annotation on " + n.name)
         self.generic_visit(n)
 
-    # --- imports ----------------------------------------------------------
     def visit_Import(self, n):
         for a in n.names:
             root = a.name.split(".")[0]
@@ -137,7 +96,6 @@ class Lint(ast.NodeVisitor):
             self.flag(n, "from '" + str(n.module) + "' import - not available on the device")
         self.generic_visit(n)
 
-    # --- attribute and name use -------------------------------------------
     def visit_Attribute(self, n):
         if isinstance(n.value, ast.Name) and n.value.id == "math":
             if n.attr not in MATH_OK:
@@ -155,7 +113,6 @@ class Lint(ast.NodeVisitor):
 def check_file(path, mods):
     findings = []
     raw = open(path, "rb").read()
-    # ASCII only: the device font has no glyphs beyond ASCII
     for i in range(len(raw)):
         if raw[i] > 127:
             line = raw[:i].count(b"\n") + 1

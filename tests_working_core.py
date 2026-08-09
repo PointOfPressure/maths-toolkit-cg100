@@ -1,26 +1,4 @@
-# tests_working_core.py - the answer / working / caveat split for the eight
-# Core Pure modules: vcplx, matrix, vectors, polyroots, series, hyper, polar,
-# diffeq.
-#
-# Each test drives one tool TWICE, once with casui.SHOW_WORKING off and once
-# with it on, and asserts three things:
-#
-#   1. the ANSWER survives answer mode,
-#   2. a named WORKING line does NOT,
-#   3. a named CAVEAT DOES.
-#
-# The third is the one worth the file. Working that leaks into answer mode is
-# untidy; a caveat that disappears turns a careful tool into a confidently
-# wrong one, and no other test in the suite would notice.
-#
-# SHOW_WORKING is global state shared by every later test in the run, so every
-# test restores it in a finally. Forgetting that poisons the rest of the run
-# rather than failing here.
-
-
 def _modes(h, fn, inputs, menus):
-    # (answer-only lines, full lines) for one tool, with the setting restored
-    # whatever happens in between.
     try:
         h.casui.SHOW_WORKING = False
         brief = h.drive(fn, inputs, menus)
@@ -54,8 +32,6 @@ def test_second_order_modes(h):
 
 
 def test_first_order_no_elementary_integral(h):
-    # int P dx has no closed form, so the integrating factor cannot be written
-    # down at all. That is the entire result and it must never be hidden.
     import diffeq
     brief, full = _modes(h, diffeq.t_first_order, ["sin(x)/x", "1"], [])
     h.has("the caveat survives answer mode", brief,
@@ -67,9 +43,6 @@ def test_first_order_no_elementary_integral(h):
 
 
 def test_first_order_fitted_constant(h):
-    # dy/dx + y/x = x with y(1) = 2. The particular solution is the answer,
-    # "(checked at the given point)" is the caveat that says it was verified,
-    # and "int IF*Q dx = ..." is working.
     import diffeq
     brief, full = _modes(h, diffeq.t_first_order, ["1/x", "x", "1", "2"], [])
     h.has("the integrating factor survives answer mode", brief, "IF = e^(ln(x))")
@@ -84,8 +57,6 @@ def test_first_order_fitted_constant(h):
 
 
 def test_coupled_triangular(h):
-    # b = 0 means the system never needed the coupled method, and the tool
-    # cannot finish y for you. Both halves of that are caveats.
     import diffeq
     brief, full = _modes(h, diffeq.t_coupled, ["1", "0", "3", "2"], [])
     h.has("the x solution survives answer mode", brief, "x = A e^")
@@ -100,8 +71,6 @@ def test_coupled_triangular(h):
 
 
 def test_coupled_initial_conditions(h):
-    # The numeric self-check at t = 0 is what says the constants were fitted
-    # correctly, so it is a caveat, not working.
     import diffeq
     brief, full = _modes(h, diffeq.t_coupled, ["1", "2", "3", "2", "1", "1"], [])
     h.has("the constants survive answer mode", brief, "A = 0.8, B = 0.2")
@@ -116,8 +85,6 @@ def test_coupled_initial_conditions(h):
 
 
 def test_particular_integral_resonance(h):
-    # p is a root of the auxiliary equation, so the trial had to be multiplied
-    # by x. Hiding that leaves a PI that looks like it came from nowhere.
     import diffeq
     brief, full = _modes(h, diffeq.t_particular, ["-3", "2", "5", "2"], [1])
     h.has("the PI survives answer mode", brief, "PI: y = 5 x e^(2x)")
@@ -143,10 +110,6 @@ def test_shm_fit(h):
 
 
 def test_differences_self_check(h):
-    # Method of differences: g(r) is the answer, the partial fractions are
-    # working, and both the "(checked numerically)" line and the independent
-    # direct sum are caveats - they are what makes the telescoped answer
-    # trustworthy.
     import series
     brief, full = _modes(h, series.t_differences, ["1/(r(r+1))", "10"], [])
     h.has("g(r) survives answer mode", brief, "take g(r) = 1/r")
@@ -163,8 +126,6 @@ def test_differences_self_check(h):
 
 
 def test_differences_refusal(h):
-    # When it does not telescope the refusal IS the answer, and it has to
-    # survive both modes.
     import series
     brief, full = _modes(h, series.t_differences, ["1/(r(r+1)(r+2))"], [])
     h.has("the refusal survives answer mode", brief,
@@ -182,15 +143,12 @@ def test_maclaurin_modes(h):
 
 
 def test_skew_lines_parallel(h):
-    # The two directions are parallel, so there is no shortest distance to
-    # report and the tool says so. That refusal must survive answer mode.
     import vectors
     brief, full = _modes(h, vectors.t_skew,
                          ["0", "0", "0", "1", "0", "0",
                           "0", "1", "0", "2", "0", "0"], [])
     h.has("the parallel caveat survives answer mode", brief, "d1 x d2 ~ 0")
     h.has("and says they are not skew", brief, "not skew")
-    # and the ordinary case: the distance is the answer, |d1 x d2| is working
     brief2, full2 = _modes(h, vectors.t_skew,
                            ["0", "0", "0", "1", "0", "0",
                             "0", "1", "0", "0", "0", "1"], [])
@@ -201,8 +159,6 @@ def test_skew_lines_parallel(h):
 
 
 def test_line_meets_plane_check(h):
-    # "check n.p = ... (should be ...)" is the line that tells you the
-    # intersection really is on the plane.
     import vectors
     brief, full = _modes(h, vectors.t_lineplane,
                          ["0", "0", "0", "1", "1", "1", "1", "0", "0", "5"], [])
@@ -221,15 +177,12 @@ def test_point_to_plane(h):
     h.has("the distance survives answer mode", brief, "dist = 3")
     h.truthy("n.p is working", _absent(brief, "n.p = 2"))
     h.has("working mode shows n.p", full, "n.p = 2")
-    # the degenerate normal is a caveat
     brief2, full2 = _modes(h, vectors.t_ptplane, ["0", "0", "0", "1", "1", "1", "1"], [])
     h.has("a zero normal is flagged in answer mode", brief2,
           "Normal is zero: undefined")
 
 
 def test_loci_half_line(h):
-    # "the point a itself is NOT included" and "only the half with x > ..."
-    # both change what the answer means, so both are caveats.
     import vcplx
     brief, full = _modes(h, vcplx.t_loci, ["1", "2", "30"], [2])
     h.has("the locus survives answer mode", brief, "A HALF-LINE from 1 + 2i")
@@ -251,15 +204,12 @@ def test_loci_bisector_degenerate(h):
     h.truthy("the bisector gradient is working",
              _absent(brief, "bisector gradient = -2"))
     h.has("working mode shows the gradients", full, "bisector gradient = -2")
-    # a = b: no bisector exists, and that is a caveat
     brief2, full2 = _modes(h, vcplx.t_loci, ["1", "2", "1", "2"], [1])
     h.has("the degenerate case survives answer mode", brief2,
           "a and b are the same point")
 
 
 def test_demoivre_numeric_check(h):
-    # The expansion is the answer; the check at t = 0.7 is what says the
-    # binomial bookkeeping came out right.
     import vcplx
     brief, full = _modes(h, vcplx.t_demoivre_id, ["3"], [])
     h.has("the cosine identity survives answer mode", brief, "cos 3t = c^3 - 3cs^2")
@@ -320,7 +270,6 @@ def test_matrix_invariant(h):
              _absent(brief, "A line of invariant points is"))
     h.has("working mode shows the quadratic in m", full,
           "b m^2 + (a - d)m - c = 0")
-    # a 3x3 A is refused, and the refusal is the whole output
     try:
         matrix.A = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
         brief2, full2 = _modes(h, matrix.t_invariant, [], [])
@@ -337,7 +286,6 @@ def test_quadratic_roots_discriminant(h):
     h.has("both roots survive", brief, "x2 = 1")
     h.truthy("the discriminant is working", _absent(brief, "disc = b^2-4ac"))
     h.has("working mode shows the discriminant", full, "disc = b^2-4ac = 1")
-    # the search window is a caveat: "no real roots" is only true inside it
     brief2, full2 = _modes(h, polyroots.t_numeric_roots, ["x^2-4"], [])
     h.has("the search window survives answer mode", brief2,
           "real roots in [-20,20]")
@@ -352,7 +300,6 @@ def test_hyperbolic_inverse(h):
              _absent(brief, "ln(x+sqrt(x^2+1))"))
     h.truthy("restating x is working", _absent(brief, "x = 1"))
     h.has("working mode names the formula", full, "arsinh x = ln(x+sqrt(x^2+1))")
-    # the domain error is a caveat and survives with the input hidden
     brief2, full2 = _modes(h, hyper.t_arcosh, ["0.5"], [])
     h.has("the domain error survives answer mode", brief2,
           "Error: domain is x >= 1")
@@ -367,16 +314,12 @@ def test_polar_area(h):
     h.truthy("the intermediate integral is working",
              _absent(brief, "integ r^2 ="))
     h.has("working mode names the formula", full, "A = 0.5 integ r^2 dtheta")
-    # a = b: the zero is right but only because the limits coincide
     brief2, full2 = _modes(h, polar.t_area, ["1+cos(x)", "1", "1"], [])
     h.has("the zero area survives answer mode", brief2, "Area = 0")
     h.has("the equal-limits caveat survives answer mode", brief2, "a equals b")
 
 
 def test_setting_is_restored(h):
-    # Every test above restores SHOW_WORKING in a finally. If one of them ever
-    # stops doing that, this catches it here rather than as a mystery failure
-    # in whichever section happens to run next.
     h.check("SHOW_WORKING is back on", h.casui.SHOW_WORKING, True)
 
 

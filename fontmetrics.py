@@ -1,8 +1,3 @@
-# fontmetrics.py - measure the REAL draw_string font sizes on this fx-CG100.
-# Draws 10 wide glyphs per font size at the top-left, scans pixels to find the
-# true rendered width and height, then reports per-char advance, glyph height,
-# and how many characters actually fit across the 384px screen.
-# Tell me the three lines it prints.
 from casioplot import get_pixel, clear_screen, show_screen, draw_string
 
 WHITE = (255, 255, 255)
@@ -16,8 +11,7 @@ def is_black(x, y):
 
 def measure(size):
     clear_screen()
-    draw_string(0, 0, "WWWWWWWWWW", (0, 0, 0), size)  # 10 wide glyphs, top-left
-    # rightmost black column = total text width (scan from the right)
+    draw_string(0, 0, "WWWWWWWWWW", (0, 0, 0), size)
     width = 0
     x = 380
     while x >= 0:
@@ -32,7 +26,6 @@ def measure(size):
             width = x + 1
             break
         x -= 1
-    # bottom-most black row = glyph height (scan from the bottom)
     height = 0
     yy = 44
     while yy >= 0:

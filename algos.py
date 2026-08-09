@@ -10,15 +10,14 @@ _asklist = casutil.asklist
 _askints = casutil.askints
 _num = casutil.fmt
 _show = casutil.show
-_pages = casutil.show      # result_screen pages by itself now
-_w = casutil.w             # method / intermediate steps, hidden in answer mode
-_warn = casutil.warn       # caveat about the answer, shown in both modes
+_pages = casutil.show
+_w = casutil.w
+_warn = casutil.warn
 
 def _row(lst):
     return ' '.join([_num(v) for v in lst])
 
 def _padl(s, w):
-    # right-align in a fixed field so a tableau lines up as columns
     while len(s) < w:
         s = ' ' + s
     return s
@@ -35,7 +34,6 @@ def _askmatrix(prompt):
         m.append([row[j] for j in range(n)])
     return m
 
-# ---- sorting ----
 
 def bubble():
     a = _asklist('List (comma/space)')
@@ -52,7 +50,6 @@ def bubble():
                 a[j], a[j + 1] = a[j + 1], a[j]
                 swaps += 1
         txt = 'Pass ' + str(i + 1) + ': ' + _row(a)
-        # the intermediate passes are working; the final pass IS the sorted list
         lines.append(txt if i == n - 2 else _w(txt))
     lines.append('Comparisons: ' + str(comps))
     lines.append('Swaps: ' + str(swaps))
@@ -71,7 +68,6 @@ def insertion():
     for i in range(1, n):
         key = a[i]
         j = i - 1
-        # each test of (j>=0 and a[j]>key) that inspects a[j] is one comparison
         while j >= 0:
             comps += 1
             if a[j] > key:
@@ -82,19 +78,12 @@ def insertion():
                 break
         a[j + 1] = key
         txt = 'Step ' + str(i) + ': ' + _row(a)
-        # as for bubble: the last step is the sorted list, so it is the answer
         lines.append(txt if i == n - 1 else _w(txt))
     lines.append('Comparisons: ' + str(comps))
     lines.append('Shifts: ' + str(shifts))
     lines.append('Order: O(n^2); worst n(n-1)/2 = ' + str(n * (n - 1) // 2))
     _pages('Insertion Sort', lines)
 
-# ---- quick sort ----
-# The specification names quick sort explicitly. Written the way the mark
-# scheme wants it read: at each pass EVERY unsorted sub-list is split about
-# its own first element, and the pivots fixed so far are shown in [ ].
-# The handheld's call stack is about 38 frames deep, so this must not recurse
-# on the list length: the pending sub-lists live in an explicit stack instead.
 
 def _qshow(a, fixed):
     parts = []
@@ -113,7 +102,7 @@ def quicksort():
     fixed = [False] * n
     lines = [_w('Start: ' + _row(a))]
     lines.append(_w('Pivot = first item of each sub-list; [ ] = pivot in place'))
-    stack = [(0, n - 1)]          # explicit stack of sub-lists still to split
+    stack = [(0, n - 1)]
     comps = 0
     p = 0
     while stack:
@@ -164,11 +153,8 @@ def quicksort():
     lines.append('Order: O(n log n) average, O(n^2) worst')
     _pages('Quick Sort', lines)
 
-# ---- bin packing ----
 
 def _firstfit(items, cap):
-    # comps counts every "does this item fit in this bin?" test, which is what
-    # the specification asks to be counted for first fit / first fit decreasing
     bins = []
     comps = 0
     for it in items:
@@ -218,7 +204,6 @@ def firstfitdec():
     items = sorted(items, reverse=True)
     _packshow('First-Fit Decr', items, cap)
 
-# ---- Dijkstra ----
 
 def dijkstra():
     m = _askmatrix('0=no edge')
@@ -228,8 +213,6 @@ def dijkstra():
     s = _askint('Start node (1..' + str(n) + ')', 1, n)
     if s is None:
         return
-    # optional: the mark scheme asks for the route as well as the distance.
-    # A cancelled or 0 answer just leaves the route out.
     e = _askint('End node for route (0=none)', 0, n)
     s -= 1
     dist = [BIG] * n
@@ -293,7 +276,6 @@ def dijkstra():
     lines.append('Order: O(n^2) on an n-node adjacency matrix')
     _pages('Dijkstra', lines)
 
-# ---- Prim MST ----
 
 def prim():
     m = _askmatrix('0=no edge')
@@ -330,7 +312,6 @@ def prim():
     lines.append('Order: O(n^2) on an n-node adjacency matrix')
     _pages('Prim MST', lines)
 
-# ---- Kruskal MST ----
 
 def _find(parent, i):
     while parent[i] != i:
@@ -368,7 +349,6 @@ def kruskal():
     lines.append('Order: O(m log m) for m arcs (the sort dominates)')
     _pages('Kruskal MST', lines)
 
-# ---- graph vocabulary: degrees, incidence matrix, directedness ----
 
 def graphinfo():
     m = _askmatrix('0=no arc')
@@ -398,7 +378,7 @@ def graphinfo():
         deg = [0] * n
         for a in arcs:
             if a[0] == a[1]:
-                deg[a[0]] += 2      # a loop contributes 2 to its degree
+                deg[a[0]] += 2
             else:
                 deg[a[0]] += 1
                 deg[a[1]] += 1
@@ -422,7 +402,6 @@ def graphinfo():
                 if m[j][i] > 0:
                     ind += 1
             lines.append('node ' + str(i + 1) + ': out ' + str(outd) + '  in ' + str(ind))
-    # connectivity of the underlying undirected graph
     seen = [False] * n
     seen[0] = True
     q = [0]
@@ -466,11 +445,6 @@ def graphinfo():
         lines.append(str(i + 1) + ': ' + ' '.join(cells))
     _pages('Graph info', lines)
 
-# ---- maximum flow / minimum cut ----
-# Flow augmentation by breadth-first search on the residual network, so the
-# path chosen is always a shortest one and the loop is provably finite.
-# flow[u][v] is signed: sending f along u->v also sets flow[v][u] = -f, which
-# is what makes "cancel some flow back" fall out of the same test.
 
 def _res(cap, flow, u, v):
     return cap[u][v] - flow[u][v]
@@ -655,7 +629,6 @@ def cutcap():
         lines.append('Not minimum: capacity exceeds max flow by ' + _num(ccap - total))
     _pages('Cut capacity', lines)
 
-# ---- Critical path ----
 
 def critpath():
     n = _askint('How many activities', 1, 12)
@@ -675,8 +648,6 @@ def critpath():
         preds.append(p)
     es = [0.0] * n
     ef = [0.0] * n
-    # forward pass: relax to a fixed point so any activity numbering works
-    # (predecessors need not be lower-indexed); n passes suffice for n nodes
     for _ in range(n):
         for i in range(n):
             e = 0.0
@@ -695,7 +666,6 @@ def critpath():
             succ[q].append(i)
     lf = [proj] * n
     ls = [proj - dur[i] for i in range(n)]
-    # backward pass: relax to a fixed point (successors need not be higher-indexed)
     for _ in range(n):
         for i in range(n - 1, -1, -1):
             if succ[i]:
@@ -717,9 +687,6 @@ def critpath():
     lines.append('Critical: ' + (' '.join(crit) if crit else 'none'))
     _pages('Critical Path', lines)
 
-# ---- linear programming ----
-# Variables are called x, y, z, w so the printed tableau reads like the ones in
-# the specification's own examples rather than like matrix output.
 
 VN = ['x', 'y', 'z', 'w']
 
@@ -749,8 +716,6 @@ def _blab(names, basis):
     return out
 
 def _tabshow(lines, names, basis, tab, wid):
-    # a tableau is what the mark scheme wants to see, but it is working, not
-    # the answer: the answer is the optimum _lpreport prints at the end
     hdr = _padl('', 4)
     for nm in names:
         hdr = hdr + _padl(nm, wid)
@@ -778,9 +743,6 @@ def _pivot_on(tab, r, c):
         tab[i][c] = 0.0
 
 def _simplex_run(tab, basis, allowed, names, wid, lines, tag):
-    # Row 0 is the objective row, rows 1.. are the constraints. Entering column
-    # is the most negative objective entry; leaving row is the smallest
-    # non-negative ratio. Returns 'optimal' or 'unbounded'.
     it = 0
     while it < 40:
         c = -1
@@ -891,8 +853,6 @@ def simplex():
     for i in range(m):
         lines.append(_w('  ' + _lin(rows[i][0:n], vnames) + ' + ' + snames[i] +
                      ' = ' + _num(rows[i][n])))
-    # the objective row is P - c.x = 0, so every coefficient is negated; the
-    # old form printed "P - 5x + 4y" for c = (5, 4), which is the wrong sign
     negobj = [-v for v in obj]
     orow = _lin(negobj, vnames)
     if orow[0] == '-':
@@ -913,9 +873,6 @@ def simplex():
     _pages('Simplex', lines)
 
 def simplex2():
-    # Two-stage simplex: phase 1 drives the artificial variables to zero, then
-    # phase 2 optimises the real objective. This is what >= and = constraints
-    # need, and typing a >= constraint is also how L15 is done in practice.
     n = _askint('How many variables (1..4)', 1, 4)
     if n is None:
         return
@@ -941,15 +898,15 @@ def simplex2():
             return
         a = [r[j] for j in range(n)]
         b = r[n + 1]
-        if b < 0:                      # keep every b >= 0
+        if b < 0:
             a = [-v for v in a]
             b = -b
             rel = -rel
         rows.append(a)
         rels.append(rel)
         rows[i].append(b)
-    slack = []                         # slack/surplus column per constraint
-    art = []                           # artificial column per constraint
+    slack = []
+    art = []
     nx = 0
     na = 0
     for i in range(m):
@@ -1002,7 +959,6 @@ def simplex2():
     lines.append(_w('  ' + ', '.join(vnames) + ' >= 0'))
     allowed = [True] * ncol
     if na > 0:
-        # phase 1: maximise -(sum of artificials)
         tab[0][0] = 1.0
         for j in range(na):
             tab[0][acol0 + j] = 1.0
@@ -1018,7 +974,6 @@ def simplex2():
             lines.append(_warn('the constraints are INFEASIBLE.'))
             _pages('2-stage simplex', lines)
             return
-        # push any artificial that is still basic (at 0) out of the basis
         for i in range(1, m + 1):
             if basis[i] >= acol0:
                 for j in range(1, acol0):
@@ -1029,7 +984,6 @@ def simplex2():
         for j in range(na):
             allowed[acol0 + j] = False
         lines.append(_w('Phase 1 done: all artificials are zero.'))
-    # phase 2 objective row, then clear the basic columns from it
     sign = 1.0 if mx == 1 else -1.0
     o = [0.0] * ncol
     o[0] = 1.0
@@ -1051,10 +1005,6 @@ def simplex2():
     _lpreport(lines, names, basis, tab, n, nx + na, objname, sign)
     _pages('2-stage simplex', lines)
 
-# ---- 2-D linear programming, graphically ----
-# Every constraint is stored as a*x + b*y <= c (a >= constraint is negated on
-# the way in), with -x <= 0 and -y <= 0 always present. The extreme points are
-# then the pairwise line intersections that satisfy the whole system.
 
 def _feas(cons, x, y, tol):
     for cn in cons:
@@ -1088,8 +1038,6 @@ def _lpverts(cons):
     return vs
 
 def _recession(cons):
-    # directions d >= 0 along which the region goes on for ever. In 2-D the
-    # extreme rays are among the axes and the constraint lines themselves.
     cands = [(1.0, 0.0), (0.0, 1.0)]
     for cn in cons:
         cands.append((cn[1], -cn[0]))
@@ -1192,7 +1140,6 @@ def lpgraph():
             bv = v
     lines.append('Optimal vertex: x = ' + _num(bv[0]) + ', y = ' + _num(bv[1]))
     lines.append(objname + ' = ' + _num(bo))
-    # integer solution (L10): search the lattice in the vertex bounding box
     xlo = vs[0][0]
     xhi = vs[0][0]
     ylo = vs[0][1]
@@ -1230,7 +1177,6 @@ def lpgraph():
             lines.append('Best integer point (L10): x = ' + str(bix[0]) +
                          ', y = ' + str(bix[1]) + ', ' + objname + ' = ' + _num(bio))
     _pages('LP graph 2-D', lines)
-    # ---- the picture ----
     xs = [v[0] for v in vs]
     ys = [v[1] for v in vs]
     xs.append(0.0)

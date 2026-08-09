@@ -1,12 +1,3 @@
-# stress.py - non-interactive smoke test for the Maths Toolkit.
-# Stubs the UI (canned input, no-op drawing, auto-exit menus) then imports every
-# section and calls EVERY tool in its TOOLS registry, plus hammers the engine.
-# Each call is wrapped so errors are logged, never fatal. Progress is flushed to
-# a log file when possible (PC), else printed (device).
-#
-# This proves nothing crashes. It does NOT check that any answer is right -
-# tests.py does that. Run both.
-
 import casui
 
 import stress_inputs
@@ -28,7 +19,7 @@ def _stub_menu(*a, **k):
     return -1
 
 def _stub_hold_page(*a, **k):
-    return True  # "EXIT" - stop paging immediately
+    return True
 
 casui.input_expr = _stub_input
 casui.menu = _stub_menu
@@ -66,7 +57,6 @@ def out(s):
         print(s)
 
 def prog(s):
-    # progress: written to the log file on PC, silent on the device (no file)
     if LOGF is not None:
         LOGF.write(s + "\n")
         LOGF.flush()
@@ -117,9 +107,6 @@ MODNAMES = ["vcplx", "matrix", "vectors", "polyroots", "series", "hyper",
             "proof"]
 
 def _sections():
-    # Drive the TOOLS registry, not a "t_" name prefix. The old prefix scan
-    # silently tested 0 of mech640's 11 tools and 0 of algos' 8, because those
-    # two modules never used the prefix.
     for mn in MODNAMES:
         prog("import: " + mn)
         mod = None

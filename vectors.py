@@ -181,7 +181,6 @@ def t_skew():
     _show('SKEW LINE DIST', [_w('|d1 x d2| = ' + _fn(mc)), 'shortest dist = ' + _fn(dist)])
 
 def t_ptline():
-    # distance from a point to the line r = a + t d, i.e. |(p - a) x d| / |d|
     a = _vec('line point a')
     if a is None:
         return
@@ -204,9 +203,6 @@ def t_ptline():
                          'dist = ' + _fn(dist), 'nearest point on line:', _vstr(foot)])
 
 def t_lineeq():
-    # Build the equation of a line. Every other vector tool here consumes a
-    # line; none of them could produce one, which is the first thing a vectors
-    # question actually asks for.
     how = casutil.askint('1 = through two points, 2 = point + direction', 1, 2)
     if how is None:
         return
@@ -265,10 +261,6 @@ def t_lineeq():
 
 
 def t_lineplane():
-    # Where a line meets a plane. Substituting the parametric line into the
-    # plane equation gives one equation in t; the two degenerate cases (line
-    # parallel to the plane, and line lying in it) have to be told apart, and
-    # they are the ones worth marks.
     _show('Line meets plane', ['Line r = a + t d.',
                                'Plane n . r = k, so enter the',
                                'normal n and the constant k.'])
@@ -312,7 +304,6 @@ def t_lineplane():
     lines.append('they meet at ' + _vstr(p))
     chk = _dot(n, p)
     lines.append(_warn('check n.p = ' + _fn(chk) + ' (should be ' + _fn(k) + ')'))
-    # the angle between the line and the plane is 90 - angle(d, n)
     ang = _deg(_myacos(abs(nd) / (_mag(n) * _mag(d))))
     lines.append('')
     lines.append('angle between d and n = ' + _fn(ang) + ' deg')

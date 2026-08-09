@@ -6,15 +6,15 @@ import cascalc
 import casutil
 
 _asknum = casutil.asknum
-_askopt = casutil.asknum      # blank / cancel both come back as None
+_askopt = casutil.asknum
 _askg = casutil.askg
 _fn = casutil.fmt
 _atan2 = casutil.atan2
 _deg = casutil.deg
 _rad = casutil.rad
 _show = casutil.show
-_w = casutil.w             # working: hidden when the Working setting is off
-_warn = casutil.warn       # a caveat on the answer: always shown
+_w = casutil.w
+_warn = casutil.warn
 
 
 def suvat():
@@ -91,7 +91,6 @@ def suvat():
     lines.append('s = ' + (_fn(s) if s is not None else '?'))
     lines.append('t = ' + (_fn(t) if t is not None else '?'))
     if rooted[0]:
-        # v^2 = u^2 + 2as gives +/- the root; only the positive one is shown
         lines.append(_warn('(sqrt step: positive root'))
         lines.append(_warn(' taken - check direction)'))
     _show('SUVAT result', lines)
@@ -362,11 +361,6 @@ TOOLS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Variable acceleration. SUVAT is constant-acceleration only, so none of the
-# tools above apply once a, v or s is a function of t. The relationships are
-#   v = ds/dt,  a = dv/dt = d2s/dt2,  v = integral a dt,  s = integral v dt
-# and the constants of integration come from the initial conditions.
 def _tvalue(tree, tv):
     try:
         val = caseng.evalf(tree, 0.0, False, {'t': tv})
@@ -385,8 +379,6 @@ def _tparse(prompt):
         _show('Variable acceleration', ['Could not read that expression.'])
         return None
     if caseng.count_var(tree, 'x'):
-        # a student who types x for time gets silence otherwise: evalf would
-        # take x as the sample point and quietly answer for the wrong variable
         _show('Variable acceleration', ['Type the time variable as t,',
                                         'not x. Use ALPHA then the',
                                         'divide key for t.'])
@@ -468,7 +460,6 @@ def kinematics():
     out.append('')
     for ln in lines:
         out.append(ln)
-    # the questions that actually get asked about these
     if v is not None:
         zeros = cascalc.solve(v, 't')
         pos = []
@@ -504,9 +495,6 @@ def kinematics():
     _show('Variable acceleration', out)
 
 def distance_travelled():
-    # Distance is the integral of |v|, which is not the same as the change in
-    # displacement whenever the object turns round. This is the mark students
-    # most often drop on a variable-acceleration question.
     _show('Distance vs displacement', ['Displacement is int v dt.',
                                        'Distance travelled is int |v| dt,',
                                        'and they differ as soon as v',
@@ -568,9 +556,6 @@ def distance_travelled():
     _show('Distance', lines)
 
 def connected():
-    # Two particles joined by a light inextensible string over a smooth pulley,
-    # with either or both on a rough inclined plane. The simple pulley tool
-    # above is the special case of two vertical hangs.
     _show('Connected particles', ['Two masses joined over a smooth',
                                   'pulley. Each one either hangs',
                                   'vertically or sits on a plane at',
@@ -599,8 +584,6 @@ def connected():
     c1 = math.cos(_rad(a1))
     s2 = math.sin(_rad(a2))
     c2 = math.cos(_rad(a2))
-    # take mass 1 as the one that moves down its plane; driving forces are the
-    # components of weight along each plane, friction always opposes motion
     drive = m1 * g * s1 - m2 * g * s2
     fric = mu1 * m1 * g * c1 + mu2 * m2 * g * c2
     lines = [_w('g = ' + _fn(g)),
@@ -623,7 +606,6 @@ def connected():
         return
     sgn = 1.0 if drive > 0 else -1.0
     a = (abs(drive) - fric) / (m1 + m2)
-    # tension from mass 2's equation: T - m2 g sin(a2) - friction2 = m2 * a
     f2 = mu2 * m2 * g * c2
     T = m2 * a + m2 * g * s2 + f2 if sgn > 0 else m1 * a + m1 * g * s1 + mu1 * m1 * g * c1
     lines.append('')
@@ -641,9 +623,6 @@ def connected():
     _show('Connected particles', lines)
 
 def projectile_inverse():
-    # The projectile question usually runs backwards: something about the
-    # flight is given and the launch has to be recovered. The forward tool
-    # only ever went launch -> flight.
     _show('Find the launch', ['Given something about the flight,',
                               'work back to the launch speed u',
                               'and angle. Pick what you know.'])
@@ -729,7 +708,6 @@ def projectile_inverse():
         y = _asknum('target y (m, above launch)')
         if y is None:
             return
-        # y = x tan a - g x^2 (1 + tan^2 a) / (2 u^2); quadratic in T = tan a
         A = g * x * x / (2.0 * u * u)
         B = -x
         C = y + A
@@ -769,7 +747,7 @@ def projectile_inverse():
             _show('Find the launch', ['T must be positive.'])
             return
         ux = R / T
-        uy = g * T / 2.0            # returns to launch height, so uy = gT/2
+        uy = g * T / 2.0
         u = math.sqrt(ux * ux + uy * uy)
         ang = _deg(_atan2(uy, ux))
         lines.append(_w('back at launch height, so T = 2 uy/g'))

@@ -21,10 +21,6 @@ def _f8(x):
 
 
 def _f9(x):
-    # summary answers only: the error-behaviour tools are judged on the last
-    # few digits, and 6 d.p. throws away the thing being demonstrated. Below
-    # 1e-9 the fixed-point form is all zeros, so the exponent form is kept -
-    # "error 0" would be a claim the arithmetic cannot support.
     if isinstance(x, float) and x == x and x != 0:
         if abs(x) < 1e-9:
             return str(_sig(x, 4))
@@ -64,15 +60,12 @@ def _sig(x, k):
 
 
 _show = casutil.show
-_pages = casutil.show      # result_screen pages by itself now
-_w = casutil.w             # method / intermediate steps, hidden in answer mode
-_warn = casutil.warn       # caveat about the answer, shown in both modes
+_pages = casutil.show
+_w = casutil.w
+_warn = casutil.warn
 
 
 def _bound(v, x):
-    # a double cannot resolve better than about 2e-16 of the value itself, so a
-    # reported error bound of exactly zero would be a claim the arithmetic
-    # cannot support
     lim = 2.3e-16 * (1.0 + abs(x))
     return v if v > lim else lim
 
@@ -90,8 +83,6 @@ def t_newton():
     x0 = _asknum('start x0=')
     if x0 is None:
         return
-    # e2: the accuracy is the user's to choose, and the answer is quoted with a
-    # bound. A hidden fixed tolerance cannot be justified in an exam answer.
     tol = _asknum('accuracy [1e-9]')
     if tol is None or tol <= 0:
         tol = 1e-9
@@ -169,13 +160,9 @@ def t_fixed():
             lines.append(_warn('diverged'))
             break
     if not ok and last >= 0:
-        # with no converged value to quote, the last iterate is the estimate,
-        # so it stays visible when the working is hidden
         lines[last] = lasttxt
     if ok:
         lines.append('fixed pt x=' + _fn(x))
-        # a first order iteration overshoots the limit by about |dx|.r/(1-r),
-        # where r is the ratio the steps shrink by
         bound = abs(dx)
         if pdx is not None and pdx != 0:
             r = abs(dx / pdx)
@@ -210,14 +197,11 @@ def t_bisect():
     except:
         _show('Bisection', [_warn('eval error')])
         return
-    # compare signs rather than the product: fa*fb overflows to inf for big values
     if (fa > 0 and fb > 0) or (fa < 0 and fb < 0):
         _show('Bisection', [_warn('No sign change'), _w('f(a)=' + _fn(fa)),
                             _w('f(b)=' + _fn(fb))])
         return
     lines = [_w('sign change OK'), _w('target accuracy ' + _f9(tol))]
-    # every halving divides the bracket by 2, so the count needed is known
-    # before the loop starts - that is the justification for the accuracy claim
     need = 0
     w = w0
     while w >= tol and need < 200:
@@ -265,8 +249,8 @@ def t_integ():
     n = _asknum('strips n=')
     if n is None:
         return
-    n = int(round(n))   # int() would turn an entered 100 that evaluates to
-    if n < 1:           # 99.9999999 into 99, flipping Simpson's even-n test
+    n = int(round(n))
+    if n < 1:
         _show('Integration', [_warn('n must be >=1')])
         return
     if n > 2000:
@@ -405,13 +389,6 @@ def t_round():
     _show('Round to s.f.', [_w('value=' + _fn(v)), str(k) + ' s.f. = ' + _fn(r)])
 
 
-# ======================= Y434: ERROR BEHAVIOUR =============================
-# The Numerical Methods paper is about how an estimate behaves as the step is
-# refined, not only about the estimate itself. Every tool below prints the
-# DIFFERENCES between successive estimates and the RATIO of those differences,
-# because that ratio is what identifies the order of the method: about 4 for a
-# second order rule (error ~ h^2) and about 16 for a fourth order one.
-
 def _diffs(v):
     d = []
     k = 1
@@ -422,7 +399,6 @@ def _diffs(v):
 
 
 def _ratios(d):
-    # d(n-1)/d(n): "how many times smaller is the new correction"
     r = []
     k = 1
     while k < len(d):
@@ -435,8 +411,6 @@ def _ratios(d):
 
 
 def _shrink(d):
-    # d(n+1)/d(n): the factor an iteration shrinks its own step by, which for a
-    # first order iteration tends to g'(fixed point)
     r = []
     k = 1
     while k < len(d):
@@ -464,9 +438,6 @@ def _rstr(v):
 
 
 def _elide(rows, lines):
-    # a 60-step iteration is 60 result lines; the interesting part is the start
-    # and the tail, so the middle is dropped rather than paged through
-    # every caller feeds this a per-step table, so the whole block is working
     n = len(rows)
     if n <= 14:
         k = 0
@@ -498,8 +469,6 @@ def _seqrows(d, r, lines):
 
 
 def _errrows(labels, vals, lines):
-    # one row per refinement: estimate, difference from the previous estimate,
-    # and the ratio of successive differences
     d = _diffs(vals)
     r = _ratios(d)
     k = 0
@@ -509,18 +478,15 @@ def _errrows(labels, vals, lines):
             s += ' d=' + _f8(d[k - 1])
         if k >= 2:
             s += ' r=' + _rstr(r[k - 2])
-        # the h-halving table and its ratio column are working, not the answer
         lines.append(_w(s))
         k += 1
     return _lastr(r)
 
 
-# ---- c4: error behaviour of the integration rules -------------------------
 LEVELS = 6
 
 
 def _trapmid(f, a, b, n):
-    # composite trapezium and midpoint on n strips
     h = (b - a) / n
     t = _ev(f, a) + _ev(f, b)
     i = 1
@@ -570,7 +536,6 @@ def t_integ_error():
             ns.append(n)
             ts.append(t)
             ms.append(m)
-            # Simpson on 2n strips is exactly (2M + T)/3 on n strips
             ss.append((2.0 * m + t) / 3.0)
             labels.append('n=' + str(n))
             n = n * 2
@@ -594,7 +559,6 @@ def t_integ_error():
     lines.append(_w('ratio 16 => error ~ h^4 (4th order)'))
     lines.append(_w('T and M are 2nd order,'))
     lines.append(_w('Simpson is 4th order.'))
-    # Simpson IS the Richardson extrapolation of the trapezium rule
     if len(ts) >= 2:
         lines.append('Richardson (4T2-T1)/3 = ' +
                      _f9((4.0 * ts[1] - ts[0]) / 3.0))
@@ -605,7 +569,6 @@ def t_integ_error():
     _pages('Integration error', lines)
 
 
-# ---- U8: error analysis giving an improved estimate ------------------------
 def t_richardson():
     vals = _asklist('A(h), A(h/2), A(h/4) ...')
     if vals is None or len(vals) < 2:
@@ -682,7 +645,6 @@ def t_aitken():
     _pages('Aitken', lines)
 
 
-# ---- Nc1 / c2: numerical differentiation over a sequence of h --------------
 def t_diff_error():
     f = _askfn('f(x)=')
     if f is None:
@@ -741,9 +703,7 @@ def t_diff_error():
     _pages('Derivative error', lines)
 
 
-# ---- NU7 / e4: order of convergence of a sequence --------------------------
 def _order_of(d):
-    # p from ln|d(n+1)/d(n)| / ln|d(n)/d(n-1)|, using the last usable triple
     k = len(d) - 1
     while k >= 2:
         a = d[k - 2]
@@ -804,7 +764,6 @@ def t_conv_order():
 
 
 def _gprime(g, x):
-    # g'(x): symbolic where the engine manages it, central difference otherwise
     try:
         d = caseng.diff(g, 'x')
         return _ev(d, x)
@@ -884,7 +843,6 @@ def t_fixed_diag():
     _pages('Fixed-point diagnosis', lines)
 
 
-# ---- e5: relaxation --------------------------------------------------------
 def t_relax():
     g = _askfn('g(x)= (x=g(x))')
     if g is None:
@@ -955,7 +913,6 @@ def t_relax():
     _pages('Relaxation', lines)
 
 
-# ---- Ne1: staircase and cobweb diagrams ------------------------------------
 def t_cobweb():
     g = _askfn('g(x)= (x=g(x))')
     if g is None:
@@ -994,7 +951,6 @@ def t_cobweb():
     lo, hi = casutil.nice_range(xs, 0.15)
     fr = casutil.frame(lo, hi, lo, hi)
     casutil.axes(fr, 'x = g(x)', 'x', 'g(x)')
-    # y = x, without which neither picture means anything
     casutil.seg(fr, lo, lo, hi, hi, casui.GREY)
     prev = None
     i = 0
@@ -1012,7 +968,6 @@ def t_cobweb():
         else:
             prev = None
         i += 1
-    # up to the curve, across to the line, repeat
     i = 0
     while i < len(gs):
         casutil.seg(fr, xs[i], xs[i], xs[i], gs[i], casui.RED)
@@ -1056,7 +1011,6 @@ def t_cobweb():
     _pages('Iteration diagram', lines)
 
 
-# ---- Nf1 / f2: Newton's forward difference formula --------------------------
 def _ptrim(p):
     k = len(p) - 1
     while k > 0 and p[k] == 0:
@@ -1090,7 +1044,6 @@ def _pscale(a, s):
 
 
 def _plin(a, m, c):
-    # multiply the polynomial a by (m*t + c)
     out = []
     k = 0
     while k < len(a) + 1:
@@ -1171,7 +1124,6 @@ def t_newton_fwd():
         nm = 'y0' if k == 0 else 'D' + str(k)
         lines.append(_w(nm + ' = ' + _fn(rows[k][0])))
         k += 1
-    # build p(s) = sum D_k * C(s, k), then substitute s = (x - x0)/h
     ps = [0.0]
     term = [1.0]
     k = 0
@@ -1208,7 +1160,6 @@ def t_newton_fwd():
     _pages('Forward differences', lines)
 
 
-# ---- NU1 / U2 / U3: error propagation --------------------------------------
 def t_err_prop():
     a = _asknum('a=')
     if a is None:
@@ -1254,7 +1205,6 @@ def t_err_prop():
     else:
         lines.append(_warn('a or b is 0: no relative error'))
         lines.append(_warn('for the product or quotient.'))
-    # U3/U5: the arrangement of a calculation decides whether it survives
     if abs(a - b) < 10.0 * es and es > 0:
         lines.append(_warn('WARNING: a-b subtracts nearly'))
         lines.append(_warn('equal numbers, so its relative'))
@@ -1311,7 +1261,6 @@ def t_err_fx():
     _pages('Error in f(x)', lines)
 
 
-# ---- U6: chopping against rounding -----------------------------------------
 def t_chop():
     v = _asknum('value=')
     if v is None:

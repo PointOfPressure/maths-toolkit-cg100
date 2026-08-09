@@ -5,9 +5,9 @@ import casutil
 _asknum = casutil.asknum
 _getlist = casutil.asklist
 _show = casutil.show
-_pages = casutil.show      # result_screen pages by itself now
-_w = casutil.w             # working: hidden when the Working setting is off
-_warn = casutil.warn       # a caveat on the answer: always shown
+_pages = casutil.show
+_w = casutil.w
+_warn = casutil.warn
 _fact = casutil.fact
 _ncr = casutil.ncr
 _bpmf = casutil.binom_pmf
@@ -48,7 +48,6 @@ def _quant(srt, pos):
     return srt[lo - 1] + frac * (srt[lo] - srt[lo - 1])
 
 def _median_of(srt):
-    # median of an already-sorted list, None for an empty one
     m = len(srt)
     if m == 0:
         return None
@@ -58,9 +57,6 @@ def _median_of(srt):
     return (srt[mid - 1] + srt[mid]) / 2.0
 
 def _quartiles_split(srt):
-    # OCR B (MEI) quartile method for a raw data list: Q1 is the median of
-    # the lower half of the sorted data and Q3 the median of the upper half,
-    # with the overall median itself excluded from both halves when n is odd.
     n = len(srt)
     mid = n // 2
     if n % 2 == 1:
@@ -137,8 +133,6 @@ def t_boxplot():
     iqr = q3 - q1
     lf = q1 - 1.5 * iqr
     uf = q3 + 1.5 * iqr
-    # outliers are beyond the fences; the whiskers stop at the most extreme
-    # point that is NOT an outlier, not at the true min/max
     outs = []
     keep = []
     i = 0
@@ -230,9 +224,6 @@ def t_freq():
     _pages('Freq mean/var', lines)
 
 def _cf_interp(bnds, cf, target):
-    # cumulative frequency is plotted at the UPPER class boundary; read off a
-    # target (n/4, n/2, 3n/4) by linear interpolation across the class it
-    # falls in
     n = len(cf)
     prev = 0.0
     i = 0
@@ -266,9 +257,6 @@ def t_hist():
             _show('Histogram', ['Frequencies must be >=0.'])
             return
         i += 1
-    # frequency density = frequency / class width, so the bar AREA (not its
-    # height) is the frequency - plotting raw frequency against unequal
-    # widths would be misleading, which is the whole point of this tool
     widths = []
     dens = []
     tot = 0.0
@@ -334,8 +322,6 @@ def t_cumfreq():
     if tot <= 0:
         _show('Cumulative freq', ['Total freq is 0.'])
         return
-    # plotted at the upper class boundary; median/quartiles read off by
-    # linear interpolation at n/2 and n/4, 3n/4
     med = _cf_interp(bnds, cf, tot * 0.5)
     q1 = _cf_interp(bnds, cf, tot * 0.25)
     q3 = _cf_interp(bnds, cf, tot * 0.75)
@@ -415,7 +401,6 @@ def t_binom():
         _show('Binomial', ['Bad n or p.'])
         return
     if ni > 5000:
-        # the cdf sum is O(k^2) - anything this size would stall the handheld
         _show('Binomial', ['n too large (max 5000).'])
         return
     pk = _bpmf(ni, p, ki)
@@ -592,9 +577,6 @@ def t_htmean():
     _pages('z-test mean', lines)
 
 def _linreg(xs, ys):
-    # least-squares y on x: b = Sxy/Sxx, a = ybar - b*xbar, plus PMCC r.
-    # Shared by t_regress and t_scatter so the two tools cannot drift apart.
-    # Returns None for degenerate data (zero spread in x or y).
     n = len(xs)
     sx = 0.0
     sy = 0.0
@@ -837,10 +819,6 @@ def t_stratsamp():
     if want > tot:
         _show('Stratified sample', ['n is bigger than the', 'population.'])
         return
-    # proportional allocation n_i = n * N_i / N. Rounding each one separately
-    # usually misses the target total, so the whole numbers are taken first and
-    # the leftover places handed out by largest remainder - the total is then
-    # exactly n, which is what the mark scheme wants.
     exact = []
     base = []
     i = 0
@@ -866,7 +844,7 @@ def t_stratsamp():
         if bi < 0:
             break
         base[bi] += 1
-        exact[bi] = base[bi] * 1.0   # do not win the same place twice
+        exact[bi] = base[bi] * 1.0
         left -= 1
     lines = [_w('population N = ' + _fn(tot)),
              _w('sample n = ' + str(want)),
@@ -903,12 +881,11 @@ def t_tree():
         _show('Tree diagram', ['Need 0 <= P(B|A\') <= 1.'])
         return
     pna = 1.0 - pa
-    # the four end-of-branch probabilities: multiply ALONG a branch
     ab = pa * pba
     anb = pa * (1.0 - pba)
     nab = pna * pbna
     nanb = pna * (1.0 - pbna)
-    pb = ab + nab                 # add ACROSS the branches that end in B
+    pb = ab + nab
     pnb = anb + nanb
     lines = [_w('P(A) = ' + _fn(pa) + '  P(A\') = ' + _fn(pna)),
              _w('multiply along a branch:'),
@@ -920,7 +897,6 @@ def t_tree():
              _w('add across branches:'),
              'P(B) = ' + _fn(pb),
              "P(B') = " + _fn(pnb)]
-    # the reverse conditional, which is what Bayes is for
     lines.append(_w('reverse by Bayes:'))
     lines.append(_w('P(A|B) = P(A and B)/P(B)'))
     if pb > 0:
@@ -938,7 +914,6 @@ def t_tree():
         else:
             lines.append('A and B are NOT independent')
     _pages('Tree diagram', lines)
-    # draw the two-stage tree with the branch probabilities on it
     fr = casutil.frame(0.0, 10.0, 0.0, 10.0)
     casutil.axes(fr, 'Two-stage tree', None, None, False)
     casutil.seg(fr, 1.0, 5.0, 4.0, 8.0, casui.ACC)
@@ -963,12 +938,6 @@ def _lab(fr, x, y, s):
     casui.draw_string(casutil.fx(fr, x), casutil.fy(fr, y), s,
                       casui.BLACK, 'small')
 
-# ---------------------------------------------------------- Venn diagrams --
-# The Venn frame deliberately does NOT use casutil.axes: a Venn diagram's
-# rectangle is the sample space, not a pair of axes. The pixel box is chosen so
-# that one data unit is 15.6 pixels in BOTH directions ((348-36)/20 = 312/20 and
-# (174-18)/10 = 156/10), because casutil.seg works in data coordinates and a
-# frame with different x and y scales would draw every "circle" as an ellipse.
 _VW = (0.0, 20.0, 0.0, 10.0, 36, 18, 348, 174)
 
 def _venn_frame():
@@ -976,7 +945,6 @@ def _venn_frame():
                          _VW[4], _VW[5], _VW[6], _VW[7])
 
 def _circle(fr, cx, cy, r, c):
-    # circle as a closed 60-gon of casutil.seg segments
     steps = 60
     px = cx + r
     py = cy
@@ -991,8 +959,6 @@ def _circle(fr, cx, cy, r, c):
         i += 1
 
 def _clab(fr, x, y, s):
-    # a region count, centred on (x, y). Truncated at 7 characters so that a
-    # silly entry cannot push a label off the side of the 384px screen.
     if len(s) > 7:
         s = s[:7]
     w = casui.text_w(s, 'small')
@@ -1000,8 +966,6 @@ def _clab(fr, x, y, s):
                       casui.BLACK, 'small')
 
 def _venn_negatives(names, vals):
-    # every region whose count came out negative, i.e. every reason the figures
-    # given cannot describe a real Venn diagram
     bad = []
     i = 0
     while i < len(vals):
@@ -1130,7 +1094,6 @@ def _venn3():
             nabc < 0):
         _show('Venn 3 events', ['Counts cannot be negative.'])
         return
-    # the eight regions, from the inside out
     rabc = nabc
     rab = nab - nabc
     rac = nac - nabc
@@ -1138,7 +1101,7 @@ def _venn3():
     ra = na - nab - nac + nabc
     rb = nb - nab - nbc + nabc
     rc = nc - nac - nbc + nabc
-    inside = na + nb + nc - nab - nac - nbc + nabc   # inclusion-exclusion
+    inside = na + nb + nc - nab - nac - nbc + nabc
     rnone = tot - inside
     bad = _venn_negatives(['A only', 'B only', 'C only',
                            'A and B only', 'A and C only', 'B and C only',
@@ -1229,12 +1192,7 @@ def t_venn():
     else:
         _venn3()
 
-# ------------------------------------------------ reduce to linear form ----
 def _loglin(xs, ys, kind):
-    # kind 0: y = a x^n  ->  ln y = ln a + n ln x    (log-log)
-    # kind 1: y = a b^x  ->  ln y = ln a + (ln b) x  (semi-log)
-    # Returns (tx, ty, A, B, r) for the straight line ty = A + B*tx, or None
-    # when a value is out of range for the logarithm or the fit is degenerate.
     n = len(xs)
     tx = []
     ty = []
@@ -1312,8 +1270,6 @@ def t_loglin():
     xlo, xhi = casutil.nice_range(tx)
     ylo, yhi = casutil.nice_range(ty)
     fr = casutil.frame(xlo, xhi, ylo, yhi)
-    # the y axis label goes in the title, not in casutil.axes' ylab slot: that
-    # slot is drawn at (2, 4) and the title at (4, 2), so the two overprint
     if kind == 0:
         casutil.axes(fr, 'Straightened: ln y v ln x', 'ln x', None)
     else:
@@ -1336,9 +1292,7 @@ def t_loglin():
         py = a * math.exp(grad * px)
     _show('Prediction', [_w('x = ' + _fn(px)), 'y = ' + _fn(py)])
 
-# -------------------------------------------- shape of a distribution ------
 def _merge_pairs(xs, fs):
-    # sort by value and add together the frequencies of repeated values
     vx = list(xs)
     vf = list(fs)
     i = 1
@@ -1366,7 +1320,6 @@ def _merge_pairs(xs, fs):
     return (ox, of)
 
 def _nth_value(vals, fs, k):
-    # the k-th value (1-based) of the distribution written out in order
     run = 0.0
     i = 0
     while i < len(vals):
@@ -1377,8 +1330,6 @@ def _nth_value(vals, fs, k):
     return vals[len(vals) - 1]
 
 def _peak_count(fs):
-    # Peaks of the frequency distribution. Runs of equal frequency collapse to
-    # one entry first, so a flat top counts once rather than not at all.
     cf = []
     i = 0
     n = len(fs)
@@ -1432,8 +1383,6 @@ def t_shape():
         _show('Distribution shape', ['Total frequency is 0.'])
         return
     mean = sx / nf
-    # median of a discrete distribution: the (N+1)/2 th value, averaging the
-    # two middle values when N is even
     half = nf / 2.0
     if abs(nf - 2.0 * int(half)) < 1e-9:
         med = 0.5 * (_nth_value(vals, freq, int(half)) +
@@ -1493,8 +1442,6 @@ def t_shape():
         lines.append(_warn('same, so there is no shape.'))
         _show('Distribution shape', lines)
         return
-    # Pearson's second coefficient of skewness. Positive means the mean is
-    # dragged above the median by a tail on the right.
     psk = 3.0 * (mean - med) / sdp
     msk = (s3 / nf) / (sdp * sdp * sdp)
     lines.append('Pearson skew = ' + _fn(psk))
@@ -1533,7 +1480,6 @@ def t_ncrfact():
     lines = []
     f = _fact(ni)
     if f is None:
-        # an uncapped n! locked the calculator up on a mistyped entry
         if ni < 0:
             lines.append('n! undefined for n < 0')
         else:

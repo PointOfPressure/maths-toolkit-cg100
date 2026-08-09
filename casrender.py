@@ -1,5 +1,3 @@
-# casrender.py - 2D math typesetter (Desmos-style): stacked fractions, raised
-# exponents, radicals, e^x, implicit multiplication. Box model (measure/draw).
 from casioplot import *
 
 COLOR = (20, 20, 25)
@@ -9,17 +7,6 @@ DESC = {'large': 5, 'medium': 4, 'small': 2}
 EM   = {'large': 18, 'medium': 17, 'small': 10}
 AXIS = {'large': 5, 'medium': 4, 'small': 3}
 
-# THE font metric for the whole toolkit. There used to be two: this one and a
-# separate table in casui, disagreeing by up to 8 pixels on a single glyph at
-# large size and disagreeing about which glyphs are wide - casui had '1' at 8px
-# medium, this had it at 11. Only one of them can match the hardware, and two
-# models is how a fraction bar comes out the wrong length on a screen nobody
-# has looked at. casui.char_w now delegates here.
-#
-# The numbers are fontmetrics2.py's measurements on a real fx-CG100: medium is
-# about 8px for a narrow glyph, 10 for a normal one and 12 for a wide one, with
-# a prose average near 8.8; small is about 0.68 of that and large about 1.75.
-# Slightly conservative, so a measured line never overflows in practice.
 _WIDE = "mwMW@%"
 _NARROW = " iIjl1tfr.,;:!'|()[]{}/-"
 
@@ -52,7 +39,7 @@ def numstr(v):
     if isinstance(v, int):
         return str(v)
     if v != v:
-        return "undefined"       # int() raises on nan/inf and would kill the redraw
+        return "undefined"
     if v > 1.7e308:
         return "inf"
     if v < -1.7e308:
@@ -113,8 +100,6 @@ def build(n, lvl):
         return ('row', [('atom', '-', sz), cb])
     if t == '^':
         bb = build(n[1], lvl)
-        # a '^' base needs brackets too: (x^2)^3 drawn bare reads as x^(2^3).
-        # So does a negative literal: (-8)^2 drawn bare reads as -(8^2).
         if n[1][0] in ('+', '-', '*', '/', 'neg', '^') or (n[1][0] == 'n' and n[1][1] < 0):
             bb = ('paren', bb, sz)
         return ('sup', bb, build(n[2], lvl + 1), sz)
@@ -158,10 +143,6 @@ def build(n, lvl):
         return ('row', [ab, ('atom', ' - ', sz), bb])
     return ('atom', '?', sz)
 
-# measure() is called once per box by its parent's measure AND again by its
-# parent's draw, so an un-cached walk costs O(size x depth) per redraw - and the
-# input preview redraws on every keystroke. Cache by box identity; the cache is
-# cleared for each build because a discarded box tree can have its ids reused.
 _MCACHE = {}
 
 def measure(b):
@@ -322,7 +303,6 @@ def draw(b, x, base):
         set_pixel(rcol - 1, bot - 1, COLOR); set_pixel(rcol - 2, bot, COLOR)
         return
 
-# render a tree centered in the given box; returns False if it won't fit
 def render(node, x0, y0, x1, y1, color):
     global COLOR
     COLOR = color

@@ -1,5 +1,4 @@
-# casioplot.py - PC STUB so the toolkit can run under CPython for testing.
-# NOT for the calculator (it has the real casioplot built in). Do not copy to D:.
+# PC stub. Never copy to the device: it would shadow the real casioplot.
 def set_pixel(x, y, c=None):
     return None
 

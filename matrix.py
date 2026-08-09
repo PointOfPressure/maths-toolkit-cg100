@@ -337,10 +337,6 @@ def t_transform():
 
 
 def t_invariant():
-    # An invariant POINT satisfies Ap = p, i.e. (A - I)p = 0. An invariant LINE
-    # is mapped to itself as a set: its points move along it but do not leave
-    # it. Students routinely conflate the two, so both are reported and the
-    # difference is spelled out.
     if A is None:
         _show('INVARIANT', [_warn('Enter A first.')])
         return
@@ -352,7 +348,6 @@ def t_invariant():
     c = A[1][0]
     d = A[1][1]
     lines = [_w(ln) for ln in _matlines('A', A)] + ['']
-    # invariant points: (A - I)p = 0
     p = a - 1.0
     q = b
     r = c
@@ -381,8 +376,6 @@ def t_invariant():
                 lines.append('  x = 0')
         else:
             lines.append('  every point (A is the identity)')
-    # invariant lines through the origin: y = mx maps to y = mx, so
-    # (c + d m) = m (a + b m), i.e. b m^2 + (a - d) m - c = 0
     lines.append('')
     lines.append('INVARIANT LINES y = m x')
     lines.append(_w('need c + d m = m(a + b m), so'))
@@ -409,7 +402,6 @@ def t_invariant():
                 ms.append((-(a - d) - rt) / (2.0 * b))
     for m in ms:
         lines.append('  y = ' + _fn(m) + ' x')
-    # x = 0 is invariant when the image of (0,1) has zero x-component
     if abs(b) < 1e-12:
         lines.append('  x = 0 (the y-axis) as well')
     lines.append('')
@@ -421,8 +413,6 @@ def t_invariant():
 
 
 def t_transform3():
-    # 3x3 transformation matrices: rotations about and reflections in the
-    # coordinate axes and planes.
     global A
     opts = ['Rotate about x-axis', 'Rotate about y-axis', 'Rotate about z-axis',
             'Reflect in plane x=0', 'Reflect in plane y=0', 'Reflect in plane z=0',

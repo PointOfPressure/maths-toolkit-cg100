@@ -1,25 +1,3 @@
-# keyprobe.py - one-off hardware probe: report the getkey code of any key.
-#
-# The code is the row number followed by the column number. Casio prints the
-# grid of codes on page 142 of the fx-CG100 Software User's Guide, but the
-# diagram is a blank keypad outline - it never says which code is which key.
-# casui.py's map is that grid read against the printed keytops. This script is
-# how you check it on the device: press a key, read its code, and see what the
-# toolkit currently believes that key is.
-#
-# Press every key in turn to audit the whole map. Anything reported as "not
-# mapped" is a free code you can bind. [ON] and [AC] are assigned no key code
-# by Casio at all, so getkey cannot see them - that is why the toolkit quits on
-# EXIT rather than AC.
-#
-# This probe used to assume getkey() returns 0 with nothing held. It does not
-# always: on real hardware it has been seen returning None, and `None == 0` is
-# False, so the old loop fell straight through to `k // 10` on None. It now
-# applies casui.readkey()'s rule instead - a real code is row*10+col with row
-# 1-9 and col 1-6, and anything else is "no key" whatever its value - while
-# still reporting codes casui.KEYCODES does not know, which is the whole point.
-#
-# Not part of the toolkit; a sibling of calib_screen.py and fontmetrics.py.
 from casioplot import *
 import casui
 
@@ -41,8 +19,6 @@ NAMED = [
 ]
 
 def readraw():
-    # the code held now, or None for idle. Deliberately WIDER than
-    # casui.KEYCODES so a code the toolkit does not know still gets reported.
     k = getkey()
     if k is None:
         return None
@@ -109,13 +85,11 @@ def main():
     count = 0
     last = None
     while True:
-        # raw getkey on purpose: casui.readkey() filters to the codes we believe
-        # exist, and catching a code we do not is the whole point of the probe.
         k = readraw()
         if k is None:
             continue
         while readraw() is not None:
-            pass                      # wait for release
+            pass
         if k == casui.EXITK and last == casui.EXITK:
             clear_screen()
             draw_string(6, 40, "Probed " + str(count) + " key presses.", BLACK, "medium")
