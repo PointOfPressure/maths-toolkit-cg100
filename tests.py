@@ -1936,6 +1936,49 @@ def test_recursion_budget():
         tr = caslex.parse(e)
         truthy("integ stays shallow: " + e, under(lambda tr=tr: cascalc.integ(tr)))
 
+def test_math_allowlist_is_the_measured_set():
+    # hwcheck.py probed all 43 candidate names on the hardware on 2026-08-09.
+    # These are the 24 it found. devlint.MATH_OK must be exactly this: a name
+    # missing from it is a member the toolkit may not use, and a name added to
+    # it that the device lacks passes the lint and then crashes on the handheld.
+    # Six of the previously allowed names - degrees, radians, trunc, copysign,
+    # isnan, isinf - were in exactly that second category.
+    PRESENT = set([
+        "e", "pi", "sqrt", "pow", "exp", "log", "log10",
+        "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+        "sinh", "cosh", "tanh",
+        "ceil", "floor", "fabs", "fmod", "modf", "frexp", "ldexp",
+    ])
+    ABSENT = set([
+        "log2", "asinh", "acosh", "atanh", "trunc", "copysign",
+        "isnan", "isinf", "isfinite", "degrees", "radians",
+        "factorial", "gamma", "lgamma", "erf", "erfc",
+        "expm1", "log1p", "cbrt",
+    ])
+    check("MATH_OK is exactly what the hardware has", devlint.MATH_OK, PRESENT)
+    check("the probe covered every name", PRESENT | ABSENT, set(hwcheck_names()))
+    truthy("present and absent do not overlap", not (PRESENT & ABSENT))
+    # the absent members are absent for a reason the toolkit depends on
+    truthy("no factorial on the device", "factorial" in ABSENT)
+    truthy("no inverse hyperbolics on the device", "asinh" in ABSENT)
+    truthy("atan2 IS on the device", "atan2" in PRESENT)
+    # and the lint must actually stop an absent member being used
+    for bad in ("radians", "isfinite", "factorial", "atanh"):
+        truthy("devlint would reject math." + bad, bad not in devlint.MATH_OK)
+
+def hwcheck_names():
+    # hwcheck.MATH_NAMES without importing hwcheck, which draws to the screen
+    # and calls main() at import time.
+    import re
+    src = open(_here("hwcheck.py")).read()
+    body = src[src.index("MATH_NAMES = ["):]
+    body = body[:body.index("]")]
+    return re.findall(r'"([a-z0-9]+)"', body)
+
+def _here(name):
+    import os
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)) or ".", name)
+
 def test_devlint():
     import os
     bad = devlint.run(os.path.dirname(os.path.abspath(__file__)) or ".")
@@ -3377,6 +3420,7 @@ TESTS = [
     ("xpure", test_xpure),
     ("fpt", test_fpt),
     ("recursion budget", test_recursion_budget),
+    ("math allowlist is measured", test_math_allowlist_is_the_measured_set),
     ("devlint", test_devlint),
     ("proof and induction", test_proof),
     ("simulation", test_simulation),

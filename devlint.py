@@ -27,34 +27,35 @@ DEVICE_FILES = [
     "hwcheck.py",
 ]
 
-# math members the toolkit is allowed to use. This is an ALLOWLIST, deliberately
-# narrower than what the build probably has: nothing here has to be proved
-# absent, only what is used has to be proved present.
+# math members the toolkit is allowed to use.
 #
-# What is actually known, as of the last research pass:
-#  - MicroPython 1.9.4's py/modmath.c defines 28 members unconditionally
-#    (e pi sqrt pow exp log cos sin tan acos asin atan ATAN2 ceil copysign
-#    fabs floor fmod frexp ldexp modf isfinite isinf isnan trunc radians
-#    degrees) and 13 more behind MICROPY_PY_MATH_SPECIAL_FUNCTIONS
-#    (expm1 log2 log10 cosh sinh tanh acosh asinh atanh erf erfc gamma lgamma).
-#  - math.factorial is in NEITHER list, so "the device has no factorial" is
-#    confirmed by upstream source.
-#  - atan2 is UNCONDITIONAL, so a build with atan has atan2. The long-standing
-#    claim that this device lacks atan2 looks wrong.
-#  - The fx-CG100 manual's Python key-input table (page 125) gives log10() its
-#    own keystroke, and log10 is in the SPECIAL group - which implies that
-#    group is enabled, and therefore that the hyperbolics exist too.
-# Both of those are inference from upstream source plus a manual table, not
-# measurement. hwcheck.py probes all 41 names on the device and settles it.
-# Until it has been run, casutil keeps its own atan2 and hyperbolics: they are
-# correct and tested either way, and ripping them out on an inference would be
-# a change with no upside.
+# MEASURED ON THE DEVICE 2026-08-09 by hwcheck.py, which probed all 43 names
+# through getattr. This list is now exactly the 24 it found, no longer an
+# inference from upstream source. Both halves of the correction mattered:
+#
+#  PRESENT, and previously disallowed: atan2, log10, sinh, cosh, tanh, pow.
+#    atan2 being real settles a long-standing claim that this device lacks it -
+#    it does not. MicroPython 1.9.4 defines atan2 unconditionally in
+#    py/modmath.c, and the hardware agrees.
+#  ABSENT, and previously ALLOWED: degrees, radians, trunc, copysign, isnan,
+#    isinf. Those six would have passed the lint and then crashed on the
+#    handheld. isfinite is absent too and was never allowed.
+#
+# The build is NOT plain MICROPY_PY_MATH_SPECIAL_FUNCTIONS. Casio enabled that
+# group selectively: sinh, cosh, tanh and log10 are present while asinh, acosh,
+# atanh, log2, erf, erfc, gamma and lgamma are not. So the hyperbolic INVERSES
+# have to stay hand-implemented (hyper.py builds them from log and sqrt), and
+# so does factorial, which is in neither upstream list and is absent here as
+# expected.
+#
+# Adding a name to this set is a claim that the hardware has it. The only
+# evidence that counts is a hwcheck.py run; tests.py pins the set against the
+# measured list so it cannot drift back to guesswork.
 MATH_OK = set([
-    "sqrt", "pow", "exp", "log", "pi", "e",
-    "sin", "cos", "tan", "asin", "acos", "atan",
-    "degrees", "radians",
-    "floor", "ceil", "trunc", "fabs", "fmod", "modf",
-    "copysign", "frexp", "ldexp", "isnan", "isinf",
+    "e", "pi", "sqrt", "pow", "exp", "log", "log10",
+    "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+    "sinh", "cosh", "tanh",
+    "ceil", "floor", "fabs", "fmod", "modf", "frexp", "ldexp",
 ])
 
 IMPORT_OK = set(["math", "random", "casioplot"])
