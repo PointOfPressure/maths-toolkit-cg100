@@ -152,7 +152,7 @@ def split_values(text):
 def fields_of(spec):
     # 'a,b,f(x),data*,A[2x2],v[3],k?' -> [(name, kind, count, optional)]
     out = []
-    for raw in spec.split(','):
+    for raw in split_values(spec):
         name = raw.strip()
         if not name:
             continue
@@ -470,6 +470,7 @@ def _check():
     assert fmt(0.123456) == '0.123' and fmt(1.5e-7, 3) == '1.5e-7'
     assert fmt(complex(2, -3)) == '2-3i' and fmt(complex(0, 1)) == 'i'
     assert fmt(complex(3, 1e-15)) == '3'
+    assert fields_of('F(x,y),t')[0] == ('F(x,y)', 'e', 0, False)
     assert fields_of('a,f(x),data*,A[2x2],v[3],k?') == [
         ('a', 'n', 0, False), ('f(x)', 'e', 0, False), ('data', 'l', 0, False),
         ('A', 'm', (2, 2), False), ('v', 'v', 3, False), ('k', 'n', 0, True)]
