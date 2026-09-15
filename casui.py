@@ -308,6 +308,7 @@ def input_line(label, spec, last=''):
 # ---- result screen -----------------------------------------------------------------
 
 def _blocks(lines, mode):
+    casrender._MCACHE.clear()   # keyed by id(); stale entries from freed boxes overlap text
     out = []
     for ln in lines:
         if isinstance(ln, tuple):
