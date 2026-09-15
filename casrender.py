@@ -1,4 +1,5 @@
 from casioplot import *
+import caseng
 
 COLOR = (20, 20, 25)
 
@@ -38,6 +39,8 @@ def strw(s, size):
 def numstr(v):
     if isinstance(v, int):
         return str(v)
+    if isinstance(v, complex):
+        return caseng.cstr(v, numstr)
     if v != v:
         return "undefined"
     if v > 1.7e308:
@@ -77,8 +80,7 @@ def build(n, lvl):
         return ('atom', numstr(n[1]), sz)
     if t == 'v':
         return ('atom', n[1], sz)
-    if t in ('sin', 'cos', 'tan', 'ln', 'log', 'asin', 'acos', 'atan',
-             'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'abs'):
+    if t in caseng.UFUNCS and t != 'exp' and t != 'sqrt':
         return ('row', [('atom', t, sz), ('paren', build(n[1], lvl), sz)])
     if t == 'exp':
         return ('sup', ('atom', 'e', sz), build(n[1], lvl + 1), sz)
@@ -100,7 +102,7 @@ def build(n, lvl):
         return ('row', [('atom', '-', sz), cb])
     if t == '^':
         bb = build(n[1], lvl)
-        if n[1][0] in ('+', '-', '*', '/', 'neg', '^') or (n[1][0] == 'n' and n[1][1] < 0):
+        if n[1][0] in ('+', '-', '*', '/', 'neg', '^') or (n[1][0] == 'n' and caseng._neg(n[1][1])):
             bb = ('paren', bb, sz)
         return ('sup', bb, build(n[2], lvl + 1), sz)
     if t == '/':
@@ -124,7 +126,7 @@ def build(n, lvl):
             if b[1][0] in ('+', '-'):
                 ib = ('paren', ib, sz)
             return ('row', [ab, ('atom', ' - ', sz), ib])
-        if b[0] == 'n' and b[1] < 0:
+        if b[0] == 'n' and caseng._neg(b[1]):
             return ('row', [ab, ('atom', ' - ', sz), ('atom', numstr(-b[1]), sz)])
         return ('row', [ab, ('atom', ' + ', sz), build(b, lvl)])
     if t == '-':
@@ -135,7 +137,7 @@ def build(n, lvl):
             if b[1][0] in ('+', '-'):
                 ib = ('paren', ib, sz)
             return ('row', [ab, ('atom', ' + ', sz), ib])
-        if b[0] == 'n' and b[1] < 0:
+        if b[0] == 'n' and caseng._neg(b[1]):
             return ('row', [ab, ('atom', ' + ', sz), ('atom', numstr(-b[1]), sz)])
         bb = build(b, lvl)
         if b[0] in ('+', '-'):

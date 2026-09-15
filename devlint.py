@@ -4,13 +4,10 @@ import sys
 
 DEVICE_FILES = [
     "maths.py", "casui.py", "casutil.py", "caslex.py", "caseng.py",
-    "casrender.py", "cascalc.py", "caspoly.py",
-    "vcplx.py", "matrix.py", "vectors.py", "polyroots.py", "series.py",
-    "hyper.py", "polar.py", "diffeq.py", "fmmech.py", "fmstat.py",
-    "numeric.py", "algos.py", "xpure.py", "fpt.py",
-    "pure640.py", "purecalc.py", "stat640.py", "mech640.py", "proof.py",
-    "calib_screen.py", "fontmetrics.py", "fontmetrics2.py", "keyprobe.py",
-    "hwcheck.py",
+    "casrender.py", "cascalc.py", "caspoly.py", "plot.py", "formulae.py",
+    "tables.py",
+    "mpure.py", "mcalc.py", "mstat.py", "mmech.py",
+    "fcore.py", "fcalc.py", "fmech.py", "fstat.py",
 ]
 
 # measured on device by hwcheck.py 2026-08-09; adding a name claims hardware has it

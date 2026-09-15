@@ -3,11 +3,162 @@ import math
 UFUNCS = ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot',
           'ln', 'log', 'exp', 'sqrt', 'asin', 'acos', 'atan',
           'sinh', 'cosh', 'tanh', 'sech', 'cosech', 'coth',
-          'asinh', 'acosh', 'atanh', 'abs')
+          'asinh', 'acosh', 'atanh', 'abs', 'arg', 'conj', 're', 'im')
 BFUNCS = ('ncr', 'npr', 'logb')
 
 PI = 3.141592653589793
+E = 2.718281828459045
 ANS = 0.0
+
+# ---- complex helpers (the device has complex but no cmath) ----------------
+
+def _cx(v):
+    return isinstance(v, complex)
+
+def _neg(v):
+    return not _cx(v) and v < 0
+
+def _cabs(z):
+    return math.sqrt(z.real * z.real + z.imag * z.imag)
+
+def _carg(z):
+    return math.atan2(z.imag, z.real)
+
+def _csqrt(z):
+    r = _cabs(z)
+    re = math.sqrt((r + z.real) / 2.0)
+    im = math.sqrt((r - z.real) / 2.0)
+    if z.imag < 0:
+        im = -im
+    return complex(re, im)
+
+def _cexp(z):
+    m = math.exp(z.real)
+    return complex(m * math.cos(z.imag), m * math.sin(z.imag))
+
+def _cln(z):
+    if z == 0:
+        raise ValueError("ln 0")
+    return complex(math.log(_cabs(z)), _carg(z))
+
+def _sh(x):
+    return (math.exp(x) - math.exp(-x)) / 2.0
+
+def _ch(x):
+    return (math.exp(x) + math.exp(-x)) / 2.0
+
+def _csin(z):
+    return complex(math.sin(z.real) * _ch(z.imag), math.cos(z.real) * _sh(z.imag))
+
+def _ccos(z):
+    return complex(math.cos(z.real) * _ch(z.imag), -math.sin(z.real) * _sh(z.imag))
+
+def _cpow(b, e):
+    if not _cx(e) and float(e) == int(e) and -64 <= e <= 64:
+        n = int(e)
+        if n < 0:
+            if b == 0:
+                raise ValueError("0 to a negative power")
+            b = 1 / b
+            n = -n
+        r = 1
+        while n:
+            if n & 1:
+                r = r * b
+            b = b * b
+            n >>= 1
+        return r
+    if b == 0:
+        return 0.0
+    return _cexp(e * _cln(complex(b)))
+
+def cstr(z, f=None):
+    if f is None:
+        f = _numstr
+    re = z.real
+    im = z.imag
+    if im == 0:
+        return f(re)
+    if im == 1:
+        ims = ''
+    elif im == -1:
+        ims = '-'
+    else:
+        ims = f(im)
+    if re == 0:
+        return ims + 'i'
+    if im < 0:
+        return f(re) + '-' + ims[1:] + 'i'
+    return f(re) + '+' + ims + 'i'
+
+# ---- exact trig at the standard angles (multiples of pi/12 that AQA lists)
+
+_SIN12 = {0: ('n', 0), 2: ('/', ('n', 1), ('n', 2)),
+          3: ('/', ('sqrt', ('n', 2)), ('n', 2)),
+          4: ('/', ('sqrt', ('n', 3)), ('n', 2)), 6: ('n', 1)}
+_TAN12 = {0: ('n', 0), 2: ('/', ('sqrt', ('n', 3)), ('n', 3)),
+          3: ('n', 1), 4: ('sqrt', ('n', 3))}
+
+def _pi_mult(a):
+    # a == p/q * pi  ->  (p, q), else None
+    if a == ('v', 'pi'):
+        return (1, 1)
+    t = a[0]
+    if t == 'neg':
+        r = _pi_mult(a[1])
+        return None if r is None else (-r[0], r[1])
+    if t == '*' and a[2] == ('v', 'pi'):
+        c = a[1]
+        if c[0] == 'n' and isinstance(c[1], int):
+            return (c[1], 1)
+        if (c[0] == '/' and c[1][0] == 'n' and c[2][0] == 'n' and
+                isinstance(c[1][1], int) and isinstance(c[2][1], int) and c[2][1]):
+            return (c[1][1], c[2][1])
+        return None
+    if t == '/' and a[2][0] == 'n' and isinstance(a[2][1], int) and a[2][1]:
+        r = _pi_mult(a[1])
+        return None if r is None else (r[0], r[1] * a[2][1])
+    return None
+
+def _pi_k(a):
+    r = _pi_mult(a)
+    if r is None:
+        return None
+    p, q = r
+    if (12 * p) % q:
+        return None
+    return (12 * p) // q
+
+def _exact_trig(t, a):
+    k = _pi_k(a)
+    if k is None:
+        return None
+    if t == 'tan':
+        k %= 12
+        neg = k > 6
+        if neg:
+            k = 12 - k
+        v = _TAN12.get(k)
+    else:
+        if t == 'cos':
+            k += 6
+        k %= 24
+        neg = k >= 12
+        if neg:
+            k -= 12
+        if k > 6:
+            k = 12 - k
+        v = _SIN12.get(k)
+    if v is None:
+        return None
+    if neg and v != ('n', 0):
+        if v[0] == 'n':
+            return ('n', -v[1])
+        if v[0] == '/':
+            top = v[1]
+            return ('/', ('n', -top[1]) if top[0] == 'n' else ('neg', top), v[2])
+        return ('neg', v)
+    return v
 
 def _torad(a, deg):
     return a * PI / 180.0 if deg else a
@@ -75,6 +226,11 @@ def _isnum(v):
     return True
 
 def _fold_pow(a, b):
+    if _cx(a) or _cx(b):
+        try:
+            return ('n', _cpow(a, b))
+        except:
+            return None
     if isinstance(a, int) and isinstance(b, int):
         if b >= 0:
             if b > 256 and a != 0 and a != 1 and a != -1:
@@ -111,6 +267,47 @@ def _basepow(n):
         return (n[1], n[2][1])
     return (n, 1)
 
+def exactstr(v, tol=1e-12):
+    # float -> 'p/q', 'sqrt(b)', '2sqrt(3)/5', 'pi', '2pi/3'; None if nothing close
+    if v == 0:
+        return '0'
+    neg = v < 0
+    av = -v if neg else v
+    if av >= 1e6 or av < 1e-6:
+        return None
+    sgn = '-' if neg else ''
+    t = tol * (av if av > 1 else 1.0)
+    q = 1
+    while q <= 64:
+        p = int(round(av * q))
+        if p and abs(p - av * q) < t * q:
+            return sgn + (str(p) if q == 1 else str(p) + '/' + str(q))
+        q += 1
+    r = av / PI
+    tr = tol * (r if r > 1 else 1.0)
+    q = 1
+    while q <= 12:
+        p = int(round(r * q))
+        if p and abs(p - r * q) < tr * q:
+            num = 'pi' if p == 1 else str(p) + 'pi'
+            return sgn + num + ('' if q == 1 else '/' + str(q))
+        q += 1
+    sq = av * av
+    ts = tol * (sq if sq > 1 else 1.0) * 4
+    q = 1
+    while q <= 16:
+        p = int(round(sq * q))
+        if p and abs(p - sq * q) < ts * q:
+            a, b = _sqrt_split(p * q)
+            if b != 1:
+                g = gcd(a, q)
+                a //= g
+                qq = q // g
+                num = ('' if a == 1 else str(a)) + 'sqrt(' + str(b) + ')'
+                return sgn + num + ('' if qq == 1 else '/' + str(qq))
+        q += 1
+    return None
+
 def _fold_div(a, b):
     if isinstance(a, int) and isinstance(b, int) and b != 0:
         g = gcd(a, b)
@@ -144,6 +341,10 @@ def _s(node):
         return ('neg', a)
     if t in UFUNCS:
         a = _s(node[1])
+        if t == 'sin' or t == 'cos' or t == 'tan':
+            ex = _exact_trig(t, a)
+            if ex is not None:
+                return ex
         if t == 'exp' and a[0] == 'ln':
             return a[1]
         if t == 'ln' and a[0] == 'exp':
@@ -168,6 +369,13 @@ def _s(node):
                     return ('n', sq_out)
                 if sq_out != 1:
                     return ('*', ('n', sq_out), ('sqrt', ('n', sq_in)))
+            if t == 'sqrt' and isinstance(v, int) and -1000000 <= v < 0:
+                inner = _s(('sqrt', ('n', -v)))
+                if inner[0] == 'n':
+                    return ('n', complex(0, inner[1]))
+                if inner[0] == '*' and inner[1][0] == 'n':
+                    return ('*', ('n', complex(0, inner[1][1])), inner[2])
+                return ('*', ('n', 1j), inner)
             if t == 'abs': return ('n', abs(v))
         return (t, a)
     if t == 'fact':
@@ -198,7 +406,7 @@ def _s(node):
         if an and a[1] == 0: return b
         if bn and b[1] == 0: return a
         if a == b: return _s(('*', ('n', 2), a))
-        if bn and b[1] < 0: return ('-', a, ('n', -b[1]))
+        if bn and _neg(b[1]): return ('-', a, ('n', -b[1]))
         if a[0] == 'neg': return ('-', b, a[1])
         if b[0] == 'neg': return ('-', a, b[1])
         return ('+', a, b)
@@ -207,7 +415,7 @@ def _s(node):
         if bn and b[1] == 0: return a
         if an and a[1] == 0: return ('neg', b)
         if a == b: return ('n', 0)
-        if bn and b[1] < 0: return ('+', a, ('n', -b[1]))
+        if bn and _neg(b[1]): return ('+', a, ('n', -b[1]))
         if b[0] == 'neg': return ('+', a, b[1])
         return ('-', a, b)
     if t == '*':
@@ -248,6 +456,8 @@ def _s(node):
                 return _s(('/', a[1], ('n', a[2][1] * b[1])))
         return ('/', a, b)
     if t == '^':
+        if a == ('v', 'e'):
+            return _s(('exp', b))
         if bn:
             if b[1] == 0: return ('n', 1)
             if b[1] == 1: return a
@@ -287,6 +497,8 @@ def _d(n, var):
         return ('/', ('-', ('*', _d(a, var), b), ('*', a, _d(b, var))), ('^', b, ('n', 2)))
     if t == '^':
         a = n[1]; b = n[2]
+        if a == ('v', 'e'):
+            return ('*', ('exp', b), _d(b, var))
         if b[0] == 'n':
             return ('*', ('*', b, ('^', a, ('n', b[1] - 1))), _d(a, var))
         if a[0] == 'n':
@@ -340,7 +552,7 @@ def _d(n, var):
         return ('*', ('/', n[1], ('abs', n[1])), _d(n[1], var))
     if t == 'logb':
         return ('/', _d(n[2], var), ('*', n[2], ('ln', n[1])))
-    if t in ('fact', 'ncr', 'npr'):
+    if t in ('fact', 'ncr', 'npr', 'arg', 'conj', 're', 'im'):
         if _hasvar(n, var):
             raise ValueError("cannot differentiate " + t)
         return ('n', 0)
@@ -399,7 +611,7 @@ def vars_in(n, out=None):
         out = []
     t = n[0]
     if t == 'v':
-        if n[1] not in out:
+        if n[1] not in out and n[1] != 'pi' and n[1] != 'e':
             out.append(n[1])
         return out
     if t == 'n':
@@ -503,6 +715,10 @@ def evalf(n, x, deg=False, env=None):
             return env[n[1]]
         if n[1] == 'x':
             return x
+        if n[1] == 'pi':
+            return PI
+        if n[1] == 'e':
+            return E
         if n[1] == 'ans':
             return ANS
         raise ValueError("unknown variable " + n[1])
@@ -519,10 +735,11 @@ def evalf(n, x, deg=False, env=None):
     if t == '^':
         base = evalf(n[1], x, deg, env)
         expo = evalf(n[2], x, deg, env)
-        r = base ** expo
-        if isinstance(r, complex):
-            raise ValueError("complex result")
-        return r
+        if _cx(base) or _cx(expo):
+            return _cpow(base, expo)
+        if base < 0 and float(expo) != int(expo):
+            return _cpow(complex(base), expo)
+        return base ** expo
     if t == 'fact':
         return _factorial(int(round(evalf(n[1], x, deg, env))))
     if t == 'ncr':
@@ -532,6 +749,34 @@ def evalf(n, x, deg=False, env=None):
     if t == 'logb':
         return math.log(evalf(n[2], x, deg, env)) / math.log(evalf(n[1], x, deg, env))
     a = evalf(n[1], x, deg, env)
+    if t == 'arg':
+        return _carg(a) if _cx(a) else (0.0 if a >= 0 else PI)
+    if t == 'conj':
+        return complex(a.real, -a.imag) if _cx(a) else a
+    if t == 're':
+        return a.real if _cx(a) else a
+    if t == 'im':
+        return a.imag if _cx(a) else 0
+    if _cx(a):
+        if t == 'sqrt':
+            return _csqrt(a)
+        if t == 'exp':
+            return _cexp(a)
+        if t == 'ln':
+            return _cln(a)
+        if t == 'abs':
+            return _cabs(a)
+        if t == 'sin':
+            return _csin(a)
+        if t == 'cos':
+            return _ccos(a)
+        if t == 'tan':
+            return _csin(a) / _ccos(a)
+        if t == 'sinh':
+            return (_cexp(a) - _cexp(-a)) / 2
+        if t == 'cosh':
+            return (_cexp(a) + _cexp(-a)) / 2
+        raise ValueError(t + " of a complex number")
     if t == 'sin':
         return math.sin(_torad(a, deg))
     if t == 'cos':
@@ -567,6 +812,8 @@ def evalf(n, x, deg=False, env=None):
     if t == 'log':
         return math.log(a) / math.log(10)
     if t == 'sqrt':
+        if a < 0:
+            return complex(0, math.sqrt(-a))
         return math.sqrt(a)
     if t == 'abs':
         return abs(a)
@@ -608,10 +855,15 @@ OPPREC = {'+': 1, '-': 1, '*': 2, '/': 2, 'neg': 3, '^': 4}
 def _numstr(v):
     if isinstance(v, int):
         return str(v)
+    if _cx(v):
+        return cstr(v)
     if not _isnum(v):
         if v != v:
             return "undefined"
         return "inf" if v > 0 else "-inf"
+    ex = exactstr(v)
+    if ex is not None:
+        return ex
     r = round(v, 6)
     if r == int(r):
         return str(int(r))
@@ -624,11 +876,13 @@ def _str(n, parent, right):
     t = n[0]
     if t == 'n':
         s = _numstr(n[1])
-        if (right or parent >= 3) and s[:1] == '-':
+        if (right or parent >= 3) and not (s.replace('.', '').isdigit() or s == 'pi'):
             return "(" + s + ")"
         return s
     if t == 'v':
         return n[1]
+    if t == 'exp':
+        return "e^(" + _str(n[1], 0, False) + ")"
     if t in UFUNCS:
         return t + "(" + _str(n[1], 0, False) + ")"
     if t == 'neg':

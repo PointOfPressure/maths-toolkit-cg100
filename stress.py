@@ -1,147 +1,68 @@
-import casui
+# Drives every tool of every section module with a bank of odd inputs.
+# Anything other than a clean result or a ValueError caveat is a failure.
+import sys
+import tests
+import casutil
 
-import stress_inputs
-INPUTS = stress_inputs.INPUTS[:15]
-_ic = [0]
+BANK = ['0', '1', '-1', '2', '1e9', '1e-9', '0.5', '3', '7', '-2.5']
 
-def _stub_input(prompt):
-    _ic[0] += 1
-    if _ic[0] <= 18:
-        return INPUTS[(_ic[0] - 1) % len(INPUTS)]
-    if _ic[0] <= 22:
-        return None
-    raise Exception("stress: input exhausted (unbounded input loop?)")
+def _inputs(spec):
+    out = []
+    n = 0
+    lst = False
+    for name, kind, cnt, opt in casutil.fields_of(spec):
+        if kind == 'n':
+            n += 1
+        elif kind == 'e':
+            n += 1
+        elif kind == 'l':
+            lst = True
+        elif kind == 'v':
+            n += cnt
+        elif kind == 'm':
+            n += cnt[0] * cnt[1]
+    for base in BANK:
+        vals = []
+        i = 0
+        for name, kind, cnt, opt in casutil.fields_of(spec):
+            if kind == 'e':
+                vals.append('x^2-' + base)
+            elif kind == 'l':
+                vals.extend([base, '1', '2', '3'])
+            elif kind == 'v':
+                vals.extend([base] * cnt)
+            elif kind == 'm':
+                vals.extend([base] * (cnt[0] * cnt[1]))
+            else:
+                vals.append(base)
+        out.append(','.join(vals))
+    out.append('')
+    out.append('1')
+    out.append(','.join(['x'] * (n + 1)))
+    out.append(','.join(['2+3i'] * (n + 1)))
+    return out
 
-def _noop(*a, **k):
-    return None
+def main(mods):
+    bad = 0
+    count = 0
+    for mname in mods:
+        mod = __import__(mname)
+        for code, title, tools in mod.SECTIONS:
+            for label, spec, fn in tools:
+                for text in _inputs(spec):
+                    count += 1
+                    try:
+                        vals = casutil.convert(spec, text)
+                    except ValueError:
+                        continue
+                    lines = casutil.call_tool(fn, vals)
+                    for ln in lines:
+                        if isinstance(ln, tuple) and ln[0] == '!' and ln[1].startswith('error: '):
+                            bad += 1
+                            print(mname + ' ' + label + ' <' + text + '>: ' + ln[1])
+                            break
+    print(str(count) + ' runs, ' + str(bad) + ' crashes')
+    return bad
 
-def _stub_menu(*a, **k):
-    return -1
-
-def _stub_hold_page(*a, **k):
-    return True
-
-casui.input_expr = _stub_input
-casui.menu = _stub_menu
-casui.wait_release = _noop
-casui.wait_press = _noop
-casui.clear_screen = _noop
-casui.show_screen = _noop
-casui.draw_string = _noop
-casui.set_pixel = _noop
-casui.hline = _noop
-casui.vline = _noop
-casui.rect = _noop
-casui.frame = _noop
-casui.show_text = _noop
-casui.show_math = _noop
-casui.result_screen = _noop
-casui.hold = _noop
-casui.hold_page = _stub_hold_page
-
-import caslex
-import caseng
-import cascalc
-
-LOGF = None
-try:
-    LOGF = open("stress_log.txt", "w")
-except:
-    LOGF = None
-
-def out(s):
-    if LOGF is not None:
-        LOGF.write(s + "\n")
-        LOGF.flush()
-    else:
-        print(s)
-
-def prog(s):
-    if LOGF is not None:
-        LOGF.write(s + "\n")
-        LOGF.flush()
-
-ERRORS = []
-COUNT = [0]
-
-def _try(label, fn):
-    COUNT[0] += 1
-    try:
-        fn()
-    except Exception as e:
-        ERRORS.append(label + " -> " + repr(e))
-
-EXPRS = ["x^2+3x", "sin(x)", "1/(x+1)", "exp(x)", "sqrt(x)", "ln(x)",
-         "x^3-x", "(x+1)(x-1)", "cos(x^2)", "tan(x)", "2x^2-4x+1",
-         "x/(x-2)", "3", "sin(x)+cos(x)", "x^4-5x^2+4",
-         "atan(x)", "abs(x-3)", "sinh(x)", "tanh(x)", "5!+x",
-         "nCr(6,2)+x", "nPr(5,2)-x", "logb(2,x+4)", "atan(x)*180/pi",
-         "2^-x", "x^-1", "1e3*x", "sqrt(2x+1)", "1/(2x+1)", "x^(2/3)"]
-
-def _engine():
-    for ex in EXPRS:
-        prog("engine: " + ex)
-        tr = None
-        try:
-            tr = caslex.parse(ex)
-        except Exception as e:
-            ERRORS.append("parse " + ex + " -> " + repr(e))
-            continue
-        if tr is None:
-            ERRORS.append("parse None: " + ex)
-            continue
-        _try("evalf " + ex, lambda tr=tr: caseng.evalf(tr, 1.5))
-        _try("diff " + ex, lambda tr=tr: caseng.tostr(caseng.simplify(caseng.diff(tr, 'x'))))
-        _try("simplify " + ex, lambda tr=tr: caseng.tostr(caseng.simplify(tr)))
-        _try("integ " + ex, lambda tr=tr: cascalc.integ(tr))
-        _try("solve " + ex, lambda tr=tr: cascalc.solve(tr))
-        _try("render " + ex, lambda tr=tr: _render(tr))
-
-def _render(tr):
-    import casrender
-    casrender.render(tr, 0, 0, 384, 120, (0, 0, 0))
-
-MODNAMES = ["vcplx", "matrix", "vectors", "polyroots", "series", "hyper",
-            "polar", "diffeq", "fmmech", "fmstat", "numeric", "algos",
-            "xpure", "fpt", "pure640", "purecalc", "stat640", "mech640",
-            "proof"]
-
-def _sections():
-    for mn in MODNAMES:
-        prog("import: " + mn)
-        mod = None
-        try:
-            mod = __import__(mn)
-        except Exception as e:
-            ERRORS.append("IMPORT " + mn + " -> " + repr(e))
-            continue
-        tools = getattr(mod, "TOOLS", None)
-        if not tools:
-            ERRORS.append("NO TOOLS REGISTRY: " + mn)
-            continue
-        for entry in tools:
-            label = entry[0]
-            fn = entry[1]
-            if not callable(fn):
-                ERRORS.append("not callable: " + mn + "." + str(label))
-                continue
-            prog("  tool: " + mn + " / " + label)
-            _ic[0] = 0
-            _try(mn + " / " + label, fn)
-
-out("STRESS TEST START")
-_ic[0] = 0
-_engine()
-_sections()
-out("checks run: " + str(COUNT[0]))
-out("errors: " + str(len(ERRORS)))
-out("--------------------")
-i = 0
-while i < len(ERRORS):
-    out(ERRORS[i])
-    i += 1
-out("--------------------")
-out("STRESS TEST DONE")
-if LOGF is not None:
-    LOGF.close()
-print("stress: " + str(COUNT[0]) + " checks, " + str(len(ERRORS)) + " errors")
+if __name__ == '__main__':
+    sys.exit(1 if main(sys.argv[1:] or tests.MODULES) else 0)

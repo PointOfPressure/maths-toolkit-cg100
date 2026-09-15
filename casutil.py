@@ -1,268 +1,291 @@
+# Shared helpers for every tool: number formatting, field parsing, the tool
+# runner, and the numeric/statistical primitives the old modules shared.
 import math
-import casui
 import caslex
 import caseng
 
 PI = math.pi
+FULL = False      # result screen toggles this for full precision
+DEG = False       # angle mode for Calculate / CAS numeric operations
 
-def asknum(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    t = caslex.parse(s)
-    if t is None:
-        return None
+def w(text):
+    return ('w', text)
+
+def warn(text):
+    return ('!', text)
+
+def m(tree):
+    return ('m', tree)
+
+def mw(tree):
+    return ('mw', tree)
+
+# ---- numbers -> strings ----------------------------------------------------
+
+def _sf(v, n):
+    if v == 0:
+        return '0'
+    neg = v < 0
+    av = -v if neg else v
+    e = int(math.floor(math.log10(av)))
+    mi = int(round(av / (10.0 ** (e - n + 1))))
+    if mi >= 10 ** n:
+        mi //= 10
+        e += 1
+    d = str(mi)
+    if e >= n + 3 or e < -4:
+        frac = d[1:].rstrip('0')
+        s = d[0] + ('.' + frac if frac else '') + 'e' + str(e)
+    elif e >= n - 1:
+        s = d + '0' * (e - n + 1)
+    elif e >= 0:
+        s = (d[:e + 1] + '.' + d[e + 1:]).rstrip('0').rstrip('.')
+    else:
+        s = ('0.' + '0' * (-e - 1) + d).rstrip('0')
+    return '-' + s if neg else s
+
+def clean(v):
+    # drop rounding noise: 2.0000000001j -> 2, 3.0 -> 3
+    if isinstance(v, complex):
+        re = v.real
+        im = v.imag
+        aim = im if im >= 0 else -im
+        are = re if re >= 0 else -re
+        if aim <= 1e-12 * (are if are > 1 else 1.0):
+            v = re
+        else:
+            if are <= 1e-12 * (aim if aim > 1 else 1.0):
+                re = 0.0
+            return complex(re, im)
+    if isinstance(v, float) and v == v and -1e15 < v < 1e15 and v == int(v):
+        return int(v)
+    return v
+
+def fmt(v, sf=None):
+    v = clean(v)
+    if isinstance(v, bool):
+        return 'yes' if v else 'no'
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, complex):
+        return caseng.cstr(v, lambda x: fmt(x, sf))
+    if not isinstance(v, float):
+        return str(v)
+    if v != v:
+        return 'undefined'
+    if v > 1.7e308:
+        return 'inf'
+    if v < -1.7e308:
+        return '-inf'
+    if sf is None and not FULL:
+        ex = caseng.exactstr(v, 1e-9)
+        if ex is not None:
+            return ex
+    return _sf(v, sf if sf else (10 if FULL else 3))
+
+def sf3(v):
+    return fmt(v, 10 if FULL else 3)
+
+def fmtv(seq):
+    return '(' + ', '.join([fmt(x) for x in seq]) + ')'
+
+def fmtm(rows):
+    return ['[' + ' '.join([fmt(x) for x in r]) + ']' for r in rows]
+
+def real(v):
+    v = clean(v)
+    if isinstance(v, complex):
+        raise ValueError('not real')
+    return v
+
+# ---- evaluation -------------------------------------------------------------
+
+def ev(tree, x=0.0, env=None):
     try:
-        v = caseng.evalf(t, 0.0)
-    except:
+        v = caseng.evalf(tree, x, DEG, env)
+    except ValueError as e:
+        raise ValueError(str(e))
+    except ZeroDivisionError:
+        raise ValueError('division by zero')
+    except OverflowError:
+        raise ValueError('too large')
+    except Exception:
+        raise ValueError('cannot evaluate')
+    v = clean(v)
+    if isinstance(v, float) and v != v:
+        raise ValueError('undefined')
+    return v
+
+def evx(tree, x, env=None):
+    # numeric sample for plotting/solving: None instead of an error, real only
+    try:
+        v = caseng.evalf(tree, x, DEG, env)
+    except Exception:
         return None
     if isinstance(v, complex):
         return None
+    if v != v or v > 1e300 or v < -1e300:
+        return None
     return v
 
-def askint(prompt, lo=None, hi=None):
-    v = asknum(prompt)
-    if v is None or v != v:
-        return None
-    try:
-        n = int(round(v))
-    except:
-        return None
-    if lo is not None and n < lo:
-        return None
-    if hi is not None and n > hi:
-        return None
-    return n
+# ---- fields -----------------------------------------------------------------
 
-def asklist(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
+def split_values(text):
+    parts = []
+    depth = 0
+    cur = ''
+    for ch in text:
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        if ch == ',' and depth <= 0:
+            parts.append(cur.strip())
+            cur = ''
+        else:
+            cur += ch
+    parts.append(cur.strip())
+    while parts and parts[len(parts) - 1] == '':
+        parts.pop()
+    return parts
+
+def fields_of(spec):
+    # 'a,b,f(x),data*,A[2x2],v[3],k?' -> [(name, kind, count, optional)]
     out = []
-    for p in s.replace(',', ' ').split():
-        try:
-            out.append(float(p))
-        except:
-            return None
+    for raw in spec.split(','):
+        name = raw.strip()
+        if not name:
+            continue
+        opt = name.endswith('?')
+        if opt:
+            name = name[:-1]
+        if name.endswith('*'):
+            out.append((name[:-1], 'l', 0, opt))
+        elif '[' in name:
+            base = name[:name.index('[')]
+            dims = name[name.index('[') + 1:len(name) - 1]
+            if 'x' in dims:
+                rc = dims.split('x')
+                out.append((base, 'm', (int(rc[0]), int(rc[1])), opt))
+            else:
+                out.append((base, 'v', int(dims), opt))
+        elif '(' in name:
+            out.append((name, 'e', 0, opt))
+        else:
+            out.append((name, 'n', 0, opt))
     return out
 
-def askints(prompt):
-    lst = asklist(prompt)
-    if lst is None:
-        return None
-    return [int(round(v)) for v in lst]
+def _num(text, name):
+    if text == '':
+        raise ValueError(name + ' missing')
+    t = caslex.parse(text)
+    if t is None:
+        raise ValueError('cannot read ' + name)
+    for v in caseng.vars_in(t):
+        if v != 'ans':
+            raise ValueError(name + ': unknown ' + v)
+    return ev(t)
 
-def askexpr(prompt):
-    s = casui.input_expr(prompt)
-    if s is None:
-        return None
-    return caslex.parse(s)
-
-def askg(default=9.8):
-    v = asknum('g [' + fmt(default) + ']')
-    if v is None:
-        return default
+def _realnum(text, name):
+    v = _num(text, name)
+    if isinstance(v, complex):
+        raise ValueError(name + ' must be real')
     return v
 
-def fmt(x, dp=4):
-    if isinstance(x, complex):
-        return fmtc(x.real, x.imag, dp)
-    if not isinstance(x, (int, float)):
-        return str(x)
-    if x != x:
-        return 'undefined'
-    if x > 1.7e308:
-        return 'inf'
-    if x < -1.7e308:
-        return '-inf'
-    r = round(x, dp)
-    if r == 0:
-        r = 0.0
-    if r == int(r):
-        return str(int(r))
-    return str(r)
+def _allows_complex(name):
+    return name[:1] == 'z' or name[:1] == 'w'
 
-def fmtc(re, im, dp=4):
-    if abs(im) < 1e-12:
-        return fmt(re, dp)
-    if abs(re) < 1e-12:
-        return fmt(im, dp) + 'i'
-    if im < 0:
-        return fmt(re, dp) + ' - ' + fmt(-im, dp) + 'i'
-    return fmt(re, dp) + ' + ' + fmt(im, dp) + 'i'
+def convert(spec, text):
+    parts = split_values(text)
+    vals = []
+    i = 0
+    for name, kind, cnt, opt in fields_of(spec):
+        if i >= len(parts):
+            if opt:
+                vals.append(None)
+                continue
+            raise ValueError(name + ' missing')
+        if kind == 'n':
+            if parts[i] == '?':
+                vals.append(None)
+                i += 1
+                continue
+            if _allows_complex(name):
+                vals.append(_num(parts[i], name))
+            else:
+                vals.append(_realnum(parts[i], name))
+            i += 1
+        elif kind == 'e':
+            t = caslex.parse(parts[i])
+            if t is None:
+                raise ValueError('cannot read ' + name)
+            vals.append(t)
+            i += 1
+        elif kind == 'l':
+            lst = [_realnum(p, name) for p in parts[i:]]
+            i = len(parts)
+            vals.append(lst)
+        elif kind == 'v':
+            if i + cnt > len(parts):
+                raise ValueError(name + ' needs ' + str(cnt) + ' values')
+            vals.append([_realnum(p, name) for p in parts[i:i + cnt]])
+            i += cnt
+        elif kind == 'm':
+            r, c = cnt
+            if i + r * c > len(parts):
+                raise ValueError(name + ' needs ' + str(r * c) + ' values')
+            flat = [_realnum(p, name) for p in parts[i:i + r * c]]
+            vals.append([flat[k * c:(k + 1) * c] for k in range(r)])
+            i += r * c
+    if i < len(parts):
+        raise ValueError('too many values')
+    return vals
 
-w = casui.w
-warn = casui.warn
-filter_lines = casui.filter_lines
+# ---- tool runner -------------------------------------------------------------
 
-def show(title, lines):
-    casui.result_screen(title, casui.filter_lines(lines))
+def call_tool(fn, vals):
+    try:
+        lines = fn(*vals)
+    except ValueError as e:
+        return [('!', str(e) or 'invalid input')]
+    except ZeroDivisionError:
+        return [('!', 'division by zero')]
+    except OverflowError:
+        return [('!', 'number too large')]
+    except Exception as e:
+        return [('!', 'error: ' + str(e))]
+    if lines is None:
+        return []
+    return lines
 
-def run_tools(title, tools):
-    labels = [t[0] for t in tools]
+def run_tool(label, spec, fn):
+    import casui
+    last = ''
     while True:
-        c = casui.menu(title, labels)
-        if c == -1:
+        text = casui.input_line(label, spec, last)
+        if text is None:
             return
-        tools[c][1]()
-
-SCREEN_W = 384
-SCREEN_H = 192
-
-def frame(xlo, xhi, ylo, yhi, x0=26, y0=16, x1=378, y1=158):
-    if xhi - xlo < 1e-12:
-        xlo -= 1.0
-        xhi += 1.0
-    if yhi - ylo < 1e-12:
-        ylo -= 1.0
-        yhi += 1.0
-    return (x0, y0, x1, y1, xlo, xhi, ylo, yhi)
-
-def fx(fr, x):
-    return int(fr[0] + (x - fr[4]) * (fr[2] - fr[0]) / (fr[5] - fr[4]))
-
-def fy(fr, y):
-    return int(fr[3] - (y - fr[6]) * (fr[3] - fr[1]) / (fr[7] - fr[6]))
-
-def _clip(fr, x, y):
-    return fr[0] <= x <= fr[2] and fr[1] <= y <= fr[3]
-
-def dot(fr, x, y, c=None):
-    px = fx(fr, x)
-    py = fy(fr, y)
-    if _clip(fr, px, py):
-        casui.set_pixel(px, py, casui.BLACK if c is None else c)
-
-def marker(fr, x, y, c=None, r=2):
-    px = fx(fr, x)
-    py = fy(fr, y)
-    c = casui.BLACK if c is None else c
-    dy = -r
-    while dy <= r:
-        dx = -r
-        while dx <= r:
-            if dx * dx + dy * dy <= r * r + 1 and _clip(fr, px + dx, py + dy):
-                casui.set_pixel(px + dx, py + dy, c)
-            dx += 1
-        dy += 1
-
-def seg(fr, xa, ya, xb, yb, c=None):
-    c = casui.BLACK if c is None else c
-    x0 = fx(fr, xa)
-    y0 = fy(fr, ya)
-    x1 = fx(fr, xb)
-    y1 = fy(fr, yb)
-    dx = x1 - x0 if x1 >= x0 else x0 - x1
-    dy = y1 - y0 if y1 >= y0 else y0 - y1
-    sx = 1 if x0 < x1 else -1
-    sy = 1 if y0 < y1 else -1
-    err = dx - dy
-    n = 0
-    while n <= dx + dy + 2:
-        if _clip(fr, x0, y0):
-            casui.set_pixel(x0, y0, c)
-        if x0 == x1 and y0 == y1:
-            return
-        e2 = 2 * err
-        if e2 > -dy:
-            err -= dy
-            x0 += sx
-        if e2 < dx:
-            err += dx
-            y0 += sy
-        n += 1
-
-def box(fr, xa, ya, xb, yb, c=None, fill=False):
-    c = casui.BLACK if c is None else c
-    if fill:
-        pa = fx(fr, xa)
-        pb = fx(fr, xb)
-        qa = fy(fr, yb)
-        qb = fy(fr, ya)
-        if pa > pb:
-            pa, pb = pb, pa
-        if qa > qb:
-            qa, qb = qb, qa
-        y = qa
-        while y <= qb:
-            x = pa
-            while x <= pb:
-                if _clip(fr, x, y):
-                    casui.set_pixel(x, y, c)
-                x += 1
-            y += 1
-        return
-    seg(fr, xa, ya, xb, ya, c)
-    seg(fr, xb, ya, xb, yb, c)
-    seg(fr, xb, yb, xa, yb, c)
-    seg(fr, xa, yb, xa, ya, c)
-
-def axes(fr, title=None, xlab=None, ylab=None, ticks=True):
-    casui.clear_screen()
-    if title is not None:
-        casui.draw_string(4, 2, title, casui.ACC, 'small')
-    x0, y0, x1, y1, xlo, xhi, ylo, yhi = fr
-    casui.hline(x0, x1, y1, casui.GREY)
-    yy = y0
-    while yy <= y1:
-        casui.set_pixel(x0, yy, casui.GREY)
-        yy += 1
-    if ylo < 0.0 < yhi:
-        casui.hline(x0, x1, fy(fr, 0.0), casui.GREY)
-    if xlo < 0.0 < xhi:
-        zx = fx(fr, 0.0)
-        yy = y0
-        while yy <= y1:
-            casui.set_pixel(zx, yy, casui.GREY)
-            yy += 1
-    if ticks:
-        casui.draw_string(x0 - 22, y1 - 6, fmt(ylo, 1), casui.GREY, 'small')
-        casui.draw_string(x0 - 22, y0 - 2, fmt(yhi, 1), casui.GREY, 'small')
-        casui.draw_string(x0, y1 + 3, fmt(xlo, 1), casui.GREY, 'small')
-        s = fmt(xhi, 1)
-        casui.draw_string(x1 - 6 * len(s), y1 + 3, s, casui.GREY, 'small')
-    if xlab is not None:
-        casui.draw_string(x0 + (x1 - x0) // 2 - 12, y1 + 3, xlab, casui.GREY, 'small')
-    if ylab is not None:
-        casui.draw_string(2, (y0 + y1) // 2, ylab, casui.GREY, 'small')
-
-def chart_hold(note=None):
-    casui.hold(note)
-
-def nice_range(vals, pad=0.08, zero=False):
-    lo = None
-    hi = None
-    for v in vals:
-        if v is None or v != v:
+        last = text
+        try:
+            vals = convert(spec, text)
+        except ValueError as e:
+            casui.flash(str(e))
             continue
-        if lo is None or v < lo:
-            lo = v
-        if hi is None or v > hi:
-            hi = v
-    if lo is None:
-        return (0.0, 1.0)
-    if zero:
-        if lo > 0.0:
-            lo = 0.0
-        if hi < 0.0:
-            hi = 0.0
-    span = hi - lo
-    if span < 1e-12:
-        span = abs(hi) if abs(hi) > 1e-12 else 1.0
-    return (lo - span * pad, hi + span * pad)
+        casui.result(label, text, lambda: call_tool(fn, vals))
 
-def atan2(y, x):
-    if x > 0:
-        return math.atan(y / x)
-    if x < 0:
-        if y >= 0:
-            return math.atan(y / x) + PI
-        return math.atan(y / x) - PI
-    if y > 0:
-        return PI / 2.0
-    if y < 0:
-        return -PI / 2.0
-    return 0.0
+def pick(title, options):
+    import casui
+    i = casui.menu(title, options)
+    return None if i < 0 else i
+
+def ask(spec, label=''):
+    import casui
+    text = casui.input_line(label, spec, '')
+    if text is None:
+        return None
+    return convert(spec, text)
+
+# ---- numeric helpers ---------------------------------------------------------
 
 def deg(r):
     return r * 180.0 / PI
@@ -290,36 +313,8 @@ def lcm(a, b):
         return 0
     return abs(int(a) // g * int(b))
 
-def powmod(a, e, m):
-    if m == 1:
-        return 0
-    r = 1
-    a = a % m
-    while e > 0:
-        if e & 1:
-            r = (r * a) % m
-        a = (a * a) % m
-        e >>= 1
-    return r
-
-def modinv(a, m):
-    if m == 0:
-        return None
-    m = abs(m)
-    old_r, r = a % m, m
-    old_s, s = 1, 0
-    while r != 0:
-        q = old_r // r
-        old_r, r = r, old_r - q * r
-        old_s, s = s, old_s - q * s
-    if old_r != 1:
-        return None
-    return old_s % m
-
-FACT_MAX = 500
-
 def fact(n):
-    if n < 0 or n > FACT_MAX:
+    if n < 0 or n > 500:
         return None
     r = 1
     i = 2
@@ -432,28 +427,64 @@ def binom_cdf(n, p, k):
         return 1.0
     if p >= 1.0:
         return 0.0
-    q = 1.0 - p
-    m = int((n + 1) * p)
-    if m > k:
-        m = k
-    if m < 0:
-        m = 0
-    pm = binom_pmf(n, p, m)
-    if pm <= 0.0:
-        return 0.0 if k < (n * p) else 1.0
-    total = pm
-    t = pm
-    j = m
-    while j > 0:
-        t = t * j / (n - j + 1) * q / p
-        total += t
-        j -= 1
-    t = pm
-    j = m
-    while j < k:
-        t = t * (n - j) / (j + 1) * p / q
-        total += t
-        j += 1
-    if total > 1.0:
-        total = 1.0
-    return total
+    c = 0.0
+    i = 0
+    while i <= k:
+        c += binom_pmf(n, p, i)
+        i += 1
+    if c > 1.0:
+        c = 1.0
+    return c
+
+def nice_range(vals, pad=0.08, zero=False):
+    lo = None
+    hi = None
+    for v in vals:
+        if v is None or v != v:
+            continue
+        if lo is None or v < lo:
+            lo = v
+        if hi is None or v > hi:
+            hi = v
+    if lo is None:
+        return (0.0, 1.0)
+    if zero:
+        if lo > 0.0:
+            lo = 0.0
+        if hi < 0.0:
+            hi = 0.0
+    span = hi - lo
+    if span < 1e-12:
+        span = abs(hi) if abs(hi) > 1e-12 else 1.0
+    return (lo - span * pad, hi + span * pad)
+
+def _check():
+    assert fmt(0.5) == '1/3'.replace('3', '2'), fmt(0.5)
+    assert fmt(2.0) == '2' and fmt(-1.5) == '-3/2'
+    assert fmt(1234.5, 3) == '1230' and fmt(0.00123456, 3) == '0.00123'
+    assert fmt(0.8660254037844386) == 'sqrt(3)/2'
+    assert fmt(2.0943951023931953) == '2pi/3'
+    assert fmt(0.123456) == '0.123' and fmt(1.5e-7, 3) == '1.5e-7'
+    assert fmt(complex(2, -3)) == '2-3i' and fmt(complex(0, 1)) == 'i'
+    assert fmt(complex(3, 1e-15)) == '3'
+    assert fields_of('a,f(x),data*,A[2x2],v[3],k?') == [
+        ('a', 'n', 0, False), ('f(x)', 'e', 0, False), ('data', 'l', 0, False),
+        ('A', 'm', (2, 2), False), ('v', 'v', 3, False), ('k', 'n', 0, True)]
+    assert convert('a,b,c', '1, -3, 2') == [1, -3, 2]
+    assert convert('n,r', 'ncr(5,2), sqrt(4)') == [10, 2]
+    assert convert('A[2x2],k?', '1,2,3,4') == [[[1, 2], [3, 4]], None]
+    assert convert('u,v,a', '0,?,9.8') == [0, None, 9.8]
+    assert convert('data*', '1,2,3.5') == [[1, 2, 3.5]]
+    assert convert('z,w', '2+3i, 1-i') == [complex(2, 3), complex(1, -1)]
+    for bad in ('1,2', '1,2,3,4', '1,x,3', '1,2+i,3'):
+        try:
+            convert('a,b,c', bad)
+            assert False, bad
+        except ValueError:
+            pass
+    assert call_tool(lambda a: [fmt(a * 2)], [3]) == ['6']
+    assert call_tool(lambda a: 1 / 0, [3]) == [('!', 'division by zero')]
+    print('casutil ok')
+
+if __name__ == '__main__':
+    _check()

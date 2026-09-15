@@ -1,17 +1,18 @@
 UFUNCS = ("sqrt", "asinh", "acosh", "atanh", "asin", "acos", "atan",
           "sinh", "cosh", "tanh", "sech", "cosech", "coth",
           "sin", "cos", "tan", "sec", "cosec", "cot",
-          "log", "exp", "ln", "abs")
+          "log", "exp", "ln", "abs", "arg", "conj", "re", "im")
 BINFUNCS = ("ncr", "npr", "logb")
 FUNCS = UFUNCS + BINFUNCS
 # longest first: cosech before cosec before cos
 WORDS = ["arcsinh", "arccosh", "arctanh", "arcsin", "arccos", "arctan",
-         "asinh", "acosh", "atanh", "cosech", "sqrt", "asin", "acos", "atan",
-         "sinh", "cosh", "tanh", "cosec", "sech", "coth", "logb", "ncr", "npr",
-         "abs", "log", "exp", "sec", "cot", "sin", "cos", "tan", "ans", "ln",
-         "pi", "e", "x", "y"]
+         "asinh", "acosh", "atanh", "cosech", "conj", "sqrt", "asin", "acos",
+         "atan", "sinh", "cosh", "tanh", "cosec", "sech", "coth", "logb",
+         "ncr", "npr", "abs", "arg", "mod", "log", "exp", "sec", "cot", "sin",
+         "cos", "tan", "ans", "ln", "pi", "re", "im", "e", "i", "x", "y"]
 ALIAS = {"arcsin": "asin", "arccos": "acos", "arctan": "atan",
-         "arcsinh": "asinh", "arccosh": "acosh", "arctanh": "atanh"}
+         "arcsinh": "asinh", "arccosh": "acosh", "arctanh": "atanh",
+         "mod": "abs"}
 
 def tokenize(s):
     toks = []
@@ -66,10 +67,8 @@ def tokenize(s):
                 continue
             if matched in FUNCS:
                 toks.append(('fn', matched))
-            elif matched == 'pi':
-                toks.append(('num', 3.141592653589793))
-            elif matched == 'e':
-                toks.append(('num', 2.718281828459045))
+            elif matched == 'i':
+                toks.append(('num', 1j))
             else:
                 toks.append(('var', matched))
             i += len(matched)
@@ -197,7 +196,10 @@ def parse(s):
                     return None
                 b = st.pop()
                 a = st.pop()
-                st.append((o, a, b))
+                if o == '^' and a == ('v', 'e'):
+                    st.append(('exp', b))
+                else:
+                    st.append((o, a, b))
     if len(st) != 1:
         return None
     return st[0]
