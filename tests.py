@@ -133,6 +133,19 @@ def engine():
     check('fmt full', casutil._sf(1.0 / 3, 10) == '0.3333333333')
     check('solve', [round(r, 6) for r in cascalc.solve(caslex.parse('x^2-pi^2'))] == [-3.141593, 3.141593])
     check('render complex', casrender_ok())
+    # canonical form added by the CAS engine upgrade
+    check('exact rational sum', sstr('1/3+1/6') == '1/2')
+    check('decimal to fraction', sstr('0.25') == '1/4')
+    check('ordered by degree', sstr('1-2x+3x^2') == '3*x^2-2*x+1')
+    check('powers combined', sstr('x^(1/2)*x^(3/2)') == 'x^2')
+    check('negative power', sstr('x^(-2)') == '1/x^2')
+    check('rational cancelled', sstr('(x^2-1)/(x-1)') == 'x+1')
+    check('surd rationalised', sstr('1/sqrt(2)') == 'sqrt(2)/2')
+    check('pythagoras', sstr('sin(x)^2+cos(x)^2') == '1')
+    check('ln abs printing', caseng.tostr(caslex.parse('ln(abs(x))')) == 'ln(|x|)')
+    check('complex exact quotient', sstr('(2+3i)/(1-i)') == '-1/2+5i/2')
+    check('modulus rule', sstr('abs(2x)') == '2*|x|')
+    check('factorial ratio', sstr('x!/(x-1)!') == 'x')
 
 def casrender_ok():
     import casrender
@@ -142,9 +155,47 @@ def casrender_ok():
 
 MODULES = ['mpure', 'mcalc', 'mstat', 'mmech', 'fcore', 'fcalc', 'fmech', 'fstat']
 
+def cas_engine():
+    import tests_cas
+    tests_cas.run(check)
+    _depth_check()
+
+def _depth_check():
+    # a 40-token expression must stay well under the device's 92-frame ceiling
+    expr = '(3x^2+2x-1)*(x-4)/(x^2-16)+sin(2x+pi/3)*e^(-x)-sqrt(12)/(1+sqrt(3))'
+    tree = caslex.parse(expr)
+    check('cas token count', len(caslex.tokenize(expr)) >= 40)
+    worst = [0]
+
+    def prof(frame, event, arg):
+        if event == 'call':
+            d = 0
+            f = frame
+            while f is not None:
+                d += 1
+                f = f.f_back
+            if d > worst[0]:
+                worst[0] = d
+        return None
+
+    base = 0
+    f = sys._getframe()
+    while f is not None:
+        base += 1
+        f = f.f_back
+    sys.setprofile(prof)
+    try:
+        out = caseng.simplify(tree)
+        caseng.tostr(out)
+        cascalc.tidy(caseng.diff(tree))
+    finally:
+        sys.setprofile(None)
+    check('cas recursion under 40 frames', worst[0] - base < 40, worst[0] - base)
+
 if __name__ == '__main__':
     only = sys.argv[1:]
     engine()
+    cas_engine()
     for mname in (only or MODULES):
         module_cases(mname)
     for f in FAILS:

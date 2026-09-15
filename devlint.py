@@ -4,7 +4,8 @@ import sys
 
 DEVICE_FILES = [
     "maths.py", "casui.py", "casutil.py", "caslex.py", "caseng.py",
-    "casrender.py", "cascalc.py", "caspoly.py", "plot.py", "formulae.py",
+    "casrender.py", "cascalc.py", "caspoly.py", "casalg.py", "cassolve.py",
+    "plot.py", "formulae.py",
     "tables.py",
     "mpure.py", "mcalc.py", "mstat.py", "mmech.py",
     "fcore.py", "fcalc.py", "fmech.py", "fstat.py",

@@ -11,7 +11,7 @@ Statistics options).
 
 Run `./deploy.sh <mountpoint>` with the calculator connected as a USB drive.
 It deletes every other `.py` in the storage root and copies these in:
-`maths.py`, `casui.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `plot.py`, `formulae.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`.
+`maths.py`, `casui.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `casalg.py`, `cassolve.py`, `plot.py`, `formulae.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`.
 
 Then on the calculator: Python app > File > Open > `maths.py` > Run.
 

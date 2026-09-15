@@ -249,7 +249,7 @@ def _mulout(a, b):
     return node
 
 def expand(node):
-    return collect(_ex(node))
+    return caseng.simplify(_ex(node))
 
 def _ex(n):
     t = n[0]
@@ -453,6 +453,17 @@ def pdivmod(a, b):
         ptrim(r)
     return (ptrim(q), r)
 
+def _coefterm(c, power):
+    # c * power with no "1*" and negatives folded into the numerator
+    neg = c[0] < 0
+    top = -c[0] if neg else c[0]
+    node = power if top == 1 else ('*', ('n', top), power)
+    if neg:
+        node = ('neg', node) if top == 1 else ('*', ('n', -top), power)
+    if c[1] == 1:
+        return node
+    return ('/', node, ('n', c[1]))
+
 def ptree(p, var):
     if not p:
         return ('n', 0)
@@ -465,14 +476,7 @@ def ptree(p, var):
                 piece = ratnode(c)
             else:
                 power = ('v', var) if i == 1 else ('^', ('v', var), ('n', i))
-                if c == R1:
-                    piece = power
-                elif c == (-1, 1):
-                    piece = ('neg', power)
-                elif c[1] == 1:
-                    piece = ('*', ('n', c[0]), power)
-                else:
-                    piece = ('/', ('*', ('n', c[0]), power), ('n', c[1]))
+                piece = _coefterm(c, power)
             if node is None:
                 node = piece
             elif c[0] < 0:
@@ -481,12 +485,7 @@ def ptree(p, var):
                     node = ('-', node, ratnode(pos))
                 else:
                     power = ('v', var) if i == 1 else ('^', ('v', var), ('n', i))
-                    if pos == R1:
-                        node = ('-', node, power)
-                    elif pos[1] == 1:
-                        node = ('-', node, ('*', ('n', pos[0]), power))
-                    else:
-                        node = ('-', node, ('/', ('*', ('n', pos[0]), power), ('n', pos[1])))
+                    node = ('-', node, _coefterm(pos, power))
             else:
                 node = ('+', node, piece)
         i -= 1
@@ -742,3 +741,213 @@ def partial(numn, denn, var='x'):
     for top, f, i in terms:
         out.append((top, ptree(f, var), i))
     return (ptree(quot, var) if quot else None, out)
+
+
+def pgcd(a, b):
+    # monic gcd of two rational-coefficient polynomials; at most 60 steps
+    a = ptrim(list(a))
+    b = ptrim(list(b))
+    guard = 0
+    while b and guard < 60:
+        guard += 1
+        qr = pdivmod(a, b)
+        if qr is None:
+            return None
+        a = b
+        b = ptrim(qr[1])
+    if not a:
+        return None
+    lead = a[-1]
+    return [rdiv(c, lead) for c in a]
+
+def polyfrac(node, var):
+    # node -> (numerator poly, denominator poly) over the rationals, else None
+    t = node[0]
+    if t == 'n':
+        r = ratof(node)
+        if r is None:
+            return None
+        return ([] if rzero(r) else [r], [R1])
+    if t == 'v':
+        if node[1] == var:
+            return ([R0, R1], [R1])
+        return None
+    if t == 'neg':
+        f = polyfrac(node[1], var)
+        if f is None:
+            return None
+        return ([rneg(c) for c in f[0]], f[1])
+    if t == '+' or t == '-':
+        A = polyfrac(node[1], var)
+        if A is None:
+            return None
+        B = polyfrac(node[2], var)
+        if B is None:
+            return None
+        u = pmul(A[0], B[1])
+        v = pmul(B[0], A[1])
+        return (padd(u, v) if t == '+' else psub(u, v), pmul(A[1], B[1]))
+    if t == '*':
+        A = polyfrac(node[1], var)
+        if A is None:
+            return None
+        B = polyfrac(node[2], var)
+        if B is None:
+            return None
+        return (pmul(A[0], B[0]), pmul(A[1], B[1]))
+    if t == '/':
+        A = polyfrac(node[1], var)
+        if A is None:
+            return None
+        B = polyfrac(node[2], var)
+        if B is None or not B[0]:
+            return None
+        return (pmul(A[0], B[1]), pmul(A[1], B[0]))
+    if t == '^':
+        e = ratof(node[2])
+        ei = None if e is None else rint(e)
+        if ei is None or ei > MAXPOW or ei < -MAXPOW:
+            return None
+        A = polyfrac(node[1], var)
+        if A is None:
+            return None
+        num, den = A
+        if ei < 0:
+            num, den = den, num
+            ei = -ei
+            if not num:
+                return None
+        rn = [R1]
+        rd = [R1]
+        i = 0
+        while i < ei:
+            rn = pmul(rn, num)
+            rd = pmul(rd, den)
+            i += 1
+        return (rn, rd)
+    return None
+
+def pderiv(p):
+    out = []
+    i = 1
+    while i < len(p):
+        out.append(rmul(p[i], (i, 1)))
+        i += 1
+    return ptrim(out)
+
+def sqfree(D):
+    # D -> [(a1, 1), (a2, 2), ...] with D = prod ai^i; at most 6 levels
+    g = pgcd(D, pderiv(D))
+    if g is None or len(g) < 2:
+        return [(D, 1)]
+    qr = pdivmod(D, g)
+    if qr is None or qr[1]:
+        return [(D, 1)]
+    w = ptrim(qr[0])
+    out = []
+    i = 1
+    while i <= 6 and len(w) > 1:
+        y = pgcd(w, g)
+        if y is None:
+            break
+        qa = pdivmod(w, y)
+        if qa is None or qa[1]:
+            break
+        a = ptrim(qa[0])
+        if len(a) > 1:
+            out.append((a, i))
+        w = ptrim(y)
+        qg = pdivmod(g, y)
+        if qg is None or qg[1]:
+            break
+        g = ptrim(qg[0])
+        i += 1
+    if not out:
+        return [(D, 1)]
+    return out
+
+def denfactored(D, var):
+    parts = []
+    for a, m in sqfree(D):
+        t = ptree(a, var)
+        f = factor(t, var)
+        base = t if f is None else f
+        parts.append(base if m == 1 else ('^', base, ('n', m)))
+    node = parts[0]
+    i = 1
+    while i < len(parts):
+        node = ('*', node, parts[i])
+        i += 1
+    return caseng.simplify(node)
+
+def ratnorm(node, var, needcancel=False):
+    # one rational expression over a common denominator, cancelled
+    f = polyfrac(node, var)
+    if f is None:
+        return None
+    N = ptrim(list(f[0]))
+    D = ptrim(list(f[1]))
+    if not D:
+        return None
+    if not N:
+        return ('n', 0)
+    if len(D) < 2:
+        return None
+    g = pgcd(N, D)
+    if g is None:
+        return None
+    if needcancel and len(g) < 2:
+        return None
+    if len(g) > 1:
+        qn = pdivmod(N, g)
+        qd = pdivmod(D, g)
+        if qn is None or qd is None or qn[1] or qd[1]:
+            return None
+        N = ptrim(qn[0])
+        D = ptrim(qd[0])
+    if not D:
+        return None
+    c = pcontent(D)
+    if c is None or rzero(c):
+        return None
+    if D[-1][0] < 0:
+        c = rneg(c)
+    N = ptrim([rdiv(x, c) for x in N])
+    D = ptrim([rdiv(x, c) for x in D])
+    if len(D) < 2:
+        d0 = D[0] if D else R1
+        return ptree(ptrim([rdiv(x, d0) for x in N]), var)
+    return ('/', ptree(N, var), denfactored(D, var))
+
+
+def _denpoly(node, var):
+    f = polyfrac(node, var)
+    return None if f is None else ptrim(list(f[1]))
+
+MAXSHARE = 8
+
+def ratshare(node, var):
+    # do the additive terms of node share denominator factors?  (a term with no
+    # denominator counts as sharing: x + 1/x becomes one fraction)
+    terms = []
+    _addterms(node, 1, terms)
+    if len(terms) > MAXSHARE:
+        return False
+    dens = []
+    for t, s in terms:
+        d = _denpoly(t, var)
+        if d is None:
+            return False
+        if len(d) < 2:
+            return True
+        dens.append(d)
+    i = 0
+    while i < len(dens):
+        j = i + 1
+        while j < len(dens):
+            g = pgcd(dens[i], dens[j])
+            if g is not None and len(g) > 1:
+                return True
+            j += 1
+        i += 1
+    return False

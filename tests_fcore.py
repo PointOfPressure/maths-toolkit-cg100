@@ -21,7 +21,7 @@ CASES = [
 
     # ---- B  Complex numbers -------------------------------------------------
     ('B', 'Arithmetic z, w', '2+3i, 1-i', ['z+w = 3+2i', 'z-w = 1+4i',
-                                           'zw = 5+i', 'z/w = -1/2+5/2i']),
+                                           'zw = 5+i', 'z/w = -1/2+5i/2']),
     ('B', 'Arithmetic z, w', '2+3i, 0', ['z/w undefined: w = 0']),
     ('B', 'Modulus-argument', '1+i', ['|z| = sqrt(2)', 'arg z = pi/4 rad',
                                       'arg z = 45 deg', 'conj z = 1-i']),
@@ -34,8 +34,8 @@ CASES = [
     ('B', 'De Moivre z^n', '2i, -2', ['z^-2 = -1/4']),
     ('B', 'nth roots of z', '8i, 3', ['w0 = sqrt(3)+i', 'w2 = -2i',
                                       'regular 3-gon']),
-    ('B', 'Roots of unity', '3', ['w^1 = -1/2+sqrt(3)/2i',
-                                  'w^2 = -1/2-sqrt(3)/2i']),
+    ('B', 'Roots of unity', '3', ['w^1 = -1/2+sqrt(3)i/2',
+                                  'w^2 = -1/2-sqrt(3)i/2']),
     ('B', 'Quadratic roots', '1,2,5', ['z1 = -1+2i', 'z2 = -1-2i',
                                        'disc = b^2-4ac = -16']),
     ('B', 'Quadratic roots', '2,-5,2', ['z1 = 1/2', 'z2 = 2']),
@@ -62,8 +62,8 @@ CASES = [
                                     'sin^3 t = (3sin t-sin3t)/4']),
     ('B', 'cos^n t, sin^n t', '4', ['cos^4 t = (cos4t+4cos2t+3)/8',
                                     'sin^4 t = (cos4t-4cos2t+3)/8']),
-    ('B', 'Complex geometric sum', '1+i, 0.5i, 5', ['S = 7/16+19/16i',
-                                                    'S(infinity) = 2/5+6/5i']),
+    ('B', 'Complex geometric sum', '1+i, 0.5i, 5', ['S = 7/16+19i/16',
+                                                    'S(infinity) = 2/5+6i/5']),
     ('B', 'Complex geometric sum', '2, 1, 5', ['S = 10', 'no sum to infinity']),
 
     # ---- C  Matrices --------------------------------------------------------

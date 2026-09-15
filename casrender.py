@@ -73,6 +73,9 @@ def starts_num(n):
         return starts_num(n[1])
     return False
 
+_FNPOW = ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot',
+          'sinh', 'cosh', 'tanh', 'sech', 'cosech', 'coth', 'ln', 'log')
+
 def build(n, lvl):
     t = n[0]
     sz = fsize(lvl)
@@ -80,6 +83,8 @@ def build(n, lvl):
         return ('atom', numstr(n[1]), sz)
     if t == 'v':
         return ('atom', n[1], sz)
+    if t == 'abs':
+        return ('row', [('atom', '|', sz), build(n[1], lvl), ('atom', '|', sz)])
     if t in caseng.UFUNCS and t != 'exp' and t != 'sqrt':
         return ('row', [('atom', t, sz), ('paren', build(n[1], lvl), sz)])
     if t == 'exp':
@@ -100,6 +105,15 @@ def build(n, lvl):
         if n[1][0] in ('+', '-'):
             cb = ('paren', cb, sz)
         return ('row', [('atom', '-', sz), cb])
+    if t == '^' and n[1][0] in _FNPOW:
+        # sin(x)^2 typesets as sin^2 x
+        arg = n[1][1]
+        inner = build(arg, lvl)
+        if arg[0] not in ('n', 'v'):
+            inner = ('paren', inner, sz)
+        return ('row', [('atom', n[1][0], sz),
+                        ('sup', ('atom', '', sz), build(n[2], lvl + 1), sz),
+                        inner])
     if t == '^':
         bb = build(n[1], lvl)
         if n[1][0] in ('+', '-', '*', '/', 'neg', '^') or (n[1][0] == 'n' and caseng._neg(n[1][1])):

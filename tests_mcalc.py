@@ -3,7 +3,7 @@
 CASES = [
     # ---- G differentiation ----
     ('G', "Derivative f' and f''", 'x^3-2x+1', ['3*x^2-2', '6*x']),
-    ('G', "Derivative f' and f''", 'sin(2x)', ['2*cos(2*x)', '-(4*sin(2*x))']),
+    ('G', "Derivative f' and f''", 'sin(2x)', ['2*cos(2*x)', '-4*sin(2*x)']),
     ('G', 'Tangent and normal', 'x^2,3', ['6*x-9', '19/2', 'point (3, 9)']),
     ('G', 'Tangent and normal', 'x^2,0', ['normal x = 0', 'point (0, 0)']),
     ('G', 'Stationary points', 'x^3-3x', ['max at (-1, 2)', 'min at (1, -2)']),
@@ -27,7 +27,7 @@ CASES = [
     # ---- H integration ----
     ('H', 'Indefinite integral', 'x^2', ['x^3/3+c', 'agrees']),
     ('H', 'Indefinite integral', '1/(x^2-1)',
-     ['ln(abs(x-1))/2', 'ln(abs(x+1))/2']),
+     ['ln(|x-1|)/2', 'ln(|x+1|)/2']),
     ('H', 'Definite integral', 'x^2,0,3', ['integral = 9', 'F(x) = x^3/3']),
     ('H', 'Definite integral', 'sin(x),0,pi', ['integral = 2']),
     ('H', 'Definite integral', '1/x,-1,1', ['f breaks inside a..b']),
@@ -42,10 +42,10 @@ CASES = [
      ['e^(x)*x-e^(x)+c', 'v = int dv dx = e^(x)']),
     ('H', 'Riemann sum table', 'x^2,0,3',
      ['integral = 9', 'sum = 7.695', 'sum = 8.86545', 'sum = 8.9865045']),
-    ('H', 'Separable DE', 'x,y', ['ln(abs(y)) = x^2/2 + c']),
-    ('H', 'Separable DE at point', 'x,y,0,1', ['e^(x^2/2)', 'ln(abs(y)) = x^2/2']),
+    ('H', 'Separable DE', 'x,y', ['ln(|y|) = x^2/2 + c']),
+    ('H', 'Separable DE at point', 'x,y,0,1', ['e^(x^2/2)', 'ln(|y|) = x^2/2']),
     ('H', 'Separable DE at point', '1,y^2,0,1', ['-1/(x-1)', '-1/y = x - 1']),
-    ('H', 'd/dx of an integral', 'x^2,1', ['x^3/3-(1/3)', "A'(x) ="]),
+    ('H', 'd/dx of an integral', 'x^2,1', ['x^3/3-1/3', "A'(x) ="]),
 
     # ---- I numerical methods ----
     ('I', 'Sign change table', 'x^3-2x-5,2,3',

@@ -9,7 +9,7 @@ WORDS = ["arcsinh", "arccosh", "arctanh", "arcsin", "arccos", "arctan",
          "asinh", "acosh", "atanh", "cosech", "conj", "sqrt", "asin", "acos",
          "atan", "sinh", "cosh", "tanh", "cosec", "sech", "coth", "logb",
          "ncr", "npr", "abs", "arg", "mod", "log", "exp", "sec", "cot", "sin",
-         "cos", "tan", "ans", "ln", "pi", "re", "im", "e", "i", "x", "y"]
+         "cos", "tan", "ans", "inf", "ln", "pi", "re", "im", "e", "i", "x", "y"]
 ALIAS = {"arcsin": "asin", "arccos": "acos", "arctan": "atan",
          "arcsinh": "asinh", "arccosh": "acosh", "arctanh": "atanh",
          "mod": "abs"}

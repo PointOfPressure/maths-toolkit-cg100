@@ -299,11 +299,19 @@ def integ(n, var='x', depth=0):
             else:
                 F = None
             if F is None:
+                F = _factorform(moving[0], moving[1], var, depth)
+            if F is None:
                 F = _cyclic(moving[0], moving[1], var)
             if F is None:
+                F = _usub(n, var, depth)
+            if F is None:
                 F = _byparts(moving[0], moving[1], var, depth)
+            if F is None:
+                return None
+            return F if sign > 0 and not consts else _scaled(F, sign, consts)
         else:
-            return None
+            F = _usub(n, var, depth)
+            return F
         if F is None:
             return None
         k = ('n', sign)
@@ -312,6 +320,10 @@ def integ(n, var='x', depth=0):
         return F if k == ('n', 1) else ('*', k, F)
     if t == '/':
         a = n[1]; b = n[2]
+        if b[0] == '*' and not has_var(b[1], var):
+            return integ(('/', ('/', a, b[1]), b[2]), var, depth)
+        if b[0] == '*' and not has_var(b[2], var):
+            return integ(('/', ('/', a, b[2]), b[1]), var, depth)
         if not has_var(b, var):
             ia = integ(a, var, depth)
             return ('/', ia, b) if ia is not None else None
@@ -332,15 +344,36 @@ def integ(n, var='x', depth=0):
             pass
         if not has_var(a, var):
             if b[0] == 'sqrt':
+                F = _invroot(a, b[1], var)
+                if F is not None:
+                    return F
                 return integ(('*', a, ('^', b[1], ('/', ('n', -1), ('n', 2)))),
                              var, depth)
             if b[0] == '^':
                 e = _const(b[2], var)
                 if e is not None and e != 0:
                     return integ(('*', a, ('^', b[1], _negexp(b[2]))), var, depth)
-        return integ_rational(a, b, var, depth)
+        F = integ_rational(a, b, var, depth)
+        if F is None:
+            F = _usub(n, var, depth)
+        return F
     if t == '^':
         a = n[1]; b = n[2]
+        if not has_var(a, var) and has_var(b, var):
+            lc = linear_coeff(b, var)
+            if lc is not None and lc[0] != 0 and a != ('n', 0):
+                F = ('/', n, ('ln', a))
+                return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
+        if a[0] in ('sin', 'cos') and b[0] == 'n' and isinstance(b[1], int) \
+                and b[1] >= 3 and b[1] % 2:
+            F = _oddtrigpow(a, b[1], var, depth)
+            if F is not None:
+                return F
+        if a[0] in ('tan', 'cot') and b[0] == 'n' and isinstance(b[1], int) \
+                and b[1] >= 3:
+            F = _tanpow(a, b[1], var, depth)
+            if F is not None:
+                return F
         if b == ('n', 2) and a[0] in ('sec', 'cosec', 'sech'):
             lc = linear_coeff(a[1], var)
             if lc is not None and lc[0] != 0:
@@ -374,8 +407,13 @@ def integ(n, var='x', depth=0):
                 p = e + 1
                 return ('/', ('^', a, ('n', p)), ('n', p * lc[0]))
             if e < 0 and e == int(e):
-                return integ_rational(('n', 1), ('^', a, ('n', int(-e))), var, depth)
-        return None
+                F = _quadpow(a, int(-e), var)
+                if F is not None:
+                    return F
+                F = integ_rational(('n', 1), ('^', a, ('n', int(-e))), var, depth)
+                if F is not None:
+                    return F
+        return _usub(n, var, depth)
     arg = n[1]
     lc = linear_coeff(arg, var)
     if lc is None or lc[0] == 0:
@@ -398,6 +436,8 @@ def integ(n, var='x', depth=0):
         F = ('ln', ('abs', ('+', ('sec', arg), ('tan', arg))))
     elif t == 'cosec':
         F = ('neg', ('ln', ('abs', ('+', ('cosec', arg), ('cot', arg)))))
+    elif t == 'tanh':
+        F = ('ln', ('cosh', arg))
     elif t == 'sech':
         F = ('*', ('n', 2), ('atan', ('exp', arg)))
     elif t == 'coth':
@@ -409,7 +449,7 @@ def integ(n, var='x', depth=0):
     else:
         if _liate(n, var) <= 1:
             return _byparts(n, ('n', 1), var, depth)
-        return None
+        return _usub(n, var, depth)
     return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
 
 def _at(tree, val, deg, var):
@@ -523,3 +563,269 @@ def solve(tree, var='x', deg=False):
         i += 1
     roots.sort()
     return roots
+
+
+# ---- extra standard forms -------------------------------------------------
+
+MAXSUB = 8         # candidate substitutions tried
+SUBDEPTH = 2       # nesting allowed for substitution
+BIG = 1e6          # probe used to spot a divergent improper integral
+
+def _scaled(F, sign, consts):
+    k = ('n', sign)
+    for c in consts:
+        k = ('*', k, c)
+    return F if k == ('n', 1) else ('*', k, F)
+
+def _oddtrigpow(a, m, var, depth):
+    # sin^(2k+1) u = sin u (1 - cos^2 u)^k   (and the cos mirror)
+    other = 'cos' if a[0] == 'sin' else 'sin'
+    k = (m - 1) // 2
+    body = ('-', ('n', 1), ('^', (other, a[1]), ('n', 2)))
+    node = ('*', a, ('^', body, ('n', k)))
+    try:
+        node = caspoly.expand(node)
+    except Exception:
+        return None
+    return integ(node, var, depth + 1)
+
+def _tanpow(a, m, var, depth):
+    # tan^m u = tan^(m-2) u (sec^2 u - 1)
+    other = 'cosec' if a[0] == 'cot' else 'sec'
+    sgn = -1 if a[0] == 'cot' else 1
+    body = ('-', ('^', (other, a[1]), ('n', 2)), ('n', 1))
+    node = ('*', ('^', a, ('n', m - 2)), body)
+    if sgn < 0:
+        node = ('neg', node)
+    try:
+        node = caspoly.expand(node)
+    except Exception:
+        return None
+    return integ(node, var, depth + 1)
+
+_FF = {('sin', 'cos'): (1, 1), ('cos', 'sin'): (1, -1),
+       ('sin', 'sin'): (-1, 0), ('cos', 'cos'): (1, 0)}
+
+def _factorform(a, b, var, depth):
+    # sin ax cos bx etc. through the factor formulae
+    if a[0] not in ('sin', 'cos') or b[0] not in ('sin', 'cos'):
+        return None
+    la = linear_coeff(a[1], var)
+    lb = linear_coeff(b[1], var)
+    if la is None or lb is None or la[0] == 0 or lb[0] == 0:
+        return None
+    S = ('+', a[1], b[1])
+    D = ('-', a[1], b[1])
+    h = ('n', 2)
+    if a[0] == 'sin' and b[0] == 'cos':
+        node = ('+', ('/', ('sin', S), h), ('/', ('sin', D), h))
+    elif a[0] == 'cos' and b[0] == 'sin':
+        node = ('-', ('/', ('sin', S), h), ('/', ('sin', D), h))
+    elif a[0] == 'cos':
+        node = ('+', ('/', ('cos', S), h), ('/', ('cos', D), h))
+    else:
+        node = ('-', ('/', ('cos', D), h), ('/', ('cos', S), h))
+    return integ(caseng.simplify(node), var, depth + 1)
+
+def _quadco(q, var):
+    p = caspoly.poly(caseng.simplify(q), var)
+    if p is None or len(p) != 3 or not caspoly.rzero(p[1]):
+        return None
+    return (p[2], p[0])
+
+def _invroot(c, q, var):
+    # c / sqrt(A x^2 + C) -> arcsin / arsinh / arcosh form
+    co = _quadco(q, var)
+    if co is None:
+        return None
+    A, C = co
+    if caspoly.rzero(A):
+        return None
+    root = lambda r: caseng.simplify(('sqrt', caspoly.ratnode(r)))
+    k = root(A if A[0] > 0 else caspoly.rneg(A))
+    x = ('v', var)
+    if A[0] < 0 and C[0] > 0:
+        a = root(caspoly.rdiv(C, caspoly.rneg(A)))
+        F = ('asin', ('/', x, a))
+    elif A[0] > 0 and C[0] > 0:
+        a = root(caspoly.rdiv(C, A))
+        F = ('asinh', ('/', x, a))
+    elif A[0] > 0 and C[0] < 0:
+        a = root(caspoly.rdiv(caspoly.rneg(C), A))
+        F = ('acosh', ('/', x, a))
+    else:
+        return None
+    return caseng.simplify(('/', ('*', c, F), k))
+
+def _cands(n, var, out):
+    # every sub-expression holding var, innermost first
+    t = n[0]
+    if t == 'n' or t == 'v':
+        return out
+    if len(n) >= 2:
+        _cands(n[1], var, out)
+    if len(n) >= 3:
+        _cands(n[2], var, out)
+    if has_var(n, var) and n not in out:
+        out.append(n)
+    return out
+
+def _usub(n, var, depth):
+    # integral of g'(x) h(g(x)) by substituting u = g(x)
+    if depth >= SUBDEPTH:
+        return None
+    whole = caseng.simplify(n)
+    cands = _cands(whole, var, [])
+    i = 0
+    tried = 0
+    while i < len(cands) and tried < MAXSUB:
+        u = cands[i]
+        i += 1
+        if u == whole or u == ('v', var):
+            continue
+        tried += 1
+        try:
+            du = caseng.simplify(caseng.diff(u, var))
+            if du == ('n', 0):
+                continue
+            k = caseng.simplify(('/', whole, du))
+        except Exception:
+            continue
+        k2 = caseng.subst_tree(k, u, ('v', '_u'))
+        if has_var(k2, var):
+            continue
+        F = integ(k2, '_u', depth + 1)
+        if F is None:
+            continue
+        try:
+            return caseng.simplify(caseng.subst(F, '_u', u))
+        except Exception:
+            continue
+    return None
+
+# ---- exact definite integrals --------------------------------------------
+
+def _limval(F, var, a):
+    try:
+        return caseng.simplify(caseng.subst(F, var, caseng.simplify(a)))
+    except Exception:
+        return None
+
+def _atinf(F, var, sgn):
+    import casalg
+    r = casalg.limit(F, var, None, sgn)
+    if r is not None:
+        return r
+    probe = BIG * sgn
+    try:
+        v = caseng.evalf(F, probe, False, {var: probe})
+    except Exception:
+        return None
+    if isinstance(v, complex) or v != v:
+        return None
+    try:
+        v2 = caseng.evalf(F, probe * 10.0, False, {var: probe * 10.0})
+    except Exception:
+        return None
+    if abs(v2) > abs(v) + 1e-3 and abs(v2) > 1.0:
+        return 'div'
+    if abs(v2 - v) > 1e-4 * (1.0 + abs(v)):
+        return None
+    ex = caseng.exactstr(v2, 1e-6)
+    if ex is None:
+        return ('n', v2)
+    import caslex
+    return caseng.simplify(caslex.parse(ex))
+
+def defint_exact(tree, a, b, var='x'):
+    # exact value of the definite integral, None when it cannot be done.
+    # a or b may be the strings 'inf' / '-inf'.
+    F = integ(tree, var)
+    if F is None:
+        return None
+    F = tidy(F)
+    vals = []
+    for end, sgn in ((a, 1), (b, 1)):
+        if end == 'inf':
+            v = _atinf(F, var, 1)
+        elif end == '-inf':
+            v = _atinf(F, var, -1)
+        else:
+            v = _limval(F, var, end)
+            if v is not None and caseng.vars_in(v):
+                v = None
+            if v is not None:
+                try:
+                    caseng.evalf(v, 0.0)
+                except Exception:
+                    import casalg
+                    v = casalg.limit(F, var, caseng.simplify(end))
+        if v == 'div':
+            raise ValueError('the integral diverges')
+        if v is None:
+            return None
+        vals.append(v)
+    return tidy(('-', vals[1], vals[0]))
+
+def volume(f, a, b, var='x'):
+    return defint_exact(caseng.simplify(('*', ('v', 'pi'), ('^', f, ('n', 2)))),
+                        a, b, var)
+
+def meanvalue(f, a, b, var='x'):
+    v = defint_exact(f, a, b, var)
+    if v is None:
+        return None
+    return tidy(('/', v, ('-', caseng.simplify(b), caseng.simplify(a))))
+
+def arclength(f, a, b, var='x'):
+    d = caseng.simplify(caseng.diff(f, var))
+    g = caseng.simplify(('sqrt', ('+', ('n', 1), ('^', d, ('n', 2)))))
+    return defint_exact(g, a, b, var)
+
+# ---- implicit and parametric differentiation ------------------------------
+
+def diff_implicit(lhs, rhs, xv='x', yv='y'):
+    F = caseng.simplify(('-', lhs, rhs))
+    fx = caseng.simplify(caseng.diff(F, xv))
+    fy = caseng.simplify(caseng.diff(F, yv))
+    if fy == ('n', 0):
+        return None
+    return tidy(('neg', ('/', fx, fy)))
+
+def diff_param(xt, yt, tv='t'):
+    dx = caseng.simplify(caseng.diff(xt, tv))
+    if dx == ('n', 0):
+        return None
+    return tidy(('/', caseng.diff(yt, tv), dx))
+
+
+MAXRED = 6         # reduction-formula depth for 1/(A x^2 + C)^n
+
+def _quadpow(q, n, var):
+    # int dx / (A x^2 + C)^n by the standard reduction formula
+    if n < 1 or n > MAXRED:
+        return None
+    co = _quadco(q, var)
+    if co is None:
+        return None
+    A, C = co
+    if A[0] <= 0 or C[0] <= 0:
+        return None
+    a2 = caspoly.rdiv(C, A)
+    root = caseng.simplify(('sqrt', caspoly.ratnode(a2)))
+    x = ('v', var)
+    base = ('+', ('^', x, ('n', 2)), caspoly.ratnode(a2))
+    F = ('/', ('atan', ('/', x, root)), root)
+    k = 2
+    while k <= n:
+        c1 = caspoly.rdiv(caspoly.R1, caspoly.rmul((2 * (k - 1), 1), a2))
+        c2 = caspoly.rmul(caspoly.rdiv((2 * k - 3, 1), (2 * (k - 1), 1)),
+                          caspoly.rdiv(caspoly.R1, a2))
+        F = ('+', ('*', caspoly.ratnode(c1),
+                   ('/', x, ('^', base, ('n', k - 1)))),
+             ('*', caspoly.ratnode(c2), F))
+        k += 1
+    scale = caspoly.rdiv(caspoly.R1, (A[0] ** n, A[1] ** n))
+    if scale is None:
+        return None
+    return tidy(('*', caspoly.ratnode(scale), F))

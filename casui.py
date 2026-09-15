@@ -454,15 +454,28 @@ def _cas_op(op, tree, s):
         r = cascalc.integ(tree)
         if r is None:
             return [('!', 'no elementary integral; use definite')]
-        return [('m', _tidy(r)), ('w', '+ c')]
+        return [('m', _tidy(r)), '+ c']
     if op == 3:
         v = casutil.ask('a,b', 'limits')
         if v is None:
             return None
+        lo = ('n', v[0])
+        hi = ('n', v[1])
+        try:
+            ex = cascalc.defint_exact(tree, lo, hi)
+        except ValueError as e:
+            return [('!', str(e))]
+        except Exception:
+            ex = None
+        if ex is not None:
+            return [('m', ex), ('w', 'exact: F(b) - F(a)'),
+                    ('w', 'from ' + casutil.fmt(v[0]) + ' to ' + casutil.fmt(v[1]))]
         r = cascalc.defint(tree, v[0], v[1], casutil.DEG)
         if r is None:
             return [('!', 'cannot evaluate over that range')]
-        return ['integral = ' + casutil.fmt(r), ('w', 'from ' + casutil.fmt(v[0]) + ' to ' + casutil.fmt(v[1]))]
+        return ['integral = ' + casutil.fmt(r),
+                ('!', 'numeric (Simpson) - no exact antiderivative'),
+                ('w', 'from ' + casutil.fmt(v[0]) + ' to ' + casutil.fmt(v[1]))]
     if op == 4:
         v = casutil.ask('a', 'at x =')
         if v is None:
@@ -554,12 +567,97 @@ def _cas_op(op, tree, s):
         import plot
         plot.run([tree], -6.0, 6.0, 'y', 'y = ' + s)
         return None
+    return _cas_op2(op, tree, s)
+
+def _roots_lines(roots, exact):
+    lines = ['x = ' + caseng.tostr(r) for r in roots]
+    for r in roots:
+        lines.append(('mw', r))
+    if not exact:
+        lines.append(('!', 'numeric roots - no exact form found'))
+    return lines
+
+def _cas_op2(op, tree, s):
+    import casalg
+    import cassolve
+    if op == 15:
+        return [('m', casalg.expand(tree)), ('w', 'compound angles and log laws used')]
+    if op == 16:
+        r = casalg.complete_square(tree)
+        if r is None:
+            return [('!', 'not a quadratic in x')]
+        return [('m', r), ('w', 'a(x + b/2a)^2 + (c - b^2/4a)')]
+    if op == 17:
+        r = casalg.rationalise(tree)
+        if r is None:
+            return [('!', 'nothing to rationalise')]
+        return [('m', r), ('w', 'multiplied top and bottom by the conjugate')]
+    if op == 18:
+        r = casalg.single_fraction(tree)
+        if r is None:
+            return [('!', 'cannot write as one fraction')]
+        return [('m', r), ('w', 'over a common denominator, cancelled')]
+    if op == 19:
+        roots = cassolve.solve_exact(tree, 'x')
+        if roots:
+            return _roots_lines(roots, True)
+        roots, exact = cassolve.solve_any(tree, 'x', casutil.DEG)
+        if not roots:
+            return [('!', 'no solutions found')]
+        return _roots_lines(roots, exact)
+    if op == 20:
+        g = cassolve.general_trig(tree, 'x', 'n')
+        if not g:
+            return [('!', 'not a trig equation in one angle')]
+        lines = ['x = ' + caseng.tostr(r) for r in g]
+        lines.append(('w', 'n is any integer'))
+        return lines
+    if op == 21:
+        v = casutil.ask('terms', 'how many terms')
+        if v is None:
+            return None
+        r = casalg.maclaurin(tree, 'x', int(v[0]))
+        if r is None:
+            return [('!', 'no Maclaurin series at x = 0')]
+        return [('m', r), ('w', 'sum f(k)(0) x^k / k!')]
+    if op == 22:
+        v = casutil.ask('a(x)', 'x -> (or inf)')
+        if v is None:
+            return None
+        a = v[0]
+        if a == ('v', 'inf'):
+            r = casalg.limit(tree, 'x', None, 1)
+        elif a == ('neg', ('v', 'inf')):
+            r = casalg.limit(tree, 'x', None, -1)
+        else:
+            r = casalg.limit(tree, 'x', a)
+        if r is None:
+            return [('!', 'limit not found')]
+        return [('m', r), ('w', 'limit as x -> ' + caseng.tostr(a))]
+    if op == 23:
+        v = casutil.ask('a(x)', 'x =')
+        if v is None:
+            return None
+        return [('m', casalg.subst_exact(tree, 'x', v[0])),
+                ('w', 'x = ' + caseng.tostr(v[0]))]
+    if op == 24:
+        r = casalg.rearrange(tree, 'x', 'y')
+        if r is not None:
+            return [('m', r), ('w', 'from y = f(x)')]
+        br = cassolve.solve_exact(('-', tree, ('v', 'y')), 'x')
+        if br:
+            return [('m', b) for b in br] + [('w', 'from y = f(x), both branches')]
+        return [('!', 'cannot make x the subject')]
     return None
 
 CAS_OPS = ['d/dx', 'd2/dx2', 'integrate', 'definite integral a..b',
            'tangent + normal at x=a', 'stationary points', 'simplify', 'expand',
            'factorise', 'partial fractions', 'solve f(x)=0', 'solve f(x)=k',
-           'evaluate at x', 'table', 'plot']
+           'evaluate at x', 'table', 'plot',
+           'expand trig / log', 'complete the square', 'rationalise',
+           'single fraction', 'solve exact f(x)=0', 'general solution (trig)',
+           'series (Maclaurin)', 'limit x -> a', 'substitute x = a',
+           'rearrange for x']
 
 def cas_section():
     while True:
