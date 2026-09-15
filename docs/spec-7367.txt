@@ -1,0 +1,162 @@
+== A Proof
+A1: Construct proofs using mathematical induction; contexts include sums of series, divisibility, and powers of matrices.
+== B Complex numbers
+B1: Solve any quadratic equation with real coefficients; solve cubic or quartic equations with real coefficients (given sufficient information to deduce at least one root for cubics or at least one complex root or quadratic factor for quartics).
+B2: Add, subtract, multiply and divide complex numbers in the form x + iy with x and y real; understand and use the terms ‘real part’ and ‘imaginary part’.
+B3: Understand and use the complex conjugate; know that non-real roots of polynomial equations with real coefficients occur in conjugate pairs. Knowledge/skill
+B4: Use and interpret Argand diagrams.
+B5: Convert between the Cartesian form and the modulus-argument form of a complex number (knowledge of radians is assumed).
+B6: Multiply and divide complex numbers in modulus-argument form (knowledge of radians and compound angle formulae is assumed).
+B7: Construct and interpret simple loci in the Argand diagram such as z − a > r and arg z − a = � (knowledge of radians is assumed). Knowledge/skill
+B8: Understand de Moivre’s theorem and use it to find multiple angle formulae and sums of series.
+B9: Know and use the definition e = cos� + isin� and the form z = re
+B10: Find the n distinct n th roots of re for r ≠ 0 and know that they form the vertices of a regular n -gon in the Argand diagram.
+B11: Use complex roots of unity to solve geometric problems.
+== C Matrices
+C1: Add, subtract and multiply conformable matrices; multiply a matrix by a scalar.
+C2: Understand and use zero and identity matrices.
+C3: Use matrices to represent linear transformations in 2D; successive transformations; single transformations in 3D (3D transformations confined to reflection in one of x = 0, y = 0, z = 0 or rotation about one of the coordinate axes) (knowledge of 3D vectors is assumed).
+C4: Find invariant points and lines for a linear transformation.
+C5: Calculate determinants of 2 × 2 and 3 × 3 matrices and interpret as scale factors, including the effect on orientation.
+C6: Understand and use singular and non-singular matrices; properties of inverse matrices. Calculate and use the inverse of non-singular 2 × 2 matrices and 3 × 3 matrices.
+C7: Solve three linear simultaneous equations in three variables by use of the inverse matrix.
+C8: Interpret geometrically the solution and failure of solution of three simultaneous linear equations.
+C9: Factorisation of determinants using row and column operations.
+C10: Find eigenvalues and eigenvectors of 2 × 2 and 3 × 3 matrices. Find and use the characteristic equation. Understand the geometrical significance of eigenvalues and eigenvectors.
+C11: Diagonalisation of matrices; M = UDU-1; M n = UD n U-1; when eigenvalues are real.
+== D Further algebra and functions
+D1: Understand and use the relationship between roots and coefficients of polynomial equations up to quartic equations.
+D2: Form a polynomial equation whose roots are a linear transformation of the roots of a given polynomial equation (of at least cubic degree).
+D3: Understand and use formulae for the sums of integers, squares and cubes and use these to sum other series.
+D4: Understand and use the method of differences for summation of series including use of partial fractions.
+D5: Find the Maclaurin series of a function including the general term.
+D6: Recognise and use the Maclaurin series for e, ln 1 + x, sin x, cos x, and 1 + x, and be aware of the range of values of x for which they are valid (proof not required).
+D7: Evaluation of limits using Maclaurin series or l'Hôpital's rule.
+D8: Inequalities involving polynomial equations (cubic and quartic).
+D9: Solving inequalities such as cx + d < ex + f algebraically.
+D10: Modulus of functions and associated inequalities.
+D11: Graphs of y = f x, y = f x for given y = f x
+D12: Graphs of rational functions of form cx + d; asymptotes, points of intersection with coordinate axes or other straight lines; associated inequalities.
+D13: Graphs of rational functions of form, including cases when some of these coefficients are zero; asymptotes parallel to coordinate axes; oblique asymptotes.
+D14: Using quadratic theory (not calculus) to find the possible values of the function and coordinates of the stationary points of the graph for rational functions of form
+D15: Sketching graphs of curves with equations y = 4ax, 2 + 2 = 1, 2 − =1, xy = c2 including intercepts with axes and equations of asymptotes of hyperbolas.
+D16: Single transformations of curves involving translations, stretches parallel to coordinate axes and reflections in the coordinate axes and the lines y = ± x. Extend to composite transformations including rotations and enlargements.
+== E Further calculus
+E1: Evaluate improper integrals where either the integrand is undefined at a value in the range of integration or the range of integration extends to infinity.
+E2: Derive formulae for and calculate volumes of revolution.
+E3: Understand and evaluate the mean value of a function.
+E4: Integrate using partial fractions (extend to quadratic factors ax + c in the denominator).
+E5: Differentiate inverse trigonometric functions.
+E6: Integrate functions of the form a − x 2 and a + x and be able to choose trigonometric substitutions to integrate associated functions.
+E7: Arc length and area of surface of revolution for curves expressed in Cartesian or parametric coordinates.
+E8: Derivation and use of reduction formulae for integration.
+E9: The limits lim x e and lim x ln x where k > 0, applied to improper integrals
+== F Further vectors
+F1: Understand and use the vector and Cartesian forms of an equation of a straight line in 3D.
+F2: Understand and use the vector and Cartesian forms of the equation of a plane.
+F3: Calculate the scalar product and use it to calculate the angle between two lines, to express the equation of a plane, and to calculate the angle between two planes and the angle between a line and a plane.
+F4: Check whether vectors are perpendicular by using the scalar product.
+F5: Calculate and understand the properties of the vector product. Understand and use the equation of a straight line in the form (r – a) × b = 0. Use vector products to find the area of a triangle.
+F6: Find the intersection of two lines. Find the intersection of a line and a plane. Calculate the perpendicular distance between two lines, from a point to a line and from a point to a plane.
+== G Polar coordinates
+G1: Understand and use polar coordinates and be able to convert between polar and Cartesian coordinates.
+G2: Sketch curves with r given as a function of �, including use of trigonometric functions.
+G3: Find the area enclosed by a polar curve.
+== H Hyperbolic functions
+H1: Understand the definitions of hyperbolic functions sinh x, cosh x and tanh x, including their domains and ranges, and be able to sketch their graphs. Understand the definitions of hyperbolic functions sech x, cosech x and coth x, including their domains and ranges.
+H2: Differentiate and integrate hyperbolic functions.
+H3: Understand and be able to use the definitions of the inverse hyperbolic functions and their domains and ranges.
+H4: Derive and use the logarithmic forms of the inverse hyperbolic functions.
+H5: Integrate functions of the form x + a 2 and x − a and be able to choose substitutions to integrate associated functions.
+H6: sinh x Understand and use tanh x ≡ coshx Understand and use cosh2 x − sinh2 x ≡ 1; sech2 x ≡ 1 − tanh2 x and cosech2 x ≡ coth2 x − 1, cosh 2 x ≡ cosh2 x + sinh2 x, sinh 2 x ≡ 2sinh xcosh x
+H7: Construct proofs involving hyperbolic functions and identities.
+== I Differential equations
+I1: Find and use an integrating factor to solve differential equations of the form +P x y=Q x and recognise when it is appropriate to do so.
+I2: Find both general and particular solutions of differential equations.
+I3: Use differential equations in modelling in kinematics and in other contexts.
+I4: Solve differential equations of the form y " + a y′ + by = 0 where a and b are constants, by using the auxiliary equation.
+I5: Solve differential equations of the form y " + ay′ + by = f x where a and b are constants by solving the homogeneous case and adding a particular integral to the complementary function (in cases where f x is a polynomial, exponential or trigonometric function).
+I6: Understand and use the relationship between the cases when the discriminant of the auxiliary equation is positive, zero and negative and the form of solution of the differential equation.
+I7: Solve the equation for simple harmonic motion ẍ = − � x and relate the solution to the motion.
+I8: Model damped oscillations using 2nd order differential equations and interpret their solutions. Understand light, critical and heavy damping and be able to determine when each will occur.
+I9: Analyse and interpret models of situations with one independent variable and two dependent variables as a pair of coupled 1st order simultaneous equations and be able to solve them, for example predator-prey models.
+I10: Use of Hooke’s Law with T = kx to formulate a differential equation for simple harmonic motion, where k is a constant.
+I11: Use models for damped motion where the damping force is proportional to the velocity.
+== J Numerical methods
+J1: Mid-ordinate rule and Simpson’s rule for integration.
+J2: Euler’s step by step method for solving first order differential equations.
+J3: Improved Euler method for solving first order differential equations. yr + 1 = yr − 1 + 2hf xr yr, xr + 1 = xr + h
+== MA Dimensional analysis
+MA1: Finding dimensions of quantities; checking for dimensional consistency.
+MA2: Prediction of formulae; finding powers in potential formulae.
+== MB Momentum and collisions
+MB1: Conservation of momentum for linear motion and cases where velocities are given as one or two dimensional vectors (problems which require resolving).
+MB2: Coefficient of restitution and Newton’s Experimental Law. Use in direct collisions and impacts with a fixed smooth surface. Problems which require resolving.
+MB3: Impulse and its relation to momentum. Use of Ft = mv − mu. Problems which require resolving.
+MB4: Impulse for variable forces. One dimension only. Use of I = ∫ Fdt.
+== MC Work, energy and power
+MC1: Work done by a force acting in the direction of motion or directly opposing the motion. Use of W D = Fd cos �
+MC2: Gravitational potential energy. Use in conservation of energy problems.
+MC3: Kinetic energy. Use in conservation of energy problems.
+MC4: Hooke’s Law including using modulus of elasticity. Use of T = kx or T = l x
+MC5: Work done by a variable force. Use of W D = ∫ Fdx. Use in conservation of energy problems.
+MC6: Elastic potential energy using modulus of elasticity. Use of EPE = 2 and Use in conservation of energy problems.
+MC7: Power. Use of P = Fv
+== MD Circular motion
+MD1: Motion of a particle moving in a circle with constant speed (knowledge of radians assumed).
+MD2: Understand the definition of angular speed. Use both radians and revolutions per unit time.
+MD3: Relationships between speed, angular speed, radius and acceleration. Use of v = r�, a = r�2 and a = vr
+MD4: Use position, velocity and acceleration as vectors in the context of circular motion.
+MD5: Conical pendulum, with one or two strings.
+MD6: Circular motion in a vertical plane. Includes conditions to complete vertical circles. Use of conservation of energy in this context.
+== ME Centres of mass and moments
+ME1: Centre of mass for a system of particles.
+ME2: Centre of mass for a composite body.
+ME3: Centre of mass of a lamina by integration.
+ME4: Centres of mass of bodies formed by rotating a region about the x -axis.
+ME5: Conditions for sliding and toppling. Problems including suspension and on an inclined plane.
+ME6: Determine the forces acting on a rigid body in equilibrium. Use of moments and couples.
+== SA Discrete random variables (DRVs) and expectation
+SA1: Understand DRVs with distributions given in the form of a table or function.
+SA2: Evaluate probabilities for a DRV.
+SA3: Evaluate measures of average and spread for a DRV to include mean, variance, standard deviation, mode and median.
+SA4: Understand expectation and know the formulae: E X = ∑ xi pi; E X Var X = E X − E X
+SA5: Understand expectation of linear functions of DRVs and know the formulae: E aX + b = aE X + b and Var aX + b = a Var X Know the formula E g X = ∑ g x i pi Find the mean, variance and standard deviation for functions of a DRV such as E 5 X, E 18 X, Var 6 X
+SA6: Know the discrete uniform distribution defined on the set 1,2, …, n. Understand when this distribution can be used as a model.
+SA7: Proof of mean and variance of discrete uniform distribution.
+== SB Poisson distribution
+SB1: Understand conditions for a Poisson distribution to model a situation. Understand terminology X Po �.
+SB2: Know the Poisson formula and calculate Poisson probabilities using the formula or equivalent calculator function.
+SB3: Know mean, variance and standard deviation of a Poisson distribution. Use the result that, if X Po � then the mean and variance of X are equal.
+SB4: Understand the distribution of the sum of independent Poisson distributions.
+SB5: Formulate hypotheses and carry out a hypothesis test of a population mean from a single observation from a Poisson distribution using direct evaluation of Poisson probabilities.
+== SC Type I and Type II errors
+SC1: Understand Type I and Type II errors and define in context. Calculate the probability of making a Type I error from tests based on a Poisson or Binomial distribution. Calculate probability of making Type I error from tests based on a normal distribution.
+SC2: Understand the power of a test. Calculations of P(Type II error) and power for a test for tests based on a normal, Binomial or a Poisson distribution.
+== SD Continuous random variables (CRVs)
+SD1: Understand and use a probability density function, f x, for a continuous distribution and understand the differences between discrete and continuous distributions. Understand and use distributions of random variables that are part discrete and part continuous.
+SD2: Find the probability of an observation lying in a specified interval.
+SD3: Find the median and quartiles for a given probability density function, f x.
+SD4: Find the mean, variance and standard deviation for a given pdf, f x. Know the formulae E X = ∫ xf x dx, E X = ∫ x f x dx, Var X = E X − E X
+SD5: Understand the expectation and variance of linear functions of CRVs and know the formulae: E aX + b = aE X + b and Var aX + b = a Var X Know the formula E g X = ∫ g x f x dx Find the mean, variance and standard deviation of functions of a continuous random variable such as E 5 X, E 18 X, Var 6 X
+SD6: Understand and use a cumulative distribution function, F x. Know the relationship between f x and F x. F x = ∫−x ∞ f t dt and f x = dx Fx
+SD7: Understand the rectangular distribution f x where a≤x≤b 0 otherwise Know the conditions for the rectangular distribution to be used as a model. Calculate probabilities from a rectangular distribution. Know proofs of mean, variance and standard deviation for a rectangular distribution.
+SD8: Know that if X and Y are independent (discrete or continuous) random variables then E X + Y = E X + E Y and Var X + Y = Var X + Var Y
+== SE Chi squared tests for association
+SE1: Construction of n × m contingency tables.
+SE2: as an approximate χ2 statistic with appropriate degrees of freedom.
+SE3: Know and use the convention that all Ei should be greater than 5.
+SE4: Identification of sources of association in the context of a question.
+SE5: Knowledge of when and how to apply Yates’ correction.
+== SF Exponential distribution
+SF1: Know the conditions for an exponential distribution to be used as a model. Know the probability density function, f x, and the cumulative distribution function, F x, for an exponential distribution.
+SF2: Calculate probabilities for an exponential distribution using F x or integration of
+SF3: Know proofs of mean, variance and standard deviation for an exponential distribution.
+SF4: Understand that the lengths of intervals between Poisson events have an exponential distribution.
+== SG Inference – one sample t - distribution
+SG1: Test for the mean of a normal distribution with unknown variance using a t -statistic with appropriate degrees of freedom.
+== SH Confidence Intervals
+SH1: Construct symmetric confidence intervals for the mean of a normal distribution with known variance.
+SH2: Construct symmetric confidence intervals from large samples, for the mean of a normal distribution with unknown variance.
+SH3: Make inferences from constructed or given confidence intervals.
+SH4: Construct symmetric confidence intervals from small samples, for the mean of a normal distribution with unknown variance using the t -distribution.
