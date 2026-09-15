@@ -1,201 +1,123 @@
-# Maths Toolkit for the Casio fx-CG100
+# Maths Toolkit for the Casio fx-CG100 (AQA 7357 + 7367)
 
 A calculator app in stock MicroPython 1.9.4 using the built-in `casioplot`.
-Three parts: an expression calculator, a computer algebra system, and 263 tools
-mapped to OCR B (MEI) A-Level Maths (H640) and Further Maths (H645).
-
-![tests](https://img.shields.io/badge/tests-7108%20checks%2C%200%20failures-brightgreen)
-![smoke](https://img.shields.io/badge/smoke-443%20checks%2C%200%20errors-brightgreen)
-![runtime](https://img.shields.io/badge/MicroPython-1.9.4-green)
-![license](https://img.shields.io/badge/license-MIT-lightgrey)
+An expression calculator with complex numbers, a CAS (simplify, expand,
+factorise, solve, differentiate, integrate, series, limits), a plotter, the
+AQA formulae booklet, and 417 tools mapped section by section to AQA A-level
+Mathematics 7357 and Further Mathematics 7367 (Core Pure + Mechanics +
+Statistics options).
 
 ## Install
 
-Copy to the root of the calculator's storage:
+Run `./deploy.sh <mountpoint>` with the calculator connected as a USB drive.
+It deletes every other `.py` in the storage root and copies these in:
+`maths.py`, `casui.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `plot.py`, `formulae.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`.
 
-- `maths.py`, `casui.py`, `casutil.py`
-- `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`
-- `pure640.py`, `purecalc.py`, `stat640.py`, `mech640.py`, `proof.py`,
-  `vcplx.py`, `matrix.py`, `vectors.py`, `polyroots.py`, `series.py`,
-  `hyper.py`, `polar.py`, `diffeq.py`, `fmmech.py`, `fmstat.py`,
-  `numeric.py`, `algos.py`, `xpure.py`, `fpt.py`
+Then on the calculator: Python app > File > Open > `maths.py` > Run.
 
-Do not copy `casioplot.py`. It is a PC stub; the calculator has the real module
-built in and the stub would shadow it. Also skip tests.py, stress.py,
-devlint.py and casioshot.py, which are desktop-only.
+## Screens
 
-Run `maths.py`.
+Home: Calculate, CAS f(x), Maths 7357, Further 7367, Formulae, Angle.
 
-## Keys
-
-| Menu | |
+| Menus | |
 | --- | --- |
 | up / down | move, wraps |
 | 1-9 | jump to entry |
-| page up / down | move seven |
-| first / last | `\|<-` and `->\|` |
+| page up / down | move a screen |
 | OK, EXE | choose |
-| back | up one level; leaves the app at the top |
+| EXIT | back |
 
-| Expression entry | |
+| Input line | |
 | --- | --- |
-| left / right | move caret |
-| start / end of line | `\|<-` and `->\|` |
-| up | recall last entry |
-| down | clear |
-| DEL | delete back |
-| back | clear; again on an empty line cancels |
-| ALPHA | letters a-z |
-| SHIFT | `sin^-1`, `cos^-1`, `tan^-1`, `ln`, `log`, `pi`, `=`, log to a base |
-| CATALOG | `!`, `abs(`, `nCr(`, `nPr(`, `sec(`, `cosec(`, `cot(`, the hyperbolics and their inverses, `sech(`, `cosech(`, `coth(`, `logb(`, `pi`, `ans`, `,` |
+| type values separated by commas in the order the field list shows | `1,-3,2` |
+| `?` | unknown, where a tool solves for it (e.g. SUVAT `0,?,9.8,?,3`) |
+| `data*` fields | as many values as you like, last field |
+| `A[3x3]` fields | nine numbers row by row; the screen shows the grid as you type |
+| `f(x)` fields | an expression; `x`, `t`, `y`, `pi`, `e`, `i`, `sqrt(`, `ln(`, `e^(` all work |
+| SHIFT | `=`, `ln(`, `log(`, `pi`, `i`, inverse trig, `logb(`, `ans` |
+| ALPHA | letters |
+| MENU | symbol list |
+| UP | recall the last entry for this tool |
+| DEL / DOWN / EXIT | delete / clear / cancel |
 
-## Settings
-
-Both are on the home menu and last for the session; the calculator cannot write
-files.
-
-**Angle mode: DEGREES / RADIANS.** Applies to all trig.
-
-**Working: SHOWN / HIDDEN.** Output lines are one of three kinds. Answers always
-show. Working shows only in SHOWN. Caveats always show, in both modes: warnings,
-domain restrictions, verification results, statements that a tool did not
-finish. 1213 lines are marked working, 640 caveat. `tests.py` asserts for all
-263 tools that HIDDEN output is a subset of SHOWN and never empty.
-
-## Modes
-
-**Calculate.** Type an expression, see a 2D preview, press OK. `ans` holds the
-last result. Exact fractions are shown under the decimal. Non-finite results
-report "undefined" or "overflow".
-
-**Calculus & Algebra.** Enter `f(x)` once, then apply operations without
-retyping: differentiate, integrate, simplify, expand, factorise, collect,
-partial fractions, solve, definite integral, evaluate, table, graph. The first
-seven are symbolic; the rest are numeric and use the angle mode.
-
-**A-Level Maths** and **Further Maths** hold the section tools below.
-
-## Tools
-
-### A-Level Maths
-
-| Section | n | Tools |
-| --- | --- | --- |
-| Pure: algebra & trig | 16 | Quadratic solver, Simultaneous eqns, Arithmetic seq/sum, Geometric seq/sum, Binomial expansion, Logarithms, Coord geometry, Circle, Trig tools, Solve a triangle, Arc length & sector, Inequalities, Surds & rationalising, Line meets circle, Sequences & behaviour, Proportion k x, k/x |
-| Pure: functions & calculus | 17 | Composite fg(x), Inverse function, Domain & range, Modulus \|f(x)\|, Graph transformations, Parametric d/dx, Parametric -> Cartesian, Implicit d/dx, Integration by substitution, Separation of variables, Stationary points, Constant of integration, Volume of revolution, Mean value of f, Improper integral, Small-angle approx, Exact trig values |
-| Statistics | 21 | Summary stats, Freq table mean/var, Discrete RV E,Var, Binomial B(n,p), Normal P(a<X<b), Inverse Normal, HT binomial prop, HT Normal mean z, PMCC + regression, Probability rules, Tree diagram + Bayes, Sampling methods, Stratified sample, Factorial / nCr, Box plot, Histogram, Cumulative freq, Scatter + regression, Venn diagram, Reduce to linear form, Distribution shape |
-| Mechanics | 15 | SUVAT solver, Projectiles, Resultant of forces, Resolve a force, Equilibrium check, Newton II F=ma, Friction F=mu R, Friction horiz plane, Friction incline, Pulley (connected), Moments / reactions, Projectile: find the launch, Variable acceleration, Distance vs displacement, Connected particles |
-| Proof | 5 | Induction: a sum, Induction: divisibility, Induction: M^n, Disprove by counterexample, Proof methods reference |
-
-### Further Maths core
-
-| Section | n | Tools |
-| --- | --- | --- |
-| Complex numbers | 10 | Arithmetic z, w, Modulus & argument, Polar / exp form, From polar (r,theta), Power z^n (De Moivre), nth roots of z, Quadratic complex roots, Argand plot, Loci in the Argand plane, de Moivre identities |
-| Matrices | 15 | Enter A, Enter B, Show A and B, A + B, A - B, k * A, A * B, Transpose A, Determinant A, Inverse A, Solve A x = b, Eigenvalues 2x2, 2D transform builder, 3D transform builder, Invariant points/lines |
-| Vectors & 3-D | 13 | Magnitude \|a\|, Dot product a.b, Angle between, Cross product a x b, Unit vector, Scalar projection, Parallel / perp test, Point to line dist, Equation of a line, Line meets plane, Point to plane dist, Angle between planes, Skew lines distance |
-| Roots of polynomials | 6 | Vieta quadratic, Vieta cubic, Vieta quartic, Quadratic roots, Numeric roots (x), Shift roots by k |
-| Series & Maclaurin | 7 | Sum of r, Sum of r^2, Sum of r^3, Maclaurin of f(x), Approx + error, Method of differences, Reference card |
-| Hyperbolic functions | 8 | Evaluate sinh, Evaluate cosh, Evaluate tanh, All three at x, arsinh (inverse), arcosh (inverse), artanh (inverse), Reference card |
-| Polar coordinates | 5 | (r,theta) -> (x,y), (x,y) -> (r,theta), Plot polar curve, Preset curves, Polar area |
-| Differential equations | 6 | First-order linear (IF), Second-order const-coeff, Particular integral, Coupled dx/dt, dy/dt, SHM recogniser, Damping classifier |
-
-### Further Maths options
-
-| Section | n | Tools |
-| --- | --- | --- |
-| Mechanics (FM) | 19 | Momentum & impulse, Restitution, Oblique impact: wall, Oblique impact: spheres, Work/Energy/Power, Projectile path (cartesian), Projectile on an incline, Circular motion, Hookes law / EPE, Elastic equilibrium/energy, Centre of mass, COM by calculus, COM standard bodies, Slide or topple, Couple, Triangle of forces, Relative motion 2-D, Dimensional analysis, Units & conversion |
-| Statistics (FM) | 25 | Discrete RV E/Var, Discrete uniform, Poisson pmf/cdf, Binomial pmf/cdf, Geometric dist, Continuous RV E/Var, cdf, median, quartiles, Mode of a pdf, Piecewise pdf, Normal P(a<X<b), Standardise z, Inverse Normal, aX+bY+c combination, nX vs X1+..+Xn, Normal prob plot, PMCC r + test, Spearman rs + test, Regression y=a+bx, Chi-squared GOF, Chi-sq association, CI for mean (z), t interval / paired, CI for proportion, z-test for mean, Simulation |
-| Numerical Methods | 20 | Newton-Raphson, Fixed-point iteration, Fixed-point diagnosis, Relaxation iteration, Cobweb / staircase, Order of convergence, Bisection, Integration (trap/mid/Simp), Integration error table, Richardson extrapolation, Aitken acceleration, Numerical derivative, Derivative error table, Newton forward differences, Euler method, Error abs/relative, Error propagation, Error in f(x), Round to s.f., Chop vs round |
-| Modelling w/ Algorithms | 15 | Bubble sort, Insertion sort, Quick sort, Bin: first-fit, Bin: first-fit decr, Graph: degrees/incidence, Dijkstra shortest, Prim MST, Kruskal MST, Max flow / min cut, Cut capacity, Critical path, Simplex (max, <=), Simplex 2-stage (>=, =), LP graph 2-D |
-| Extra Pure | 16 | Recurrence relation, Recurrence 1st order, Recurrence 2nd order, Verify a recurrence, Recurrence behaviour, Sets and notation, Group theory, Subgroups & Lagrange, Group isomorphism, 2x2 Eigen/diag, Modular arithmetic, Partial derivatives, Surface stationary pts, Tangent plane / normal, Contours & sections, 3x3 Eigen/diag |
-| Further Pure w/ Tech | 24 | Plot f(x) curve, De Moivre z^n, nth roots of z, Euler dy/dx=f(x), Runge-Kutta RK2/RK4, Tangent field, Verify a DE solution, Limit of f(x), Asymptotes incl oblique, Stationary pts & cusps, Family of curves, Envelope of a family, Arc length, gcd & lcm, Prime test, Prime factorise, Euler totient phi(n), a^b mod m, Modular inverse, Fermat & Wilson, Pythagorean triples, Pell x^2-n y^2=1, Linear Diophantine, Base -> bin/hex |
-
-## Device facts
-
-Measured on hardware with `hwcheck.py`, 2026-08-09.
-
-| | |
+| Result screen | |
 | --- | --- |
-| Recursion ceiling | 92 frames. `tests.py` caps at 38 as a margin. |
-| `getkey()` idle | `None`, not 0, over 400 samples. `casui.readkey` treats anything outside `KEYCODES` as idle. |
-| Screen | 384 x 192 |
-| `math` members | 24 of 43 present. `atan2` yes; `factorial`, `asinh`, `acosh`, `atanh`, `log2`, `trunc`, `degrees`, `radians`, `isnan`, `isinf`, `isfinite`, `copysign` no. `devlint.MATH_OK` is pinned to the measured set. |
-| Section modules | All 19 fit in RAM at once. `casui` still loads on demand. |
-| Key codes | `row*10 + col`, 48 readable. `[ON]` and `[AC]` have no code. |
-| `getkey()` cost | About 0 ms held, 8.3 ms idle ([TI-Planet](https://tiplanet.org/forum/viewtopic.php?t=27228)). Polling loops need no delay. |
+| FORMAT | cycle: answer only / with working / full precision |
+| up / down | scroll |
+| EXIT, OK | back to the input line for the same tool |
 
-Source: fx-CG100/fx-1AU GRAPH Software User's Guide v2.10, pages 141-143.
-
-Screen layout is checked by `casioshot.py`, which renders any screen to PNG on
-a PC using the toolkit's own `char_w` metric and flags overruns of the 384 px
-width. It draws with a desktop font at matched advances, so it catches
-overflow, not letterforms.
-
-## Constraints
-
-Stock MicroPython 1.9.4. No f-strings, walrus, type annotations, async or
-`yield from`. ASCII only. Only `math`, `random` and `casioplot` are importable.
-No file writes. Recursion is on expression nesting, never input length.
-`devlint.py` enforces all of this.
-
-## Structure
-
-| File | |
+| Plot | |
 | --- | --- |
-| `maths.py` | launcher |
-| `casui.py` | keys, menus, input editor, result screens, settings |
-| `casrender.py` | 2D typesetter; owns the font metric |
-| `caslex.py` | tokeniser and iterative parser |
-| `caseng.py` | simplify, differentiate, evaluate, print |
-| `cascalc.py` | integrate, solve, definite integral |
-| `caspoly.py` | exact rational polynomial algebra |
-| `casutil.py` | shared prompts, formatting, charts |
-| 19 section modules | `TOOLS` list of `(label, function)` plus `run()` |
+| arrows | pan |
+| + / - | zoom |
+| OK | trace (left/right move, up/down switch curve) |
+| 0 | reset |
 
-Expressions are tuples: `('n', 2)`, `('v', 'x')`, `('+', a, b)`, `('sin', a)`.
-The parser is iterative shunting-yard. Rationals are `(numerator, denominator)`
-pairs.
+Answers are exact when the maths is exact (`1/2`, `2sqrt(3)`, `pi/4`,
+`2-3i`) and 3 s.f. otherwise; FORMAT shows 10 s.f.
+
+## Tools: Maths 7357
+
+| Section | Tools |
+| --- | --- |
+| A Proof | Counterexample f>0, Counterexample prime, Counterexample d|f(n), Counterexample f=g |
+| B Algebra and functions | Index a^(p/q), Simplify sqrt(n), Simplify surd expr, Rationalise, Quadratic, Quadratic in f(x), Simultaneous 2 linear, Line meets quadratic, Solve f(x)=g(x), Linear inequality, Quadratic inequality, Expand, Factorise, Divide p(x) by d(x), Factor theorem, Simplify f(x)/g(x), Partial fractions, Composite fg and gf, Inverse function, Transform af(bx+c)+d, Solve |ax+b|=cx+d, Proportion y=kx^n, Plot f(x) |
+| C Coordinate geometry | Line through 2 points, Perpendicular bisect, Parallel through pt, Perpendicular thru pt, Intersect y=mx+c, Circle from general, Circle centre+radius, Circle through 3 pts, Line meets circle, Tangent to circle, Param to Cartesian, Param point at t, Plot parametric |
+| D Sequences and series | Arithmetic a,d,n, Geometric a,r,n, AP: n for Sn > k, GP: n for Sn > k, Binomial (a+bx)^n, Binomial rational n, Sigma sum f(r) a..b, Recurrence u(n+1), Terms of u(n), nCr and nPr |
+| E Trigonometry | Exact trig at x deg, Triangle SSS, Triangle SAS, Triangle ASA, Triangle SSA, Area (1/2)ab sinC, Arc and sector (rad), Arc and sector (deg), Degrees to radians, Radians to degrees, Solve trig eqn (deg), Solve trig eqn (rad), Quad in sin x (deg), Quad in cos x (deg), Quad in tan x (deg), R form a sin + b cos, Small angle (rad), Compound angle (deg), Double angle (deg), sec cosec cot (deg), arcsin arccos arctan, Identity check (rad) |
+| F Exponentials and logs | Solve a^x = b, Solve log_a x = c, log base a of x, Evaluate log expr, y = a x^n from 2 pts, y = k b^x from 2 pts, Log-log fit y=ax^n, Log-lin fit y=kb^x, N = A e^(kt) 2 pts, Evaluate A e^(kt), Compound interest |
+| G Differentiation | Derivative f' and f'', Tangent and normal, Stationary points, Inflection points, Increasing/decreasing, First principles, Parametric dy/dx, Implicit dy/dx, Connected rates, Inverse derivative, f, f' and f'' at a |
+| H Integration | Indefinite integral, Definite integral, Area under curve, Area between curves, Substitution u=g(x), Integration by parts, Riemann sum table, Separable DE, Separable DE at point, d/dx of an integral |
+| I Numerical methods | Sign change table, Newton-Raphson, Fixed point x=g(x), Bisection, Trapezium rule, Iterate to n dp |
+| J Vectors | Magnitude and angle, Components from r,th, Sum and difference, Scalar multiple k a, Unit vector, Distance A to B, Midpoint and ratio, Parallel test, Resultant of forces, Position r0 + v t, Angle between vectors |
+| K Statistical sampling | Simple random sample, Systematic sample, Stratified sample |
+| L Data presentation | Summary stats, Stats from summary, Frequency table, Grouped table, Coding x from y, Outliers, Histogram, Box plot, Cumulative frequency, Scatter PMCC regress, Regression predict |
+| M Probability | P(A or B), Conditional P(A|B), Two-way table counts, Tree two stage |
+| N Statistical distributions | Binomial P(X=k), Binomial P(X<=k), Binomial P(X>=k), Binomial P(a<=X<=b), Binomial least k, Binomial mean var, Normal P(X<x), Normal P(X>x), Normal P(a<X<b), Inverse Normal, Standardise z, Normal find mu or sd, Normal mu and sd, Normal inflection, Discrete uniform, Discrete distribution |
+| O Hypothesis testing | HT binomial lower, HT binomial upper, HT binomial two tail, z test mean lower, z test mean upper, z test mean two tail, PMCC test 1 tail, PMCC test 2 tail, Critical z value, PMCC crit value |
+| P Quantities and units | km/h to m/s, m/s to km/h, Weight and SI units |
+| Q Kinematics | SUVAT, Vertical under gravity, v-t graph points, s-t graph points, s(t) to v and a, v(t) to s and a, a(t) to v and s, Distance from v(t), Vector SUVAT, Projectile launch, Projectile at time t, Projectile angle, Projectile to a point |
+| R Forces and Newton laws | Resolve a force, Resultant of forces, Equilibrium check, Newton II F = ma, Plane dynamics, Pulley over a peg, Tow bar in a line, Lift reaction, Friction horizontal, Rough slope, Mass on rough table |
+| S Moments | Moments about a point, Beam on two supports, Tilting point |
+
+## Tools: Further 7367
+
+| Section | Tools |
+| --- | --- |
+| A Proof | Induction: sum, Induction: divisor, Induction: M^n |
+| B Complex numbers | Arithmetic z, w, Modulus-argument, From mod-arg form, Multiply in mod-arg, De Moivre z^n, nth roots of z, Roots of unity, Quadratic roots, Cubic real coeffs, Quartic real coeffs, Argand plot, Locus |z-z1| = r, Locus arg(z-z1) = t, Locus |z-z1|=|z-z2|, cos nt, sin nt powers, cos^n t, sin^n t, Complex geometric sum |
+| C Matrices | pA + qB (2x2), pA + qB (3x3), AB and BA (2x2), AB and BA (3x3), Determinant 2x2, Determinant 3x3, Inverse 2x2, Inverse 3x3, Solve 3 eqns by A^-1, Rotation 2D (deg), Reflect in y=x tan t, Stretch or enlarge 2D, Describe a 2x2, Rotation 3D (axis), Reflect 3D in plane, Invariant points/lines, Eigen 2x2, Eigen 3x3, Diagonalise 2x2 M^n, Diagonalise 3x3 M^n |
+| D Further algebra and functions | Vieta root sums, Power sums of roots, Roots p a + q, Roots 1/a, Roots a^2, Sum r, r^2, r^3, Sum f(r), r = a..b, Method of differences, Maclaurin series, Binomial (1+x)^p, Limit as x -> a, Solve f(x) > g(x), Solve f(x) < g(x), Graph (ax+b)/(cx+d), Graph quad / linear, Graph quad / quad, Graph f, |f|, f(|x|), Parabola y^2 = 4ax, Ellipse x2/a2+y2/b2, Hyperbola x2/a2-y2/b2, Rect hyperbola xy=c^2, Transform y = f(x) |
+| E Further calculus | Integral to infinity, Singular endpoint int, Volume about x-axis, Volume about y-axis, Mean value of f, Integrate by partials, d/dx inverse trig, Int 1/sqrt(a2-x2), Int 1/(a2+x2), Arc length y=f(x), Arc length parametric, Surface area x-axis, Surface area param, Reduction x^n e^x, Reduction sin^n, Reduction cos^n, Reduction tan^n, Reduction (ln x)^n, Limit x^k e^-x, Limit x^k ln x |
+| F Further vectors | Line from two points, Line to cartesian, Plane from 3 points, Plane point + normal, Angle between lines, Angle line and plane, Angle between planes, Perpendicular check, Vector product, Area of triangle, Is p on (r-a)xb=0, Intersect two lines, Distance two lines, Line meets plane, Point to line dist, Point to plane dist |
+| G Polar coordinates | Polar to cartesian, Cartesian to polar, Plot r = f(theta), Polar area, Tangent para to axis, Tangent perp to axis |
+| H Hyperbolic functions | Six hyperbolics at x, Inverse hyperbolics, Solve a cosh+b sinh=c, Identity check at x, Plot sinh cosh tanh, d/dx hyperbolic, Integrate hyperbolic, Int 1/sqrt(x2+a2), Int 1/sqrt(x2-a2) |
+| I Differential equations | Integrating factor, Second order homogen, Second order with IVs, PI polynomial RHS, PI for k e^(px), PI for m cos + n sin, SHM from omega, Hooke law SHM, Damping classify, Coupled equations |
+| J Numerical methods | Mid-ordinate rule, Simpson's rule, Compare rules, Euler step by step, Improved Euler |
+| MA Dimensional analysis | Dimensions list, Name from M,L,T, Check consistency, Find powers a,b,c |
+| MB Momentum and collisions | Conservation 1D, Coalesce, one mass, Direct impact, e, Wall: speed and angle, Wall: velocity vector, Oblique, two spheres, Impulse 1D, Impulse 2D, Impulse of F(t), Three in a line |
+| MC Work, energy and power | Work F d cos th, KE and GPE change, Energy vs resistance, Hooke and EPE: k, Hooke and EPE: lam, Work of F(x), Power P = F v, Max speed on a slope, Accel at speed v, Elastic equilibrium, Elastic max extension |
+| MD Circular motion | Angular speed units, Rev per min to rad/s, Circle from v and r, Circle from om and r, Circle: vectors r,v,a, Conical: angle given, Conical: omega given, Conical, two strings, Banked track speeds, Banked: friction at v, Rough table circle, Vert circle: string, Vert circle: rod, Outside a sphere |
+| ME Centres of mass and moments | COM of parts m,x,y, Standard centroids, Arc/sector centroid, Lamina under y = f(x), Lamina between curves, Solid of revolution Ox, Slide or topple, slope, Push a block, Suspend a lamina, Ladder, smooth wall, Beam on two supports, Rod, hinge and string, Forces and moments |
+| SA Discrete random variables | DRV from table, DRV from formula, E and Var of aX+b, E of g(X) from table, Discrete uniform 1-n |
+| SB Poisson distribution | Poisson P(X=k), Poisson a<=X<=b, Poisson inverse, Sum of Poissons, Poisson test upper, Poisson test lower, Poisson model check |
+| SC Type I and Type II errors | Type I binomial, Type II binomial, Type I Poisson, Type II Poisson, Type I Normal, Type II Normal |
+| SD Continuous random vars | pdf E Var and check, pdf median quartiles, Mode of a pdf, cdf F(x) from a pdf, pdf P(c<X<d), E of g(X) from a pdf, Piecewise pdf, Rectangular U(a,b), E and Var of aX+b, E and Var of X+Y |
+| SE Chi squared association | Chi-sq association, Expected frequencies, Chi-sq from statistic |
+| SF Exponential distribution | Exponential Exp(L), Exponential probs, Waits from a rate, Memoryless check |
+| SG Inference one sample t | t-test from data, t-test from summary |
+| SH Confidence intervals | CI mean sigma known, CI from data, CI from summary, Is mu0 in the CI, Sample size for width |
 
 ## Development
 
 Runs unmodified under desktop CPython; `casioplot.py` stubs the graphics.
 
 ```
-python3 tests.py       # 7108 checks
-python3 stress.py      # 443 checks, drives every tool
-python3 devlint.py     # MicroPython compliance, 32 files
+python3 tests.py       # engine checks + every tool case
+python3 stress.py      # every tool with odd inputs, must not crash
+python3 devlint.py     # MicroPython 1.9.4 compliance for the device files
+python3 casioshot.py   # renders screens to shots/*.png
+python3 mkreadme.py    # regenerates this file
 ```
 
-`tests.py` auto-discovers `tests_*.py`, each exposing
-`SECTIONS = [(label, fn)]` where `fn` takes the harness object.
-
-Adding a tool: add it to the module's `TOOLS`, add assertions to `tests.py`,
-add help text to `casui.HELP`, add it to the table above. Tests enforce the
-first and the last.
-
-## Not covered
-
-`SPEC_AUDIT.md` checks all 730 H640 and H645 content statements against the
-code. Nine have nothing behind them.
-
-| Code | Statement | Reason |
-| --- | --- | --- |
-| `D14` | Clean data: missing values, errors, outliers | Not a calculator task |
-| `SH5` | Hypothesis test for an average using the Wilcoxon signed rank test | Needs an exact critical-value table that could not be verified to the standard the PMCC and Spearman tables were held to |
-| `L5` | Recognise when a linear programming problem requires an integer solution | Not a calculator task |
-| `L6` | Formulate a range of network problems as linear programming problems | Not a calculator task |
-| `N13` | Explore network algorithms through their LP formulations | Not a calculator task, for the same reason as `L6` |
-| `L11` | Use a visualisation of a three-dimensional linear programming problem | Out of scope for the hardware |
-| `L16` | Handle variables which may be negative | Not built |
-| `c2` | Use software to produce a tangent to a curve at a variable point | Out of scope for the hardware |
-| `T10` | Solve other Diophantine equations | Partly, and open-ended as stated |
-
-## Probes
-
-`hwcheck.py`, `keyprobe.py`, `calib_screen.py`, `fontmetrics.py` and
-`fontmetrics2.py` are one-off hardware probes, not part of the app.
-
-## License
-
-MIT.
+Design and contracts: `docs/superpowers/specs/`.
