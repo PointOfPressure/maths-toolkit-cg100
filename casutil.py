@@ -262,6 +262,9 @@ def run_tool(label, spec, fn):
     import casui
     last = ''
     while True:
+        if spec == '':
+            casui.result(label, '', lambda: call_tool(fn, []))
+            return
         text = casui.input_line(label, spec, last)
         if text is None:
             return
