@@ -81,6 +81,9 @@ def _samples(curves, kind, st):
             out.append(pts)
     elif kind == 'points':
         out.append([(p[0], p[1]) for p in curves])
+    elif kind == 'lines':
+        for pl in curves:
+            out.append([None if p is None else (p[0], p[1]) for p in pl])
     elif kind == 'bars':
         out.append([(b[0], 0.0) for b in curves] + [(b[1], b[2]) for b in curves])
     return out

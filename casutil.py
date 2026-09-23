@@ -44,6 +44,15 @@ def _sf(v, n):
         s = ('0.' + '0' * (-e - 1) + d).rstrip('0')
     return '-' + s if neg else s
 
+def _snap(x):
+    # 1.0000000000000002 -> 1.0, so a complex part prints as i, not 1i
+    if -1e15 < x < 1e15:
+        r = float(int(x + 0.5) if x >= 0 else -int(-x + 0.5))
+        d = x - r
+        if (d if d >= 0 else -d) <= 1e-12 * (r if r > 1 else (-r if r < -1 else 1.0)):
+            return r
+    return x
+
 def clean(v):
     # drop rounding noise: 2.0000000001j -> 2, 3.0 -> 3
     if isinstance(v, complex):
@@ -56,7 +65,7 @@ def clean(v):
         else:
             if are <= 1e-12 * (aim if aim > 1 else 1.0):
                 re = 0.0
-            return complex(re, im)
+            return complex(_snap(re), _snap(im))
     if isinstance(v, float) and v == v and -1e15 < v < 1e15 and v == int(v):
         return int(v)
     return v
@@ -470,6 +479,8 @@ def _check():
     assert fmt(0.123456) == '0.123' and fmt(1.5e-7, 3) == '1.5e-7'
     assert fmt(complex(2, -3)) == '2-3i' and fmt(complex(0, 1)) == 'i'
     assert fmt(complex(3, 1e-15)) == '3'
+    assert fmt(complex(0.5, 0.5)) == '1/2+i/2' and fmt(complex(1, -0.5)) == '1-i/2'
+    assert fmt(1.0000000000000002j) == 'i'
     assert fields_of('F(x,y),t')[0] == ('F(x,y)', 'e', 0, False)
     assert fields_of('a,f(x),data*,A[2x2],v[3],k?') == [
         ('a', 'n', 0, False), ('f(x)', 'e', 0, False), ('data', 'l', 0, False),
