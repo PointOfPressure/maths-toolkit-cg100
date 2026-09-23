@@ -685,8 +685,17 @@ def cas_section():
 
 # ---- sections ------------------------------------------------------------------------
 
+# A-level Maths is AQA 7357; Further Maths is OCR B (MEI) H645, grouped by paper.
 MATHS = ('mpure', 'mcalc', 'mstat', 'mmech')
-FURTHER = ('fcore', 'fcalc', 'fmech', 'fstat')
+FURTHER = (
+    ('Core Pure  Y420', ('fcore', 'fcalc')),
+    ('Mechanics  Y421/Y431', ('fmech',)),
+    ('Statistics  Y422/Y432', ('fstat',)),
+    ('Algorithms  Y433', ('falgo',)),
+    ('Numerical Methods  Y434', ('fnum',)),
+    ('Extra Pure  Y435', ('fxpure',)),
+    ('Pure with Tech  Y436', ('ffpt',)),
+)
 
 def _sections(mods):
     out = []
@@ -718,6 +727,15 @@ def qual_section(title, mods):
         code, stitle, tools = secs[sel]
         _tools_menu(code, stitle, tools)
 
+def paper_section(title, papers):
+    sel = 0
+    while True:
+        sel = menu(title, [p[0] for p in papers], sel)
+        if sel < 0:
+            return
+        ptitle, mods = papers[sel]
+        qual_section(ptitle, mods)
+
 def formulae_section():
     import formulae
     sel = 0
@@ -732,9 +750,9 @@ def main():
     sel = 0
     while True:
         angle = 'Angle: DEG' if casutil.DEG else 'Angle: RAD'
-        sel = menu('MATHS TOOLKIT  AQA 7357 + 7367',
-                   ['Calculate', 'CAS  f(x)', 'Maths 7357', 'Further 7367',
-                    'Formulae', angle], sel)
+        sel = menu('MATHS TOOLKIT  AQA 7357 + MEI H645',
+                   ['Calculate', 'CAS  f(x)', 'Maths  AQA 7357',
+                    'Further  MEI H645', 'Formulae  AQA', angle], sel)
         if sel < 0:
             return
         if sel == 0:
@@ -742,9 +760,9 @@ def main():
         elif sel == 1:
             cas_section()
         elif sel == 2:
-            qual_section('MATHS 7357', MATHS)
+            qual_section('MATHS  AQA 7357', MATHS)
         elif sel == 3:
-            qual_section('FURTHER 7367', FURTHER)
+            paper_section('FURTHER  MEI H645', FURTHER)
         elif sel == 4:
             formulae_section()
         elif sel == 5:

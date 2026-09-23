@@ -1,5 +1,7 @@
-# Critical-value tables from the AQA formulae booklet (t, chi-squared) plus
-# Normal percentage points and PMCC critical values. Lookup by upper-tail p.
+# Critical-value tables: t and chi-squared as in the AQA formulae booklet,
+# Normal percentage points and PMCC critical values (shared by AQA mstat and
+# MEI fstat), plus exact Spearman and Wilcoxon values computed for MEI fstat.
+# Lookup by upper-tail p.
 _TP = (0.1, 0.05, 0.025, 0.01, 0.005)
 _TV = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
        21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
@@ -161,12 +163,105 @@ def pmcc_crit(n, p):
         return None
     return _R[n - 4][c]
 
+# Spearman's rs, exact: largest D with P(sum d^2 <= D) <= p under H0,
+# one-tail p = 5%, 2.5%, 1%, 0.5%, n = 4 .. 20 (-1: no D is small enough).
+# Counted over all n! rank orders by a DP (not typed from a book); the
+# critical rs is 1 - 6D/(n^3 - n).
+_SD = (
+    (0, -1, -1, -1),  # n = 4
+    (2, 0, 0, -1),  # n = 5
+    (6, 4, 2, 0),  # n = 6
+    (16, 12, 6, 4),  # n = 7
+    (30, 22, 14, 10),  # n = 8
+    (48, 36, 26, 20),  # n = 9
+    (72, 58, 42, 34),  # n = 10
+    (102, 84, 64, 54),  # n = 11
+    (142, 118, 92, 78),  # n = 12
+    (188, 160, 128, 108),  # n = 13
+    (244, 210, 170, 146),  # n = 14
+    (310, 268, 222, 194),  # n = 15
+    (388, 338, 284, 248),  # n = 16
+    (478, 418, 354, 312),  # n = 17
+    (580, 512, 436, 388),  # n = 18
+    (694, 616, 530, 474),  # n = 19
+    (824, 736, 636, 572),  # n = 20
+)
+SPEAR_NMIN = 4
+SPEAR_NMAX = 3 + len(_SD)
+
+def spearman_crit(n, p):
+    # one-tail p in (0.05, 0.025, 0.01, 0.005); n = 4 .. SPEAR_NMAX.
+    # None when n or p is not tabulated, or no rs can reach level p.
+    c = _col(_RP, p)
+    if c < 0 or n < SPEAR_NMIN or n > SPEAR_NMAX:
+        return None
+    d = _SD[n - SPEAR_NMIN][c]
+    if d < 0:
+        return None
+    return 1.0 - 6.0 * d / (n * n * n - n)
+
+# Wilcoxon signed rank: exact null distribution of T (a rank sum) for n
+# non-zero differences, from the subset-sum count over ranks 1..n.
+WILC_NMAX = 50
+
+def wilcoxon_counts(n):
+    # c[t] = number of subsets of {1..n} with sum t (floats, exact to n = 50)
+    top = n * (n + 1) // 2
+    c = [0.0] * (top + 1)
+    c[0] = 1.0
+    k = 1
+    hi = 0
+    while k <= n:
+        hi += k
+        t = hi
+        while t >= k:
+            c[t] += c[t - k]
+            t -= 1
+        k += 1
+    return c
+
+def wilcoxon_cdf(n, t):
+    # P(T <= t) under H0, n = 1 .. WILC_NMAX
+    if n < 1 or n > WILC_NMAX:
+        return None
+    if t < 0:
+        return 0.0
+    c = wilcoxon_counts(n)
+    tot = 2.0 ** n
+    s = 0.0
+    i = 0
+    while i <= t and i < len(c):
+        s += c[i]
+        i += 1
+    return s / tot
+
+def wilcoxon_crit(n, p):
+    # largest t with P(T <= t) <= p (one tail), -1 if even T = 0 is too likely;
+    # None when n is outside 1 .. WILC_NMAX
+    if n < 1 or n > WILC_NMAX or p <= 0 or p >= 1:
+        return None
+    c = wilcoxon_counts(n)
+    lim = p * 2.0 ** n
+    s = 0.0
+    t = 0
+    while t < len(c):
+        s += c[t]
+        if s > lim:
+            return t - 1
+        t += 1
+    return len(c) - 1
+
 def _check():
     assert t_crit(10, 0.025) == 2.228 and t_crit(0, 0.05) == 1.645 and t_crit(42, 0.05) == 1.684
     assert chi_crit(1, 0.05) == 3.841 and chi_crit(6, 0.01) == 16.812 and chi_crit(3, 0.95) == 0.352
     assert pmcc_crit(10, 0.05) == 0.5494 and pmcc_crit(30, 0.005) == 0.4629
     assert z_crit(0.025) == 1.96 and t_crit(10, 0.03) is None
     assert len(_T) == len(_TV) and len(_C) == len(_CV)
+    assert wilcoxon_crit(10, 0.05) == 10 and wilcoxon_crit(10, 0.025) == 8
+    assert wilcoxon_crit(20, 0.05) == 60 and wilcoxon_crit(8, 0.005) == 0
+    assert wilcoxon_crit(5, 0.025) == -1 and wilcoxon_cdf(5, 0) == 1.0 / 32
+    assert abs(spearman_crit(10, 0.05) - 0.5636) < 5e-5 and spearman_crit(4, 0.025) is None
+    assert SPEAR_NMAX == 20 and abs(spearman_crit(20, 0.05) - 0.3805) < 5e-5
     print('tables ok')
 
 if __name__ == '__main__':

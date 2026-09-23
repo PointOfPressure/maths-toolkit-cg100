@@ -1,0 +1,441 @@
+OCR A Level Further Mathematics B (MEI) H645 - content statements.
+Extracted from the OCR specification (Version 2.1, March 2026) via the
+audit on main (SPEC_AUDIT.md). Code, then statement. * = assumed knowledge.
+
+
+H645 Core Pure (Y420) - mandatory paper, 50% of H645
+c18  Analyse and interpret coupled first order simultaneous differential equations (e.g. predator-prey)
+Pp4  Construct a proof by induction for the nth term of a sequence, the sum of a series, or the nth power of a matrix
+Pp5  Construct a proof by induction generally (divisibility, de Moivre)
+* (Proof)  Prove results by deduction and exhaustion; disprove by counter-example
+a2  Form a new equation whose roots are related to the original (2*alpha, alpha+k, 1/alpha, alpha^2)
+j3  Complex roots occur in conjugate pairs; solve cubic and quartic equations with real coefficients
+j8  Multiply and divide complex numbers in modulus-argument form
+j10  Represent sum, difference, product and quotient on an Argand diagram
+j19  Represent the complex roots of unity on an Argand diagram
+j20  Apply complex numbers to geometrical problems (regular polygons)
+m2  Understand and use the zero and identity matrices
+m4  Find the matrix of a given 2-D transformation and vice versa; 3-D reflections in x=0/y=0/z=0 and rotations of multiples of 90 degrees about an axis
+m5  Successive transformations and matrix multiplication
+m15  Find the determinant and inverse of a 3x3 matrix without a calculator, possibly with algebraic terms
+v2  Form and use the vector and cartesian equation of a plane
+v4  The different ways in which three distinct planes can intersect (point, line, sheaf, prism, parallel)
+v11  The different ways in which two lines can meet (intersect, parallel, skew)
+v12  Determine whether two lines intersect
+s4  A Maclaurin series may converge only for a restricted set of x
+c6  Recognise integrals giving arcsin and arctan forms
+a5  Differentiate and integrate hyperbolic functions
+a8  Recognise integrals of 1/sqrt(x^2+a^2) and 1/sqrt(x^2-a^2) giving arsinh and arcosh
+p21  Language of kinematics, including a = v dv/dx
+p22  Use differential equations in modelling in kinematics
+Pc15  Solve the simple harmonic motion equation and relate the solution to the motion
+j11  Represent and interpret loci on an Argand diagram: |z-a| = r, |z-a| = |z-b|, arg(z-a) = theta, and regions
+j13  Apply de Moivre's theorem to trigonometric identities (cos n*theta, tan 4*theta)
+Pm6  Find invariant points and invariant lines of a linear transformation
+Pv14  Find the intersection of a line and a plane
+v9  Form and use the equation of a line in 2-D and 3-D, in vector and cartesian form
+Pc1  Evaluate improper integrals where a limit is infinite or the integrand is undefined at an endpoint
+c2  Derive formulae for and calculate volumes of revolution about the x- and y-axes
+c8  Recognise differential equations where the variables are separable
+c14  Find particular integrals in simple cases (polynomial, exponential, trigonometric f(x))
+c3  Understand and evaluate the mean value of a function on [a, b]
+c10  Solve an equation using an integrating factor, including finding a particular solution
+c13  Solve y'' + a y' + b y = f(x)
+m9  The magnitude of a 3x3 determinant is the volume scale factor; the sign gives orientation
+v15  Calculate the angle between a line and a plane
+Ps2  Sum a series using partial fractions (method of differences)
+Pj1  Language of complex numbers
+j2  Solve any quadratic equation with real coefficients
+j4  Add, subtract, multiply and divide complex numbers in x + yi form
+j6  Use radians in the context of complex numbers
+j7  Represent a complex number in modulus-argument form and convert both ways
+j9  Represent and interpret complex numbers on an Argand diagram
+Pj12  Understand and use de Moivre's theorem
+j14  The definition e^(i theta) = cos theta + i sin theta; exponential form
+j15  Every non-zero complex number has n distinct nth roots
+j16  The distinct nth roots of r e^(i theta)
+Pm1  Add, subtract and multiply matrices up to 3x3
+m7  Calculate the determinant of a 2x2 matrix (and 3x3 with a calculator)
+m8  The magnitude of a 2x2 determinant is the area scale factor
+m11  Understand what is meant by an inverse matrix; singular matrices
+m12  Calculate the inverse of a non-singular matrix
+m13  Use the inverse of a matrix to solve a matrix equation
+Pv1  Scalar product; test for perpendicularity; angle between vectors
+v3  A vector perpendicular to two given vectors
+v5  Solve three linear simultaneous equations using a matrix inverse
+v6  The angle between two planes from their normals
+Pv7  Use the vector product in solving problems
+v8  The alternative form a x b = |a||b| sin(theta) n-hat
+v10  Calculate the angle between two lines
+v13  Find the distance between two skew lines
+v16  Find the distance from a point to a line
+v17  Find the distance from a point to a plane
+Pa1  Relationships between the roots and coefficients of quadratic, cubic and quartic equations
+Ps1  Standard formulae for Sum r, Sum r^2 and Sum r^3
+s3  Find the Maclaurin series of a function and use it for approximation
+s5  Recognise and use the standard Maclaurin series and their intervals of validity
+c4  Use partial fractions in integration
+c5  Differentiate inverse trigonometric functions
+PP1  Understand and use polar coordinates and convert to and from cartesian
+P2  Sketch curves with simple polar equations
+P3  Find the area enclosed by a polar curve
+Pa3  Definitions of sinh, cosh, tanh and their graphs
+Pa6  Definitions and domains of arsinh, arcosh, artanh
+a7  Derive and use the logarithmic forms of the inverse hyperbolic functions
+* (Kinematics)  Newton's second law F = ma
+c9  Find an integrating factor and understand its use
+c11  Solve a y'' + b y' + c y = 0 via the auxiliary equation
+c12  Relationship between the discriminant of the auxiliary equation and the form of the solution
+c16  Model damped oscillations with second order differential equations
+c17  Interpret solutions as over-, under- or critically damped
+* (Proof)  Prove results by contradiction
+j5  A complex number is zero if and only if both parts are zero
+j17  Explain why the sum of all the nth roots of a complex number is zero
+j18  Multiplication by r e^(i theta) is a rotation and an enlargement
+m3  Matrix multiplication is associative but not commutative
+m10  det(MN) = det M * det N
+m14  (AB)^-1 = B^-1 A^-1
+* (Vectors)  Language of vectors in two and three dimensions
+* (Series)  Difference between a sequence and a series
+* (Series)  The meaning of the word converge
+* (Calculus)  Definitions of the inverse trigonometric functions and their principal values
+a4  The identity cosh^2 x - sinh^2 x = 1
+Pp19  Introduce and define variables when setting up a model
+p20  Relate first and second order derivatives to verbal descriptions of a situation
+Pc7  Difference between a general and a particular solution
+
+H645 Mechanics Major (Y421) - major option
+v9  Verify a general or particular solution of a differential equation of motion
+Mq1  Find the dimensions of a quantity in terms of M, L and T
+q6  Use dimensional analysis to determine unknown indices (e.g. period of a pendulum)
+d7  Find the resultant of several concurrent forces
+w2  Calculate the work done by a force, including a variable force (calculus)
+w3  Work done by a force in a given direction; scalar product
+w6  Conservation of mechanical energy
+w7  The work-energy principle
+r4  Model horizontal circular motion (conical pendulum, car on a bend)
+r5  Model circular motion with more than one force acting
+r7  Model motion in a vertical circle using conservation of energy
+r8  Identify conditions under which a particle departs from circular motion
+MG1  Find the centre of mass of a system of particles in 1, 2 and 3 dimensions
+G9  Use calculus to find the centre of mass of a uniform lamina or arc
+G10  Use the centre of mass in problems about the equilibrium of rigid bodies
+k2  Extend kinematics techniques to 2-D using calculus and constant acceleration
+v2  Use acceleration, velocity and position to infer the force acting
+v10  Use boundary or initial conditions to determine constants
+v12  Solve the SHM equation, including amplitude and period
+q2  Understand that some quantities are dimensionless
+q3  Determine the units of a quantity from its dimensions
+q4  Change the units in which a quantity is measured
+d4  Derive and use mu = tan(alpha) for a body on the point of slipping
+d9  A closed figure (triangle of forces) may be drawn to represent forces in equilibrium
+d10  Formulate and solve equilibrium equations by resolving, or by a polygon of forces
+d13  The meaning of the term couple
+d16  Identify whether equilibrium is broken by sliding or by toppling
+Mi13  Oblique impact and the modelling assumptions
+i14  Newton's Experimental Law for oblique impact (component along the line of centres)
+i15  Model oblique impact between a sphere and a surface
+i16  Model oblique impact between two spheres
+i17  Calculate the loss of kinetic energy in an oblique impact
+i9  Apply Newton's Experimental Law (e.g. between a particle and a wall)
+r6  Calculate tangential acceleration
+h3  Calculate the stiffness or modulus of elasticity
+h5  Calculate the equilibrium position of a mass on an elastic string or spring
+h7  Use energy principles with elastic strings/springs (e.g. maximum extension)
+G3  Know the positions of the centres of mass of standard uniform bodies
+G5  Use the position of the centre of mass in problems about equilibrium and toppling
+MG6  Calculate the volume generated by rotating a region about the x- or y-axis
+G7  Use calculus to find the centre of mass of a uniform solid of revolution
+Mk1  Language of 2-D kinematics; position vector, relative position
+Mv3  Eliminate a parameter from parametric equations
+v4  Interpret the resulting cartesian equation (e.g. a bounding parabola)
+v5  Derive the cartesian equation of the path of a projectile
+v6  Find the range of a projectile up or down an inclined plane
+v7  Find the maximum range of a projectile
+q5  Use dimensional analysis to check the consistency of a formula
+d3  Model friction by F <= mu R with F = mu R when sliding
+d5  Apply Newton's laws to situations involving friction
+d6  Resolve a force into components and select suitable directions
+Md8  A particle is in equilibrium if and only if the resultant of the concurrent forces is zero
+d14  Calculate moments about a fixed axis
+d15  Conditions for the equilibrium of a rigid body
+w4  Calculate kinetic energy
+w5  Calculate gravitational potential energy
+w8  Power as force times the component of velocity
+Mi1  Calculate the impulse of a force
+i2  Understand and use linear momentum
+i3  The impulse-momentum equation
+i4  Internal impulses cancel, so momentum is conserved
+Mi6  Apply conservation of linear momentum to direct impact
+i7  Newton's Experimental Law and the coefficient of restitution
+i8  The significance of e = 0 (the bodies coalesce)
+i10  Model situations involving direct impact
+i11  The significance of e = 1 (perfectly elastic)
+i12  When e < 1 kinetic energy is not conserved
+r3  Calculate the acceleration towards the centre, v^2/r and omega^2 r
+h2  Hooke's law models the tension in an elastic string or spring
+h4  Calculate the tension in an elastic string or spring
+h6  Calculate the energy stored in a stretched string or spring
+G4  Find the centre of mass of a composite body
+G8  Find the centre of mass of a compound body by treating parts as particles
+Mv1  Find acceleration, velocity and position by calculus (variable acceleration)
+v11  Recognise and formulate the simple harmonic motion equation
+q7  Use a model based on dimensional analysis
+* (Forces)  Language relating to forces
+Md1  Bodies in contact may be subject to friction as well as a normal contact force
+d2  The total contact force resolves into friction and a normal reaction
+d11  Draw a force diagram for a rigid body
+d12  A system of forces can have a turning effect on a rigid body
+Mw1  Language of work, energy and power
+i5  The term direct impact and its modelling assumptions
+Mr1  Language of circular motion (tangential, radial, angular speed)
+r2  Identify the forces acting on a body in circular motion
+Mh1  Language of elasticity (modulus, stiffness, natural length)
+h8  Understand when Hooke's law does not apply
+G2  Locate a centre of mass by appeal to symmetry
+Mv8  Formulate differential equations of motion
+
+H645 Mechanics Minor (Y431) - minor option
+Mq1, q6  Dimensions of a named quantity; unknown indices
+d7  Resultant of several concurrent forces
+w2, w3  Work at an angle, and by a variable force
+w6, w7  Conservation of energy; the work-energy principle
+MG1  Centre of mass in 3-D
+q2, q3, q4, q5  Dimensionless quantities; units from dimensions; changing units; consistency
+d3, d5, d6, Md8, d14, d15  Friction, Newton's laws with friction, resolving, equilibrium, moments
+d4  mu = tan(alpha) on the point of slipping
+d9, d10  Closed figure of forces; solving equilibrium by polygon
+d13  Couples
+d16  Sliding versus toppling
+w4, w5, w8  KE, GPE, power
+Mi1-i4, Mi6-i12  Impulse, momentum, restitution, KE loss, the wall case
+G3  Centres of mass of standard bodies
+G4  Composite centre of mass
+G5  Centre of mass in equilibrium and toppling problems
+q7, *, Md1, d2, d11, d12, Mw1, i5  Terminology, diagrams and modelling judgement
+G2  Symmetry arguments
+
+H645 Statistics Major (Y422) - major option
+SH5  Carry out a hypothesis test for an average using the Wilcoxon signed rank test
+Z2  Use simulations to investigate distributions
+R25  Obtain a pdf from a given cdf by differentiation
+R32  Use the Normal distribution when the parameters have to be estimated from a sample
+SR1  Use probability functions given algebraically or in a table
+R2  Calculate the expectation (mean) of a discrete random variable
+R3  Calculate the variance using Var(X) = E(X^2) - mu^2
+R4  Use E(a + bX) = a + bE(X)
+R5  Use Var(a + bX) = b^2 Var(X)
+SR6  Find the expectation of a linear combination of random variables, E(X +- Y)
+R7  Recognise the discrete uniform distribution
+R8  Calculate probabilities from a discrete uniform distribution
+R9  Mean and variance of a discrete uniform distribution
+R12  Recognise when the Poisson approximates the binomial
+R13  Calculate probabilities using a Poisson distribution
+R14  Know and use the mean and variance of a Poisson distribution
+R17  Calculate probabilities within a geometric distribution
+R18  Mean and variance of a geometric distribution
+SR19  Use a simple continuous random variable as a model
+R20  The meaning of a probability density function, including piecewise pdfs
+R21  Properties of a pdf (non-negative, integrates to 1)
+SR22  Find the mean and variance of a continuous random variable
+R23  Find the mode and median of a continuous random variable
+R24  The meaning of a cumulative distribution function
+R26  Use a cdf to calculate the median and quartiles
+R27  Find the mean of a linear combination of random variables
+R29  Use linear combinations of independent Normal random variables
+R31  Interpret a Normal probability plot
+SR28  Use the Normal distribution as a model and calculate probabilities
+b2  Use and interpret a scatter diagram, including looking for outliers by eye
+b4  Calculate the pmcc from raw data
+Sb6  Carry out a hypothesis test for correlation using the pmcc
+Sb8  Calculate Spearman's rank correlation coefficient
+b9  Carry out a hypothesis test using Spearman's rank correlation coefficient
+Sb11  Calculate the equation of the least squares regression line
+b12  Use the regression line as a model; residuals
+b13  Calculate the equations of both regression lines (y on x and x on y)
+b14  Check how well the model fits the data (visual inspection, pmcc^2)
+b15  The relationship between the two regression lines and which to use
+Sb16  Interpret bivariate categorical data
+SH1  Apply the chi-squared test for association in a contingency table
+H2  Interpret the results of a chi-squared test
+H3  Carry out a chi-squared goodness-of-fit test
+H4  Interpret the results of a chi-squared goodness-of-fit test
+SI1  Estimate a population mean from a sample
+I2  Estimate a population variance using the divisor n - 1
+I4  Calculate and interpret the standard error of the mean
+I9  Construct and interpret a confidence interval for a population mean
+I11  Construct and interpret a confidence interval for a mean difference from paired data
+I13  Use a confidence interval to test a hypothesis about a population mean
+H6  Carry out a hypothesis test for a population mean using the Normal distribution
+Sx1  Explain the importance of sample size
+x2  Explain why sampling may be necessary
+x3  Explain the advantage of a random sample
+R10  Recognise situations where the binomial distribution is appropriate
+SR11  Recognise situations where the Poisson distribution is appropriate
+R15  The sum of independent Poisson variables is Poisson
+SR16  Recognise situations where the geometric distribution is appropriate
+Sb1  Understand what bivariate data are; independent and dependent variables
+b3  Interpret a scatter diagram produced by software
+b5  Know when it is appropriate to calculate the pmcc
+b7  Use the pmcc as an effect size
+b10  Decide whether a test based on r or on rs is more appropriate
+R30  The Normal distribution as a useful model; when it is appropriate
+I3  The sample mean is a random variable with a sampling distribution
+I5  The sampling distribution of the mean when the parent is Normal
+I6  How and when the Central Limit Theorem applies
+SI7  The meaning of the term confidence interval
+I8  Factors affecting the width of a confidence interval
+I10  Know when samples from two populations should be paired
+SI12  Interpret confidence intervals given by software
+SZ1  Know that spreadsheets can be used for statistical work
+
+H645 Statistics Minor (Y432) - minor option
+SR1, R2, R3  Probability functions; expectation; variance
+R4, R5, SR6  E(a+bX), Var(a+bX), E(X +- Y)
+R7, R8, R9  Discrete uniform distribution
+R12, R13, R14  Poisson probabilities, mean and variance; Poisson approximation to binomial
+R17, R18  Geometric distribution
+b2, b4  Scatter diagram; pmcc from raw data
+Sb6, b9  Hypothesis tests for correlation, r and rs
+Sb8  Spearman's rank correlation coefficient
+Sb11, b12, b13, b14, b15  Least squares line, residuals, both lines, model fit
+Sb16, SH1  Contingency tables and the chi-squared test for association
+H2, H3, H4  Chi-squared goodness of fit and interpretation
+Sx1, x2, x3  Sampling explanations
+R10, SR11, R15, SR16  Recognising distributions; sum of Poissons
+Sb1, b3, b5, b7, b10  Bivariate terminology and judgement
+
+H645 Modelling with Algorithms (Y433) - minor option
+L5  Recognise when an LP requires an integer solution
+L6  Formulate a range of network problems as LPs
+L11  Use a visualisation of a 3-D LP
+L16  Handle variables which may be negative
+N13  Explore network algorithms via LP formulations
+N8  Model precedence problems with an activity-on-arc network
+N9  Use critical path analysis and interpret outcomes; analyse float (total, independent and interfering), resourcing and scheduling
+L9  Consider the effect of modifying an LP (post-optimal analysis)
+L13  Understand the geometric basis of the simplex algorithm
+L15  Reformulate an equality constraint as a pair of inequalities
+A4  Basic ideas of algorithmic complexity; worst case; size of problem
+A7  Know and be able to use the quick sort algorithm
+A8  Count the comparisons and/or swaps used by a sorting algorithm
+A10  Know and use the first fit and first fit decreasing bin-packing algorithms
+A11  Count the comparisons needed by first fit and first fit decreasing
+AN1  Graphs and associated vocabulary; adjacency and incidence matrices
+N3  A network is a graph with weighted arcs; directed and undirected
+N5  Solve minimum connector problems using Kruskal's algorithm
+N6  Model shortest path problems and solve using Dijkstra's algorithm
+N7  Know the order (complexity) of Kruskal's, Prim's and Dijkstra's algorithms
+N10  Use a network to model a transmission problem; sources and sinks
+N11  Specify a cut and calculate its capacity
+N12  Understand and use the maximum flow / minimum cut theorem; flow augmentation
+L3  Recognise when an LP is in standard form
+L4  Use slack variables to convert an LP to slack form
+L7  Graph inequalities in 2-D and identify the feasible region
+L8  Solve a 2-D LP graphically
+L10  Solve 2-D integer LP problems
+L12  Use the simplex algorithm on an LP in standard form
+L14  Handle >= constraints (two-stage simplex / big-M)
+AA1  An algorithm is a finite sequence of operations; initial state, input, output
+A2  Interpret and apply algorithms presented in flowcharts or pseudocode
+A3  Repair, develop and adapt given algorithms
+A5  Algorithms can sometimes be proved correct
+A6  Understand and know the importance of heuristics
+A9  Reason about a given sorting algorithm
+N2  Model problems by using graphs
+N4  Model problems by using networks
+AL1  Language associated with linear programming
+L2  Identify and define variables from a problem description
+L17  Some LPs can be solved by other means
+L18  Interpret the output from linear programming software
+
+H645 Numerical Methods (Y434) - minor option
+U3  Understand the effect on errors of changing the way a calculation is arranged
+e3  Understand the relative computational efficiency of different root-finding methods
+NU1  Calculate errors in sums, differences, products and quotients
+U2  Calculate the error in f(x) when x is in error
+U6  Understand rounding and chopping and their effects; maximum and average error
+NU7  Understand convergence and divergence, and the order of convergence, of an iterative sequence
+U8  Use error analysis to produce an improved estimate
+Ne1  Graphical interpretation of iterative methods, including staircase and cobweb diagrams
+e2  Solve equations to any required accuracy and justify the accuracy claimed
+e4  Know that fixed point iteration is generally first order; comment on failure
+e5  Understand and apply relaxation to an iteration x(n+1) = g(x(n))
+Nc1  Estimate a derivative using forward and central differences with a suitable sequence of h
+c2  Empirical and graphical understanding of the error in numerical differentiation
+Nc3  Evaluate a definite integral using the midpoint, trapezium and Simpson's rules
+c4  Know the error behaviour of the integration rules
+Nf1  Use Newton's forward difference formula; difference tables
+f2  Construct the interpolating polynomial (formula given)
+NQ1  Use a spreadsheet to implement numerical methods
+Q2  Use the iterative capability of a spreadsheet
+U4  Understand that computers represent numbers to finite precision
+U5  Understand the consequences of subtracting nearly equal numbers
+
+H645 Extra Pure (Y435) - minor option
+s4  Verify a given solution of a recurrence relation
+s6  Solve first order linear non-homogeneous recurrence relations u(n+1) = a u(n) + f(n)
+s8  Solve second order linear non-homogeneous recurrence relations u(n+2) = a u(n+1) + b u(n) + f(n)
+XS1  Language and notation of sets: subset, union, intersection, complement, empty set
+a5  Understand and work with subgroups
+a8  Specify an isomorphism between two groups of the same order
+c2  Sketch contours and sections of a surface z = f(x, y)
+s2  Language of recurrence relations: limit, convergent, divergent, periodic
+s3  Investigate and comment on the behaviour of a recurrence relation
+s5  Solve first order linear homogeneous recurrence relations u(n+1) = a u(n)
+s9  Investigate and comment on associated sequences and their limits
+a6  Know and use Lagrange's theorem
+m4  Find powers of a 2x2 or 3x3 matrix using diagonalisation
+m6  Understand the significance of eigenvalues and eigenvectors (invariant lines, geometric meaning)
+c6  Find grad g and evaluate it at a point to give a normal vector
+c3  Find first order partial derivatives
+c4  Use dz/dx = 0 and dz/dy = 0 to find stationary points of z = f(x, y)
+c7  Concepts of the tangent plane and the normal line to a surface
+m5  Understand and use the Cayley-Hamilton theorem
+Xm1  Understand the meaning of eigenvalue and eigenvector
+m2  Form and solve the characteristic equation det(M - lambda I) = 0
+m3  Form the matrix of eigenvectors P and the diagonal matrix D
+s7  Solve second order linear homogeneous recurrence relations
+Xa1  Understand the group axioms
+a2  Be familiar with examples of groups and use group tables
+a3  For finite groups, cyclic groups and generation by a single element
+a4  The order of a finite group and the order of an element
+Xs1  Model appropriate problems by recurrence relations
+S2  The common number sets N, Z, Q, R, C
+a7  Different situations can give rise to isomorphic groups
+Xc1  z = f(x, y) defines a surface
+c5  g(x, y, z) = c defines a surface
+
+H645 Further Pure with Technology (Y436) - minor option
+C4  Find, describe and generalise properties of a family of curves
+C9  Understand the meaning of an envelope of a family of curves
+C10  Use the limit of an expression
+C11  Determine asymptotes, including oblique asymptotes
+C12  Identify cusps by examining the limit of the gradient
+c2  Use software to produce a tangent to a curve at a variable point
+c4  Verify a given solution of a differential equation
+c6  Sketch a tangent field for a first order differential equation
+T10  Solve other Diophantine equations
+TC1  Plot a family of curves in graphing software
+C6  Find the gradient of the tangent to a curve given in cartesian, polar or parametric form
+C7  Find and work with equations of chords, tangents and normals
+Tc1  Use software to produce analytical solutions of differential equations, with a slider
+C2  Use CAS to work with equations of curves
+C5  Convert equations between cartesian and polar form
+C8  Calculate arc length using cartesian, polar and parametric forms
+c5  Work with particular solutions and initial conditions
+c7  Solve a first order differential equation numerically by Euler's method
+c8  Understand that a smaller step length usually improves accuracy
+c9  Understand the concepts underlying Runge-Kutta methods
+c10  Solve first order differential equations using Runge-Kutta methods
+T3  Know and use the unique prime factorisation theorem
+T4  Solve problems using modular arithmetic
+T5  Know and use Fermat's little theorem
+T6  Know and use Euler's totient function phi(n)
+T7  Know and use Wilson's theorem, (p-1)! = -1 (mod p)
+T8  Find Pythagorean triples and use them
+T9  Solve Pell's equation x^2 - n y^2 = 1
+C3  Vocabulary associated with curves: asymptote, cusp, loop, bounded
+c3  Construct, adapt or interpret a differential equation model
+TT1  Write, adapt and interpret short programs
+T2  Identify the limitations of a short program

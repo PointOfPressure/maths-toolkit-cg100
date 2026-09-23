@@ -1,5 +1,6 @@
-# AQA Further Maths 7367 sections A-D: proof, complex numbers, matrices,
-# further algebra and functions.
+# OCR B (MEI) Further Maths H645, Core Pure (Y420): proof, complex numbers,
+# matrices and transformations, vectors and 3-D, roots of polynomials, series.
+# Calculus, polar, hyperbolic functions and differential equations are in fcalc.
 import math
 import caslex
 import caseng
@@ -11,6 +12,8 @@ _f = casutil.fmt
 _w = casutil.w
 _warn = casutil.warn
 _m = casutil.m
+_fv = casutil.fmtv
+_wn = casutil.warn
 PI = math.pi
 
 # ---- small shared helpers ---------------------------------------------------
@@ -325,7 +328,7 @@ def _scale(v):
         out = [-c for c in out]
     return out
 
-# ---- A  Proof ---------------------------------------------------------------
+# ---- P  Proof ---------------------------------------------------------------
 
 def _intat(tree, name, i):
     try:
@@ -515,20 +518,217 @@ def t_ind_mpow(A, p, q, r, s):
         lines.append(_w('checked n = 1..6; step is M^(k+1) = M M^k'))
     return lines
 
-# ---- B  Complex numbers -----------------------------------------------------
+def _envat(tree, env):
+    # value of a tree with several named variables, or None
+    try:
+        v = caseng.evalf(tree, 0.0, False, env)
+    except Exception:
+        return None
+    if isinstance(v, complex):
+        return None
+    if v != v or v > 1e300 or v < -1e300:
+        return None
+    return v
+
+def _iszero(t):
+    return t[0] == 'n' and not isinstance(t[1], complex) and t[1] == 0
+
+def t_ind_rec(f, u1, g):
+    # Pp4: u(n+1) = f(u(n), n), u(1) = u1; claimed u(n) = g(n)
+    for v in caseng.vars_in(f):
+        if v != 'u' and v != 'n':
+            raise ValueError('f: type it in u (and n)')
+    _onlyvar(g, 'n', 'g(n)')
+    g1 = _at(g, 'n', 1.0)
+    if g1 is None:
+        raise ValueError('cannot evaluate g(1)')
+    if abs(g1 - u1) > 1e-9 * (1.0 + abs(u1)):
+        return ['Base case fails at n = 1',
+                _w('g(1) = ' + _f(g1) + ',  u1 = ' + _f(u1)),
+                _warn('the claimed formula is wrong')]
+    seq = [u1]
+    i = 1
+    while i < 6:
+        nx = _envat(f, {'u': seq[i - 1], 'n': float(i)})
+        if nx is None:
+            raise ValueError('f is undefined at n = ' + str(i))
+        seq.append(nx)
+        i += 1
+    lhs = _shift(g, 'n', 1)
+    rhs = caseng.subst(f, 'u', g)
+    how = None
+    same = False
+    try:
+        if _iszero(caseng.simplify(('-', lhs, rhs))):
+            same = True
+            how = 'exactly'
+    except Exception:
+        pass
+    if not same:
+        sp = _samepoly(lhs, rhs, 'n')
+        if sp is not None:
+            same = sp
+            how = 'exactly'
+    if how is None:
+        how = 'at k = 1..10'
+        same = True
+        k = 1
+        while k <= 10:
+            a = _at(lhs, 'n', float(k))
+            b = _at(rhs, 'n', float(k))
+            if a is None or b is None or abs(a - b) > 1e-7 * (1.0 + abs(b)):
+                same = False
+                break
+            k += 1
+    if not same:
+        head = 'Inductive step fails'
+    elif how == 'exactly':
+        head = 'Proved for all n >= 1'
+    else:
+        head = 'Step holds at k = 1..10'
+    lines = [head]
+    lines.append(_w('g(1) = ' + _f(g1) + ' = u1, base case holds'))
+    lines.append(_w('assume u(k) = g(k); then u(k+1) = f(g(k), k)'))
+    lines.append(_w('need f(g(k), k) = g(k+1): ' +
+                    ('true ' + how if same else 'false')))
+    lines.append(_w('u1..u6 = ' + ', '.join([_f(v) for v in seq])))
+    if not same:
+        k = 1
+        while k <= 6:
+            gv = _at(g, 'n', float(k))
+            if gv is None or abs(gv - seq[k - 1]) > 1e-7 * (1.0 + abs(gv)):
+                lines.append(_warn('g(' + str(k) + ') = ' + ('undefined' if gv is None
+                                                             else _f(gv)) +
+                                   ' but u' + str(k) + ' = ' + _f(seq[k - 1])))
+                break
+            k += 1
+    elif how != 'exactly':
+        lines.append(_warn('checked numerically: show the algebra'))
+    return lines
+
+def t_ind_dm(theta, n):
+    # Pp5: (cos t + i sin t)^n = cos nt + i sin nt, by induction
+    n = _iv(n, 'n', -12, 12)
+    if n == 0:
+        raise ValueError('n must not be 0')
+    z = complex(math.cos(theta), math.sin(theta))
+    step = z if n > 0 else complex(z.real, -z.imag)
+    p = complex(1.0, 0.0)
+    worst = 0.0
+    rows = []
+    k = 1
+    while k <= abs(n):
+        p = p * step
+        kk = k if n > 0 else -k
+        q = complex(math.cos(kk * theta), math.sin(kk * theta))
+        d = caseng._cabs(p - q)
+        if d > worst:
+            worst = d
+        if k <= 4 or k == abs(n):
+            rows.append(_w('n = ' + str(kk) + ': ' + _f(_rect(1.0, kk * theta))))
+        k += 1
+    ok = worst < 1e-9
+    lines = ['z^' + str(n) + ' = ' + _f(_rect(1.0, n * theta)),
+             'agrees with cos nt + i sin nt' if ok else 'does not agree',
+             _w('z = cos t + i sin t, t = ' + _f(theta))]
+    if n > 0:
+        lines.append(_w('base: n = 1 is cos t + i sin t itself'))
+        lines.append(_w('step: (cos kt + i sin kt)(cos t + i sin t)'))
+        lines.append(_w(' = cos kt cos t - sin kt sin t'))
+        lines.append(_w('   + i(sin kt cos t + cos kt sin t)'))
+        lines.append(_w(' = cos(k+1)t + i sin(k+1)t, compound angles'))
+    else:
+        lines.append(_w('n < 0: put n = -m, m > 0'))
+        lines.append(_w('z^-m = 1/(cos mt + i sin mt)'))
+        lines.append(_w(' = cos mt - i sin mt = cos(-mt) + i sin(-mt)'))
+    for r in rows:
+        lines.append(r)
+    return lines
+
+def _isprime(n):
+    if n < 2:
+        return False
+    if n % 2 == 0:
+        return n == 2
+    i = 3
+    while i * i <= n:
+        if n % i == 0:
+            return False
+        i += 2
+    return True
+
+def _smallfactor(n):
+    if n % 2 == 0:
+        return 2
+    i = 3
+    while i * i <= n:
+        if n % i == 0:
+            return i
+        i += 2
+    return n
+
+def _range(a, b):
+    a = _iv(a, 'a', -100000, 100000)
+    b = _iv(b, 'b', a, a + 5000)
+    return a, b
+
+def t_cx_prime(f, a, b):
+    # disprove "f(n) is always prime" by a counterexample
+    _onlyvar(f, 'n', 'f(n)')
+    a, b = _range(a, b)
+    n = a
+    while n <= b:
+        v = _intat(f, 'n', n)
+        if v is None:
+            return ['Counterexample: n = ' + str(n),
+                    'f(' + str(n) + ') is not a whole number',
+                    _w('one counterexample disproves the claim')]
+        if v > 1e10:
+            return ['No counterexample, n = ' + str(a) + '..' + str(n - 1),
+                    _warn('f(' + str(n) + ') is too big to test'),
+                    _warn('checking cases is not a proof')]
+        if not _isprime(v):
+            out = ['Counterexample: n = ' + str(n)]
+            if v < 2:
+                out.append('f(' + str(n) + ') = ' + str(v) + ', not prime')
+            else:
+                p = _smallfactor(v)
+                out.append('f(' + str(n) + ') = ' + str(v) + ' = ' + str(p) +
+                           ' x ' + str(v // p))
+            out.append(_w('one counterexample disproves the claim'))
+            return out
+        n += 1
+    return ['No counterexample, n = ' + str(a) + '..' + str(n - 1),
+            _warn('checking cases is not a proof'),
+            _w('every f(n) in the range is prime')]
+
+def t_cx_ineq(f, g, a, b):
+    # disprove "f(n) > g(n) for all n" by a counterexample
+    _onlyvar(f, 'n', 'f(n)')
+    _onlyvar(g, 'n', 'g(n)')
+    a, b = _range(a, b)
+    n = a
+    while n <= b:
+        fv = _at(f, 'n', float(n))
+        gv = _at(g, 'n', float(n))
+        if fv is None or gv is None:
+            return ['Counterexample: n = ' + str(n),
+                    'f or g is undefined there',
+                    _w('one counterexample disproves the claim')]
+        if not fv > gv:
+            return ['Counterexample: n = ' + str(n),
+                    'f = ' + _f(fv) + ', g = ' + _f(gv),
+                    _w('f(n) > g(n) is false here, so the claim'),
+                    _w('"f(n) > g(n) for all n" is disproved')]
+        n += 1
+    return ['No counterexample, n = ' + str(a) + '..' + str(b),
+            _warn('checking cases is not a proof'),
+            _w('f(n) > g(n) at every n in the range')]
+
+# ---- J  Complex numbers -----------------------------------------------------
 
 def _pol(z):
     return (_abs(z), _arg(z))
-
-def _snaprat(x):
-    q = 1
-    while q <= 24:
-        t = x * q
-        n = int(t + 0.5) if t >= 0 else -int(-t + 0.5)
-        if abs(x - n * 1.0 / q) < 1e-6 * (1.0 + abs(x)):
-            return casutil.clean(n * 1.0 / q)
-        q += 1
-    return x
 
 def _snap(x):
     n = int(x + 0.5) if x >= 0 else -int(-x + 0.5)
@@ -658,6 +858,102 @@ def t_unity(n):
     out.append(_w('w = e^(2pi i/' + str(n) + '), args 2pi k/' + str(n)))
     out.append(_w('1 + w + ... + w^' + str(n - 1) + ' = 0'))
     out.append(_w('regular ' + str(n) + '-gon on the unit circle'))
+    return out
+
+def _seg(p, q):
+    # a straight segment p -> q as a parametric curve for plot.run
+    px = _cx(p).real
+    py = _cx(p).imag
+    dx = _cx(q).real - px
+    dy = _cx(q).imag - py
+    X = ('v', 'x')
+    return (('+', ('n', px), ('*', ('n', dx), X)),
+            ('+', ('n', py), ('*', ('n', dy), X)), 0.0, 1.0)
+
+def _drawsegs(segs, title):
+    import plot
+    plot.run(segs, kind='param', title=title)
+
+def t_argops(z, w):
+    # j10: sum, difference, product and quotient on an Argand diagram
+    s = casutil.clean(z + w)
+    d = casutil.clean(z - w)
+    p = casutil.clean(z * w)
+    segs = [_seg(0, z), _seg(0, w), _seg(z, s), _seg(w, s), _seg(w, z)]
+    if p != 0:
+        segs.append(_seg(0, p))
+    _drawsegs(segs, 'O, z, w, z+w and zw')
+    lines = ['z+w = ' + _f(s), 'z-w = ' + _f(d), 'zw = ' + _f(p)]
+    if w != 0:
+        lines.append('z/w = ' + _f(casutil.clean(z / w)))
+    lines.append(_w('z+w: 4th corner of parallelogram O, z, w'))
+    lines.append(_w('z-w: the vector from w to z'))
+    if z != 0 and w != 0:
+        lines.append(_w('|zw| = |z||w| = ' + _f(_abs(z)) + ' x ' + _f(_abs(w)) +
+                        ' = ' + _f(_abs(p))))
+        lines.append(_w('arg zw = arg z + arg w = ' + _f(_princ(_arg(z) + _arg(w)))))
+        lines.append(_w('arg z/w = arg z - arg w = ' + _f(_princ(_arg(z) - _arg(w)))))
+        lines.append(_w('zw: z scaled by |w| and turned by arg w'))
+    return lines
+
+def _tidyz(z, scale):
+    # drop rounding dust relative to the size of the figure
+    z = _cx(z)
+    re = z.real
+    im = z.imag
+    if abs(re) < 1e-12 * scale:
+        re = 0.0
+    if abs(im) < 1e-12 * scale:
+        im = 0.0
+    return casutil.clean(complex(_snap(re), _snap(im)))
+
+def _polylines(c, v0, n, title):
+    r = _abs(_cx(v0) - _cx(c))
+    if r < 1e-12:
+        raise ValueError('the points coincide')
+    vs = []
+    k = 0
+    while k < n:
+        ang = _arg(_cx(v0) - _cx(c)) + 2.0 * PI * k / n
+        vs.append(_tidyz(_cx(c) + _rect(r, ang), 1.0 + r + _abs(c)))
+        k += 1
+    segs = []
+    k = 0
+    while k < n:
+        segs.append(_seg(vs[k], vs[(k + 1) % n]))
+        k += 1
+    _drawsegs(segs, title)
+    out = []
+    k = 0
+    while k < n:
+        out.append('v' + str(k + 1) + ' = ' + _f(vs[k]))
+        k += 1
+    side = 2.0 * r * math.sin(PI / n)
+    out.append('side = ' + _f(casutil.clean(_snap(side))))
+    out.append('area = ' + _f(casutil.clean(_snap(0.5 * n * r * r *
+                                                  math.sin(2.0 * PI / n)))))
+    out.append(_w('centre ' + _f(c) + ', radius ' + _f(r)))
+    out.append(_w('each vertex: multiply (v - c) by'))
+    out.append(_w('e^(2pi i/' + str(n) + ') = ' + _f(_rect(1.0, 2.0 * PI / n))))
+    out.append(_w('vertices = c + (v1 - c) x nth roots of 1'))
+    return out
+
+def t_poly_centre(z1, z2, n):
+    # j19/j20: regular n-gon from its centre z1 and one vertex z2
+    n = _iv(n, 'n', 3, 12)
+    return _polylines(z1, z2, n, 'regular ' + str(n) + '-gon')
+
+def t_poly_edge(z1, z2, n):
+    # j20: regular n-gon from two adjacent vertices, anticlockwise
+    n = _iv(n, 'n', 3, 12)
+    if z1 == z2:
+        raise ValueError('the points coincide')
+    rot = complex(math.cos(2.0 * PI / n), math.sin(2.0 * PI / n))
+    c = (_cx(z1) * rot - _cx(z2)) / (rot - 1.0)
+    c = _tidyz(c, 1.0 + _abs(z1) + _abs(z2))
+    out = _polylines(c, z1, n, 'regular ' + str(n) + '-gon')
+    out.insert(0, 'centre = ' + _f(c))
+    out.append(_w('z2 - c = (z1 - c) e^(2pi i/n) gives c'))
     return out
 
 def _rootlines(co, name):
@@ -947,51 +1243,7 @@ def t_powtomult(n):
     out.append(_w('expand (z +/- 1/z)^' + str(n) + ' and pair the terms'))
     return out
 
-def t_gsum(z, w, n):
-    n = _iv(n, 'n', 1, 400)
-    if w == 1:
-        s = z * n
-    else:
-        s = z * (1 - caseng._cpow(_cx(w), n)) / (1 - _cx(w))
-    s = casutil.clean(s)
-    lines = ['S = ' + _f(s), '|S| = ' + _f(_abs(s))]
-    if w != 1:
-        lines.append(_w('S = a(1-r^n)/(1-r), r^n = ' +
-                        _f(casutil.clean(caseng._cpow(_cx(w), n)))))
-    else:
-        lines.append(_w('r = 1, so S = n a'))
-    if _abs(w) < 1:
-        lines.append('S(infinity) = ' + _f(casutil.clean(z / (1 - _cx(w)))))
-        lines.append(_w('|r| = ' + _f(_abs(w)) + ' < 1, so it converges'))
-    else:
-        lines.append(_warn('|r| = ' + _f(_abs(w)) + ' >= 1: no sum to infinity'))
-    return lines
-
-# ---- C  Matrices ------------------------------------------------------------
-
-def _eqstr(co, var):
-    # co high->low, numeric -> 'L^3-6L^2+11L-6'
-    out = ''
-    n = len(co) - 1
-    i = 0
-    while i <= n:
-        c = casutil.clean(co[i])
-        p = n - i
-        if c != 0:
-            neg = c < 0
-            mag = -c if neg else c
-            s = _f(mag)
-            if p == 0:
-                piece = s
-            else:
-                pw = var if p == 1 else var + '^' + str(p)
-                piece = pw if mag == 1 else s + pw
-            if out == '':
-                out = ('-' if neg else '') + piece
-            else:
-                out += ('-' if neg else '+') + piece
-        i += 1
-    return out if out else '0'
+# ---- M  Matrices and transformations ----------------------------------------
 
 def _rank(M, tol):
     R = [list(r) for r in M]
@@ -1179,7 +1431,6 @@ def t_inv3(A):
 
 def t_solve3(A, b):
     d = _det3(A)
-    aug = [A[i] + [b[i]] for i in range(3)]
     if d != 0:
         iv = _inv3(A)
         x = [casutil.clean(iv[i][0] * b[0] + iv[i][1] * b[1] + iv[i][2] * b[2])
@@ -1191,25 +1442,58 @@ def t_solve3(A, b):
             out.append(_w(ln))
         out.append(_w('x = A^-1 b'))
         return out
+    out = ['det A = 0: no unique solution']
+    for ln in _planes_sing(A, b):
+        out.append(ln)
+    return out
+
+def _sheafline(A, b):
+    # a point and direction of the common line of consistent planes
+    p = 0
+    q = 1
+    if _para(A[0], A[1]):
+        q = 2
+        if _para(A[0], A[2]):
+            p = 1
+    dv = _cross(A[p], A[q])
+    k = 0
+    j = 1
+    while j < 3:
+        if abs(dv[j]) > abs(dv[k]):
+            k = j
+        j += 1
+    u = [0, 1, 2]
+    u.remove(k)
+    a1 = A[p][u[0]]
+    b1 = A[p][u[1]]
+    a2 = A[q][u[0]]
+    b2 = A[q][u[1]]
+    dd = a1 * b2 - a2 * b1
+    pt = [0.0, 0.0, 0.0]
+    pt[u[0]] = casutil.clean(_snap((b[p] * b2 - b[q] * b1) / dd))
+    pt[u[1]] = casutil.clean(_snap((a1 * b[q] - a2 * b[p]) / dd))
+    pt[k] = 0
+    return pt, _scale(dv)
+
+def _planes_sing(A, b):
+    # v4: how three planes with det = 0 sit
+    aug = [A[i] + [b[i]] for i in range(3)]
     ra = _rank(A, _tol(A))
     rb = _rank(aug, _tol(aug))
-    out = ['det A = 0: no unique solution']
+    out = []
     if ra == 2 and rb == 2:
-        dirv = None
-        if not _para(A[0], A[1]):
-            dirv = _cross(A[0], A[1])
-        elif not _para(A[0], A[2]):
-            dirv = _cross(A[0], A[2])
-        else:
-            dirv = _cross(A[1], A[2])
-        out.append('planes meet in a line (sheaf)')
-        out.append('direction ' + casutil.fmtv(_scale(dirv)))
+        pt, dv = _sheafline(A, b)
+        out.append('sheaf: the planes share a line')
+        out.append('point ' + casutil.fmtv(pt))
+        out.append('direction ' + casutil.fmtv(dv))
+        out.append(_w('r = ' + casutil.fmtv(pt) + ' + t' + casutil.fmtv(dv)))
         out.append(_w('consistent: infinitely many solutions'))
     elif ra == 2 and rb == 3:
         par = _para(A[0], A[1]) or _para(A[0], A[2]) or _para(A[1], A[2])
         if par:
             out.append('two planes are parallel')
             out.append('no solution')
+            out.append(_w('the third plane cuts both of them'))
         else:
             out.append('triangular prism: no solution')
             out.append(_w('each pair meets in a line, all three parallel'))
@@ -1220,7 +1504,7 @@ def t_solve3(A, b):
         out.append('parallel planes: no solution')
         out.append(_w('the normals are all parallel'))
     else:
-        out.append(_warn('degenerate: a row of A is all zero'))
+        out.append(_warn('degenerate: a normal is the zero vector'))
     out.append(_w('rank A = ' + str(ra) + ', rank [A|b] = ' + str(rb)))
     return out
 
@@ -1257,58 +1541,286 @@ def t_stretch2(p, q):
         out.append(_w('y-axis invariant: stretch parallel to x'))
     return out
 
-def t_describe(A):
+def _mirror(th):
+    th = casutil.clean(_snap(th))
+    if th == 0:
+        return 'the x-axis'
+    if th == 90 or th == -90:
+        return 'the y-axis'
+    if th == 45:
+        return 'y = x'
+    if th == -45:
+        return 'y = -x'
+    return 'y = x tan ' + _f(th) + ' deg'
+
+def _desc2(A):
+    # m4: words for a 2x2 matrix, as a list of answer lines
     a = A[0][0]
     b = A[0][1]
     c = A[1][0]
     d = A[1][1]
     det = _det2(A)
-    out = []
-    if b == 0 and c == 0:
-        if a == d:
-            out.append('enlargement scale factor ' + _f(a))
-        else:
-            out.append('stretch x by ' + _f(a) + ', y by ' + _f(d))
-    elif abs(a - d) < 1e-12 and abs(b + c) < 1e-12 and abs(det - (a * a + c * c)) < 1e-9:
+    tol = 1e-9 * (1.0 + abs(a) + abs(b) + abs(c) + abs(d))
+    if abs(b) < tol and abs(c) < tol and abs(a - d) < tol:
+        if abs(a) < tol:
+            return ['zero matrix: all points to O']
+        if abs(a - 1.0) < tol:
+            return ['identity: every point fixed']
+        if abs(a + 1.0) < tol:
+            return ['rotation 180 deg about O']
+        return ['enlargement scale factor ' + _f(a)]
+    if abs(a - d) < tol and abs(b + c) < tol:
         r = math.sqrt(a * a + c * c)
-        th = math.atan2(c, a) * 180.0 / PI
-        if abs(r - 1.0) < 1e-9:
-            out.append('rotation ' + _f(_snap(th)) + ' deg about O')
-        else:
-            out.append('rotation ' + _f(_snap(th)) + ' deg, enlarge ' + _f(r))
-    elif abs(a + d) < 1e-12 and abs(b - c) < 1e-12 and abs(det + (a * a + b * b)) < 1e-9:
+        s = 'rotation ' + _f(_snap(math.atan2(c, a) * 180.0 / PI)) + ' deg about O'
+        return [s] if abs(r - 1.0) < 1e-9 else [s, 'and enlargement sf ' + _f(r)]
+    if abs(a + d) < tol and abs(b - c) < tol:
         r = math.sqrt(a * a + b * b)
-        th = 0.5 * math.atan2(b, a) * 180.0 / PI
-        if abs(r - 1.0) < 1e-9:
-            out.append('reflection in y = x tan ' + _f(_snap(th)) + ' deg')
-        else:
-            out.append('reflect in y = x tan ' + _f(_snap(th)) + ', enlarge ' + _f(r))
-    elif a == 1 and d == 1 and c == 0:
-        out.append('shear, x-axis invariant, factor ' + _f(b))
-    elif a == 1 and d == 1 and b == 0:
-        out.append('shear, y-axis invariant, factor ' + _f(c))
-    else:
-        out.append('not a standard transformation')
+        s = 'reflection in ' + _mirror(0.5 * math.atan2(b, a) * 180.0 / PI)
+        return [s] if abs(r - 1.0) < 1e-9 else [s, 'and enlargement sf ' + _f(r)]
+    if abs(b) < tol and abs(c) < tol:
+        if abs(a - 1.0) < tol:
+            return ['stretch parallel to y-axis, sf ' + _f(d)]
+        if abs(d - 1.0) < tol:
+            return ['stretch parallel to x-axis, sf ' + _f(a)]
+        return ['stretch x by ' + _f(a) + ', y by ' + _f(d)]
+    if abs(det - 1.0) < tol and abs(a + d - 2.0) < tol:
+        if abs(c) < tol:
+            return ['shear, x-axis fixed, factor ' + _f(b)]
+        if abs(b) < tol:
+            return ['shear, y-axis fixed, factor ' + _f(c)]
+        v = _nullvec([[a - 1.0, b], [c, d - 1.0]])
+        if v is not None:
+            ln = 'x = 0' if v[0] == 0 else _ymx(v[1] * 1.0 / v[0])
+            return ['shear, line ' + ln + ' fixed']
+    return ['not a standard transformation']
+
+def t_describe(A):
+    det = _det2(A)
+    out = _desc2(A)
     out.append('det = ' + _f(det))
     if det < 0:
         out.append(_w('det < 0: orientation reversed'))
-    out.append(_w('rotation: [[c,-s],[s,c]]; reflection: [[c,s],[s,-c]]'))
+    out.append(_w('rotate [[c,-s],[s,c]], reflect [[c,s],[s,-c]]'))
+    out.append(_w('columns are the images of i and j'))
     return out
+
+def t_shear2(k, axis):
+    ax = _iv(axis, 'axis', 1, 2)
+    M = [[1, k], [0, 1]] if ax == 1 else [[1, 0], [k, 1]]
+    out = _mlines('S', M)
+    out.append('shear, ' + ('x' if ax == 1 else 'y') + '-axis fixed, factor ' + _f(k))
+    out.append(_w('axis 1 = x-axis fixed, 2 = y-axis fixed'))
+    if ax == 1:
+        out.append(_w('(x, y) -> (x + ' + _f(k) + 'y, y); det = 1'))
+    else:
+        out.append(_w('(x, y) -> (x, y + ' + _f(k) + 'x); det = 1'))
+    return out
+
+def _thenlines(P, da, db, dp, detP):
+    out = _mlines('BA', P)
+    for tag, ds in (('A', da), ('B', db), ('BA', dp)):
+        out.append(tag + ': ' + ds[0])
+        for more in ds[1:]:
+            out.append(' ' * (len(tag) + 2) + more)
+    out.append(_w('A first, then B: the single matrix is BA'))
+    out.append(_w('det BA = det B x det A = ' + _f(detP)))
+    return out
+
+def t_then2(A, B):
+    # m5: successive transformations
+    P = _mm(B, A)
+    return _thenlines(P, _desc2(A), _desc2(B), _desc2(P), _det2(P))
 
 _AXN = ('x', 'y', 'z')
 
+def _rot3m(ax, deg):
+    t = deg * PI / 180.0
+    c = casutil.clean(_snap(math.cos(t)))
+    s = casutil.clean(_snap(math.sin(t)))
+    if ax == 1:
+        return [[1, 0, 0], [0, c, -s], [0, s, c]]
+    if ax == 2:
+        return [[c, 0, s], [0, 1, 0], [-s, 0, c]]
+    return [[c, -s, 0], [s, c, 0], [0, 0, 1]]
+
+def _same3(A, B):
+    i = 0
+    while i < 3:
+        j = 0
+        while j < 3:
+            if abs(A[i][j] - B[i][j]) > 1e-9:
+                return False
+            j += 1
+        i += 1
+    return True
+
+def _desc3(A):
+    # m4: the 3-D maps in the spec, else a plain verdict
+    diag = True
+    i = 0
+    while i < 3:
+        j = 0
+        while j < 3:
+            if i != j and abs(A[i][j]) > 1e-9:
+                diag = False
+            j += 1
+        i += 1
+    if diag:
+        a = A[0][0]
+        if abs(A[1][1] - a) < 1e-9 and abs(A[2][2] - a) < 1e-9:
+            if abs(a - 1.0) < 1e-9:
+                return ['identity: every point fixed']
+            if abs(a) < 1e-9:
+                return ['zero matrix: all points to O']
+            return ['enlargement scale factor ' + _f(a)]
+    pl = 1
+    while pl <= 3:
+        M = _ident(3)
+        M[pl - 1][pl - 1] = -1
+        if _same3(A, M):
+            return ['reflect in the plane ' + _AXN[pl - 1] + ' = 0']
+        pl += 1
+    ax = 1
+    while ax <= 3:
+        for deg in (90, 180, 270):
+            if _same3(A, _rot3m(ax, deg)):
+                return ['rotate ' + str(deg) + ' deg about ' + _AXN[ax - 1]]
+        ax += 1
+    if diag:
+        return ['stretch: x by ' + _f(A[0][0]) + ', y by ' + _f(A[1][1]) +
+                ', z by ' + _f(A[2][2])]
+    return ['not a single standard map']
+
+def t_describe3(A):
+    det = _det3(A)
+    out = _desc3(A)
+    out.append('det = ' + _f(det))
+    if det < 0:
+        out.append(_w('det < 0: orientation reversed'))
+    out.append(_w('|det| = volume scale factor = ' + _f(abs(det))))
+    out.append(_w('checks rotations of 90, 180, 270 deg about'))
+    out.append(_w('an axis and reflections in x/y/z = 0'))
+    return out
+
+def t_then3(A, B):
+    # m5: successive transformations in 3-D
+    P = _mm(B, A)
+    return _thenlines(P, _desc3(A), _desc3(B), _desc3(P), _det3(P))
+
+def t_detk(a, b, c, d, e, f, g, h, i):
+    # m15: determinant of a 3x3 with algebraic entries
+    M = [[a, b, c], [d, e, f], [g, h, i]]
+    vs = []
+    for row in M:
+        for t in row:
+            for v in caseng.vars_in(t):
+                if v not in vs:
+                    vs.append(v)
+    if len(vs) > 1:
+        raise ValueError('use one letter, e.g. k')
+    var = vs[0] if vs else 'k'
+
+    def minor(p, q, r, s):
+        return ('-', ('*', p, s), ('*', q, r))
+    m1 = minor(e, f, h, i)
+    m2 = minor(d, f, g, i)
+    m3 = minor(d, e, g, h)
+    T = ('+', ('-', ('*', a, m1), ('*', b, m2)), ('*', c, m3))
+    P = None
+    try:
+        P = caspoly.poly(T, var)
+    except Exception:
+        P = None
+    out = []
+    roots = []
+    if P is not None:
+        P = caspoly.ptrim(P)
+        tree = caseng.simplify(caspoly.ptree(P, var))
+        out.append('det =')
+        out.append(_m(tree))
+        if len(P) == 0:
+            out.append('singular for every ' + var)
+        elif len(P) == 1:
+            out.append('never singular')
+        else:
+            hi = []
+            j = len(P) - 1
+            while j >= 0:
+                hi.append(P[j][0] * 1.0 / P[j][1])
+                j -= 1
+            for r in _roots(hi):
+                if not isinstance(r, complex):
+                    _addroot(roots, r)
+    else:
+        tree = cascalc.tidy(T)
+        out.append('det =')
+        out.append(_m(tree))
+        try:
+            for r in cascalc.solve(T, var):
+                _addroot(roots, r)
+        except Exception:
+            roots = []
+        out.append(_warn('roots searched in -20..20 only'))
+    if P is None or len(P) > 1:
+        roots.sort()
+        if roots:
+            vals = [_f(0 if abs(r) < 1e-6 else r) for r in roots[:8]]
+            if len(vals) <= 3:
+                out.append('singular when ' + var + ' = ' + ', '.join(vals))
+            else:
+                out.append('singular when ' + var + ' =')
+                j = 0
+                while j < len(vals):
+                    out.append('  ' + ', '.join(vals[j:j + 4]))
+                    j += 4
+                if len(roots) > 8:
+                    out.append(_w(str(len(roots) - 8) + ' more roots not shown'))
+        else:
+            out.append('no real ' + var + ' makes it singular')
+    out.append(_w('expand along row 1: a(ei-fh) - b(di-fg) + c(dh-eg)'))
+    for nm, mt in (('ei-fh', m1), ('di-fg', m2), ('dh-eg', m3)):
+        try:
+            out.append(_w(nm + ' = ' + caseng.tostr(cascalc.tidy(mt))[:40]))
+        except Exception:
+            pass
+    adj = []
+    r = 0
+    while r < 3:
+        row = []
+        cc = 0
+        while cc < 3:
+            # adj[r][cc] = cofactor of entry (cc, r)
+            rs = [0, 1, 2]
+            rs.remove(cc)
+            cs = [0, 1, 2]
+            cs.remove(r)
+            t = minor(M[rs[0]][cs[0]], M[rs[0]][cs[1]], M[rs[1]][cs[0]], M[rs[1]][cs[1]])
+            if (r + cc) % 2:
+                t = ('neg', t)
+            try:
+                row.append(caseng.tostr(cascalc.tidy(t)))
+            except Exception:
+                row.append('?')
+            cc += 1
+        adj.append(row)
+        r += 1
+    out.append(_w('M^-1 = adj(M)/det, where det != 0:'))
+    r = 0
+    while r < 3:
+        out.append(_w('adj r' + str(r + 1) + ': [' + ', '.join(adj[r]) + ']'))
+        r += 1
+    return out
+
+def _addroot(lst, r):
+    r = _cleanroot(r)
+    for u in lst:
+        if abs(u - r) < 1e-7:
+            return
+    lst.append(r)
+
 def t_rot3(axis, theta):
     ax = _iv(axis, 'axis', 1, 3)
-    t = theta * PI / 180.0
-    c = _snap(math.cos(t))
-    s = _snap(math.sin(t))
-    if ax == 1:
-        M = [[1, 0, 0], [0, c, -s], [0, s, c]]
-    elif ax == 2:
-        M = [[c, 0, s], [0, 1, 0], [-s, 0, c]]
-    else:
-        M = [[c, -s, 0], [s, c, 0], [0, 0, 1]]
-    out = _mlines('R', M)
+    out = _mlines('R', _rot3m(ax, theta))
     out.append('rotate ' + _f(theta) + ' deg about ' + _AXN[ax - 1])
     out.append(_w('axis 1 = x, 2 = y, 3 = z; det = 1'))
     out.append(_w('the ' + _AXN[ax - 1] + '-axis is invariant'))
@@ -1378,183 +1890,422 @@ def t_invar(A):
     out.append(_w('y = mx maps to y = mx when c + dm = m(a + bm)'))
     return out
 
-def _eig2(A):
-    a = A[0][0]
-    b = A[0][1]
-    c = A[1][0]
-    d = A[1][1]
-    tr = a + d
-    det = _det2(A)
-    disc = tr * tr - 4.0 * det
-    return tr, det, disc
+# ---- V  Vectors and 3-D -----------------------------------------------------
 
-def _vec2(A, L):
-    p = A[0][0] - L
-    q = A[0][1]
-    if abs(p) < 1e-9 and abs(q) < 1e-9:
-        p = A[1][0]
-        q = A[1][1] - L
-    if abs(q) > 1e-9:
-        return _scale([1.0, -p / q])
-    if abs(p) > 1e-9:
-        return _scale([-q / p, 1.0])
-    return [1, 0]
+def _sub3(a, b):
+    return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 
-def t_eig2(A):
-    tr, det, disc = _eig2(A)
+def _dot3(a, b):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+def _cross3(a, b):
+    return [a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0]]
+
+def _mag3(a):
+    return math.sqrt(_dot3(a, a))
+
+def _step(a, d, t):
+    return [a[0] + t * d[0], a[1] + t * d[1], a[2] + t * d[2]]
+
+def _nonzero(v, name):
+    if _mag3(v) < 1e-12:
+        raise ValueError(name + ' is the zero vector')
+    return v
+
+def _ints(vals):
     out = []
-    out.append('char eq: ' + _eqstr([1, -tr, det], 'L') + ' = 0')
-    if disc < -1e-12:
-        s = math.sqrt(-disc)
-        l1 = complex(tr / 2.0, s / 2.0)
-        out.append('L = ' + _f(casutil.clean(l1)) + ' and its conjugate')
-        out.append(_warn('no real eigenvalues, so no real'))
-        out.append(_warn('eigenvectors (a rotation-like map)'))
-        out.append(_w('disc = ' + _f(disc) + ' < 0'))
-        return out
-    if disc < 0:
-        disc = 0.0
-    rt = math.sqrt(disc)
-    l1 = _snap((tr + rt) / 2.0)
-    l2 = _snap((tr - rt) / 2.0)
-    v1 = _vec2(A, l1)
-    out.append('L1 = ' + _f(l1) + ', v1 = ' + casutil.fmtv(v1))
-    if abs(l1 - l2) < 1e-9:
-        nl = _nullity([[A[0][0] - l1, A[0][1]], [A[1][0], A[1][1] - l1]])
-        out.append(_warn('repeated eigenvalue L = ' + _f(l1)))
-        if nl >= 2:
-            out.append(_w('eigenspace is 2D: A is ' + _f(l1) + ' I'))
-        else:
-            out.append(_w('only one eigenvector: not diagonalisable'))
-    else:
-        out.append('L2 = ' + _f(l2) + ', v2 = ' + casutil.fmtv(_vec2(A, l2)))
-        out.append(_w('distinct eigenvalues, so diagonalisable'))
-    out.append(_w('trace = ' + _f(tr) + ' = L1+L2, det = ' + _f(det) + ' = L1L2'))
-    out.append(_w('Av = Lv: v keeps its direction, scaled by L'))
+    for c in vals:
+        k = int(round(c))
+        if abs(c - k) > 1e-9:
+            return None
+        out.append(k)
     return out
 
-def _charpoly3(A):
-    tr = A[0][0] + A[1][1] + A[2][2]
-    m2 = ((A[1][1] * A[2][2] - A[1][2] * A[2][1])
-          + (A[0][0] * A[2][2] - A[0][2] * A[2][0])
-          + (A[0][0] * A[1][1] - A[0][1] * A[1][0]))
-    return [1, -tr, m2, -_det3(A)]
+def _simp_vec(v):
+    iv = _ints(v)
+    if iv is None:
+        return v
+    g = 0
+    for c in iv:
+        g = casutil.gcd(g, c)
+    if g <= 1:
+        return iv
+    return [c // g for c in iv]
 
-def _realeigs(A):
-    co = _charpoly3(A)
-    out = []
-    for r in _roots(co):
-        if not isinstance(r, complex):
-            out.append(_snap(r))
-    out.sort()
-    return co, out
+def _simp_plane(n, d):
+    iv = _ints([n[0], n[1], n[2], d])
+    if iv is None:
+        return (n, d)
+    g = 0
+    for c in iv:
+        g = casutil.gcd(g, c)
+    if g <= 1:
+        return (n, d)
+    return ([iv[0] // g, iv[1] // g, iv[2] // g], iv[3] // g)
 
-def t_eig3(A):
-    co, ls = _realeigs(A)
-    out = ['char eq: ' + _eqstr(co, 'L') + ' = 0']
-    if not ls:
-        out.append(_warn('no real eigenvalues'))
-        return out
-    seen = []
-    for L in ls:
-        rep = False
-        for s in seen:
-            if abs(s - L) < 1e-9:
-                rep = True
-        seen.append(L)
-        if rep:
-            continue
-        S = [[A[i][j] - (L if i == j else 0) for j in range(3)] for i in range(3)]
-        v = _nullvec(S)
-        cnt = 0
-        for s in ls:
-            if abs(s - L) < 1e-9:
-                cnt += 1
-        tag = '' if cnt == 1 else ' (x' + str(cnt) + ')'
-        if v is None:
-            out.append('L = ' + _f(L) + tag + ': no eigenvector')
-        else:
-            out.append('L = ' + _f(L) + tag + ', v = ' + casutil.fmtv(v))
-            if cnt > 1:
-                nl = _nullity(S)
-                out.append(_warn('repeated L: eigenspace is ' + str(nl) + 'D'))
-    out.append(_w('trace = ' + _f(-co[1]) + ' = sum of eigenvalues'))
-    out.append(_w('det = ' + _f(-co[3]) + ' = product of eigenvalues'))
-    out.append(_w('solve (A - L I)v = 0 for each L'))
-    return out
+def _angle_lines(c):
+    r = casutil.acos_safe(c)
+    return ['angle = ' + _f(r) + ' rad',
+            '      = ' + _f(casutil.deg(r)) + ' deg']
 
-def _diaglines(A, ls, vs, n, out):
-    U = []
+def _cart_line(a, d):
+    names = ('x', 'y', 'z')
+    parts = []
+    fixed = []
     i = 0
-    while i < len(A):
-        U.append([vs[j][i] for j in range(len(ls))])
+    while i < 3:
+        if abs(d[i]) > 1e-12:
+            top = names[i]
+            if abs(a[i]) > 1e-12:
+                top = '(' + names[i] + (' - ' if a[i] > 0 else ' + ') + _f(abs(a[i])) + ')'
+            if abs(d[i] - 1.0) < 1e-12:
+                parts.append(top)
+            elif d[i] < 0:
+                parts.append(top + '/(' + _f(d[i]) + ')')
+            else:
+                parts.append(top + '/' + _f(d[i]))
+        else:
+            fixed.append(names[i] + ' = ' + _f(a[i]))
         i += 1
-    for ln in _mlines('U', U):
-        out.append(ln)
-    D = [[ls[i] if i == j else 0 for j in range(len(ls))] for i in range(len(ls))]
-    for ln in _mlines('D', D):
-        out.append(_w(ln))
-    if n is not None:
-        nn = _iv(n, 'n', 0, 40)
-        for ln in _mlines('M^' + str(nn), _mpow(A, nn)):
-            out.append(ln)
-        out.append(_w('M^n = U D^n U^-1, D^n = diag of L^n'))
-        ps = []
-        for L in ls:
-            ps.append(_f(L) + '^' + str(nn) + ' = ' + _f(casutil.clean(L ** nn)))
-        out.append(_w(', '.join(ps)))
+    out = []
+    if parts:
+        out.append(' = '.join(parts))
+    for s in fixed:
+        out.append(s)
+    return out
+
+def _plane_lines(n, d):
+    n, d = _simp_plane(n, d)
+    names = ('x', 'y', 'z')
+    s = ''
+    i = 0
+    while i < 3:
+        c = n[i]
+        if abs(c) > 1e-12:
+            if s == '':
+                s = ('-' if c < 0 else '') + ('' if abs(abs(c) - 1.0) < 1e-12 else _f(abs(c))) + names[i]
+            else:
+                s = s + (' - ' if c < 0 else ' + ') + ('' if abs(abs(c) - 1.0) < 1e-12 else _f(abs(c))) + names[i]
+        i += 1
+    return ['r.' + _fv(n) + ' = ' + _f(d), s + ' = ' + _f(d)]
+
+def t_line_2pts(A, B):
+    d = _nonzero(_sub3(B, A), 'B - A')
+    d = _simp_vec(d)
+    out = ['r = ' + _fv(A) + ' + t' + _fv(d)]
+    for s in _cart_line(A, d):
+        out.append(s)
+    out.append(_w('direction = B - A'))
+    out.append(_w('|d| = ' + _f(_mag3(d))))
+    return out
+
+def t_line_cart(a, d):
+    _nonzero(d, 'd')
+    d = _simp_vec(d)
+    out = ['r = ' + _fv(a) + ' + t' + _fv(d)]
+    for s in _cart_line(a, d):
+        out.append(s)
+    out.append(_w('|d| = ' + _f(_mag3(d))))
+    return out
+
+def t_plane_3pts(A, B, C):
+    n = _cross3(_sub3(B, A), _sub3(C, A))
+    if _mag3(n) < 1e-12:
+        raise ValueError('the three points are collinear')
+    n = _simp_vec(n)
+    d = _dot3(n, A)
+    out = _plane_lines(n, d)
+    out.append(_w('n = (B-A) x (C-A) = ' + _fv(n)))
+    out.append(_w('d = n.A = ' + _f(d)))
+    return out
+
+def t_plane_pt_n(p, n):
+    _nonzero(n, 'n')
+    d = _dot3(n, p)
+    out = _plane_lines(n, d)
+    out.append(_w('d = n.p = ' + _f(d)))
+    out.append(_w('|n| = ' + _f(_mag3(n))))
+    return out
+
+def _posfirst(v):
+    for c in v:
+        if abs(c) > 1e-12:
+            return [-x for x in v] if c < 0 else v
+    return v
+
+def t_plane_2dirs(a, b, c):
+    # v2: r = a + s b + t c  ->  n.r = d and cartesian
+    n = _cross3(b, c)
+    if _mag3(n) < 1e-12 * (1.0 + _mag3(b) * _mag3(c)):
+        raise ValueError('the directions are parallel')
+    n = _posfirst(_simp_vec(n))
+    d = _dot3(n, a)
+    out = _plane_lines(n, d)
+    out.append(_w('r = ' + _fv(a) + ' + s' + _fv(b) + ' + t' + _fv(c)))
+    out.append(_w('n = b x c = ' + _fv(n)))
+    out.append(_w('d = n.a = ' + _f(d)))
+    return out
+
+def t_plane_to_vec(n, d):
+    # v2: n.r = d  ->  r = p + s u + t v
+    _nonzero(n, 'n')
+    k = 0
+    j = 1
+    while j < 3:
+        if abs(n[j]) > abs(n[k]):
+            k = j
+        j += 1
+    p = [0, 0, 0]
+    p[k] = casutil.clean(d * 1.0 / n[k])
+    cands = [[n[1], -n[0], 0], [n[2], 0, -n[0]], [0, n[2], -n[1]]]
+    dirs = []
+    for v in cands:
+        if _mag3(v) < 1e-12:
+            continue
+        if dirs and _mag3(_cross3(dirs[0], v)) < 1e-9 * _mag3(v) * _mag3(dirs[0]):
+            continue
+        dirs.append(_posfirst(_simp_vec(v)))
+        if len(dirs) == 2:
+            break
+    out = ['point ' + _fv(p),
+           'directions ' + _fv(dirs[0]) + ', ' + _fv(dirs[1])]
+    out.append(_w('r = ' + _fv(p) + ' + s' + _fv(dirs[0]) + ' + t' + _fv(dirs[1])))
+    out.append(_w('both directions have zero dot product with n'))
+    out.append(_w('the point has n.p = ' + _f(d)))
+    return out
+
+def t_angle_lines(d1, d2):
+    _nonzero(d1, 'd1')
+    _nonzero(d2, 'd2')
+    dp = _dot3(d1, d2)
+    c = abs(dp) / (_mag3(d1) * _mag3(d2))
+    out = _angle_lines(c)
+    out.append(_w('cos = |d1.d2|/(|d1||d2|) = ' + _f(c)))
+    out.append(_w('d1.d2 = ' + _f(dp)))
+    return out
+
+def t_angle_lp(d, n):
+    _nonzero(d, 'd')
+    _nonzero(n, 'n')
+    s = abs(_dot3(d, n)) / (_mag3(d) * _mag3(n))
+    if s > 1.0:
+        s = 1.0
+    r = math.asin(s)
+    out = ['angle = ' + _f(r) + ' rad',
+           '      = ' + _f(casutil.deg(r)) + ' deg']
+    out.append(_w('sin = |d.n|/(|d||n|) = ' + _f(s)))
+    out.append(_w('d.n = ' + _f(_dot3(d, n))))
+    return out
+
+def t_angle_planes(n1, n2):
+    _nonzero(n1, 'n1')
+    _nonzero(n2, 'n2')
+    dp = _dot3(n1, n2)
+    c = abs(dp) / (_mag3(n1) * _mag3(n2))
+    out = _angle_lines(c)
+    out.append(_w('cos = |n1.n2|/(|n1||n2|) = ' + _f(c)))
+    out.append(_w('n1.n2 = ' + _f(dp)))
+    return out
+
+def t_perp_check(a, b):
+    _nonzero(a, 'a')
+    _nonzero(b, 'b')
+    dp = _dot3(a, b)
+    cr = _cross3(a, b)
+    scale = _mag3(a) * _mag3(b)
+    out = ['perpendicular' if abs(dp) < 1e-9 * scale else 'not perpendicular']
+    out.append('parallel' if _mag3(cr) < 1e-9 * scale else 'not parallel')
+    out.append(_w('a.b = ' + _f(dp)))
+    out.append(_w('a x b = ' + _fv(cr)))
+    return out
+
+def t_cross(a, b):
+    cr = _cross3(a, b)
+    mc = _mag3(cr)
+    out = ['a x b = ' + _fv(cr), '|a x b| = ' + _f(mc)]
+    out.append(_w('a.b = ' + _f(_dot3(a, b))))
+    ma = _mag3(a)
+    mb = _mag3(b)
+    if ma > 1e-12 and mb > 1e-12:
+        out.append(_w('sin t = |a x b|/(|a||b|) = ' + _f(mc / (ma * mb))))
+    if mc > 1e-12:
+        out.append(_w('n-hat = ' + _fv([c / mc for c in cr])))
+        out.append(_w('a x b = |a||b| sin t n-hat, perp to a and b'))
     else:
-        out.append(_w('M^n = U D^n U^-1, D^n = diag of L^n'))
-
-def t_diag2(A, n):
-    tr, det, disc = _eig2(A)
-    if disc < -1e-12:
-        return ['not diagonalisable over the reals',
-                _warn('the eigenvalues are complex')]
-    rt = math.sqrt(disc if disc > 0 else 0.0)
-    l1 = _snap((tr + rt) / 2.0)
-    l2 = _snap((tr - rt) / 2.0)
-    if abs(l1 - l2) < 1e-9 and _nullity([[A[0][0] - l1, A[0][1]],
-                                         [A[1][0], A[1][1] - l1]]) < 2:
-        return ['not diagonalisable',
-                _warn('repeated L = ' + _f(l1) + ' with one eigenvector')]
-    v1 = _vec2(A, l1)
-    v2 = _vec2(A, l2)
-    if abs(l1 - l2) < 1e-9:
-        v1 = [1, 0]
-        v2 = [0, 1]
-    out = ['M = U D U^-1, D = diag(' + _f(l1) + ', ' + _f(l2) + ')']
-    _diaglines(A, [l1, l2], [v1, v2], n, out)
-    out.append(_w('U columns are the eigenvectors, in the'))
-    out.append(_w('same order as the eigenvalues in D'))
+        out.append(_w('a x b = 0: a and b are parallel'))
     return out
 
-def t_diag3(A, n):
-    co, ls = _realeigs(A)
-    vs = []
-    ok = len(ls) == 3
-    if ok:
-        for L in ls:
-            S = [[A[i][j] - (L if i == j else 0) for j in range(3)] for i in range(3)]
-            v = _nullvec(S)
-            if v is None:
-                ok = False
-                break
-            vs.append(v)
-    if ok:
-        U = [[vs[j][i] for j in range(3)] for i in range(3)]
-        if _det3(U) == 0:
-            ok = False
-    if not ok:
-        return ['not diagonalisable over the reals',
-                _warn('needs 3 independent real eigenvectors'),
-                _w('char eq: ' + _eqstr(co, 'L') + ' = 0')]
-    out = ['M = U D U^-1',
-           'D = diag(' + _f(ls[0]) + ', ' + _f(ls[1]) + ', ' + _f(ls[2]) + ')']
-    _diaglines(A, ls, vs, n, out)
+def t_scalar(a, b):
+    # Pv1: scalar product and the angle between two vectors
+    _nonzero(a, 'a')
+    _nonzero(b, 'b')
+    dp = _dot3(a, b)
+    ma = _mag3(a)
+    mb = _mag3(b)
+    c = dp / (ma * mb)
+    r = casutil.acos_safe(c)
+    out = ['a.b = ' + _f(dp), 'angle = ' + _f(r) + ' rad',
+           '      = ' + _f(casutil.deg(r)) + ' deg']
+    if abs(dp) < 1e-9 * ma * mb:
+        out.append('a and b are perpendicular')
+    out.append(_w('|a| = ' + _f(ma) + ',  |b| = ' + _f(mb)))
+    out.append(_w('cos t = a.b/(|a||b|) = ' + _f(c)))
     return out
 
-# ---- D  Further algebra and functions ---------------------------------------
+def t_tri_area(A, B, C):
+    cr = _cross3(_sub3(B, A), _sub3(C, A))
+    area = 0.5 * _mag3(cr)
+    out = ['area = ' + _f(area)]
+    out.append(_w('area = 0.5|(B-A) x (C-A)|'))
+    out.append(_w('(B-A) x (C-A) = ' + _fv(cr)))
+    return out
+
+def t_on_line(a, b, p):
+    _nonzero(b, 'b')
+    cr = _cross3(_sub3(p, a), b)
+    scale = _mag3(_sub3(p, a)) * _mag3(b) + 1.0
+    on = _mag3(cr) < 1e-9 * scale
+    out = ['p is on the line' if on else 'p is not on the line']
+    if on:
+        t = _dot3(_sub3(p, a), b) / _dot3(b, b)
+        out.append('t = ' + _f(t))
+    out.append(_w('(r-a) x b = 0 defines the line'))
+    out.append(_w('(p-a) x b = ' + _fv(cr)))
+    return out
+
+def _line_pair(a1, d1, a2, d2):
+    _nonzero(d1, 'd1')
+    _nonzero(d2, 'd2')
+    cr = _cross3(d1, d2)
+    wv = _sub3(a2, a1)
+    mc = _mag3(cr)
+    scale = _mag3(d1) * _mag3(d2)
+    if mc < 1e-9 * scale:
+        dist = _mag3(_cross3(wv, d1)) / _mag3(d1)
+        if dist < 1e-9 * (1.0 + _mag3(wv)):
+            return ('same', 0.0, cr)
+        return ('par', dist, cr)
+    dist = abs(_dot3(wv, cr)) / mc
+    t = _dot3(_cross3(wv, d2), cr) / (mc * mc)
+    s = _dot3(_cross3(wv, d1), cr) / (mc * mc)
+    if dist < 1e-9 * (1.0 + _mag3(wv) + _mag3(d1) + _mag3(d2)):
+        return ('meet', (t, s, _step(a1, d1, t)), cr)
+    return ('skew', (dist, t, s), cr)
+
+def t_line_meet(a1, d1, a2, d2):
+    kind, info, cr = _line_pair(a1, d1, a2, d2)
+    out = []
+    if kind == 'same':
+        out.append('the same line')
+    elif kind == 'par':
+        out.append('parallel, no intersection')
+        out.append('distance = ' + _f(info))
+    elif kind == 'meet':
+        t, s, p = info
+        out.append('they meet at ' + _fv(p))
+        out.append(_w('t = ' + _f(t) + ',  s = ' + _f(s)))
+    else:
+        dist, t, s = info
+        out.append('skew lines')
+        out.append('distance = ' + _f(dist))
+        out.append(_w('nearest on line 1: ' + _fv(_step(a1, d1, t))))
+        out.append(_w('nearest on line 2: ' + _fv(_step(a2, d2, s))))
+    out.append(_w('d1 x d2 = ' + _fv(cr)))
+    out.append(_w('a2 - a1 = ' + _fv(_sub3(a2, a1))))
+    return out
+
+def t_line_dist(a1, d1, a2, d2):
+    kind, info, cr = _line_pair(a1, d1, a2, d2)
+    out = []
+    if kind == 'same':
+        out.append('the same line')
+        out.append('distance = 0')
+    elif kind == 'par':
+        out.append('parallel lines')
+        out.append('distance = ' + _f(info))
+        out.append(_w('d = |(a2-a1) x d1|/|d1|'))
+    elif kind == 'meet':
+        out.append('lines intersect')
+        out.append('distance = 0')
+        out.append(_w('meet at ' + _fv(info[2])))
+    else:
+        out.append('skew lines')
+        out.append('distance = ' + _f(info[0]))
+        out.append(_w('d = |(a2-a1).(d1 x d2)|/|d1 x d2|'))
+    out.append(_w('d1 x d2 = ' + _fv(cr)))
+    return out
+
+def t_line_plane(a, d, n, k):
+    _nonzero(d, 'd')
+    _nonzero(n, 'n')
+    nd = _dot3(n, d)
+    na = _dot3(n, a)
+    out = []
+    if abs(nd) < 1e-12 * _mag3(n) * _mag3(d):
+        if abs(na - k) < 1e-9 * (1.0 + abs(k)):
+            out.append('the line lies in the plane')
+        else:
+            out.append('parallel, never meets')
+            out.append('distance = ' + _f(abs(na - k) / _mag3(n)))
+    else:
+        t = (k - na) / nd
+        p = _step(a, d, t)
+        out.append('meets at ' + _fv(p))
+        out.append(_w('t = (k - n.a)/(n.d) = ' + _f(t)))
+        s = abs(nd) / (_mag3(n) * _mag3(d))
+        if s > 1.0:
+            s = 1.0
+        r = math.asin(s)
+        out.append('angle = ' + _f(r) + ' rad')
+        out.append('      = ' + _f(casutil.deg(r)) + ' deg')
+    out.append(_w('n.d = ' + _f(nd) + ',  n.a = ' + _f(na)))
+    return out
+
+def t_pt_line(p, a, d):
+    _nonzero(d, 'd')
+    wv = _sub3(p, a)
+    cr = _cross3(wv, d)
+    dist = _mag3(cr) / _mag3(d)
+    t = _dot3(wv, d) / _dot3(d, d)
+    foot = _step(a, d, t)
+    out = ['distance = ' + _f(dist), 'foot = ' + _fv(foot)]
+    out.append(_w('d = |(p-a) x d|/|d|'))
+    out.append(_w('(p-a) x d = ' + _fv(cr)))
+    out.append(_w('t = (p-a).d/|d|^2 = ' + _f(t)))
+    return out
+
+def t_planes3(n1, d1, n2, d2, n3, d3):
+    # v4: three planes, classified and solved
+    A = [list(n1), list(n2), list(n3)]
+    b = [d1, d2, d3]
+    for v, nm in ((n1, 'n1'), (n2, 'n2'), (n3, 'n3')):
+        _nonzero(v, nm)
+    det = _det3(A)
+    if det != 0:
+        iv = _inv3(A)
+        x = [casutil.clean(iv[i][0] * b[0] + iv[i][1] * b[1] + iv[i][2] * b[2])
+             for i in range(3)]
+        return ['meet at one point', _fv(x),
+                _w('det of the normals = ' + _f(det) + ' != 0'),
+                _w('solve the three equations by A^-1')]
+    out = _planes_sing(A, b)
+    out.append(_w('det of the normals = 0: no single point'))
+    return out
+
+def t_pt_plane(p, n, k):
+    _nonzero(n, 'n')
+    mn = _mag3(n)
+    gap = _dot3(n, p) - k
+    dist = abs(gap) / mn
+    foot = [p[i] - gap * n[i] / (mn * mn) for i in range(3)]
+    out = ['distance = ' + _f(dist), 'foot = ' + _fv(foot)]
+    out.append(_w('d = |n.p - k|/|n|'))
+    out.append(_w('n.p = ' + _f(_dot3(n, p)) + ',  |n| = ' + _f(mn)))
+    return out
+
+# ---- A  Algebra: roots of polynomials ---------------------------------------
 
 def _coeffs(co, lo, hi):
     while len(co) > 1 and co[0] == 0:
@@ -1718,6 +2469,8 @@ def t_rootsq(coeffs):
     out.append(_w('write f(x) = E(x^2) + x O(x^2), then'))
     out.append(_w('the new polynomial is E(y)^2 - y O(y)^2'))
     return out
+
+# ---- S  Series --------------------------------------------------------------
 
 def t_sumpow(n):
     n = _iv(n, 'n', 0, 100000000)
@@ -1917,20 +2670,160 @@ def t_diffs(fr, n):
     out.append(_w('as n -> inf, S(n) -> ' + _f(g1v) + ' if g(n+1) -> 0'))
     return out
 
-def _ratcoef(v, fact):
-    n = int(v + 0.5) if v >= 0 else -int(-v + 0.5)
-    if abs(v - n) < 1e-9 * (1.0 + abs(v)):
-        return caspoly.rmake(n, fact)
+def _cfrat(x):
+    # best rational n/d (d <= 100000) by continued fractions, or None
+    if isinstance(x, complex) or x != x or abs(x) > 1e12:
+        return None
+    sgn = -1 if x < 0 else 1
+    y = abs(x)
+    h0, h1 = 0, 1
+    k0, k1 = 1, 0
+    r = y
+    i = 0
+    while i < 30:
+        a = int(r)
+        h0, h1 = h1, a * h1 + h0
+        k0, k1 = k1, a * k1 + k0
+        if k1 > 100000:
+            return None
+        if abs(h1 * 1.0 / k1 - y) < 1e-10 * (1.0 + y):
+            return (sgn * h1, k1)
+        f = r - a
+        if f < 1e-14:
+            return None
+        r = 1.0 / f
+        i += 1
     return None
 
-_GEN = (('e^(x)', 'term r: x^r/r!', ''),
-        ('sin(x)', 'term r: (-1)^r x^(2r+1)/(2r+1)!', ''),
-        ('cos(x)', 'term r: (-1)^r x^(2r)/(2r)!', ''),
-        ('ln(x+1)', 'term r: (-1)^(r+1) x^r/r', 'valid for -1 < x <= 1'),
-        ('ln(1+x)', 'term r: (-1)^(r+1) x^r/r', 'valid for -1 < x <= 1'))
+def _ratcoef(v, fact):
+    q = _cfrat(v)
+    if q is None:
+        return None
+    return caspoly.rmake(q[0], q[1] * fact)
 
-def t_maclaurin(f, n):
-    n = _iv(n, 'n', 1, 8)
+_GEN = (('e^(x)', 'term r: x^r/r!'),
+        ('sin(x)', 'term r: (-1)^r x^(2r+1)/(2r+1)!'),
+        ('cos(x)', 'term r: (-1)^r x^(2r)/(2r)!'),
+        ('ln(x+1)', 'term r: (-1)^(r+1) x^r/r'),
+        ('ln(1+x)', 'term r: (-1)^(r+1) x^r/r'))
+
+_ALL = (None, False, None, False)
+
+def _ival_and(I, J):
+    # intersection of intervals (lo, lo incl, hi, hi incl); None = unknown
+    if I is None or J is None:
+        return None
+    lo, li = I[0], I[1]
+    if J[0] is not None and (lo is None or J[0] > lo or (J[0] == lo and not J[1])):
+        lo, li = J[0], J[1]
+    hi, hin = I[2], I[3]
+    if J[2] is not None and (hi is None or J[2] < hi or (J[2] == hi and not J[3])):
+        hi, hin = J[2], J[3]
+    return (lo, li, hi, hin)
+
+def _linx(t):
+    # (c, a) when t = c + a x, else None
+    try:
+        P = caspoly.poly(t, 'x')
+    except Exception:
+        return None
+    if P is None or len(P) > 2:
+        return None
+    c = P[0][0] * 1.0 / P[0][1] if len(P) > 0 else 0.0
+    a = P[1][0] * 1.0 / P[1][1] if len(P) > 1 else 0.0
+    return (c, a)
+
+def _constv(t):
+    try:
+        v = caseng.evalf(t, 0.0, False, {})
+    except Exception:
+        return None
+    return None if isinstance(v, complex) else v
+
+def _ipow(base, p):
+    # interval where the binomial series of base^p converges
+    if abs(p - int(p)) < 1e-12 and p >= 0:
+        return _ival(base)
+    if base[0] == '^' and not cascalc.has_var(base[2], 'x'):
+        q = _constv(base[2])
+        return None if q is None else _ipow(base[1], p * q)
+    if base[0] == 'sqrt':
+        return _ipow(base[1], p * 0.5)
+    L = _linx(base)
+    if L is None:
+        return None
+    c, a = L
+    if a == 0:
+        return _ALL
+    if c == 0:
+        return None
+    r = abs(c / a)
+    return (-r, False, r, False)
+
+def _ival(t):
+    # s4/s5: interval of validity of the Maclaurin series of t
+    if not cascalc.has_var(t, 'x'):
+        return _ALL
+    k = t[0]
+    if k == 'v':
+        return _ALL
+    if k in ('+', '-', '*'):
+        return _ival_and(_ival(t[1]), _ival(t[2]))
+    if k == 'neg' or k in ('exp', 'sin', 'cos', 'sinh', 'cosh'):
+        return _ival(t[1])
+    if k == '/':
+        if not cascalc.has_var(t[2], 'x'):
+            return _ival(t[1])
+        return _ival_and(_ival(t[1]), _ipow(t[2], -1.0))
+    if k == '^':
+        if not cascalc.has_var(t[2], 'x'):
+            p = _constv(t[2])
+            return None if p is None else _ipow(t[1], p)
+        if not cascalc.has_var(t[1], 'x'):
+            return _ival(t[2])
+        return None
+    if k == 'sqrt':
+        return _ipow(t[1], 0.5)
+    if k == 'ln':
+        L = _linx(t[1])
+        if L is None or L[0] <= 0:
+            return None
+        c, a = L
+        if a == 0:
+            return _ALL
+        r = c / abs(a)
+        return (-r, False, r, True) if a > 0 else (-r, True, r, False)
+    if k == 'atan':
+        L = _linx(t[1])
+        if L is None or L[0] != 0 or L[1] == 0:
+            return None
+        r = 1.0 / abs(L[1])
+        return (-r, True, r, True)
+    return None
+
+def _ivalstr(I):
+    if I[0] is None and I[2] is None:
+        return 'valid for all x'
+    s = ''
+    if I[0] is not None:
+        s = _f(casutil.clean(I[0])) + (' <= ' if I[1] else ' < ')
+    s += 'x'
+    if I[2] is not None:
+        s += (' <= ' if I[3] else ' < ') + _f(casutil.clean(I[2]))
+    return 'valid for ' + s
+
+def _inival(I, x):
+    if I[0] is not None and (x < I[0] or (x == I[0] and not I[1])):
+        return False
+    if I[2] is not None and (x > I[2] or (x == I[2] and not I[3])):
+        return False
+    return True
+
+def _mac(f, n):
+    # coefficients c_0..c_n (floats) and the series as a tree
+    for v in caseng.vars_in(f):
+        if v != 'x':
+            raise ValueError('f(x): type it in x')
     co = []
     rat = []
     ok = True
@@ -1940,7 +2833,7 @@ def t_maclaurin(f, n):
     while k <= n:
         if k:
             fact *= k
-        v = casutil.evx(d, 0.0)
+        v = _at(d, 'x', 0.0)
         if v is None:
             raise ValueError('undefined at x = 0 (term ' + str(k) + ')')
         co.append(v / fact)
@@ -1949,24 +2842,64 @@ def t_maclaurin(f, n):
             ok = False
         else:
             rat.append(r)
-        try:
-            d = caseng.simplify(caseng.diff(d, 'x'))
-        except Exception:
-            raise ValueError('cannot differentiate that far')
+        if k < n:
+            try:
+                d = caseng.simplify(caseng.diff(d, 'x'))
+            except Exception:
+                raise ValueError('cannot differentiate that far')
         k += 1
     if ok:
         tree = caseng.simplify(caspoly.ptree(caspoly.ptrim(rat), 'x'))
     else:
         tree = _polytree(co, 'x')
+    return co, tree
+
+def t_maclaurin(f, n):
+    # s3, s4, s5
+    n = _iv(n, 'n', 1, 8)
+    co, tree = _mac(f, n)
     out = ['f(x) =', _m(tree)]
+    I = _ival(f)
+    if I is None:
+        out.append(_warn('validity: not a standard form'))
+    elif I[0] is None and I[2] is None:
+        out.append(_w('valid for all x'))
+    else:
+        out.append(_warn(_ivalstr(I)))
     key = caseng.tostr(caseng.simplify(f))
-    for nm, gen, note in _GEN:
+    for nm, gen in _GEN:
         if key == nm:
             out.append(_w(gen))
-            if note:
-                out.append(_warn(note))
     out.append(_w('terms up to x^' + str(n) + '; c_r = f^(r)(0)/r!'))
-    out.append(_w('f(0) = ' + _f(co[0]) + ', f\'(0) = ' + _f(co[1] if n >= 1 else 0)))
+    out.append(_w('f(0) = ' + _f(co[0]) + ', f\'(0) = ' + _f(co[1])))
+    return out
+
+def t_macapprox(f, n, a):
+    # s3: use the series to approximate f(a)
+    n = _iv(n, 'n', 1, 8)
+    co, tree = _mac(f, n)
+    s = 0.0
+    k = n
+    while k >= 0:
+        s = s * a + co[k]
+        k -= 1
+    out = ['series = ' + casutil.sf3(s)]
+    tv = _at(f, 'x', a)
+    if tv is None:
+        out.append(_warn('f is undefined at x = ' + _f(a)))
+    else:
+        out.append('f(a) = ' + casutil.sf3(tv))
+        out.append('error = ' + casutil.sf3(tv - s))
+    I = _ival(f)
+    if I is None:
+        out.append(_warn('validity: not a standard form'))
+    elif not _inival(I, a):
+        out.append(_warn('x = ' + _f(a) + ' is outside the interval'))
+        out.append(_warn(_ivalstr(I)))
+    else:
+        out.append(_w(_ivalstr(I)))
+    out.append(_w('series to x^' + str(n) + ': ' + caseng.tostr(tree)[:34]))
+    out.append(_w('series value ' + _f(s, 6)))
     return out
 
 def _torat(v):
@@ -2014,467 +2947,29 @@ def t_binom(p, n):
     out.append(_w('terms up to x^' + str(n)))
     return out
 
-def _side(f, a, sgn):
-    vals = []
-    h = 1e-4
-    i = 0
-    while i < 3:
-        v = casutil.evx(f, a + sgn * h)
-        if v is None:
-            return None
-        vals.append(v)
-        h = h / 10.0
-        i += 1
-    if abs(vals[2] - vals[1]) > 1e-3 * (1.0 + abs(vals[2])):
-        return None
-    return vals[2]
-
-def t_limit(f, a):
-    lft = _side(f, a, -1.0)
-    rgt = _side(f, a, 1.0)
-    out = []
-    lh = None
-    if f[0] == '/':
-        num = f[1]
-        den = f[2]
-        i = 0
-        while i < 5:
-            nv = casutil.evx(num, a)
-            dv = casutil.evx(den, a)
-            if nv is None or dv is None:
-                break
-            if abs(dv) > 1e-9:
-                lh = nv / dv
-                break
-            if abs(nv) > 1e-9:
-                lh = None
-                break
-            try:
-                num = caseng.simplify(caseng.diff(num, 'x'))
-                den = caseng.simplify(caseng.diff(den, 'x'))
-            except Exception:
-                break
-            i += 1
-        if lh is not None and i > 0:
-            out.append('limit = ' + _f(casutil.clean(_snap(lh))))
-            out.append(_w("l'Hopital " + str(i) + 'x: 0/0, differentiate top'))
-            out.append(_w('and bottom, then put x = ' + _f(a)))
-    if not out:
-        if lft is None or rgt is None:
-            raise ValueError('f(x) is not defined on both sides')
-        if abs(lft - rgt) > 1e-3 * (1.0 + abs(rgt)):
-            return ['no limit: the two sides differ',
-                    'from below: ' + _f(lft), 'from above: ' + _f(rgt)]
-        out.append('limit = ' + _f(casutil.clean(_snap((lft + rgt) / 2.0))))
-        out.append(_w('numerically, from both sides'))
-    v = casutil.evx(f, a)
-    if v is not None:
-        out.append(_w('f(' + _f(a) + ') = ' + _f(v) + ' (continuous there)'))
-    else:
-        out.append(_w('f is undefined at x = ' + _f(a)))
-    if lft is not None:
-        out.append(_w('x = ' + _f(a) + '-0.000001: ' + _f(lft)))
-    if rgt is not None:
-        out.append(_w('x = ' + _f(a) + '+0.000001: ' + _f(rgt)))
-    return out
-
-def _dens(t, out):
-    if t[0] == '/':
-        out.append(t[2])
-    if len(t) >= 2 and isinstance(t[1], tuple):
-        _dens(t[1], out)
-    if len(t) >= 3 and isinstance(t[2], tuple):
-        _dens(t[2], out)
-
-def _addpt(lst, v):
-    for u in lst:
-        if abs(u - v) < 1e-6:
-            return
-    lst.append(v)
-
-def _sign(h, x):
-    v = casutil.evx(h, x)
-    if v is None:
-        return 0
-    if v > 1e-12:
-        return 1
-    if v < -1e-12:
-        return -1
-    return 0
-
-def _intervals(f, g, want):
-    h = ('-', f, g)
-    flat = True
-    for xv in (-7.3, -2.1, -0.4, 0.6, 1.7, 5.2, 11.3):
-        if _sign(h, xv) != 0:
-            flat = False
-            break
-    if flat:
-        return (['f(x) = g(x) where both are defined'], [])
-    roots = []
-    poles = []
-    for r in cascalc.solve(h):
-        v = casutil.evx(h, r)
-        if v is None or abs(v) > 1e-4:
-            _addpt(poles, r)
-        else:
-            _addpt(roots, r)
-    ds = []
-    _dens(h, ds)
-    for d in ds:
-        if cascalc.has_var(d, 'x'):
-            for r in cascalc.solve(d):
-                _addpt(poles, r)
-    pts = []
-    for r in roots:
-        _addpt(pts, r)
-    for r in poles:
-        _addpt(pts, r)
-    pts.sort()
-    out = []
-    if not pts:
-        s = _sign(h, 0.0)
-        if s == want:
-            out.append('true for every x')
-        else:
-            out.append('no solutions')
-        return out, pts
-    i = 0
-    while i <= len(pts):
-        lo = pts[i - 1] if i > 0 else None
-        hi = pts[i] if i < len(pts) else None
-        if lo is None:
-            mid = hi - 1.0
-        elif hi is None:
-            mid = lo + 1.0
-        else:
-            mid = (lo + hi) / 2.0
-        if _sign(h, mid) == want:
-            if lo is None:
-                out.append('x < ' + _f(_snaprat(hi)))
-            elif hi is None:
-                out.append('x > ' + _f(_snaprat(lo)))
-            else:
-                out.append(_f(_snaprat(lo)) + ' < x < ' + _f(_snaprat(hi)))
-        i += 1
-    if not out:
-        out.append('no solutions')
-    return out, pts
-
-def _ineq(f, g, want, sym):
-    out, pts = _intervals(f, g, want)
-    lines = []
-    for ln in out:
-        lines.append(ln)
-    lines.append(_w('f(x) ' + sym + ' g(x): sign of f - g between'))
-    lines.append(_w('its zeros and vertical asymptotes'))
-    if pts:
-        cs = ', '.join([_f(_snaprat(p)) for p in pts[:8]])
-        lines.append(_w('critical values: ' + cs + ('..' if len(pts) > 8 else '')))
-    lines.append(_warn('searched -20 < x < 20 only'))
-    return lines
-
-def t_ineq_gt(f, g):
-    return _ineq(f, g, 1, '>')
-
-def t_ineq_lt(f, g):
-    return _ineq(f, g, -1, '<')
-
-def _num(v):
-    return ('n', casutil.clean(v))
-
-def _linT(a, b):
-    t = ('*', _num(a), ('v', 'x')) if a != 1 else ('v', 'x')
-    if a == 0:
-        return _num(b)
-    if b == 0:
-        return t
-    return ('+', t, _num(b))
-
-def _quadT(a, b, c):
-    t = None
-    if a != 0:
-        t = ('^', ('v', 'x'), ('n', 2)) if a == 1 else \
-            ('*', _num(a), ('^', ('v', 'x'), ('n', 2)))
-    lb = _linT(b, c)
-    if t is None:
-        return lb
-    if b == 0 and c == 0:
-        return t
-    return ('+', t, lb)
-
-def _mxc(m, c):
-    m = casutil.clean(m)
-    c = casutil.clean(c)
-    if m == 0:
-        return 'y = ' + _f(c)
-    ms = 'x' if m == 1 else ('-x' if m == -1 else _f(m) + 'x')
-    if c == 0:
-        return 'y = ' + ms
-    return 'y = ' + ms + (' - ' if c < 0 else ' + ') + _f(-c if c < 0 else c)
-
-def _plot1(tree, centre, title):
-    import plot
-    plot.run([tree], centre - 8.0, centre + 8.0, kind='y', title=title)
-
-def _quadrange(A, B, C, D, E, F, out):
-    P = E * E - 4.0 * D * F
-    Q = 4.0 * A * F + 4.0 * C * D - 2.0 * B * E
-    R = B * B - 4.0 * A * C
-    ys = []
-    if P == 0 and Q == 0:
-        if R >= 0:
-            out.append('y can take any value')
-        else:
-            out.append(_warn('no real y: check the coefficients'))
-    elif P == 0:
-        y0 = _snaprat(-R / Q)
-        out.append('range: y ' + ('>= ' if Q > 0 else '<= ') + _f(y0))
-        ys = [y0]
-    else:
-        dd = Q * Q - 4.0 * P * R
-        if dd < 0:
-            out.append('range: ' + ('every real y' if P > 0 else 'no real y'))
-        else:
-            sq = math.sqrt(dd)
-            y1 = _snaprat((-Q - sq) / (2.0 * P))
-            y2 = _snaprat((-Q + sq) / (2.0 * P))
-            if y1 > y2:
-                y1, y2 = y2, y1
-            ys = [y1, y2]
-            if P > 0:
-                out.append('range: y <= ' + _f(y1) + ' or y >= ' + _f(y2))
-            else:
-                out.append('range: ' + _f(y1) + ' <= y <= ' + _f(y2))
-    for y in ys:
-        den = 2.0 * (A - y * D)
-        if abs(den) > 1e-12:
-            out.append('stationary point (' +
-                       _f(_snaprat(-(B - y * E) / den)) + ', ' + _f(y) + ')')
-    out.append(_w('y(Dx^2+Ex+F) = Ax^2+Bx+C, so'))
-    out.append(_w('(A-yD)x^2+(B-yE)x+(C-yF) = 0'))
-    out.append(_w('real x needs ' + _eqstr([P, Q, R], 'y') + ' >= 0'))
-
-def t_rat1(a, b, c, d):
-    if c == 0:
-        raise ValueError('c = 0: this is a straight line')
-    if a * d - b * c == 0:
-        return ['constant: y = ' + _f(a * 1.0 / c),
-                _warn('the factors cancel')]
-    va = _snaprat(-d * 1.0 / c)
-    tree = ('/', _linT(a, b), _linT(c, d))
-    _plot1(tree, va, 'y = (ax+b)/(cx+d)')
-    out = ['vertical asymptote x = ' + _f(va),
-           'horizontal asymptote y = ' + _f(casutil.clean(a * 1.0 / c))]
-    if a != 0:
-        out.append('crosses x-axis at ' + _f(_snaprat(-b * 1.0 / a)))
-    else:
-        out.append(_w('a = 0: never crosses the x-axis'))
-    if d != 0:
-        out.append('crosses y-axis at ' + _f(casutil.clean(b * 1.0 / d)))
-    else:
-        out.append(_w('d = 0: the y-axis is the asymptote'))
-    out.append(_w('x -> inf gives y -> a/c; x = -d/c kills the'))
-    out.append(_w('denominator'))
-    return out
-
-def t_rat2(a, b, c, d, e):
-    if d == 0:
-        raise ValueError('d = 0: use the (ax+b)/(cx+d) tool')
-    if a == 0:
-        raise ValueError('a = 0: use the (ax+b)/(cx+d) tool')
-    va = _snaprat(-e * 1.0 / d)
-    mg = a * 1.0 / d
-    kk = (b - mg * e) * 1.0 / d
-    rem = c - kk * e
-    tree = ('/', _quadT(a, b, c), _linT(d, e))
-    _plot1(tree, va, 'y = (ax^2+bx+c)/(dx+e)')
-    out = ['vertical asymptote x = ' + _f(va)]
-    if rem == 0:
-        out.append(_mxc(mg, kk) + ' (a straight line)')
-        out.append(_warn('exact division: a hole at x = ' + _f(va)))
-    else:
-        out.append('oblique asymptote ' + _mxc(mg, kk))
-    if e != 0:
-        out.append('crosses y-axis at ' + _f(casutil.clean(c * 1.0 / e)))
-    rs = _roots([a, b, c])
-    xs = []
-    for r in rs:
-        if not isinstance(r, complex):
-            xs.append(_f(_snaprat(r)))
-    xs.sort()
-    out.append('crosses x-axis at ' + ', '.join(xs) if xs else 'no x-intercept')
-    _quadrange(a, b, c, 0.0, d, e, out)
-    out.append(_w('divide out: ' + _mxc(mg, kk) + ' + ' +
-                  _f(casutil.clean(rem)) + '/(' + _f(d) + 'x+' + _f(e) + ')'))
-    return out
-
-def t_rat3(a, b, c, d, e, f):
-    if d == 0:
-        raise ValueError('d = 0: use the quad/linear tool')
-    tree = ('/', _quadT(a, b, c), _quadT(d, e, f))
-    dr = _roots([d, e, f])
-    vas = []
-    for r in dr:
-        if not isinstance(r, complex):
-            vas.append(_snaprat(r))
-    vas.sort()
-    _plot1(tree, vas[0] if vas else 0.0, 'y = quad/quad')
-    out = []
-    if vas:
-        out.append('vertical asymptotes x = ' +
-                   ', '.join([_f(v) for v in vas]))
-    else:
-        out.append('no vertical asymptote')
-    out.append('horizontal asymptote y = ' + _f(casutil.clean(a * 1.0 / d)))
-    if f != 0:
-        out.append('crosses y-axis at ' + _f(casutil.clean(c * 1.0 / f)))
-    xs = []
-    for r in _roots([a, b, c]) if a or b else []:
-        if not isinstance(r, complex):
-            xs.append(_f(_snaprat(r)))
-    xs.sort()
-    out.append('crosses x-axis at ' + ', '.join(xs) if xs else 'no x-intercept')
-    _quadrange(a, b, c, d, e, f, out)
-    return out
-
-def t_absgraph(fx):
-    import plot
-    af = ('abs', fx)
-    fa = caseng.subst(fx, 'x', ('abs', ('v', 'x')))
-    plot.run([fx, af, fa], -6.0, 6.0, kind='y', title='f, |f|, f(|x|)')
-    zs = cascalc.solve(fx)
-    out = []
-    if zs:
-        out.append('zeros of f: ' + ', '.join([_f(_snaprat(z)) for z in zs]))
-        out.append('|f| has a corner at each of them')
-    else:
-        out.append('f has no zero in -20 < x < 20')
-    y0 = casutil.evx(fx, 0.0)
-    if y0 is not None:
-        out.append('f(0) = ' + _f(casutil.clean(y0)))
-    out.append(_w('|f(x)|: reflect the part below the x-axis'))
-    out.append(_w('f(|x|): keep x >= 0 and mirror it in the y-axis'))
-    out.append(_warn('zeros searched in -20 < x < 20'))
-    return out
-
-def _conicplot(curves, title):
-    import plot
-    plot.run(curves, kind='param', title=title)
-
-def t_parab(a):
-    if a == 0:
-        raise ValueError('a must not be 0')
-    xt = ('*', _num(a), ('^', ('v', 'x'), ('n', 2)))
-    yt = ('*', _num(2.0 * a), ('v', 'x'))
-    _conicplot([(xt, yt, -4.0, 4.0)], 'y^2 = 4ax')
-    return ['y^2 = ' + _f(4.0 * a) + 'x, vertex (0, 0)',
-            'focus (' + _f(a) + ', 0)',
-            'directrix x = ' + _f(-a),
-            'parametric (' + _f(a) + 't^2, ' + _f(2.0 * a) + 't)',
-            _w('axis of symmetry y = 0'),
-            _w('distance to focus = distance to directrix')]
-
-def t_ellipse(a, b):
-    if a <= 0 or b <= 0:
-        raise ValueError('a and b must be > 0')
-    xt = ('*', _num(a), ('cos', ('v', 'x')))
-    yt = ('*', _num(b), ('sin', ('v', 'x')))
-    _conicplot([(xt, yt, 0.0, 2.0 * PI)], 'ellipse')
-    big = a if a > b else b
-    sml = b if a > b else a
-    ec = math.sqrt(1.0 - (sml * sml) / (big * big))
-    out = ['x-intercepts (+/-' + _f(a) + ', 0)',
-           'y-intercepts (0, +/-' + _f(b) + ')',
-           'eccentricity e = ' + _f(_snaprat(ec))]
-    if a > b:
-        out.append('foci (+/-' + _f(_snaprat(a * ec)) + ', 0)')
-    elif b > a:
-        out.append('foci (0, +/-' + _f(_snaprat(b * ec)) + ')')
-    else:
-        out.append('a circle radius ' + _f(a))
-    out.append(_w('parametric (' + _f(a) + 'cos t, ' + _f(b) + 'sin t)'))
-    out.append(_w('b^2 = a^2(1 - e^2); area = pi ab = ' + _f(PI * a * b)))
-    return out
-
-def t_hyper(a, b):
-    if a <= 0 or b <= 0:
-        raise ValueError('a and b must be > 0')
-    xt = ('*', _num(a), ('cosh', ('v', 'x')))
-    yt = ('*', _num(b), ('sinh', ('v', 'x')))
-    xt2 = ('*', _num(-a), ('cosh', ('v', 'x')))
-    _conicplot([(xt, yt, -2.0, 2.0), (xt2, yt, -2.0, 2.0)], 'hyperbola')
-    ec = math.sqrt(1.0 + (b * b) / (a * a))
-    return ['vertices (+/-' + _f(a) + ', 0)',
-            'asymptotes y = +/-' + _f(casutil.clean(b * 1.0 / a)) + 'x',
-            'eccentricity e = ' + _f(_snaprat(ec)),
-            'foci (+/-' + _f(_snaprat(a * ec)) + ', 0)',
-            _w('parametric (' + _f(a) + 'sec t, ' + _f(b) + 'tan t)'),
-            _w('or (+/-' + _f(a) + 'cosh t, ' + _f(b) + 'sinh t)'),
-            _w('b^2 = a^2(e^2 - 1); no y-intercept')]
-
-def t_recthyp(c):
-    if c == 0:
-        raise ValueError('c must not be 0')
-    xt = ('*', _num(c), ('v', 'x'))
-    yt = ('/', _num(c), ('v', 'x'))
-    _conicplot([(xt, yt, 0.12, 8.0), (xt, yt, -8.0, -0.12)], 'xy = c^2')
-    return ['xy = ' + _f(c * c) + ', asymptotes x = 0, y = 0',
-            'vertices (' + _f(c) + ', ' + _f(c) + ') and (' +
-            _f(-c) + ', ' + _f(-c) + ')',
-            'parametric (' + _f(c) + 't, ' + _f(c) + '/t)',
-            _w('the axes are the asymptotes; e = sqrt(2)'),
-            _w('it is x^2-y^2 = ' + _f(2.0 * c * c) + ' turned 45 deg')]
-
-def t_transform(fx, p, q, a, b):
-    if p is None:
-        p = 1
-    if q is None:
-        q = 1
-    if a is None:
-        a = 0
-    if b is None:
-        b = 0
-    if p == 0 or q == 0:
-        raise ValueError('p and q must not be 0')
-    inner = ('-', ('v', 'x'), _num(a)) if a != 0 else ('v', 'x')
-    if p != 1:
-        inner = ('/', inner, _num(p))
-    g = caseng.subst(fx, 'x', inner)
-    if q != 1:
-        g = ('*', _num(q), g)
-    if b != 0:
-        g = ('+', g, _num(b))
-    try:
-        g = caseng.simplify(g)
-    except Exception:
-        pass
-    out = ['y =', _m(g)]
-    out.append(_w('y = ' + _f(q) + ' f((x - ' + _f(a) + ')/' + _f(p) + ') + ' + _f(b)))
-    if p != 1:
-        out.append(_w('stretch x by ' + _f(p) + (' (reflect in Oy)' if p < 0 else '')))
-    if a != 0:
-        out.append(_w('translate ' + _f(a) + ' in x'))
-    if q != 1:
-        out.append(_w('stretch y by ' + _f(q) + (' (reflect in Ox)' if q < 0 else '')))
-    if b != 0:
-        out.append(_w('translate ' + _f(b) + ' in y'))
-    return out
-
 SECTIONS = [
-    ('A', 'Proof', [
+    # Pp4 sum / nth term / M^n, Pp5 divisibility / de Moivre, * counter-example
+    ('P', 'Proof', [
         ('Induction: sum', 'u(r),S(n)', t_ind_sum),
-        ('Induction: divisor', 'f(n),k,m?', t_ind_div),
+        ('Induction: recurrence', 'f(u n),u1,g(n)', t_ind_rec),
         ('Induction: M^n', 'A[2x2],p(n),q(n),r(n),s(n)', t_ind_mpow),
+        ('Induction: divisor', 'f(n),k,m?', t_ind_div),
+        ('Induction: de Moivre', 'theta,n', t_ind_dm),
+        ('Counterexample: prime', 'f(n),a,b', t_cx_prime),
+        ('Counterexample: f > g', 'f(n),g(n),a,b', t_cx_ineq),
     ]),
-    ('B', 'Complex numbers', [
+    # Pj1 j2-j4 j6-j11 Pj12 j13-j16 j19 j20
+    ('J', 'Complex numbers', [
         ('Arithmetic z, w', 'z,w', t_zw),
+        ('Argand sum/product', 'z,w', t_argops),
         ('Modulus-argument', 'z', t_modarg),
         ('From mod-arg form', 'r,theta', t_frommodarg),
         ('Multiply in mod-arg', 'r1,t1,r2,t2', t_mamul),
         ('De Moivre z^n', 'z,n', t_zpow),
         ('nth roots of z', 'z,n', t_nroots),
         ('Roots of unity', 'n', t_unity),
+        ('Polygon: centre+vertex', 'z1,z2,n', t_poly_centre),
+        ('Polygon: two vertices', 'z1,z2,n', t_poly_edge),
         ('Quadratic roots', 'a,b,c', t_quad),
         ('Cubic real coeffs', 'a,b,c,d,z?', t_cubic),
         ('Quartic real coeffs', 'a,b,c,d,e,z?', t_quartic),
@@ -2484,52 +2979,69 @@ SECTIONS = [
         ('Locus |z-z1|=|z-z2|', 'z1,z2', t_loc_bisect),
         ('cos nt, sin nt powers', 'n', t_multangle),
         ('cos^n t, sin^n t', 'n', t_powtomult),
-        ('Complex geometric sum', 'z,w,n', t_gsum),
     ]),
-    ('C', 'Matrices', [
+    # Pm1 m4 m5 m7-m9 m11-m13 m15 Pm6 (m2 m3 m10 m14 are properties to quote)
+    ('M', 'Matrices, transformations', [
         ('pA + qB (2x2)', 'p,q,A[2x2],B[2x2]', t_lin2),
         ('pA + qB (3x3)', 'p,q,A[3x3],B[3x3]', t_lin3),
         ('AB and BA (2x2)', 'A[2x2],B[2x2]', t_mul2),
         ('AB and BA (3x3)', 'A[3x3],B[3x3]', t_mul3),
         ('Determinant 2x2', 'A[2x2]', t_det2),
         ('Determinant 3x3', 'A[3x3]', t_det3),
+        ('Det 3x3 in terms of k', 'a(k),b(k),c(k),d(k),e(k),f(k),g(k),h(k),i(k)', t_detk),
         ('Inverse 2x2', 'A[2x2]', t_inv2),
         ('Inverse 3x3', 'A[3x3]', t_inv3),
         ('Solve 3 eqns by A^-1', 'A[3x3],b[3]', t_solve3),
         ('Rotation 2D (deg)', 'theta', t_rot2),
         ('Reflect in y=x tan t', 'theta', t_ref2),
         ('Stretch or enlarge 2D', 'p,q', t_stretch2),
+        ('Shear 2D', 'k,axis', t_shear2),
         ('Describe a 2x2', 'A[2x2]', t_describe),
+        ('A then B (2x2)', 'A[2x2],B[2x2]', t_then2),
         ('Rotation 3D (axis)', 'axis,theta', t_rot3),
         ('Reflect 3D in plane', 'plane', t_ref3),
+        ('Describe a 3x3', 'A[3x3]', t_describe3),
+        ('A then B (3x3)', 'A[3x3],B[3x3]', t_then3),
         ('Invariant points/lines', 'A[2x2]', t_invar),
-        ('Eigen 2x2', 'A[2x2]', t_eig2),
-        ('Eigen 3x3', 'A[3x3]', t_eig3),
-        ('Diagonalise 2x2 M^n', 'A[2x2],n?', t_diag2),
-        ('Diagonalise 3x3 M^n', 'A[3x3],n?', t_diag3),
     ]),
-    ('D', 'Further algebra and functions', [
+    # Pv1 v2-v6 Pv7 v8-v13 Pv14 v15-v17
+    ('V', 'Vectors and 3-D', [
+        ('Scalar product, angle', 'a[3],b[3]', t_scalar),
+        ('Perpendicular check', 'a[3],b[3]', t_perp_check),
+        ('Vector product', 'a[3],b[3]', t_cross),
+        ('Area of triangle', 'A[3],B[3],C[3]', t_tri_area),
+        ('Line from two points', 'A[3],B[3]', t_line_2pts),
+        ('Line to cartesian', 'a[3],d[3]', t_line_cart),
+        ('Is p on (r-a)xb=0', 'a[3],b[3],p[3]', t_on_line),
+        ('Plane from 3 points', 'A[3],B[3],C[3]', t_plane_3pts),
+        ('Plane point + normal', 'p[3],n[3]', t_plane_pt_n),
+        ('Plane pt + 2 dirs', 'a[3],b[3],c[3]', t_plane_2dirs),
+        ('Plane cartesian->vec', 'n[3],d', t_plane_to_vec),
+        ('Three planes', 'n1[3],d1,n2[3],d2,n3[3],d3', t_planes3),
+        ('Angle between lines', 'd1[3],d2[3]', t_angle_lines),
+        ('Angle line and plane', 'd[3],n[3]', t_angle_lp),
+        ('Angle between planes', 'n1[3],n2[3]', t_angle_planes),
+        ('Intersect two lines', 'a1[3],d1[3],a2[3],d2[3]', t_line_meet),
+        ('Distance two lines', 'a1[3],d1[3],a2[3],d2[3]', t_line_dist),
+        ('Line meets plane', 'a[3],d[3],n[3],k', t_line_plane),
+        ('Point to line dist', 'p[3],a[3],d[3]', t_pt_line),
+        ('Point to plane dist', 'p[3],n[3],k', t_pt_plane),
+    ]),
+    # Pa1 a2 (quadratic, cubic, quartic)
+    ('A', 'Roots of polynomials', [
         ('Vieta root sums', 'coeffs*', t_vieta),
         ('Power sums of roots', 'k,coeffs*', t_powersums),
         ('Roots p a + q', 'p,q,coeffs*', t_rootlin),
         ('Roots 1/a', 'coeffs*', t_rootrecip),
         ('Roots a^2', 'coeffs*', t_rootsq),
+    ]),
+    # Ps1 Ps2 s3 s4 s5
+    ('S', 'Series, Maclaurin', [
         ('Sum r, r^2, r^3', 'n', t_sumpow),
         ('Sum f(r), r = a..b', 'f(r),a,b?', t_sumpoly),
         ('Method of differences', 'f(r),n?', t_diffs),
         ('Maclaurin series', 'f(x),n', t_maclaurin),
+        ('Maclaurin approx', 'f(x),n,a', t_macapprox),
         ('Binomial (1+x)^p', 'p,n', t_binom),
-        ('Limit as x -> a', 'f(x),a', t_limit),
-        ('Solve f(x) > g(x)', 'f(x),g(x)', t_ineq_gt),
-        ('Solve f(x) < g(x)', 'f(x),g(x)', t_ineq_lt),
-        ('Graph (ax+b)/(cx+d)', 'a,b,c,d', t_rat1),
-        ('Graph quad / linear', 'a,b,c,d,e', t_rat2),
-        ('Graph quad / quad', 'a,b,c,d,e,f', t_rat3),
-        ('Graph f, |f|, f(|x|)', 'f(x)', t_absgraph),
-        ('Parabola y^2 = 4ax', 'a', t_parab),
-        ('Ellipse x2/a2+y2/b2', 'a,b', t_ellipse),
-        ('Hyperbola x2/a2-y2/b2', 'a,b', t_hyper),
-        ('Rect hyperbola xy=c^2', 'c', t_recthyp),
-        ('Transform y = f(x)', 'f(x),p?,q?,a?,b?', t_transform),
     ]),
 ]

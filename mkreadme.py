@@ -10,16 +10,27 @@ def table(mods):
             out.append('| ' + code + ' ' + title + ' | ' + ', '.join(t[0] for t in tools) + ' |')
     return '\n'.join(out)
 
+def papers(groups):
+    out = []
+    for title, mods in groups:
+        out.append('### ' + ' '.join(title.split()) + '\n\n' + table(mods))
+    return '\n\n'.join(out)
+
 n = sum(len(t) for m in tests.MODULES for c, ti, t in __import__(m).SECTIONS)
 device = ', '.join('`' + f + '`' for f in devlint.DEVICE_FILES)
-txt = '''# Maths Toolkit for the Casio fx-CG100 (AQA 7357 + 7367)
+txt = '''# Maths Toolkit for the Casio fx-CG100 (AQA 7357 + MEI H645)
 
 A calculator app in stock MicroPython 1.9.4 using the built-in `casioplot`.
 An expression calculator with complex numbers, a CAS (simplify, expand,
 factorise, solve, differentiate, integrate, series, limits), a plotter, the
-AQA formulae booklet, and %d tools mapped section by section to AQA A-level
-Mathematics 7357 and Further Mathematics 7367 (Core Pure + Mechanics +
-Statistics options).
+AQA formulae booklet, and %d tools mapped section by section to two
+specifications:
+
+- A-level Mathematics: **AQA 7357**
+- A-level Further Mathematics: **OCR B (MEI) H645**, every paper: Core Pure
+  (Y420), Mechanics Major/Minor (Y421/Y431), Statistics Major/Minor
+  (Y422/Y432), Modelling with Algorithms (Y433), Numerical Methods (Y434),
+  Extra Pure (Y435) and Further Pure with Technology (Y436).
 
 ## Install
 
@@ -31,7 +42,8 @@ Then on the calculator: Python app > File > Open > `maths.py` > Run.
 
 ## Screens
 
-Home: Calculate, CAS f(x), Maths 7357, Further 7367, Formulae, Angle.
+Home: Calculate, CAS f(x), Maths AQA 7357, Further MEI H645, Formulae AQA, Angle.
+Further opens a paper menu first, then sections, then tools.
 
 | Menus | |
 | --- | --- |
@@ -70,11 +82,11 @@ Home: Calculate, CAS f(x), Maths 7357, Further 7367, Formulae, Angle.
 Answers are exact when the maths is exact (`1/2`, `2sqrt(3)`, `pi/4`,
 `2-3i`) and 3 s.f. otherwise; FORMAT shows 10 s.f.
 
-## Tools: Maths 7357
+## Tools: Maths (AQA 7357)
 
 %s
 
-## Tools: Further 7367
+## Tools: Further Maths (OCR B MEI H645)
 
 %s
 
@@ -91,6 +103,6 @@ python3 mkreadme.py    # regenerates this file
 ```
 
 Design and contracts: `docs/superpowers/specs/`.
-''' % (n, device, table(casui.MATHS), table(casui.FURTHER))
+''' % (n, device, table(casui.MATHS), papers(casui.FURTHER))
 open('README.md', 'w').write(txt)
 print('README', len(txt), 'bytes,', n, 'tools')

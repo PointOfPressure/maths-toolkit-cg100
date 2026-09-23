@@ -105,7 +105,10 @@ def _imstr(s):
     cut = s.find('/')
     if cut < 0:
         return s + 'i'
-    return s[:cut] + 'i' + s[cut:]
+    num = s[:cut]
+    if num == '1' or num == '-1':
+        num = num[:-1]
+    return num + 'i' + s[cut:]
 
 # ---- integers and exact rationals -----------------------------------------
 
@@ -1980,6 +1983,10 @@ def evalf(n, x, deg=False, env=None):
             return _cpow(base, expo)
         if base < 0 and float(expo) != int(expo):
             return _cpow(complex(base), expo)
+        if isinstance(base, int) and isinstance(expo, int) and expo > 64 \
+                and base not in (0, 1, -1):
+            # an exact bigint power (x^x at x=1e6) takes seconds; floats overflow cleanly
+            return float(base) ** expo
         return base ** expo
     if t == 'fact':
         return _factorial(int(round(evalf(n[1], x, deg, env))))

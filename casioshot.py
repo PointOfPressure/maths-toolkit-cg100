@@ -166,8 +166,8 @@ def _scenes():
         casui.input_line(label, spec, '')
 
     return [
-        ("home", lambda: casui.menu('MATHS TOOLKIT  AQA 7357 + 7367',
-                                    ['Calculate', 'CAS  f(x)', 'Maths 7357', 'Further 7367', 'Formulae', 'Angle: RAD'])),
+        ("home", lambda: casui.menu('MATHS TOOLKIT  AQA 7357 + MEI H645',
+                                    ['Calculate', 'CAS  f(x)', 'Maths  AQA 7357', 'Further  MEI H645', 'Formulae  AQA', 'Angle: RAD'])),
         ("sections", lambda: casui.menu('MATHS 7357', [c + '  ' + t for c, t, tl in sections], 4)),
         ("tools", lambda: casui.menu('B Algebra and functions', [t[0] for t in tools])),
         ("input-empty", lambda: input_scene('', 'a,b,c', 'Quadratic')),

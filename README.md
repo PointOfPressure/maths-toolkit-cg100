@@ -1,23 +1,29 @@
-# Maths Toolkit for the Casio fx-CG100 (AQA 7357 + 7367)
+# Maths Toolkit for the Casio fx-CG100 (AQA 7357 + MEI H645)
 
 A calculator app in stock MicroPython 1.9.4 using the built-in `casioplot`.
 An expression calculator with complex numbers, a CAS (simplify, expand,
 factorise, solve, differentiate, integrate, series, limits), a plotter, the
-AQA formulae booklet, and 417 tools mapped section by section to AQA A-level
-Mathematics 7357 and Further Mathematics 7367 (Core Pure + Mechanics +
-Statistics options).
+AQA formulae booklet, and 630 tools mapped section by section to two
+specifications:
+
+- A-level Mathematics: **AQA 7357**
+- A-level Further Mathematics: **OCR B (MEI) H645**, every paper: Core Pure
+  (Y420), Mechanics Major/Minor (Y421/Y431), Statistics Major/Minor
+  (Y422/Y432), Modelling with Algorithms (Y433), Numerical Methods (Y434),
+  Extra Pure (Y435) and Further Pure with Technology (Y436).
 
 ## Install
 
 Run `./deploy.sh <mountpoint>` with the calculator connected as a USB drive.
 It deletes every other `.py` in the storage root and copies these in:
-`maths.py`, `casui.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `casalg.py`, `cassolve.py`, `plot.py`, `formulae.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`.
+`maths.py`, `casui.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `casalg.py`, `cassolve.py`, `plot.py`, `formulae.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`, `falgo.py`, `fnum.py`, `fxpure.py`, `ffpt.py`.
 
 Then on the calculator: Python app > File > Open > `maths.py` > Run.
 
 ## Screens
 
-Home: Calculate, CAS f(x), Maths 7357, Further 7367, Formulae, Angle.
+Home: Calculate, CAS f(x), Maths AQA 7357, Further MEI H645, Formulae AQA, Angle.
+Further opens a paper menu first, then sections, then tools.
 
 | Menus | |
 | --- | --- |
@@ -56,7 +62,7 @@ Home: Calculate, CAS f(x), Maths 7357, Further 7367, Formulae, Angle.
 Answers are exact when the maths is exact (`1/2`, `2sqrt(3)`, `pi/4`,
 `2-3i`) and 3 s.f. otherwise; FORMAT shows 10 s.f.
 
-## Tools: Maths 7357
+## Tools: Maths (AQA 7357)
 
 | Section | Tools |
 | --- | --- |
@@ -80,33 +86,92 @@ Answers are exact when the maths is exact (`1/2`, `2sqrt(3)`, `pi/4`,
 | R Forces and Newton laws | Resolve a force, Resultant of forces, Equilibrium check, Newton II F = ma, Plane dynamics, Pulley over a peg, Tow bar in a line, Lift reaction, Friction horizontal, Rough slope, Mass on rough table |
 | S Moments | Moments about a point, Beam on two supports, Tilting point |
 
-## Tools: Further 7367
+## Tools: Further Maths (OCR B MEI H645)
+
+### Core Pure Y420
 
 | Section | Tools |
 | --- | --- |
-| A Proof | Induction: sum, Induction: divisor, Induction: M^n |
-| B Complex numbers | Arithmetic z, w, Modulus-argument, From mod-arg form, Multiply in mod-arg, De Moivre z^n, nth roots of z, Roots of unity, Quadratic roots, Cubic real coeffs, Quartic real coeffs, Argand plot, Locus |z-z1| = r, Locus arg(z-z1) = t, Locus |z-z1|=|z-z2|, cos nt, sin nt powers, cos^n t, sin^n t, Complex geometric sum |
-| C Matrices | pA + qB (2x2), pA + qB (3x3), AB and BA (2x2), AB and BA (3x3), Determinant 2x2, Determinant 3x3, Inverse 2x2, Inverse 3x3, Solve 3 eqns by A^-1, Rotation 2D (deg), Reflect in y=x tan t, Stretch or enlarge 2D, Describe a 2x2, Rotation 3D (axis), Reflect 3D in plane, Invariant points/lines, Eigen 2x2, Eigen 3x3, Diagonalise 2x2 M^n, Diagonalise 3x3 M^n |
-| D Further algebra and functions | Vieta root sums, Power sums of roots, Roots p a + q, Roots 1/a, Roots a^2, Sum r, r^2, r^3, Sum f(r), r = a..b, Method of differences, Maclaurin series, Binomial (1+x)^p, Limit as x -> a, Solve f(x) > g(x), Solve f(x) < g(x), Graph (ax+b)/(cx+d), Graph quad / linear, Graph quad / quad, Graph f, |f|, f(|x|), Parabola y^2 = 4ax, Ellipse x2/a2+y2/b2, Hyperbola x2/a2-y2/b2, Rect hyperbola xy=c^2, Transform y = f(x) |
-| E Further calculus | Integral to infinity, Singular endpoint int, Volume about x-axis, Volume about y-axis, Mean value of f, Integrate by partials, d/dx inverse trig, Int 1/sqrt(a2-x2), Int 1/(a2+x2), Arc length y=f(x), Arc length parametric, Surface area x-axis, Surface area param, Reduction x^n e^x, Reduction sin^n, Reduction cos^n, Reduction tan^n, Reduction (ln x)^n, Limit x^k e^-x, Limit x^k ln x |
-| F Further vectors | Line from two points, Line to cartesian, Plane from 3 points, Plane point + normal, Angle between lines, Angle line and plane, Angle between planes, Perpendicular check, Vector product, Area of triangle, Is p on (r-a)xb=0, Intersect two lines, Distance two lines, Line meets plane, Point to line dist, Point to plane dist |
-| G Polar coordinates | Polar to cartesian, Cartesian to polar, Plot r = f(theta), Polar area, Tangent para to axis, Tangent perp to axis |
+| P Proof | Induction: sum, Induction: recurrence, Induction: M^n, Induction: divisor, Induction: de Moivre, Counterexample: prime, Counterexample: f > g |
+| J Complex numbers | Arithmetic z, w, Argand sum/product, Modulus-argument, From mod-arg form, Multiply in mod-arg, De Moivre z^n, nth roots of z, Roots of unity, Polygon: centre+vertex, Polygon: two vertices, Quadratic roots, Cubic real coeffs, Quartic real coeffs, Argand plot, Locus |z-z1| = r, Locus arg(z-z1) = t, Locus |z-z1|=|z-z2|, cos nt, sin nt powers, cos^n t, sin^n t |
+| M Matrices, transformations | pA + qB (2x2), pA + qB (3x3), AB and BA (2x2), AB and BA (3x3), Determinant 2x2, Determinant 3x3, Det 3x3 in terms of k, Inverse 2x2, Inverse 3x3, Solve 3 eqns by A^-1, Rotation 2D (deg), Reflect in y=x tan t, Stretch or enlarge 2D, Shear 2D, Describe a 2x2, A then B (2x2), Rotation 3D (axis), Reflect 3D in plane, Describe a 3x3, A then B (3x3), Invariant points/lines |
+| V Vectors and 3-D | Scalar product, angle, Perpendicular check, Vector product, Area of triangle, Line from two points, Line to cartesian, Is p on (r-a)xb=0, Plane from 3 points, Plane point + normal, Plane pt + 2 dirs, Plane cartesian->vec, Three planes, Angle between lines, Angle line and plane, Angle between planes, Intersect two lines, Distance two lines, Line meets plane, Point to line dist, Point to plane dist |
+| A Roots of polynomials | Vieta root sums, Power sums of roots, Roots p a + q, Roots 1/a, Roots a^2 |
+| S Series, Maclaurin | Sum r, r^2, r^3, Sum f(r), r = a..b, Method of differences, Maclaurin series, Maclaurin approx, Binomial (1+x)^p |
+| C Calculus | Integral to infinity, Singular endpoint int, Volume about x-axis, Volume about y-axis, Mean value of f, Integrate by partials, d/dx inverse trig, Int 1/sqrt(a2-x2), Int 1/(a2+x2) |
+| PO Polar coordinates | Polar to cartesian, Cartesian to polar, Plot r = f(theta), Polar area |
 | H Hyperbolic functions | Six hyperbolics at x, Inverse hyperbolics, Solve a cosh+b sinh=c, Identity check at x, Plot sinh cosh tanh, d/dx hyperbolic, Integrate hyperbolic, Int 1/sqrt(x2+a2), Int 1/sqrt(x2-a2) |
-| I Differential equations | Integrating factor, Second order homogen, Second order with IVs, PI polynomial RHS, PI for k e^(px), PI for m cos + n sin, SHM from omega, Hooke law SHM, Damping classify, Coupled equations |
-| J Numerical methods | Mid-ordinate rule, Simpson's rule, Compare rules, Euler step by step, Improved Euler |
-| MA Dimensional analysis | Dimensions list, Name from M,L,T, Check consistency, Find powers a,b,c |
-| MB Momentum and collisions | Conservation 1D, Coalesce, one mass, Direct impact, e, Wall: speed and angle, Wall: velocity vector, Oblique, two spheres, Impulse 1D, Impulse 2D, Impulse of F(t), Three in a line |
-| MC Work, energy and power | Work F d cos th, KE and GPE change, Energy vs resistance, Hooke and EPE: k, Hooke and EPE: lam, Work of F(x), Power P = F v, Max speed on a slope, Accel at speed v, Elastic equilibrium, Elastic max extension |
-| MD Circular motion | Angular speed units, Rev per min to rad/s, Circle from v and r, Circle from om and r, Circle: vectors r,v,a, Conical: angle given, Conical: omega given, Conical, two strings, Banked track speeds, Banked: friction at v, Rough table circle, Vert circle: string, Vert circle: rod, Outside a sphere |
-| ME Centres of mass and moments | COM of parts m,x,y, Standard centroids, Arc/sector centroid, Lamina under y = f(x), Lamina between curves, Solid of revolution Ox, Slide or topple, slope, Push a block, Suspend a lamina, Ladder, smooth wall, Beam on two supports, Rod, hinge and string, Forces and moments |
-| SA Discrete random variables | DRV from table, DRV from formula, E and Var of aX+b, E of g(X) from table, Discrete uniform 1-n |
-| SB Poisson distribution | Poisson P(X=k), Poisson a<=X<=b, Poisson inverse, Sum of Poissons, Poisson test upper, Poisson test lower, Poisson model check |
-| SC Type I and Type II errors | Type I binomial, Type II binomial, Type I Poisson, Type II Poisson, Type I Normal, Type II Normal |
-| SD Continuous random vars | pdf E Var and check, pdf median quartiles, Mode of a pdf, cdf F(x) from a pdf, pdf P(c<X<d), E of g(X) from a pdf, Piecewise pdf, Rectangular U(a,b), E and Var of aX+b, E and Var of X+Y |
-| SE Chi squared association | Chi-sq association, Expected frequencies, Chi-sq from statistic |
-| SF Exponential distribution | Exponential Exp(L), Exponential probs, Waits from a rate, Memoryless check |
-| SG Inference one sample t | t-test from data, t-test from summary |
-| SH Confidence intervals | CI mean sigma known, CI from data, CI from summary, Is mu0 in the CI, Sample size for width |
+| D Differential equations | Separable DE, Integrating factor, Second order homogen, Second order with IVs, PI polynomial RHS, PI for k e^(px), PI for m cos + n sin, SHM from omega, Hooke law SHM, Damping classify, Coupled equations, a = v dv/dx = f(x), a = f(v): dist, time |
+
+### Mechanics Y421/Y431
+
+| Section | Tools |
+| --- | --- |
+| D Dimensional analysis | Dimensions list, Name from M,L,T, Dims of a product, Check consistency, Find powers a,b,c, Change of units |
+| F Forces and friction | Resultant of forces, Resolve along a line, Two unknown forces, Triangle of forces, mu = tan(angle), Rough slope, force F, Force range to hold, Friction, level ground |
+| M Moments and rigid bodies | Forces and moments, Couple, Beam on two supports, Ladder, smooth wall, Rod, hinge and string, Slide or topple, slope, Push a block |
+| W Work, energy and power | Work F d cos th, Work F.d vectors, Work of F(x), KE and GPE change, Speed after a drop, Energy vs resistance, Power P = F v, Power, F at an angle, Max speed on a slope, Accel at speed v |
+| I Impulse and momentum | Conservation 1D, Coalesce, one mass, Direct impact, e, Find e, Ball bouncing, Wall: speed and angle, Wall: velocity vector, Oblique: vectors, Oblique: speed, angle, Impulse 1D, Impulse 2D, Impulse of F(t), Three in a line |
+| G Centre of mass | COM in a line m,x, COM of parts m,x,y, COM in 3-D m,x,y,z, Standard centroids, Arc/sector centroid, Lamina under y = f(x), Lamina between curves, Wire along y = f(x), Solid of revolution Ox, Solid of revolution Oy, Suspend a lamina |
+| C Circular motion | Angular speed units, Rev per min to rad/s, Circle from v and r, Circle from om and r, Tangential accel, Circle: vectors r,v,a, Conical: angle given, Conical: omega given, Conical, two strings, Banked track speeds, Banked: friction at v, Rough flat bend, Vert circle: string, Vert circle: rod, Outside a sphere |
+| H Hooke's law | Hooke and EPE: k, Hooke and EPE: lam, Hooke: find unknown, Modulus from hanging, Elastic equilibrium, Elastic max extension, Spring: speed at x |
+| V Vectors, variable forces | r(t) to v and a, a(t) to v and r, Vector suvat, Force from r(t), Relative motion, a = f(v): t and x, Projectile path, Angle to hit (x,y), Bounding parabola, Projectile on incline, Max range on incline, SHM from x0, v0, SHM speed at x, Verify x'' = f(x,v,t), Verify x' = f(x,t), Fit a,b from x0,v0, Fit c from x(t0) |
+
+### Statistics Y422/Y432
+
+| Section | Tools |
+| --- | --- |
+| D Discrete random vars | DRV from table, DRV from formula, DRV find k, E(g(X)) from table, E and Var of a+bX, E and Var of X+-Y, Discrete uniform |
+| B Binomial and Poisson | Poisson P(X=k), Poisson a<=X<=b, Poisson least k, Sum of Poissons, Poisson approx to B, Poisson model check, Binomial P(X=k) |
+| G Geometric distribution | Geometric P(X=r), Geometric a<=X<=b, Geometric least r |
+| C Continuous random vars | pdf E Var and check, pdf median quartiles, Mode of a pdf, cdf F(x) from a pdf, pdf from a cdf, cdf median quartiles, pdf P(c<X<d), E of g(X) from a pdf, Piecewise pdf, Rectangular U(a,b) |
+| N Normal distribution | Normal P(a<X<b), Inverse Normal, Normal fit to data, Normal P from sample, aX+bY+c, nX vs X1+..+Xn, Normal prob plot |
+| R Bivariate data | Scatter diagram, PMCC r, PMCC test from data, PMCC test from r, Spearman rs, Spearman test data, Spearman test from rs, Regression y on x, Regression x on y, Both regression lines, Residuals, Predict y from x, Predict x from y |
+| H Chi-squared tests | Chi-sq association, Chi-sq contributions, Expected frequencies, GOF given probs, GOF given expected, GOF uniform, GOF binomial, GOF Poisson, Chi-sq crit and p |
+| I Inference | Estimates from data, Estimates from sums, z test for a mean, z test from data, CI mean sigma known, CI mean from data, CI mean from summary, CI paired data, CI to test mu0, Sample size for width |
+| W Wilcoxon signed rank | Wilcoxon single sample, Wilcoxon paired, Wilcoxon crit value, Wilcoxon from T |
+| Z Simulation | Simulate binomial, Simulate Poisson, Simulate geometric, Simulate Normal, Simulate U(a,b), Simulate sample means, Simulate a DRV |
+
+### Algorithms Y433
+
+| Section | Tools |
+| --- | --- |
+| A Sorting and packing | Bubble sort, Shuttle sort, Quick sort, First fit, First fit decreasing, Order n^k scaling, Order n log n scaling |
+| G Graphs | Graph from edges, Digraph from arcs, Graph from adjacency |
+| N Networks | Dijkstra, Dijkstra directed, Prim, Prim from matrix, Kruskal, Shortest path as LP |
+| F Network flows | Max flow min cut, Cut capacity, Max flow as LP |
+| C Critical path | Activity on arc, Precedence table, Resource histogram, Schedule k workers |
+| L LP graphical | LP 2-D maximise, LP 2-D minimise, LP 3-D vertices |
+| S Simplex | Simplex max <=, Sensitivity ranging, Two-stage maximise, Two-stage minimise, Big-M maximise, Big-M minimise, Negative variables |
+
+### Numerical Methods Y434
+
+| Section | Tools |
+| --- | --- |
+| U Errors | Absolute/rel error, Error in a+b, a-b, Error in ab, a/b, Error in f(x), Chop vs round d.p., Chop vs round s.f., k s.f. arithmetic, Two forms compared |
+| E Solving equations | Bisection, False position, Secant method, Newton-Raphson, Fixed point x=g(x), Relaxation, Staircase/cobweb, Order from iterates, Compare methods, Justify root to d dp |
+| D Numerical differentiation | Forward and central, Derivative h table, Error vs h plot |
+| N Numerical integration | Midpoint rule, Trapezium rule, Simpson's rule, Integration table |
+| A Approximating functions | Forward diff table, Newton fwd estimate, Lagrange polynomial |
+| I Improved estimates | Richardson, Aitken delta squared, Limit from ratio r |
+
+### Extra Pure Y435
+
+| Section | Tools |
+| --- | --- |
+| R Recurrence relations | u(n+1) = a u(n), 1st order a u + f(n), 2nd order homogeneous, 2nd order + f(n), Verify u(n+1)=F(n,u), Verify u(n+2)=F(n,u,v), Behaviour u(n+1)=F, Associated sequence, Ratio u(n+1)/u(n) |
+| G Sets and groups | Sets A, B in E, Subsets of a set, Group axioms, Element orders, Subgroups, Lagrange, Isomorphism G to H, Identify group (n<=10), Z_n under + mod n, Units under x mod n, Symmetries of n-gon |
+| M Matrices: eigenvalues | Eigen 2x2, Eigen 3x3, Diagonalise 2x2 M^n, Diagonalise 3x3 M^n, Cayley-Hamilton 2x2, Cayley-Hamilton 3x3, Is v eigenvector 2x2, Is v eigenvector 3x3 |
+| C Multivariable calculus | Partial derivatives, Stationary points, Tangent plane z=f, grad g, normal, plane, Contours z = c, Sections y = k, Sections x = k |
+
+### Pure with Tech Y436
+
+| Section | Tools |
+| --- | --- |
+| C Curves: plots and limits | Plot y = f(x), Family y = f(x, a), Family polar r(t, a), Family parametric, Envelope of family, Limit x -> a, Limit x -> +infinity, Limit x -> -infinity, Asymptotes, Graph (ax+b)/(cx+d), Graph quad / linear, Graph quad / quad, Stationary points, Cusps (gradient limit) |
+| T Curves: tangents, arcs | Tangent, normal y=f(x), Tangent at variable p, Tangent parametric, Tangent polar, Tangent implicit, Chord of y = f(x), Cartesian to polar, Polar to cartesian, Arc length y=f(x), Arc length parametric, Arc length polar |
+| D Differential equations | Tangent field, Verify a DE solution, Particular solution, Solution family, Euler step by step, Euler: halving h, RK2 (modified Euler), RK2 (midpoint), RK4, Euler, RK2, RK4 |
+| N Number theory | gcd and lcm, Euclid and Bezout, Prime test, Prime factorise, Euler totient phi(n), a^b mod m, Modular inverse, Solve ax = b (mod m), Chinese remainder, Fermat's little thm, Wilson's theorem, Pythagorean triples, Triple from m, n, Pell x^2-ny^2=1, Linear ax+by=c, Integer solutions, Decimal to base b, Base b to decimal |
 
 ## Development
 

@@ -153,7 +153,8 @@ def casrender_ok():
     w, a, d = casrender.measure(box)
     return w > 0 and a > 0
 
-MODULES = ['mpure', 'mcalc', 'mstat', 'mmech', 'fcore', 'fcalc', 'fmech', 'fstat']
+MODULES = ['mpure', 'mcalc', 'mstat', 'mmech',
+           'fcore', 'fcalc', 'fmech', 'fstat', 'falgo', 'fnum', 'fxpure', 'ffpt']
 
 def cas_engine():
     import tests_cas

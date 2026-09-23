@@ -180,8 +180,10 @@ plot.run(curves, xlo=-6.0, xhi=6.0, kind='y', title='')
 # kind='y':      curves = [tree, ...]              y = f(x)
 # kind='polar':  curves = [tree, ...]              r = f(x), x is theta, 0..2pi
 # kind='param':  curves = [(xtree, ytree, tlo, thi), ...]
-# kind='points': curves = [(x, y), ...]            markers; also draws lines between when joined=True
+# kind='points': curves = [(x, y), ...]            markers only
 # kind='bars':   curves = [(xlo, xhi, height), ...]
+# kind='lines':  curves = [[(x, y), (x, y), None, (x, y), ...], ...]
+#                each list is one colour; points joined, None breaks the line
 ```
 
 Keys inside a plot: arrows pan a quarter of the range, `+`/`-` zoom by 2,
