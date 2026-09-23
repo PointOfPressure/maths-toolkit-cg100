@@ -9,6 +9,7 @@ DEVICE_FILES = [
     "tables.py",
     "mpure.py", "mcalc.py", "mstat.py", "mmech.py",
     "fcore.py", "fcalc.py", "fmech.py", "fstat.py",
+    "falgo.py", "fnum.py", "fxpure.py", "ffpt.py",
 ]
 
 # measured on device by hwcheck.py 2026-08-09; adding a name claims hardware has it
