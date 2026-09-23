@@ -1,6 +1,6 @@
-# AQA Further Maths 7367, sections E-J: further calculus, further vectors,
-# polar coordinates, hyperbolic functions, differential equations and
-# numerical methods.
+# OCR B (MEI) Further Maths H645, Core Pure (Y420): calculus, polar
+# coordinates, hyperbolic functions and differential equations (including
+# SHM, damping, coupled systems and a = v dv/dx). The rest is in fcore.
 import math
 import caseng
 import cascalc
@@ -66,14 +66,6 @@ def _exact_int(tree, a, b, var='x'):
         if hi is not None and lo is not None:
             return (hi - lo, F, True)
     return (_num(tree, a, b, var), F, False)
-
-def _refine(tree, a, b, var='x'):
-    # (value at 800 panels, |change on halving h|)
-    v1 = _num(tree, a, b, var, 200)
-    v2 = _num(tree, a, b, var, 800)
-    if v1 is None or v2 is None:
-        return (v2, None)
-    return (v2, abs(v2 - v1))
 
 def _gap(tree, a, b, var='x'):
     # True if the integrand is undefined somewhere strictly inside [a, b]
@@ -155,9 +147,6 @@ def _expstr(k, p):
         return '-' + e
     return _f(k) + ' ' + e
 
-def _snap(v):
-    return 0.0 if -1e-7 < v < 1e-7 else v
-
 def _sq(t):
     return caseng.simplify(('^', t, ('n', 2)))
 
@@ -166,13 +155,7 @@ def _pos(v, name):
         raise ValueError(name + ' must be > 0')
     return v
 
-def _int_in(v, lo, hi, name):
-    k = int(round(v))
-    if k < lo or k > hi:
-        raise ValueError(name + ' from ' + str(lo) + ' to ' + str(hi))
-    return k
-
-# ---- E further calculus -----------------------------------------------------
+# ---- C  Calculus ------------------------------------------------------------
 
 def _verdict(vals):
     # ('c', limit) / ('d', None) / ('?', None) from a table of partial values
@@ -433,572 +416,7 @@ def t_int_atan(a, p, q):
     out.append(_w('(1/' + _f(a) + ')(atan(' + _f(q / a) + ') - atan(' + _f(p / a) + '))'))
     return out
 
-def _arc_lines(integ, a, b, var, head):
-    val, diff = _refine(integ, a, b, var)
-    if val is None:
-        raise ValueError('integrand undefined in that range')
-    out = ['s = ' + casutil.sf3(val)]
-    sym = _anti(integ, var)
-    if sym is not None:
-        ex = _exact_int(integ, a, b, var)
-        if ex[2]:
-            out = ['s = ' + _f(ex[0])]
-            out.append(_mw(sym))
-    for ln in head:
-        out.append(_w(ln))
-    out.append(_w('from ' + _f(a) + ' to ' + _f(b)))
-    if diff is not None:
-        out.append(_w('change on halving h = ' + _f(diff, 3)))
-    return out
-
-def t_arclen(f, a, b):
-    a, b = _order(a, b)
-    var = _ivar(f, 'x')
-    d = _dvar(f, var)
-    integ = ('sqrt', ('+', ('n', 1), _sq(d)))
-    return _arc_lines(integ, a, b, var,
-                      ['s = int sqrt(1 + (dy/dx)^2) dx',
-                       'dy/dx = ' + _ts(d)])
-
-def _par_var(xt, yt):
-    vs = caseng.vars_in(xt) + caseng.vars_in(yt)
-    if 't' in vs or not vs:
-        return 't'
-    if 'x' in vs:
-        return 'x'
-    return vs[0]
-
-def t_arclen_par(xt, yt, a, b):
-    a, b = _order(a, b)
-    var = _par_var(xt, yt)
-    dx = _dvar(xt, var)
-    dy = _dvar(yt, var)
-    integ = ('sqrt', ('+', _sq(dx), _sq(dy)))
-    return _arc_lines(integ, a, b, var,
-                      ["s = int sqrt(x'^2 + y'^2) dt",
-                       "dx/dt = " + _ts(dx),
-                       "dy/dt = " + _ts(dy)])
-
-def _surf_lines(integ, a, b, var, head):
-    val, diff = _refine(integ, a, b, var)
-    ex = _exact_int(integ, a, b, var)
-    if ex[2]:
-        val = ex[0]
-        diff = None
-    if val is None:
-        raise ValueError('integrand undefined in that range')
-    s = 2.0 * PI * val
-    out = ['S = ' + _f(s)]
-    if _f(s) != casutil.sf3(s):
-        out.append('  = ' + casutil.sf3(s))
-    for ln in head:
-        out.append(_w(ln))
-    out.append(_w('int part = ' + _f(val, 6) + ', ' + _f(a) + ' to ' + _f(b)))
-    if diff is not None:
-        out.append(_w('change on halving h = ' + _f(diff, 3)))
-    return out
-
-def t_surf_x(f, a, b):
-    a, b = _order(a, b)
-    var = _ivar(f, 'x')
-    d = _dvar(f, var)
-    integ = ('*', f, ('sqrt', ('+', ('n', 1), _sq(d))))
-    return _surf_lines(integ, a, b, var,
-                       ['S = 2pi int y sqrt(1 + (dy/dx)^2) dx',
-                        'dy/dx = ' + _ts(d)])
-
-def t_surf_par(xt, yt, a, b):
-    a, b = _order(a, b)
-    var = _par_var(xt, yt)
-    dx = _dvar(xt, var)
-    dy = _dvar(yt, var)
-    integ = ('*', yt, ('sqrt', ('+', _sq(dx), _sq(dy))))
-    return _surf_lines(integ, a, b, var,
-                       ["S = 2pi int y sqrt(x'^2 + y'^2) dt",
-                        "dx/dt = " + _ts(dx),
-                        "dy/dt = " + _ts(dy)])
-
-# ---- E reduction formulae ---------------------------------------------------
-
-def _frac(r):
-    if r[0] == 0:
-        return '0'
-    if r[1] == 1:
-        return str(r[0])
-    return str(r[0]) + '/' + str(r[1])
-
-def _cfrac(r, name):
-    p = r[0]
-    sgn = '-' if p < 0 else ''
-    if p < 0:
-        p = -p
-    top = name if p == 1 else str(p) + name
-    return sgn + top + ('' if r[1] == 1 else '/' + str(r[1]))
-
-def _exstr(ra, rb, name):
-    parts = []
-    if ra[0] != 0:
-        parts.append(_frac(ra))
-    if rb[0] != 0:
-        parts.append(_cfrac(rb, name))
-    if not parts:
-        return '0'
-    if len(parts) == 2 and parts[0][0] == '-' and parts[1][0] != '-':
-        parts = [parts[1], parts[0]]
-    s = parts[0]
-    i = 1
-    while i < len(parts):
-        p = parts[i]
-        s = s + (' - ' + p[1:] if p[0] == '-' else ' + ' + p)
-        i += 1
-    return s
-
-def _exval(ra, rb, c):
-    return ra[0] / float(ra[1]) + rb[0] / float(rb[1]) * c
-
-def _red_out(n, rows, name, c, head):
-    ra, rb = rows[len(rows) - 1][1], rows[len(rows) - 1][2]
-    val = _exval(ra, rb, c)
-    ex = _exstr(ra, rb, name)
-    out = []
-    if len(ex) <= 26:
-        out.append('I_' + str(n) + ' = ' + ex)
-        if ex != casutil.sf3(val):
-            out.append('    = ' + casutil.sf3(val))
-    else:
-        out.append('I_' + str(n) + ' = ' + casutil.sf3(val))
-    for ln in head:
-        out.append(_w(ln))
-    for k, a2, b2 in rows:
-        v2 = _exval(a2, b2, c)
-        e2 = _exstr(a2, b2, name)
-        if len(e2) > 22:
-            out.append(_w('  I_' + str(k) + ' = ' + _f(v2, 6)))
-        else:
-            out.append(_w('  I_' + str(k) + ' = ' + e2 + ' = ' + _f(v2, 6)))
-    return out
-
-def _red_estep(n):
-    # I_n = e - n I_(n-1), I_0 = e - 1;  I_n = ra + rb*e
-    ra = (-1, 1)
-    rb = (1, 1)
-    rows = [(0, ra, rb)]
-    k = 1
-    while k <= n:
-        ra = caspoly.rmul((-k, 1), ra)
-        rb = caspoly.rsub((1, 1), caspoly.rmul((k, 1), rb))
-        rows.append((k, ra, rb))
-        k += 1
-    return rows
-
-def t_red_xexp(n):
-    n = _int_in(n, 0, 12, 'n')
-    rows = _red_estep(n)
-    return _red_out(n, rows, 'e', E,
-                    ['I_n = int x^n e^x dx, 0 to 1',
-                     'I_n = e - n I_(n-1),  I_0 = e - 1'])
-
-def t_red_lnx(n):
-    n = _int_in(n, 0, 12, 'n')
-    rows = _red_estep(n)
-    return _red_out(n, rows, 'e', E,
-                    ['I_n = int (ln x)^n dx, 1 to e',
-                     'I_n = e - n I_(n-1),  I_0 = e - 1'])
-
-def _red_wallis(n):
-    # int sin^n or cos^n over 0..pi/2;  I_n = ra + rb*pi
-    if n % 2:
-        ra, rb, k = (1, 1), (0, 1), 1
-    else:
-        ra, rb, k = (0, 1), (1, 2), 0
-    rows = [(k, ra, rb)]
-    k += 2
-    while k <= n:
-        fac = (k - 1, k)
-        ra = caspoly.rmul(fac, ra)
-        rb = caspoly.rmul(fac, rb)
-        rows.append((k, ra, rb))
-        k += 2
-    return rows
-
-def t_red_sin(n):
-    n = _int_in(n, 0, 20, 'n')
-    return _red_out(n, _red_wallis(n), 'pi', PI,
-                    ['I_n = int sin^n x dx, 0 to pi/2',
-                     'I_n = ((n-1)/n) I_(n-2)',
-                     'I_0 = pi/2,  I_1 = 1'])
-
-def t_red_cos(n):
-    n = _int_in(n, 0, 20, 'n')
-    return _red_out(n, _red_wallis(n), 'pi', PI,
-                    ['I_n = int cos^n x dx, 0 to pi/2',
-                     'I_n = ((n-1)/n) I_(n-2)',
-                     'I_0 = pi/2,  I_1 = 1'])
-
-def t_red_tan(n):
-    n = _int_in(n, 0, 20, 'n')
-    if n % 2:
-        ra, rb, k, name, c = (0, 1), (1, 2), 1, 'ln2', math.log(2.0)
-    else:
-        ra, rb, k, name, c = (0, 1), (1, 4), 0, 'pi', PI
-    rows = [(k, ra, rb)]
-    k += 2
-    while k <= n:
-        ra = caspoly.rsub((1, k - 1), ra)
-        rb = caspoly.rneg(rb)
-        rows.append((k, ra, rb))
-        k += 2
-    return _red_out(n, rows, name, c,
-                    ['I_n = int tan^n x dx, 0 to pi/4',
-                     'I_n = 1/(n-1) - I_(n-2)',
-                     'I_0 = pi/4,  I_1 = (ln 2)/2'])
-
-def t_lim_xexp(k):
-    k = _pos(k, 'k')
-    out = ['limit = 0']
-    out.append(_w('x^k e^-x as x -> infinity, k = ' + _f(k)))
-    xs = [1.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0]
-    for xv in xs:
-        v = math.exp(k * math.log(xv) - xv)
-        out.append(_w('  x = ' + _f(xv) + ':  ' + _f(v, 4)))
-    out.append(_w('e^x beats every power of x'))
-    return out
-
-def t_lim_xlnx(k):
-    k = _pos(k, 'k')
-    out = ['limit = 0']
-    out.append(_w('x^k ln x as x -> 0+, k = ' + _f(k)))
-    xs = [0.1, 0.01, 1e-3, 1e-4, 1e-6, 1e-8]
-    for xv in xs:
-        v = math.exp(k * math.log(xv)) * math.log(xv)
-        out.append(_w('  x = ' + _f(xv, 3) + ':  ' + _f(v, 4)))
-    out.append(_w('x^k beats ln x at 0'))
-    return out
-
-# ---- F further vectors ------------------------------------------------------
-
-def _sub3(a, b):
-    return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-
-def _dot3(a, b):
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-
-def _cross3(a, b):
-    return [a[1] * b[2] - a[2] * b[1],
-            a[2] * b[0] - a[0] * b[2],
-            a[0] * b[1] - a[1] * b[0]]
-
-def _mag3(a):
-    return math.sqrt(_dot3(a, a))
-
-def _step(a, d, t):
-    return [a[0] + t * d[0], a[1] + t * d[1], a[2] + t * d[2]]
-
-def _nonzero(v, name):
-    if _mag3(v) < 1e-12:
-        raise ValueError(name + ' is the zero vector')
-    return v
-
-def _ints(vals):
-    out = []
-    for c in vals:
-        k = int(round(c))
-        if abs(c - k) > 1e-9:
-            return None
-        out.append(k)
-    return out
-
-def _simp_vec(v):
-    iv = _ints(v)
-    if iv is None:
-        return v
-    g = 0
-    for c in iv:
-        g = casutil.gcd(g, c)
-    if g <= 1:
-        return iv
-    return [c // g for c in iv]
-
-def _simp_plane(n, d):
-    iv = _ints([n[0], n[1], n[2], d])
-    if iv is None:
-        return (n, d)
-    g = 0
-    for c in iv:
-        g = casutil.gcd(g, c)
-    if g <= 1:
-        return (n, d)
-    return ([iv[0] // g, iv[1] // g, iv[2] // g], iv[3] // g)
-
-def _angle_lines(c):
-    r = casutil.acos_safe(c)
-    return ['angle = ' + _f(r) + ' rad',
-            '      = ' + _f(casutil.deg(r)) + ' deg']
-
-def _cart_line(a, d):
-    names = ('x', 'y', 'z')
-    parts = []
-    fixed = []
-    i = 0
-    while i < 3:
-        if abs(d[i]) > 1e-12:
-            top = names[i]
-            if abs(a[i]) > 1e-12:
-                top = '(' + names[i] + (' - ' if a[i] > 0 else ' + ') + _f(abs(a[i])) + ')'
-            if abs(d[i] - 1.0) < 1e-12:
-                parts.append(top)
-            elif d[i] < 0:
-                parts.append(top + '/(' + _f(d[i]) + ')')
-            else:
-                parts.append(top + '/' + _f(d[i]))
-        else:
-            fixed.append(names[i] + ' = ' + _f(a[i]))
-        i += 1
-    out = []
-    if parts:
-        out.append(' = '.join(parts))
-    for s in fixed:
-        out.append(s)
-    return out
-
-def _plane_lines(n, d):
-    n, d = _simp_plane(n, d)
-    names = ('x', 'y', 'z')
-    s = ''
-    i = 0
-    while i < 3:
-        c = n[i]
-        if abs(c) > 1e-12:
-            if s == '':
-                s = ('-' if c < 0 else '') + ('' if abs(abs(c) - 1.0) < 1e-12 else _f(abs(c))) + names[i]
-            else:
-                s = s + (' - ' if c < 0 else ' + ') + ('' if abs(abs(c) - 1.0) < 1e-12 else _f(abs(c))) + names[i]
-        i += 1
-    return ['r.' + _fv(n) + ' = ' + _f(d), s + ' = ' + _f(d)]
-
-def t_line_2pts(A, B):
-    d = _nonzero(_sub3(B, A), 'B - A')
-    d = _simp_vec(d)
-    out = ['r = ' + _fv(A) + ' + t' + _fv(d)]
-    for s in _cart_line(A, d):
-        out.append(s)
-    out.append(_w('direction = B - A'))
-    out.append(_w('|d| = ' + _f(_mag3(d))))
-    return out
-
-def t_line_cart(a, d):
-    _nonzero(d, 'd')
-    d = _simp_vec(d)
-    out = ['r = ' + _fv(a) + ' + t' + _fv(d)]
-    for s in _cart_line(a, d):
-        out.append(s)
-    out.append(_w('|d| = ' + _f(_mag3(d))))
-    return out
-
-def t_plane_3pts(A, B, C):
-    n = _cross3(_sub3(B, A), _sub3(C, A))
-    if _mag3(n) < 1e-12:
-        raise ValueError('the three points are collinear')
-    n = _simp_vec(n)
-    d = _dot3(n, A)
-    out = _plane_lines(n, d)
-    out.append(_w('n = (B-A) x (C-A) = ' + _fv(n)))
-    out.append(_w('d = n.A = ' + _f(d)))
-    return out
-
-def t_plane_pt_n(p, n):
-    _nonzero(n, 'n')
-    d = _dot3(n, p)
-    out = _plane_lines(n, d)
-    out.append(_w('d = n.p = ' + _f(d)))
-    out.append(_w('|n| = ' + _f(_mag3(n))))
-    return out
-
-def t_angle_lines(d1, d2):
-    _nonzero(d1, 'd1')
-    _nonzero(d2, 'd2')
-    dp = _dot3(d1, d2)
-    c = abs(dp) / (_mag3(d1) * _mag3(d2))
-    out = _angle_lines(c)
-    out.append(_w('cos = |d1.d2|/(|d1||d2|) = ' + _f(c)))
-    out.append(_w('d1.d2 = ' + _f(dp)))
-    return out
-
-def t_angle_lp(d, n):
-    _nonzero(d, 'd')
-    _nonzero(n, 'n')
-    s = abs(_dot3(d, n)) / (_mag3(d) * _mag3(n))
-    if s > 1.0:
-        s = 1.0
-    r = math.asin(s)
-    out = ['angle = ' + _f(r) + ' rad',
-           '      = ' + _f(casutil.deg(r)) + ' deg']
-    out.append(_w('sin = |d.n|/(|d||n|) = ' + _f(s)))
-    out.append(_w('d.n = ' + _f(_dot3(d, n))))
-    return out
-
-def t_angle_planes(n1, n2):
-    _nonzero(n1, 'n1')
-    _nonzero(n2, 'n2')
-    dp = _dot3(n1, n2)
-    c = abs(dp) / (_mag3(n1) * _mag3(n2))
-    out = _angle_lines(c)
-    out.append(_w('cos = |n1.n2|/(|n1||n2|) = ' + _f(c)))
-    out.append(_w('n1.n2 = ' + _f(dp)))
-    return out
-
-def t_perp_check(a, b):
-    _nonzero(a, 'a')
-    _nonzero(b, 'b')
-    dp = _dot3(a, b)
-    cr = _cross3(a, b)
-    scale = _mag3(a) * _mag3(b)
-    out = ['perpendicular' if abs(dp) < 1e-9 * scale else 'not perpendicular']
-    out.append('parallel' if _mag3(cr) < 1e-9 * scale else 'not parallel')
-    out.append(_w('a.b = ' + _f(dp)))
-    out.append(_w('a x b = ' + _fv(cr)))
-    return out
-
-def t_cross(a, b):
-    cr = _cross3(a, b)
-    out = ['a x b = ' + _fv(cr), '|a x b| = ' + _f(_mag3(cr))]
-    out.append(_w('a.b = ' + _f(_dot3(a, b))))
-    return out
-
-def t_tri_area(A, B, C):
-    cr = _cross3(_sub3(B, A), _sub3(C, A))
-    area = 0.5 * _mag3(cr)
-    out = ['area = ' + _f(area)]
-    out.append(_w('area = 0.5|(B-A) x (C-A)|'))
-    out.append(_w('(B-A) x (C-A) = ' + _fv(cr)))
-    return out
-
-def t_on_line(a, b, p):
-    _nonzero(b, 'b')
-    cr = _cross3(_sub3(p, a), b)
-    scale = _mag3(_sub3(p, a)) * _mag3(b) + 1.0
-    on = _mag3(cr) < 1e-9 * scale
-    out = ['p is on the line' if on else 'p is not on the line']
-    if on:
-        t = _dot3(_sub3(p, a), b) / _dot3(b, b)
-        out.append('t = ' + _f(t))
-    out.append(_w('(r-a) x b = 0 defines the line'))
-    out.append(_w('(p-a) x b = ' + _fv(cr)))
-    return out
-
-def _line_pair(a1, d1, a2, d2):
-    _nonzero(d1, 'd1')
-    _nonzero(d2, 'd2')
-    cr = _cross3(d1, d2)
-    wv = _sub3(a2, a1)
-    mc = _mag3(cr)
-    scale = _mag3(d1) * _mag3(d2)
-    if mc < 1e-9 * scale:
-        dist = _mag3(_cross3(wv, d1)) / _mag3(d1)
-        if dist < 1e-9 * (1.0 + _mag3(wv)):
-            return ('same', 0.0, cr)
-        return ('par', dist, cr)
-    dist = abs(_dot3(wv, cr)) / mc
-    t = _dot3(_cross3(wv, d2), cr) / (mc * mc)
-    s = _dot3(_cross3(wv, d1), cr) / (mc * mc)
-    if dist < 1e-9 * (1.0 + _mag3(wv) + _mag3(d1) + _mag3(d2)):
-        return ('meet', (t, s, _step(a1, d1, t)), cr)
-    return ('skew', (dist, t, s), cr)
-
-def t_line_meet(a1, d1, a2, d2):
-    kind, info, cr = _line_pair(a1, d1, a2, d2)
-    out = []
-    if kind == 'same':
-        out.append('the same line')
-    elif kind == 'par':
-        out.append('parallel, no intersection')
-        out.append('distance = ' + _f(info))
-    elif kind == 'meet':
-        t, s, p = info
-        out.append('they meet at ' + _fv(p))
-        out.append(_w('t = ' + _f(t) + ',  s = ' + _f(s)))
-    else:
-        dist, t, s = info
-        out.append('skew lines')
-        out.append('distance = ' + _f(dist))
-        out.append(_w('nearest on line 1: ' + _fv(_step(a1, d1, t))))
-        out.append(_w('nearest on line 2: ' + _fv(_step(a2, d2, s))))
-    out.append(_w('d1 x d2 = ' + _fv(cr)))
-    out.append(_w('a2 - a1 = ' + _fv(_sub3(a2, a1))))
-    return out
-
-def t_line_dist(a1, d1, a2, d2):
-    kind, info, cr = _line_pair(a1, d1, a2, d2)
-    out = []
-    if kind == 'same':
-        out.append('the same line')
-        out.append('distance = 0')
-    elif kind == 'par':
-        out.append('parallel lines')
-        out.append('distance = ' + _f(info))
-        out.append(_w('d = |(a2-a1) x d1|/|d1|'))
-    elif kind == 'meet':
-        out.append('lines intersect')
-        out.append('distance = 0')
-        out.append(_w('meet at ' + _fv(info[2])))
-    else:
-        out.append('skew lines')
-        out.append('distance = ' + _f(info[0]))
-        out.append(_w('d = |(a2-a1).(d1 x d2)|/|d1 x d2|'))
-    out.append(_w('d1 x d2 = ' + _fv(cr)))
-    return out
-
-def t_line_plane(a, d, n, k):
-    _nonzero(d, 'd')
-    _nonzero(n, 'n')
-    nd = _dot3(n, d)
-    na = _dot3(n, a)
-    out = []
-    if abs(nd) < 1e-12 * _mag3(n) * _mag3(d):
-        if abs(na - k) < 1e-9 * (1.0 + abs(k)):
-            out.append('the line lies in the plane')
-        else:
-            out.append('parallel, never meets')
-            out.append('distance = ' + _f(abs(na - k) / _mag3(n)))
-    else:
-        t = (k - na) / nd
-        p = _step(a, d, t)
-        out.append('meets at ' + _fv(p))
-        out.append(_w('t = (k - n.a)/(n.d) = ' + _f(t)))
-        s = abs(nd) / (_mag3(n) * _mag3(d))
-        if s > 1.0:
-            s = 1.0
-        r = math.asin(s)
-        out.append('angle = ' + _f(r) + ' rad')
-        out.append('      = ' + _f(casutil.deg(r)) + ' deg')
-    out.append(_w('n.d = ' + _f(nd) + ',  n.a = ' + _f(na)))
-    return out
-
-def t_pt_line(p, a, d):
-    _nonzero(d, 'd')
-    wv = _sub3(p, a)
-    cr = _cross3(wv, d)
-    dist = _mag3(cr) / _mag3(d)
-    t = _dot3(wv, d) / _dot3(d, d)
-    foot = _step(a, d, t)
-    out = ['distance = ' + _f(dist), 'foot = ' + _fv(foot)]
-    out.append(_w('d = |(p-a) x d|/|d|'))
-    out.append(_w('(p-a) x d = ' + _fv(cr)))
-    out.append(_w('t = (p-a).d/|d|^2 = ' + _f(t)))
-    return out
-
-def t_pt_plane(p, n, k):
-    _nonzero(n, 'n')
-    mn = _mag3(n)
-    gap = _dot3(n, p) - k
-    dist = abs(gap) / mn
-    foot = [p[i] - gap * n[i] / (mn * mn) for i in range(3)]
-    out = ['distance = ' + _f(dist), 'foot = ' + _fv(foot)]
-    out.append(_w('d = |n.p - k|/|n|'))
-    out.append(_w('n.p = ' + _f(_dot3(n, p)) + ',  |n| = ' + _f(mn)))
-    return out
-
-# ---- G polar coordinates ----------------------------------------------------
+# ---- PO  Polar coordinates --------------------------------------------------
 
 def t_polar_to_xy(r, th):
     x = r * math.cos(th)
@@ -1066,45 +484,7 @@ def t_polar_area(r, a, b):
         out.append(_wn(GAPMSG))
     return out
 
-def _polar_tangents(r, a, b, which):
-    a, b = _order(a, b)
-    body = ('*', r, ('sin', X)) if which == 'para' else ('*', r, ('cos', X))
-    d = _dvar(body, 'x')
-    tol = 1e-6 * (1.0 + abs(b - a))
-    roots = []
-    try:
-        for t in cascalc.solve(d, 'x'):
-            if a - tol <= t <= b + tol:
-                roots.append(_snap(t))
-    except Exception:
-        roots = []
-    out = []
-    if not roots:
-        out.append('none found in that range')
-    for t in roots:
-        rv = _polar_r(r, t)
-        if rv is None:
-            continue
-        rv = _snap(rv)
-        out.append('theta = ' + _f(t) + ', r = ' + _f(rv))
-        out.append(_w('  point ' + _fv([_snap(rv * math.cos(t)),
-                                        _snap(rv * math.sin(t))])))
-    if which == 'para':
-        out.append(_w('tangent parallel to the initial line'))
-        out.append(_w('when d(r sin th)/dth = 0'))
-    else:
-        out.append(_w('tangent perpendicular to it'))
-        out.append(_w('when d(r cos th)/dth = 0'))
-    out.append(_mw(d))
-    return out
-
-def t_polar_tan_para(r, a, b):
-    return _polar_tangents(r, a, b, 'para')
-
-def t_polar_tan_perp(r, a, b):
-    return _polar_tangents(r, a, b, 'perp')
-
-# ---- H hyperbolic functions -------------------------------------------------
+# ---- H  Hyperbolic functions ------------------------------------------------
 
 def _sh(x):
     return (math.exp(x) - math.exp(-x)) / 2.0
@@ -1299,7 +679,7 @@ def t_int_arcosh(a, p, q):
     out.append(_wn('needs x >= a > 0'))
     return out
 
-# ---- I differential equations ------------------------------------------------
+# ---- D  Differential equations ----------------------------------------------
 
 def _aux(a, b, c):
     if abs(a) < 1e-12:
@@ -1569,11 +949,27 @@ def _poly_pi(a, b, c, cs):
         out.append(v)
     return out
 
-def _pi_out(a, b, c, pit, work):
+def _pi_out(a, b, c, pit, work, y0=None, v0=None):
     kind, p, q, disc = _aux(a, b, c)
     cf = _cf_tree(kind, p, q)
     pit = _tidy(pit)
-    out = [_m(_tidy(('+', cf, pit)))]
+    gen = _tidy(('+', cf, pit))
+    out = []
+    if y0 is not None and v0 is not None:
+        # c13 with conditions y(0) = y0, y'(0) = v0: fit A and B to y - PI
+        py = _at(pit, 0.0)
+        pd = _at(_dvar(pit, 'x'), 0.0)
+        ab = None
+        if py is not None and pd is not None:
+            ab = _fit_ab(kind, p, q, y0 - py, v0 - pd)
+        if ab is None:
+            raise ValueError('cannot fit A and B')
+        out.append(_m(_tidy(('+', _sub_ab(cf, ab[0], ab[1]), pit))))
+        out.append('A = ' + _f(ab[0]) + ',  B = ' + _f(ab[1]))
+        out.append(_w('general: ' + _ts(gen)))
+        out.append(_w('y(0) = ' + _f(y0) + ",  y'(0) = " + _f(v0)))
+    else:
+        out.append(_m(gen))
     out.append(_w('CF: ' + _ts(cf)))
     out.append(_w('PI: ' + _ts(pit)))
     out.append(_w(_root_line(kind, p, q)))
@@ -1583,7 +979,7 @@ def _pi_out(a, b, c, pit, work):
         out.append(ln)
     return out
 
-def t_pi_poly(a, b, c, p):
+def t_pi_poly(a, b, c, p, y0, v0):
     _aux(a, b, c)
     cs = _poly_coeffs(p)
     sol = _poly_pi(a, b, c, cs)
@@ -1593,9 +989,9 @@ def t_pi_poly(a, b, c, p):
     work = ['f(x) = ' + _ts(p)]
     if abs(c) < 1e-12:
         work.append('c = 0, so the trial is raised a degree')
-    return _pi_out(a, b, c, pit, work)
+    return _pi_out(a, b, c, pit, work, y0, v0)
 
-def t_pi_exp(a, b, c, k, p):
+def t_pi_exp(a, b, c, k, p, y0, v0):
     _aux(a, b, c)
     ex = ('exp', ('*', ('n', p), X))
     den = a * p * p + b * p + c
@@ -1614,9 +1010,9 @@ def t_pi_exp(a, b, c, k, p):
             pit = caseng.simplify(('*', ('*', _nn(k / (2.0 * a)), ('^', X, ('n', 2))), ex))
             work.append('p is a repeated root: trial C x^2 e^(px)')
             work.append('2a = ' + _f(2.0 * a))
-    return _pi_out(a, b, c, pit, work)
+    return _pi_out(a, b, c, pit, work, y0, v0)
 
-def t_pi_trig(a, b, c, mm, nn, wv):
+def t_pi_trig(a, b, c, mm, nn, wv, y0, v0):
     _aux(a, b, c)
     if abs(wv) < 1e-12:
         raise ValueError('w must not be zero')
@@ -1642,7 +1038,7 @@ def t_pi_trig(a, b, c, mm, nn, wv):
         work.append('wi is a root, so trial x(P cos + Q sin)')
         work.append('2awQ = m, -2awP = n')
     work.append('P = ' + _f(P) + ', Q = ' + _f(Q))
-    return _pi_out(a, b, c, pit, work)
+    return _pi_out(a, b, c, pit, work, y0, v0)
 
 def _shm_lines(w, x0, v0):
     T = 2.0 * PI / w
@@ -1741,177 +1137,147 @@ def t_coupled(a, b, c, d, x0, y0):
         out.append(_w('x(0) = ' + _f(x0) + ',  y(0) = ' + _f(y0)))
     return out
 
-# ---- J numerical methods -----------------------------------------------------
+def _onlyv(tree, var, what):
+    for v in caseng.vars_in(tree):
+        if v != var:
+            raise ValueError(what + ': type it in ' + var)
 
-def _strips(f, a, b, n):
-    n = _int_in(n, 1, 200, 'n')
-    if a == b:
-        raise ValueError('limits are equal')
-    return (n, (b - a) / n)
+def _eqlines(lhs, rhs):
+    s = lhs + ' = ' + rhs
+    if len(s) <= 36:
+        return [s]
+    return [lhs + ' =', '  ' + rhs]
 
-def _fx(f, x):
-    v = casutil.evx(f, x)
-    if v is None:
-        raise ValueError('f undefined at x = ' + _f(x))
-    return v
-
-def _midord(f, a, b, n, h):
-    tot = 0.0
-    i = 0
-    while i < n:
-        tot += _fx(f, a + (i + 0.5) * h)
-        i += 1
-    return tot * h
-
-def _trap(f, a, b, n, h):
-    tot = _fx(f, a) + _fx(f, b)
-    i = 1
-    while i < n:
-        tot += 2.0 * _fx(f, a + i * h)
-        i += 1
-    return tot * h / 2.0
-
-def _simpson(f, a, b, n, h):
-    tot = _fx(f, a) + _fx(f, b)
-    i = 1
-    while i < n:
-        tot += (4.0 if (i % 2) else 2.0) * _fx(f, a + i * h)
-        i += 1
-    return tot * h / 3.0
-
-def t_midordinate(f, a, b, n):
-    n, h = _strips(f, a, b, n)
-    val = _midord(f, a, b, n, h)
-    out = ['M = ' + casutil.sf3(val)]
-    out.append(_w('M = h(y(1/2) + y(3/2) + ... ), h = ' + _f(h)))
-    i = 0
-    while i < n and i < 12:
-        xm = a + (i + 0.5) * h
-        out.append(_w('  x = ' + _f(xm, 6) + ':  ' + _f(_fx(f, xm), 6)))
-        i += 1
-    if n > 12:
-        out.append(_w('  ... ' + str(n - 12) + ' more ordinates'))
-    ex = _exact_int(f, a, b)
-    if ex[0] is not None:
-        out.append(_w('exact = ' + _f(ex[0], 6) + ', error = ' + _f(ex[0] - val, 3)))
-    if _gap(f, a, b):
-        out.append(_wn(GAPMSG))
-    return out
-
-def t_simpson(f, a, b, n):
-    n, h = _strips(f, a, b, n)
-    if n % 2:
-        raise ValueError('n must be even')
-    val = _simpson(f, a, b, n, h)
-    out = ['S = ' + casutil.sf3(val)]
-    out.append(_w('S = (h/3)(ends + 4odds + 2evens)'))
-    out.append(_w('h = ' + _f(h) + ', n = ' + str(n)))
-    i = 0
-    while i <= n and i < 13:
-        out.append(_w('  y' + str(i) + ' = ' + _f(_fx(f, a + i * h), 6)))
-        i += 1
-    if n + 1 > 13:
-        out.append(_w('  ... ' + str(n + 1 - 13) + ' more ordinates'))
-    ex = _exact_int(f, a, b)
-    if ex[0] is not None:
-        out.append(_w('exact = ' + _f(ex[0], 6) + ', error = ' + _f(ex[0] - val, 3)))
-    if _gap(f, a, b):
-        out.append(_wn(GAPMSG))
-    return out
-
-def t_compare(f, a, b, n):
-    n, h = _strips(f, a, b, n)
-    mid = _midord(f, a, b, n, h)
-    tra = _trap(f, a, b, n, h)
-    out = ['mid-ordinate = ' + casutil.sf3(mid),
-           'trapezium = ' + casutil.sf3(tra)]
-    sim = None
-    if n % 2 == 0:
-        sim = _simpson(f, a, b, n, h)
-        out.append('Simpson = ' + casutil.sf3(sim))
-    else:
-        out.append(_wn("Simpson's rule needs an even n"))
-    val, F, exact = _exact_int(f, a, b)
-    if val is not None:
-        out.append('exact = ' + _f(val))
-        out.append(_w('errors:'))
-        out.append(_w('  mid-ordinate ' + _f(val - mid, 3)))
-        out.append(_w('  trapezium    ' + _f(val - tra, 3)))
-        if sim is not None:
-            out.append(_w('  Simpson      ' + _f(val - sim, 3)))
-        if not exact:
-            out.append(_wn('"exact" is a fine numerical value'))
-    out.append(_w('n = ' + str(n) + ', h = ' + _f(h)))
-    out.append(_w('M + 2T over 3 = ' + _f((mid + 2.0 * tra) / 3.0, 6)))
-    if _gap(f, a, b):
-        out.append(_wn(GAPMSG))
-    return out
-
-def _fxy(f, x, y):
+def t_separable(f, g, x0, y0):
+    # c8: dy/dx = f(x) g(y)
+    _onlyv(f, 'x', 'f(x)')
+    _onlyv(g, 'y', 'g(y)')
+    A = _anti(caseng.simplify(('/', ('n', 1), g)), 'y')
+    B = _anti(f, 'x')
+    if A is None or B is None:
+        raise ValueError('no standard integral')
+    work = [_w('dy/dx = f(x) g(y): int dy/g(y) = int f(x) dx'),
+            _w('int 1/g(y) dy = ' + _ts(A)),
+            _w('int f(x) dx = ' + _ts(B))]
+    if x0 is None or y0 is None:
+        return _eqlines(_ts(A), _ts(B) + ' + c') + work
+    a0 = _at(A, y0, 'y')
+    b0 = _at(B, x0, 'x')
+    if a0 is None or b0 is None:
+        raise ValueError('the point is outside the domain')
+    c = a0 - b0
+    ct = _nn(c)
     try:
-        v = caseng.evalf(f, x, False, {'x': x, 'y': y})
+        t2 = _tidy(('-', caseng.subst(A, 'y', _nn(y0)), caseng.subst(B, 'x', _nn(x0))))
+        v2 = _at(t2, 0.0)
+        if v2 is not None and abs(v2 - c) < 1e-9 * (1.0 + abs(c)):
+            ct = t2
     except Exception:
-        raise ValueError('cannot evaluate f at x = ' + _f(x))
-    if isinstance(v, complex) or v != v or v > 1e300 or v < -1e300:
-        raise ValueError('cannot evaluate f at x = ' + _f(x))
-    return v
+        pass
+    if abs(c) < 1e-12:
+        rhs = _ts(B)
+        ct = ('n', 0)
+    else:
+        rhs = _ts(B) + ' + ' + _ts(ct)
+        if rhs.startswith(_ts(B) + ' + -'):
+            rhs = _ts(B) + ' - ' + rhs[len(_ts(B)) + 4:]
+    out = _eqlines(_ts(A), rhs)
+    Ap = caseng.strip_abs(A)
+    inv = None
+    try:
+        inv = caseng.invert(Ap, 'y', 'u')
+    except Exception:
+        inv = None
+    if inv is not None:
+        ex = _tidy(caseng.subst(inv, 'u', caseng.simplify(('+', B, ct))))
+        yv = _at(ex, x0)
+        if yv is not None and abs(yv - y0) < 1e-6 * (1.0 + abs(y0)):
+            out = ['y ='] + [_m(ex)] + [_w(ln) for ln in out]
+            if Ap != A:
+                out.append(_wn('y keeps the sign it has at x0'))
+    out.append(_w('c = ' + _ts(ct) + ' from (' + _f(x0) + ', ' + _f(y0) + ')'))
+    return out + work
 
-def _steps(n):
-    return _int_in(n, 1, 40, 'n')
-
-def _table(rows):
-    out = []
-    for i, x, y in rows:
-        out.append(_w('  r=' + str(i) + '  x = ' + _f(x, 6) + '  y = ' + _f(y, 6)))
+def t_avdx(f, x0, v0, x1):
+    # p21/p22: a = v dv/dx = f(x), with v = v0 at x = x0
+    _onlyv(f, 'x', 'f(x)')
+    F = _anti(f)
+    if F is None:
+        raise ValueError('cannot integrate f(x)')
+    F0 = _at(F, x0)
+    if F0 is None:
+        raise ValueError('int f dx is undefined at x0')
+    V2 = _tidy(('+', _nn(v0 * v0 - 2.0 * F0), ('*', ('n', 2), F)))
+    out = ['v^2 =', _m(V2)]
+    if x1 is not None:
+        w2 = _at(V2, x1)
+        if w2 is None:
+            out.append(_wn('v^2 is undefined at x = ' + _f(x1)))
+        elif w2 < -1e-9:
+            out.append('x = ' + _f(x1) + ' is never reached')
+            out.append(_wn('v^2 = ' + _f(w2) + ' < 0 there'))
+        else:
+            vv = math.sqrt(w2) if w2 > 0 else 0.0
+            if vv == 0:
+                out.append('at x = ' + _f(x1) + ': v = 0')
+            else:
+                out.append('at x = ' + _f(x1) + ': v = +/-' + _f(vv))
+    zs = []
+    try:
+        for r in cascalc.solve(V2, 'x'):
+            zs.append(0.0 if abs(r) < 1e-6 else r)
+    except Exception:
+        zs = []
+    if zs:
+        out.append('v = 0 at x = ' + ', '.join([_f(r) for r in zs[:4]]))
+    out.append(_w('a = v dv/dx = d(v^2/2)/dx'))
+    out.append(_w('v^2/2 = int f dx + c, int f dx = ' + _ts(F)[:22]))
+    out.append(_w('v = ' + _f(v0) + ' at x = ' + _f(x0) + ' fixes c'))
     return out
 
-def t_euler(f, x0, y0, h, n):
-    n = _steps(n)
-    if h == 0:
-        raise ValueError('h must not be zero')
-    x = x0
-    y = y0
-    rows = [(0, x, y)]
-    i = 1
-    while i <= n:
-        s = _fxy(f, x, y)
-        y = y + h * s
-        x = x + h
-        rows.append((i, x, y))
+def t_afv(f, v0, v1):
+    # p22: a = f(v); time and distance for v to go from v0 to v1
+    _onlyv(f, 'v', 'f(v)')
+    if v0 == v1:
+        raise ValueError('v0 and v1 are equal')
+    lo = v0 if v0 < v1 else v1
+    hi = v1 if v0 < v1 else v0
+    sg = None
+    i = 0
+    while i <= 40:
+        fv = _at(f, lo + (hi - lo) * i / 40.0, 'v')
+        if fv is None:
+            raise ValueError('f(v) is undefined between v0 and v1')
+        s = 0 if abs(fv) < 1e-12 else (1 if fv > 0 else -1)
+        if s == 0 or (sg is not None and s != sg):
+            return ['v never reaches ' + _f(v1),
+                    _wn('f(v) = 0 between: a terminal speed'),
+                    _w('the time integral int dv/f(v) diverges')]
+        sg = s
         i += 1
-    out = ['y(' + _f(x) + ') = ' + casutil.sf3(y)]
-    out.append(_w('y(r+1) = y(r) + h f(x(r), y(r))'))
-    out.append(_w('h = ' + _f(h) + ', n = ' + str(n)))
-    return out + _table(rows)
-
-def t_euler_improved(f, x0, y0, h, n):
-    n = _steps(n)
-    if h == 0:
-        raise ValueError('h must not be zero')
-    if n < 2:
-        raise ValueError('n must be at least 2')
-    y1 = y0 + h * _fxy(f, x0, y0)
-    rows = [(0, x0, y0), (1, x0 + h, y1)]
-    prev = y0
-    y = y1
-    x = x0 + h
-    i = 2
-    while i <= n:
-        s = _fxy(f, x, y)
-        nxt = prev + 2.0 * h * s
-        prev = y
-        y = nxt
-        x = x + h
-        rows.append((i, x, y))
-        i += 1
-    out = ['y(' + _f(x) + ') = ' + casutil.sf3(y)]
-    out.append(_w('y(r+1) = y(r-1) + 2h f(x(r), y(r))'))
-    out.append(_w('y(1) from one Euler step'))
-    out.append(_w('h = ' + _f(h) + ', n = ' + str(n)))
-    return out + _table(rows)
+    it = caseng.simplify(('/', ('n', 1), f))
+    ix = caseng.simplify(('/', ('v', 'v'), f))
+    tv, Ft, e1 = _exact_int(it, v0, v1, 'v')
+    xv, Fx, e2 = _exact_int(ix, v0, v1, 'v')
+    if tv is None or xv is None:
+        raise ValueError('cannot integrate over that range')
+    out = ['time = ' + _f(tv), 'distance = ' + _f(xv)]
+    if tv < 0:
+        out.append(_wn('time < 0: a pushes v away from v1'))
+    out.append(_w('dv/dt = f(v): t = int dv/f(v)'))
+    if Ft is not None:
+        out.append(_mw(Ft))
+    out.append(_w('v dv/dx = f(v): x = int v/f(v) dv'))
+    if Fx is not None:
+        out.append(_mw(Fx))
+    out.append(_w('from v = ' + _f(v0) + ' to v = ' + _f(v1)))
+    if not (e1 and e2):
+        out.append(_wn('found numerically'))
+    return out
 
 SECTIONS = [
-    ('E', 'Further calculus', [
+    # Pc1 c2 c3 c4 c5 c6
+    ('C', 'Calculus', [
         ('Integral to infinity', 'f(x),a', t_int_inf),
         ('Singular endpoint int', 'f(x),a,b', t_int_sing),
         ('Volume about x-axis', 'f(x),a,b', t_vol_x),
@@ -1921,44 +1287,15 @@ SECTIONS = [
         ('d/dx inverse trig', 'f(x),a?', t_invtrig_diff),
         ('Int 1/sqrt(a2-x2)', 'a,p,q', t_int_asin),
         ('Int 1/(a2+x2)', 'a,p,q', t_int_atan),
-        ('Arc length y=f(x)', 'f(x),a,b', t_arclen),
-        ('Arc length parametric', 'x(t),y(t),a,b', t_arclen_par),
-        ('Surface area x-axis', 'f(x),a,b', t_surf_x),
-        ('Surface area param', 'x(t),y(t),a,b', t_surf_par),
-        ('Reduction x^n e^x', 'n', t_red_xexp),
-        ('Reduction sin^n', 'n', t_red_sin),
-        ('Reduction cos^n', 'n', t_red_cos),
-        ('Reduction tan^n', 'n', t_red_tan),
-        ('Reduction (ln x)^n', 'n', t_red_lnx),
-        ('Limit x^k e^-x', 'k', t_lim_xexp),
-        ('Limit x^k ln x', 'k', t_lim_xlnx),
     ]),
-    ('F', 'Further vectors', [
-        ('Line from two points', 'A[3],B[3]', t_line_2pts),
-        ('Line to cartesian', 'a[3],d[3]', t_line_cart),
-        ('Plane from 3 points', 'A[3],B[3],C[3]', t_plane_3pts),
-        ('Plane point + normal', 'p[3],n[3]', t_plane_pt_n),
-        ('Angle between lines', 'd1[3],d2[3]', t_angle_lines),
-        ('Angle line and plane', 'd[3],n[3]', t_angle_lp),
-        ('Angle between planes', 'n1[3],n2[3]', t_angle_planes),
-        ('Perpendicular check', 'a[3],b[3]', t_perp_check),
-        ('Vector product', 'a[3],b[3]', t_cross),
-        ('Area of triangle', 'A[3],B[3],C[3]', t_tri_area),
-        ('Is p on (r-a)xb=0', 'a[3],b[3],p[3]', t_on_line),
-        ('Intersect two lines', 'a1[3],d1[3],a2[3],d2[3]', t_line_meet),
-        ('Distance two lines', 'a1[3],d1[3],a2[3],d2[3]', t_line_dist),
-        ('Line meets plane', 'a[3],d[3],n[3],k', t_line_plane),
-        ('Point to line dist', 'p[3],a[3],d[3]', t_pt_line),
-        ('Point to plane dist', 'p[3],n[3],k', t_pt_plane),
-    ]),
-    ('G', 'Polar coordinates', [
+    # PP1 P2 P3
+    ('PO', 'Polar coordinates', [
         ('Polar to cartesian', 'r,theta', t_polar_to_xy),
         ('Cartesian to polar', 'x,y', t_xy_to_polar),
         ('Plot r = f(theta)', 'r(x)', t_polar_plot),
         ('Polar area', 'r(x),a,b', t_polar_area),
-        ('Tangent para to axis', 'r(x),a,b', t_polar_tan_para),
-        ('Tangent perp to axis', 'r(x),a,b', t_polar_tan_perp),
     ]),
+    # Pa3 a4 a5 Pa6 a7 a8
     ('H', 'Hyperbolic functions', [
         ('Six hyperbolics at x', 'x', t_hyp_six),
         ('Inverse hyperbolics', 'x', t_hyp_inv),
@@ -1970,23 +1307,20 @@ SECTIONS = [
         ('Int 1/sqrt(x2+a2)', 'a,p,q', t_int_arsinh),
         ('Int 1/sqrt(x2-a2)', 'a,p,q', t_int_arcosh),
     ]),
-    ('I', 'Differential equations', [
+    # c8 c9 c10 c11-c14 c16-c18 Pc7 Pc15 p21 p22 (Pp19 p20 are modelling)
+    ('D', 'Differential equations', [
+        ('Separable DE', 'f(x),g(y),x0?,y0?', t_separable),
         ('Integrating factor', 'P(x),Q(x),x0?,y0?', t_intfactor),
         ('Second order homogen', 'a,b,c', t_second_order),
         ('Second order with IVs', 'a,b,c,y0,v0', t_second_ivp),
-        ('PI polynomial RHS', 'a,b,c,p(x)', t_pi_poly),
-        ('PI for k e^(px)', 'a,b,c,k,p', t_pi_exp),
-        ('PI for m cos + n sin', 'a,b,c,m,n,omega', t_pi_trig),
+        ('PI polynomial RHS', 'a,b,c,p(x),y0?,v0?', t_pi_poly),
+        ('PI for k e^(px)', 'a,b,c,k,p,y0?,v0?', t_pi_exp),
+        ('PI for m cos + n sin', 'a,b,c,m,n,omega,y0?,v0?', t_pi_trig),
         ('SHM from omega', 'omega,x0?,v0?', t_shm),
         ('Hooke law SHM', 'k,m', t_hooke_shm),
         ('Damping classify', 'm,c,k', t_damping),
         ('Coupled equations', 'a,b,c,d,x0?,y0?', t_coupled),
-    ]),
-    ('J', 'Numerical methods', [
-        ('Mid-ordinate rule', 'f(x),a,b,n', t_midordinate),
-        ("Simpson's rule", 'f(x),a,b,n', t_simpson),
-        ('Compare rules', 'f(x),a,b,n', t_compare),
-        ('Euler step by step', 'f(x y),x0,y0,h,n', t_euler),
-        ('Improved Euler', 'f(x y),x0,y0,h,n', t_euler_improved),
+        ('a = v dv/dx = f(x)', 'f(x),x0,v0,x1?', t_avdx),
+        ('a = f(v): dist, time', 'f(v),v0,v1', t_afv),
     ]),
 ]
