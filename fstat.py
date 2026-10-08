@@ -1682,6 +1682,31 @@ def _resid_lines(xs, ys, a, b, out, cap):
         out.append(w('(first ' + fmt(cap) + ' of ' + fmt(len(xs)) + ')'))
     return ss
 
+def t_bisums(n, sx, sy, sxx, syy, sxy, x0):
+    # r and both regression lines from the summary sums
+    n = _whole(n, 'n', 2, 10 ** 9)
+    Sxx = sxx - sx * sx / n
+    Syy = syy - sy * sy / n
+    Sxy = sxy - sx * sy / n
+    if Sxx <= 0 or Syy <= 0:
+        raise ValueError('sum x^2 or sum y^2 too small for the sums')
+    r = Sxy / math.sqrt(Sxx * Syy)
+    b = Sxy / Sxx
+    a = sy / n - b * sx / n
+    d = Sxy / Syy
+    c = sx / n - d * sy / n
+    f4 = lambda v: fmt(v, 10 if casutil.FULL else 4)
+    out = ['r = ' + f4(r),
+           'y on x: ' + _yline(a, b, 'y', 'x', f4),
+           'x on y: ' + _yline(c, d, 'x', 'y', f4)]
+    if x0 is not None:
+        out.append('y(' + p5(x0) + ') = ' + p5(a + b * x0))
+    out.append(w('Sxx = ' + p5(Sxx) + ', Syy = ' + p5(Syy) + ', Sxy = ' + p5(Sxy)))
+    out.append(w('Sxy = sum xy - sum x sum y/n'))
+    out.append(w('r = Sxy/sqrt(Sxx Syy), b = Sxy/Sxx'))
+    out.append(w('xbar = ' + p5(sx / n) + ', ybar = ' + p5(sy / n)))
+    return out
+
 def t_regyx(data):
     xs, ys = _xy(data, 2)
     n, mx, my, sxx, syy, sxy = _bstats(xs, ys)
@@ -2876,6 +2901,7 @@ SECTIONS = [
         ('Spearman test data', 'sig%,tail,x y pairs*', t_speartest),
         ('Spearman test from rs', 'rs,n,sig%,tail', t_speartest_rs),
         ('Regression y on x', 'x y pairs*', t_regyx),
+        ('Bivariate from sums', 'n,sumx,sumy,sumx2,sumy2,sumxy,x0?', t_bisums),
         ('Regression x on y', 'x y pairs*', t_regxy),
         ('Both regression lines', 'x y pairs*', t_regboth),
         ('Residuals', 'x y pairs*', t_resid),

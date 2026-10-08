@@ -58,6 +58,7 @@ T = (
         ('Spearman test data', 'sig%,tail,x y pairs*'),
         ('Spearman test from rs', 'rs,n,sig%,tail'),
         ('Regression y on x', 'x y pairs*'),
+        ('Bivariate from sums', 'n,sumx,sumy,sumx2,sumy2,sumxy,x0?'),
         ('Regression x on y', 'x y pairs*'),
         ('Both regression lines', 'x y pairs*'),
         ('Residuals', 'x y pairs*'),

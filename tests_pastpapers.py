@@ -562,6 +562,11 @@ CASES += [
     ('y422-jun24', '7d', 'fstat', 't test from data', '9.4,5,2,6.20,10.72,11.42,16.32,15.33,10.56,8.83,9.21,7.78,14.32', 't = 1.585'),
     ('y422-spec', '7(ii)', 'fstat', 't test from data', '110.2,5,2,116.9,114.9,110.9,113.9,114.9,117.9,112.9,99.9,114.9,103.9,123.9,105.7,108.9,102.9,112.7', 'crit = +/-2.145'),
     ('y422-spec', '7(ii)', 'fstat', 't test from data', '110.2,5,2,116.9,114.9,110.9,113.9,114.9,117.9,112.9,99.9,114.9,103.9,123.9,105.7,108.9,102.9,112.7', 't = 0.8909'),
+    # correlation and regression from summary sums
+    ('y422-jun19', '6a(i)', 'fstat', 'Bivariate from sums', '12,1131,1227,107783,126725,116724', 'x = 6.962 + 0.8537y'),
+    ('y422-nov20', '5b', 'fstat', 'Bivariate from sums', '16,198.0,188.7,2936.92,2605.35,2554.87', 'y = 6.207 + 0.4515x'),
+    ('y422-nov21', '8b(ii)', 'fstat', 'Bivariate from sums', '20,80.37,970.86,324.71,47829.24,3886.53', 'r = -0.4255'),
+    ('y422-jun25', '7a', 'fstat', 'Bivariate from sums', '30,2.219,357.7,0.2368,4648,25.01', 'r = -0.2744'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
