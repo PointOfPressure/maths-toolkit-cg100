@@ -850,6 +850,59 @@ def _argand(pts, title):
     import plot
     plot.run(pts, kind='points', title=title)
 
+def _piarg(t):
+    # a rational multiple of pi as text: 3pi/4, -7pi/12, pi
+    p, q = t
+    if p == 0:
+        return '0'
+    s = '-' if p < 0 else ''
+    p = abs(p)
+    return s + ('' if p == 1 else str(p)) + 'pi' + ('' if q == 1 else '/' + str(q))
+
+def _nroots_exp(z, n, th):
+    # each root as r e^(i theta), theta in (-pi, pi], when |z|^2 and arg z/pi
+    # are rational: z^3 = 2+2i -> sqrt(2)e^(i pi/12), ...
+    zz = _cx(z)
+    m2 = caseng._fltrat(zz.real * zz.real + zz.imag * zz.imag)
+    t = caseng._fltrat(th / PI)
+    if m2 is None or t is None:
+        return []
+    # |w| = (m2)^(1/2n), with a perfect power taken out: 8^(1/6) = sqrt(2)
+    g = 2 * n
+    e = g
+    while e > 1:
+        if g % e == 0:
+            P = caseng._introot(m2[0], e)
+            Q = caseng._introot(m2[1], e)
+            if P is not None and Q is not None:
+                m2 = (P, Q)
+                break
+        e -= 1
+    if e < 2:
+        e = 1
+    ex = caspoly.rmake(e, g)
+    r = caseng.simplify(('^', caspoly.ratnode(m2), caspoly.ratnode(ex)))
+    rs = caseng.tostr(r)
+    rs = '' if rs == '1' else (rs if r[0] in ('n', 'v', 'sqrt') or '(' not in rs else '(' + rs + ')')
+    out = []
+    k = 0
+    while k < n:
+        a = caspoly.rdiv(caspoly.radd(t, (2 * k, 1)), (n, 1))
+        # into (-1, 1]
+        while a[0] > a[1]:
+            a = caspoly.rsub(a, (2, 1))
+        while a[0] <= -a[1]:
+            a = caspoly.radd(a, (2, 1))
+        p, q = a
+        if p == 0:
+            ang = '0'
+        else:
+            ang = ('-' if p < 0 else '') + ('' if abs(p) == 1 else str(abs(p))) + 'i pi' + \
+                ('' if q == 1 else '/' + str(q))
+        out.append('w' + str(k) + ' = ' + rs + 'e^(' + ang + ')')
+        k += 1
+    return out
+
 def t_nroots(z, n):
     n = _iv(n, 'n', 2, 16)
     if z == 0:
@@ -866,7 +919,7 @@ def t_nroots(z, n):
         pts.append((_cx(v).real, _cx(v).imag))
         k += 1
     _argand(pts, 'roots of ' + _f(z))
-    lines = out
+    lines = _nroots_exp(z, n, th) + out
     lines.append(_w('|w| = ' + _f(r) + '^(1/' + str(n) + ') = ' + _f(rr)))
     lines.append(_w('args (' + _f(th) + ' + 2pi k)/' + str(n) + ', k = 0..' + str(n - 1)))
     lines.append(_w('they are a regular ' + str(n) + '-gon, sum = 0'))

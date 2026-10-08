@@ -607,6 +607,10 @@ CASES += [
     ('y422-jun22', '3a', 'fstat', 'DRV table constants', '1.8,?,0,a,1,b,2,0.24,3,0.32,4,b^2', 'a = 1/5, b = 1/5'),
     ('y422-nov21', '11a', 'fstat', 'pdf constants', '2,a*x^2,0,2,b*(3-x)^2,3', 'a = 1/8, b = 2'),
     ('y422-jun24', '12a', 'fstat', 'cdf constants', 'a*(x^2+b*x+c),20,30,25,11/24', 'a = 1/600, b = 10, c = -600'),
+    # nth roots in exponential form, arg in (-pi, pi]
+    ('y420-jun19', '10b', 'fcore', 'nth roots of z', '2+2i,3', 'w2 = sqrt(2)e^(-7i pi/12)'),
+    ('y420-nov21', '10b(i)', 'fcore', 'nth roots of z', '1+sqrt(3)i,3', 'w2 = (2^(1/3))e^(-5i pi/9)'),
+    ('y420-jun23', '5a', 'fcore', 'nth roots of z', '-64,6', 'w0 = 2e^(i pi/6)'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
