@@ -11,6 +11,7 @@ T = (
     )),
     ('J', 'Complex numbers', (
         ('Arithmetic z, w', 'z,w'),
+        ('Solve in z and z*', 'f(z)'),
         ('Solve az + bz* = c', 'za,zb,zc'),
         ('Argand sum/product', 'z,w'),
         ('Modulus-argument', 'z'),

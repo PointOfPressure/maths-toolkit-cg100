@@ -3453,6 +3453,60 @@ def t_ciss(a, r, d, s0, n):
                   (', agrees' if ok else ', DISAGREES')))
     return out
 
+ZSTART = ((0.5, 0.5), (-1.5, 1.0), (1.2, -2.0), (-0.7, -0.9), (2.5, 2.5), (0.1, 3.0),
+          (3.0, -0.2), (-3.0, 0.3))
+
+def t_zzconj(f):
+    # f(z, conj z) = 0 by z = x + iy: real and imaginary parts as two real
+    # equations, Newton from a spread of starts
+    for v in caseng.vars_in(f):
+        if v != 'z':
+            raise ValueError('use z and conj(z) only')
+
+    def F(x, y):
+        v = complex(caseng.evalf(f, 0.0, False, {'z': complex(x, y)}))
+        return v.real, v.imag
+    sols = []
+    for x, y in ZSTART:
+        try:
+            it = 0
+            while it < 50:
+                a, b = F(x, y)
+                if abs(a) + abs(b) < 1e-13:
+                    break
+                h = 1e-7
+                ax, bx = F(x + h, y)
+                ay, by = F(x, y + h)
+                j11 = (ax - a) / h
+                j12 = (ay - a) / h
+                j21 = (bx - b) / h
+                j22 = (by - b) / h
+                det = j11 * j22 - j12 * j21
+                if abs(det) < 1e-14:
+                    break
+                x -= (a * j22 - b * j12) / det
+                y -= (j11 * b - j21 * a) / det
+                if abs(x) + abs(y) > 1e6:
+                    break
+                it += 1
+            a, b = F(x, y)
+        except Exception:
+            continue
+        if abs(a) + abs(b) > 1e-9:
+            continue
+        z = complex(_snap(x), _snap(y))
+        dup = False
+        for w2 in sols:
+            if abs(w2 - z) < 1e-7:
+                dup = True
+        if not dup:
+            sols.append(z)
+    if not sols:
+        return ['no solution found', _w('z = x + iy: real and imaginary parts = 0')]
+    out = ['z = ' + _f(casutil.clean(z)) for z in sols[:6]]
+    out.append(_w('z = x + iy, z* = x - iy: real and imaginary parts = 0'))
+    return out
+
 def t_vieta(coeffs):
     co, n = _coeffs(coeffs, 2, 4)
     e = _elem(co)
@@ -4338,6 +4392,7 @@ SECTIONS = [
     # Pj1 j2-j4 j6-j11 Pj12 j13-j16 j19 j20
     ('J', 'Complex numbers', [
         ('Arithmetic z, w', 'z,w', t_zw),
+        ('Solve in z and z*', 'f(z)', t_zzconj),
         ('Solve az + bz* = c', 'za,zb,zc', t_zconj),
         ('Argand sum/product', 'z,w', t_argops),
         ('Modulus-argument', 'z', t_modarg),
