@@ -642,6 +642,7 @@ CASES += [
     ('y422-nov21', '7d(i)', 'fstat', 'CI back to xbar and s', '1.94,2.84,100,95', 's = 2.2959'),
     ('y422-nov21', '6a', 'fstat', 'Poisson check from table', '0,34,1,65,2,55,3,24,4,14,5,6,6,2', 'variance = 1.7682'),
     ('y420-nov20', '6', 'fcore', 'Solve in z and z*', 'z^2-4i*conj(z)+11', 'z = 1+2i'),
+    ('y435-nov21', '3d', 'fxpure', 'M^n in n (3x3)', '3,3,0,0,2,2,1,3,4', 'M^n[33] = 3*6^n/5+2/5'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

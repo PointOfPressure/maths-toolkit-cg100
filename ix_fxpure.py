@@ -29,6 +29,8 @@ T = (
     )),
     ('M', 'Matrices: eigenvalues', (
         ('Eigen 2x2', 'A[2x2]'),
+        ('M^n in n (2x2)', 'A[2x2]'),
+        ('M^n in n (3x3)', 'A[3x3]'),
         ('Eigen 3x3', 'A[3x3]'),
         ('Diagonalise 2x2 M^n', 'A[2x2],n?'),
         ('Diagonalise 3x3 M^n', 'A[3x3],n?'),

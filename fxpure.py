@@ -801,6 +801,94 @@ def t_rec2k(a, b, c):
     out.append(_w('constant PI k = c/(1 - a - b) = ' + caseng.tostr(p)))
     return out
 
+def _rmat(A):
+    out = []
+    for row in A:
+        r = []
+        for v in row:
+            q = caseng._fltrat(v)
+            if q is None:
+                raise ValueError('entries must be fractions')
+            r.append(q)
+        out.append(r)
+    return out
+
+def _rmm(A, B):
+    n = len(A)
+    return [[_rsum([caspoly.rmul(A[i][k], B[k][j]) for k in range(n)]) for j in range(n)]
+            for i in range(n)]
+
+def _rsum(xs):
+    t = caspoly.R0
+    for x in xs:
+        t = caspoly.radd(t, x)
+    return t
+
+def _mpow_n(A):
+    # M^n with n a letter, by Sylvester's formula over distinct rational
+    # eigenvalues: M^n = sum L_i^n prod (M - L_j I)/(L_i - L_j)
+    import cassolve
+    R = _rmat(A)
+    n = len(R)
+    if n == 2:
+        cp = [caspoly.rsub(caspoly.rmul(R[0][0], R[1][1]), caspoly.rmul(R[0][1], R[1][0])),
+              caspoly.rneg(caspoly.radd(R[0][0], R[1][1])), caspoly.R1]
+    else:
+        tr = _rsum([R[i][i] for i in range(3)])
+        m2 = _rsum([caspoly.rsub(caspoly.rmul(R[i][i], R[j][j]), caspoly.rmul(R[i][j], R[j][i]))
+                    for i, j in ((0, 1), (0, 2), (1, 2))])
+        det = caspoly.R0
+        for j in range(3):
+            cs = [c for c in (0, 1, 2) if c != j]
+            mn = caspoly.rsub(caspoly.rmul(R[1][cs[0]], R[2][cs[1]]), caspoly.rmul(R[1][cs[1]], R[2][cs[0]]))
+            t = caspoly.rmul(R[0][j], mn)
+            det = caspoly.rsub(det, t) if j == 1 else caspoly.radd(det, t)
+        cp = [caspoly.rneg(det), m2, caspoly.rneg(tr), caspoly.R1]
+    roots = caspoly.roots_rational(cp)
+    lams = []
+    for r in roots:
+        if r not in lams:
+            lams.append(r)
+    if len(lams) != n:
+        return None
+    I = [[caspoly.R1 if i == j else caspoly.R0 for j in range(n)] for i in range(n)]
+    terms = []
+    for i in range(n):
+        C = I
+        for j in range(n):
+            if j == i:
+                continue
+            Mj = [[caspoly.rsub(R[a][b], lams[j] if a == b else caspoly.R0) for b in range(n)] for a in range(n)]
+            den = caspoly.rsub(lams[i], lams[j])
+            C = _rmm(C, [[caspoly.rdiv(x, den) for x in row] for row in Mj])
+        terms.append((lams[i], C))
+    N = ('v', 'n')
+    E = []
+    for a in range(n):
+        row = []
+        for b in range(n):
+            t = ('n', 0)
+            for lam, C in terms:
+                if C[a][b][0] != 0 and lam[0] != 0:
+                    pw = ('n', 1) if lam == caspoly.R1 else ('^', caspoly.ratnode(lam), N)
+                    t = ('+', t, ('*', caspoly.ratnode(C[a][b]), pw))
+            row.append(caseng.simplify(t))
+        E.append(row)
+    return lams, E
+
+def t_mpown(A):
+    got = _mpow_n(A)
+    if got is None:
+        raise ValueError('needs distinct rational eigenvalues')
+    lams, E = got
+    out = ['eigenvalues ' + ', '.join([_f(casutil.clean(l[0] * 1.0 / l[1])) for l in lams])]
+    for i in range(len(E)):
+        for j in range(len(E)):
+            out.append('M^n[' + str(i + 1) + str(j + 1) + '] = ' + caseng.tostr(E[i][j]))
+    out.append(_w('M^n = sum L^n prod (M - L_j I)/(L - L_j)'))
+    out.append(_w('the same as P D^n P^-1'))
+    return out
+
 def t_rec2h(a, b, u0, u1):
     return _rec2(a, b, ('n', 0), u0, u1, 0, True)
 
@@ -2759,6 +2847,8 @@ SECTIONS = [
     ]),
     ('M', 'Matrices: eigenvalues', [
         ('Eigen 2x2', 'A[2x2]', t_eig2),
+        ('M^n in n (2x2)', 'A[2x2]', t_mpown),
+        ('M^n in n (3x3)', 'A[3x3]', t_mpown),
         ('Eigen 3x3', 'A[3x3]', t_eig3),
         ('Diagonalise 2x2 M^n', 'A[2x2],n?', t_diag2),
         ('Diagonalise 3x3 M^n', 'A[3x3],n?', t_diag3),

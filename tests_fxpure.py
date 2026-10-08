@@ -9,6 +9,9 @@ U15 = ('8, 1,2,4,7,8,11,13,14, 2,4,8,14,1,7,11,13, 4,8,1,13,2,14,7,11,'
        ' 13,11,7,1,14,8,4,2, 14,13,11,8,7,4,2,1')
 
 CASES = [
+    ('M', 'M^n in n (2x2)', '2,1,1,2', ['M^n[11] = 3^n/2+1/2', 'eigenvalues 1, 3']),
+    ('M', 'M^n in n (2x2)', '1,1,0,1', ['distinct rational eigenvalues']),
+    ('M', 'M^n in n (3x3)', '3,3,0,0,2,2,1,3,4', ['M^n[11] = 3*2^n/2+6^n/10-3/5']),
     ('R', 'Behaviour u(n+1)=F', 'u+n,0,5', ['increasing']),
     ('R', '1st order in letters', 'a,b,c', ['u(n) = A*(a)^n + b/(-a+1)', 'A = c-b/(-a+1)']),
     ('R', '1st order in letters', '1,b', ['u(n) = A + bn']),
