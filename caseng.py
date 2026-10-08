@@ -737,18 +737,21 @@ def _factpair(coef, out):
     return (coef, out)
 
 def _doubleangle(coef, out):
+    # 2 sin u cos u = sin 2u, 2 sinh u cosh u = sinh 2u
     if not FOLD[0] or coef[0] % 2 or len(out) != 2:
         return (coef, out)
-    i = _findbase(out, 'sin', out[0][0][1] if out[0][0][0] == 'sin' else
-                  (out[1][0][1] if out[1][0][0] == 'sin' else None))
-    if i < 0:
-        return (coef, out)
-    u = out[i][0][1]
-    j = _findbase(out, 'cos', u)
-    if j < 0 or _ratval(out[i][1]) != (1, 1) or _ratval(out[j][1]) != (1, 1):
-        return (coef, out)
-    return (_rq(coef[0] // 2, coef[1]),
-            [[('sin', _mulf([(('n', 2), 1), (u, 1)])), ('n', 1)]])
+    for s, c in (('sin', 'cos'), ('sinh', 'cosh')):
+        i = _findbase(out, s, out[0][0][1] if out[0][0][0] == s else
+                      (out[1][0][1] if out[1][0][0] == s else None))
+        if i < 0:
+            continue
+        u = out[i][0][1]
+        j = _findbase(out, c, u)
+        if j < 0 or _ratval(out[i][1]) != (1, 1) or _ratval(out[j][1]) != (1, 1):
+            continue
+        return (_rq(coef[0] // 2, coef[1]),
+                [[(s, _mulf([(('n', 2), 1), (u, 1)])), ('n', 1)]])
+    return (coef, out)
 
 # ---- building a canonical term -------------------------------------------
 
@@ -1198,6 +1201,25 @@ def _sumident(num, keep):
         num = _centry(num, keep[i][1])
         keep.pop(j if j > i else i)
         keep.pop(i if j > i else j)
+        i = 0
+    i = 0
+    while i < len(keep):
+        # cosh^2 u + sinh^2 u = cosh 2u
+        u = _sq(keep[i][2], 'cosh')
+        if u is None:
+            i += 1
+            continue
+        j = _findsq(keep, 'sinh', u)
+        if j < 0 or keep[j][1] != keep[i][1]:
+            i += 1
+            continue
+        ent = keep[i][1]
+        out = [[('cosh', _mulf([(('n', 2), 1), (u, 1)])), ('n', 1)]]
+        keep.pop(j if j > i else i)
+        keep.pop(i if j > i else j)
+        d, sig = _degsig(out)
+        keep.append([tostr(_termnode((1, 1), None, None, out)), ent, out, d, sig,
+                     1 << 19])
         i = 0
     i = 0
     while i < len(keep):

@@ -98,6 +98,8 @@ CANON = [
     # a repeated linear denominator keeps its leading coefficient
     ('x/(2x+1)^2', 'x/(2*x+1)^2'), ('x/(4x^2+4x+1)', 'x/(2*x+1)^2'),
     ('x/(x^2+x+1/4)', '4*x/(2*x+1)^2'),
+    # hyperbolic double angles
+    ('2sinh(x)cosh(x)', 'sinh(2*x)'), ('cosh(x)^2+sinh(x)^2', 'cosh(2*x)'),
     # e^(k ln u + v) = u^k e^v
     ('e^(-ln(x)+ln(x^2+1)/2)', 'sqrt(x^2+1)/x'), ('e^(x-ln(2))', 'e^(x)/2'),
 ]
