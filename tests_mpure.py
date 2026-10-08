@@ -360,6 +360,60 @@ CASES = [
      ['N = 50', 'half-life = 10']),
     ('F', 'Compound interest', '1000,5,5',
      ['A = 1276.28', 'interest = 276.282', 'continuous = 1284.03']),
+
+    # ---- more past-paper fixes ----
+    # line-integer-form: 7357/1 Jun23 Q9aii perpendicular bisector
+    ('C', 'Perpendicular bisect', '12,19,-6,15', ['9x + 2y - 61 = 0']),
+    # circle-centre-line: Jun23 Q9bi centre on 2x - 5y = -30, r^2 = 170
+    ('C', 'Circle, centre on line', '12,19,-6,15,2,-5,-30',
+     ['centre (5, 8)', 'radius = sqrt(170)', '(x - 5)^2 + (y - 8)^2 = 170']),
+    # circle-axes, circle-area: Jun23 Q9bii, 7357/3 Jun18 Q1 (9 pi)
+    ('C', 'Circle centre+radius', '5,8,sqrt(170)',
+     ['meets the x axis at x = 5-sqrt(106), sqrt(106)+5']),
+    ('C', 'Circle centre+radius', '0,0,3', ['area = 9pi']),
+    ('C', 'Circle from general', '-2,4,-4', ['meets the y axis at y = -2-2*sqrt(2)']),
+    # circle-point: 7357/1 Jun18 Q7bii, sqrt(170) > 13
+    ('C', 'Point and circle', '3,5,13,-8,-2',
+     ['outside the circle', 'distance from centre = sqrt(170)']),
+    # linquad-exact: 7357/3 Jun24 Q7b x = (2 - sqrt6)/2
+    ('B', 'Line meets quadratic', '-1,1,-2,3,2', ['((2-sqrt(6))/2, sqrt(6)/2)']),
+    # sigma-symbolic: 7357/3 Jun25 Q7 6a + 15, 7357/1 Nov20 Q10bi 5005b + 91c
+    ('D', 'Sigma sum f(r) a..b', 'a*r+5,1,3', ['sum = 6*a+15']),
+    ('D', 'Sigma sum f(r) a..b', 'b*r+c,10,100', ['sum = 5005*b+91*c']),
+    # ap-first-last: 7357/1 Jun24 Q10a S300 = 3750
+    ('D', 'AP sum, first and last', '300,-7,32', ['S(300) = 3750']),
+    # gp-exact: 7357/1 Jun23 Q14bii 15(1 + sqrt2)/32
+    ('D', 'Geometric a,r,n', 'sqrt(2)/4,sqrt(2)/2,8', ['S(8) = 15*sqrt(2)/32+15/32']),
+    # binom-exact: 7357/1 Jun18 Q6a x^2 coefficient 3/256
+    ('D', 'Binomial rational n', '4,1,-1/2', ['x^2: 3/256', 'x^3: -5/2048']),
+    # recur-converge: 7357/1 Jun25 Q2; recur-n-limit: 7357/1 Nov20 Q7aii u50 = -1
+    ('D', 'Recurrence u(n+1)', '-u/4,32,6', ['converges to L = 0']),
+    ('D', 'Recurrence u(n+1)', '3-u^2,2,50', ['u(50) = -1', 'periodic, period 2']),
+    # snap-zero: 7357/2 Jun18 Q3 sin(n pi/2)
+    ('D', 'Terms of u(n)', 'sin(n*pi/2),1,8', ['u(2) = 0', 'periodic, period 4']),
+    # trig-exact-other: 7357/1 Jun19 Q12b, Jun23 Q10bii
+    ('E', 'Exact ratios from one', '2/3,?,?,2',
+     ['cos x = -sqrt(5)/3', 'tan x = -2*sqrt(5)/5']),
+    ('E', 'Exact ratios from one', '-3/7,?,?,3', ['cos x = -2*sqrt(10)/7']),
+    ('E', 'Exact ratios from one', '?,?,-3/4,4', ['sin x = -3/5', 'cos x = 4/5']),
+    # trig-undefined-root: 7357/1 Jun24 Q15bii, 360 is not a root
+    ('E', 'Solve trig eqn (deg)', 'sin(2x)/sin(x)+cos(2x)/cos(x)-3,0,360',
+     ['x = 104 deg', 'x = 256 deg', '2 root(s)']),
+    # identity-domain: 7357/1 Jun22 Q15aiii on 0 < t < pi/2
+    ('E', 'Identity check (rad)', 'sqrt(1/sin(x)^2-1)*sin(x),cos(x),0,pi/2',
+     ['holds at every x tested']),
+    ('E', 'Identity check (rad)', 'sqrt(1/sin(x)^2-1)*sin(x),cos(x)', ['not an identity']),
+    # tri-radians: 7357/2 Jun25 Q9di 0.644 rad, 7357/3 Jun24 Q9d 1.25 rad
+    ('C', 'Triangle 3 vertices', '6,10,12,-8,18,10', ['in rad: A = 1.25, B = 0.644']),
+    ('E', 'Triangle SSS', '3,4,5', ['in rad: A = 0.644']),
+    # arc-exact: 7357/3 Jun24 Q5 segment 27(pi - 3)
+    ('E', 'Arc and sector (rad)', '18,pi/6', ['segment area = 27*pi-81']),
+    # loglin-base: 7357/1 Nov21 Q9ci log10 gradient 0.021
+    ('F', 'Log-lin fit y=kb^x', '0,75,5,97,10,123,15,160,20,204,25,260',
+     ['log10: gradient = 0.0216']),
+    # expmodel-predict: 7357/1 Jun18 Q10a m(4) = 245.9
+    ('F', 'N = A e^(kt) 2 pts', '0,400,5.7,200,4', ['N(4) = 246']),
+    ('F', 'N = A e^(kt) 2 pts', '0,400,5.7,200,?,100', ['N = 100 at t = 11.4']),
 ]
 
 # Mark-scheme answers that need an engine fix first (tests.py skips these;

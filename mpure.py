@@ -482,7 +482,8 @@ def _froots(g, xs, ys=None):
                 r = _fbis(g, xs[i - 1], xs[i], p)
                 if r is not None:
                     v = g(r)
-                    if v is not None and abs(v) <= 1e-6 * (1.0 + abs(p) + abs(y)):
+                    if v is not None and \
+                            abs(v) <= 1e-6 * (1.0 + min(abs(p), abs(y))):
                         cascalc._add(out, _snap(_nice(r)))
             q = None
         else:
@@ -495,7 +496,9 @@ def _froots(g, xs, ys=None):
                 elif v is not None and (v < 0) != (p < 0):
                     for a, b, fa in ((xs[i - 2], r, q), (r, xs[i], v)):
                         z = _fbis(g, a, b, fa)
-                        if z is not None:
+                        gz = None if z is None else g(z)
+                        if gz is not None and \
+                                abs(gz) <= 1e-6 * (1.0 + min(abs(q), abs(v))):
                             cascalc._add(out, _snap(_nice(z)))
             q = p
         p = y
@@ -1493,8 +1496,26 @@ def t_linquad(m0, c0, a, b, k):
         else:
             lines.append('tangent: one point')
         xs.sort()
-        for x in xs:
-            lines.append('(' + fmt(x) + ', ' + fmt(m0 * x + c0) + ')')
+        ex = None
+        if _isint(A) and _isint(B) and _isint(C) and _isint(m0) and \
+                _isint(c0) and D > 0:
+            ex = _qexact(int(A), int(B), int(C))
+        for i in range(len(xs)):
+            x = xs[i]
+            if ex is not None and len(ex) == len(xs):
+                xr = _ssdiv(_ssadd(_ss(-int(B), 1, 1),
+                                   _ss(1 if i else -1, 1, int(D))),
+                            _ss(2 * int(A), 1, 1))
+                if (A < 0) != (i == 0):
+                    pass
+                if abs(_ssval(xr) - x) > 1e-9 * (1 + abs(x)):
+                    xr = _ssdiv(_ssadd(_ss(-int(B), 1, 1),
+                                       _ss(-1 if i else 1, 1, int(D))),
+                                _ss(2 * int(A), 1, 1))
+                yr = _ssadd(_ssmul(_ss(int(m0), 1, 1), xr), _ss(int(c0), 1, 1))
+                lines.append('(' + _ssstr(xr) + ', ' + _ssstr(yr) + ')')
+            else:
+                lines.append('(' + fmt(x) + ', ' + fmt(m0 * x + c0) + ')')
     lines.append(w('ax^2 + (b-m)x + (k-c) = 0'))
     lines.append(w(_quadstr(A, B, C) + ' = 0'))
     lines.append(w('disc = ' + fmt(D)))
@@ -3193,6 +3214,7 @@ def t_perpbis(x1, y1, x2, y2):
     g = dy / float(dx)
     p = -1.0 / g
     lines.insert(0, _lineeq(p, my - p * mx))
+    lines.insert(1, _general(p, -1, my - p * mx))
     lines.append('gradient = ' + fmt(p))
     lines.append(w('chord gradient ' + fmt(g) + ', times ' + fmt(p) + ' = -1'))
     return lines
@@ -3246,6 +3268,7 @@ def t_tri3(x1, y1, x2, y2, x3, y3):
            ', CA = ' + fmt(math.sqrt(sq[2]))]
     names = 'ABC'
     angs = []
+    rads = []
     for i in range(3):
         a = P[i]
         b = P[(i + 1) % 3]
@@ -3255,10 +3278,12 @@ def t_tri3(x1, y1, x2, y2, x3, y3):
         dot = u[0] * v[0] + u[1] * v[1]
         if abs(dot) < 1e-12 * (1.0 + sq[0] + sq[1] + sq[2]):
             out.append('right angle at ' + names[i])
-        angs.append(names[i] + ' = ' + sf3(casutil.deg(
-            casutil.acos_safe(dot / math.sqrt((u[0] * u[0] + u[1] * u[1]) *
-                                              (v[0] * v[0] + v[1] * v[1]))))))
+        ang = casutil.acos_safe(dot / math.sqrt((u[0] * u[0] + u[1] * u[1]) *
+                                                (v[0] * v[0] + v[1] * v[1])))
+        angs.append(names[i] + ' = ' + sf3(casutil.deg(ang)))
+        rads.append(names[i] + ' = ' + fmt(ang))
     out.append('angles ' + ', '.join(angs) + ' deg')
+    out.append('in rad: ' + ', '.join(rads))
     if sq[0] == sq[1] or sq[1] == sq[2] or sq[0] == sq[2]:
         out.append('isosceles')
     out.append(w('area = |x1(y2-y3) + x2(y3-y1) + x3(y1-y2)|/2'))
@@ -3349,7 +3374,7 @@ def t_circle_gen(D, E, F):
     lines.append('r^2 = ' + fmt(r2))
     lines.append(_circstr(cx, cy, r2))
     lines.append(w('centre (-D/2, -E/2), r^2 = D^2/4 + E^2/4 - F'))
-    return lines
+    return lines + _axes(cx, cy, r2)
 
 
 def _circstr(a, b, r2):
@@ -3360,8 +3385,68 @@ def _circstr(a, b, r2):
     return xs + ' + ' + ys + ' = ' + fmt(r2)
 
 
+def _axes(a, b, r2):
+    # where (x-a)^2 + (y-b)^2 = r2 meets the axes, exact for whole numbers
+    out = []
+    for c, nm, o in ((b, 'x', a), (a, 'y', b)):
+        k = r2 - c * c
+        if abs(k - round(k)) < 1e-9 * (1 + abs(k)):
+            k = int(round(k))
+        if k < 0:
+            out.append(w('misses the ' + nm + ' axis'))
+            continue
+        if _isint(k) and _isint(o):
+            ss = _ss(1, 1, int(k))
+            pts = [_ssstr(_ssadd(_ss(int(o), 1, 1), _ssneg(ss))),
+                   _ssstr(_ssadd(_ss(int(o), 1, 1), ss))] if k else [fmt(o)]
+        else:
+            rt = math.sqrt(k)
+            pts = [fmt(o - rt), fmt(o + rt)] if k else [fmt(o)]
+        out.append(w('meets the ' + nm + ' axis at ' + nm + ' = ' +
+                     ', '.join(pts)))
+    return out
+
+
 def t_circle_cr(a, b, r):
     _pos(r, 'r')
+    lines = _circle_cr(a, b, r)
+    return lines + ['area = ' + fmt(math.pi * r * r) + ', circumference = ' +
+                    fmt(2 * math.pi * r)] + _axes(a, b, r * r)
+
+
+def t_circpt(a, b, r, px, py):
+    _pos(r, 'r')
+    d2 = (px - a) ** 2 + (py - b) ** 2
+    d = math.sqrt(d2)
+    if abs(d - r) < 1e-9 * (1 + r):
+        where = 'on the circle'
+    elif d < r:
+        where = 'inside the circle'
+    else:
+        where = 'outside the circle'
+    return [where, 'distance from centre = ' + fmt(d),
+            w('compare d^2 = ' + fmt(d2) + ' with r^2 = ' + fmt(r * r))]
+
+
+def t_circline(x1, y1, x2, y2, a, b, c):
+    # circle through two points with its centre on ax + by = c
+    a1 = 2.0 * (x2 - x1)
+    b1 = 2.0 * (y2 - y1)
+    c1 = x2 * x2 - x1 * x1 + y2 * y2 - y1 * y1
+    det = a1 * b - a * b1
+    if det == 0:
+        raise ValueError('the line is parallel to the bisector')
+    cx = (c1 * b - c * b1) / det
+    cy = (a1 * c - a * c1) / det
+    r2 = (x1 - cx) ** 2 + (y1 - cy) ** 2
+    return ['centre (' + fmt(cx) + ', ' + fmt(cy) + ')',
+            'radius = ' + fmt(math.sqrt(r2)), _circstr(cx, cy, r2),
+            w('centre on the perpendicular bisector of the two points'),
+            w('and on ' + _linstr([a, b], ['x', 'y']) + ' = ' + fmt(c))] + \
+        _axes(cx, cy, r2)
+
+
+def _circle_cr(a, b, r):
     D = -2.0 * a
     E = -2.0 * b
     F = a * a + b * b - r * r
@@ -3398,6 +3483,7 @@ def t_circle3(x1, y1, x2, y2, x3, y3):
             lines.append(w('angle in a semicircle = 90 degrees'))
             break
     lines.append(w('centre is where two perpendicular bisectors meet'))
+    lines += _axes(cx, cy, r * r)
     return lines
 
 
@@ -3572,6 +3658,38 @@ def t_arith(a, d, n):
             w('also S(n) = n/2 (a + last) = ' + fmt(ni / 2.0 * (a + un)))]
 
 
+def _exsurd(node, v):
+    # rationalised, collected exact form of node when it is clean
+    best = fmt(v)
+    try:
+        ex = caseng.simplify(casalg.rationalise(caseng.simplify(node)))
+        cands = [ex]
+        try:
+            cands.append(caspoly.collect(caspoly.expand(ex)))
+        except Exception:
+            pass
+        for c in cands:
+            cs = caseng.tostr(c)
+            if cs.find('.') < 0 and not caseng.vars_in(c) and \
+                    abs(casutil.ev(c) - v) < 1e-9 * (1 + abs(v)) and \
+                    (best.find('.') >= 0 or len(cs) < len(best)):
+                best = cs
+    except Exception:
+        pass
+    return best
+
+
+def t_apfl(n, a, l):
+    ni = _whole(n, 'n')
+    if ni < 1:
+        raise ValueError('n must be at least 1')
+    sn = ni / 2.0 * (a + l)
+    out = ['S(' + str(ni) + ') = ' + fmt(sn)]
+    if ni > 1:
+        out.append('d = ' + fmt((l - a) / (ni - 1.0)))
+    return out + [w('S(n) = n/2 (first + last)')]
+
+
 def t_geo(a, r, n):
     ni = _whole(n, 'n')
     if ni < 1:
@@ -3581,11 +3699,19 @@ def t_geo(a, r, n):
         sn = a * ni
     else:
         sn = a * (1.0 - math.pow(float(r), ni)) / (1.0 - r)
+    st = fmt(sn)
+    A = _exn(a)
+    R = _exn(r)
+    if st.find('.') >= 0 and r != 1 and ni <= 60:
+        st = _exsurd(('/', ('*', A, ('-', ('n', 1), ('^', R, ('n', ni)))),
+                      ('-', ('n', 1), R)), sn)
     lines = ['u(' + str(ni) + ') = ' + fmt(un),
-             'S(' + str(ni) + ') = ' + fmt(sn)]
+             'S(' + str(ni) + ') = ' + st]
     ar = r if r >= 0 else -r
     if ar < 1:
-        lines.append('S(inf) = ' + fmt(a / (1.0 - r)))
+        si = a / (1.0 - r)
+        lines.append('S(inf) = ' + (fmt(si) if fmt(si).find('.') < 0 else
+                                    _exsurd(('/', A, ('-', ('n', 1), R)), si)))
         lines.append(w('|r| < 1 so it converges to a/(1-r)'))
     else:
         lines.append(warn('|r| >= 1: no sum to infinity'))
@@ -3740,10 +3866,23 @@ def t_binom_rat(a, b, n):
     lines = []
     c = 1.0
     k = 0
+    ex = caseng._fltrat(float(n)) is not None and \
+        caseng._fltrat(float(a)) is not None and \
+        caseng._fltrat(float(b)) is not None
     while k < 5:
         if k > 0:
             c = c * (n - k + 1) / k
-        lines.append('x^' + str(k) + ': ' + fmt(an * c * math.pow(u, k)))
+        v = an * c * math.pow(u, k)
+        txt = fmt(v)
+        if ex and txt.find('.') >= 0:
+            # exact: a^n C(n,k) (b/a)^k with a^n kept as a power
+            node = ('*', ('^', _exn(a), _exn(n)),
+                    ('*', _exn(c), ('^', _exn(u), ('n', k))))
+            et = caseng.simplify(node)
+            if caseng.tostr(et).find('.') < 0 and \
+                    abs(casutil.ev(et) - v) < 1e-9 * (1 + abs(v)):
+                txt = caseng.tostr(et)
+        lines.append('x^' + str(k) + ': ' + txt)
         k += 1
     lim = a / float(b)
     if lim < 0:
@@ -3756,8 +3895,49 @@ def t_binom_rat(a, b, n):
     return lines
 
 
+def _sigsym(f, lo, hi):
+    # sum of f(r) with letters kept: sum of r^k by formula, so wide ranges
+    # cost nothing
+    co = _xcoeffs(f, 'r', 3)
+    if co is None:
+        if hi - lo > 60:
+            raise ValueError('with letters, at most 61 terms')
+        node = None
+        r = lo
+        while r <= hi:
+            t = caseng.subst(f, 'r', ('n', r))
+            node = t if node is None else ('+', node, t)
+            r += 1
+        return caseng.simplify(caspoly.expand(node))
+    pw = []
+    for k in range(len(co)):
+        tot = 0
+        r = lo
+        if hi - lo <= 2000:
+            while r <= hi:
+                tot += r ** k
+                r += 1
+        else:
+            raise ValueError('range is too wide')
+        pw.append(tot)
+    node = None
+    for k in range(len(co)):
+        if co[k] == ('n', 0):
+            continue
+        t = ('*', ('n', pw[k]), co[k])
+        node = t if node is None else ('+', node, t)
+    if node is None:
+        return ('n', 0)
+    return caseng.simplify(caspoly.expand(node))
+
+
 def t_sigma(f, a, b):
     lo, hi = _span(a, b, 5000)
+    if [v for v in caseng.vars_in(f) if v != 'r']:
+        t = _sigsym(f, lo, hi)
+        return [m(t), 'sum = ' + caseng.tostr(t),
+                str(hi - lo + 1) + ' terms, r = ' + str(lo) + ' to ' + str(hi),
+                w('letters other than r are constants')]
     total = 0.0
     itotal = 0
     allint = True
@@ -3784,8 +3964,8 @@ def t_sigma(f, a, b):
 
 def t_recur(f, u1, n):
     ni = _whole(n, 'n')
-    if ni < 2 or ni > 30:
-        raise ValueError('n must be 2 to 30')
+    if ni < 2 or ni > 1000:
+        raise ValueError('n must be 2 to 1000')
     terms = [float(u1)]
     i = 1
     lines = []
@@ -3797,10 +3977,36 @@ def t_recur(f, u1, n):
         terms.append(v)
         i += 1
     out = []
-    for j in range(len(terms)):
+    show = range(len(terms)) if len(terms) <= 12 else \
+        list(range(6)) + [len(terms) - 2, len(terms) - 1]
+    for j in show:
         out.append('u(' + str(j + 1) + ') = ' + fmt(terms[j]))
-    return out + _behave(terms) + lines + \
+    beh = _behave(terms)
+    lim = _fixpt(f, terms)
+    if lim is not None:
+        beh = ['converges to L = ' + fmt(lim)] + \
+            [b for b in beh if not b.startswith('converging')]
+        lines.append(w('L = f(L) at the limit'))
+    return out + beh + lines + \
         [w('u(n+1) = ' + caseng.tostr(caseng.simplify(f)))]
+
+
+def _fixpt(f, terms):
+    # the limit when the terms settle (run on to 200 terms to see)
+    t = list(terms)
+    while len(t) < 200:
+        v = _val(f, t[len(t) - 1], False, 'u')
+        if v is None or abs(v) > 1e12:
+            return None
+        t.append(v)
+    a = t[len(t) - 1]
+    b = t[len(t) - 2]
+    if abs(a - b) > 1e-9 * (1.0 + abs(a)):
+        return None
+    g = _val(f, a, False, 'u')
+    if g is None or abs(g - a) > 1e-9 * (1.0 + abs(a)):
+        return None
+    return _snap(a)
 
 
 def t_recsum(f, u1, N):
@@ -3864,7 +4070,7 @@ def t_uterm(u, n1, count):
     out = []
     i = 0
     while i < c:
-        v = _val(u, float(a + i), False, 'n')
+        v = _snap(_val(u, float(a + i), False, 'n'))
         if v is None:
             out.append(warn('u(' + str(a + i) + ') is undefined'))
             break
@@ -3993,6 +4199,8 @@ def _tri_lines(a, b, c, A, B, C):
             'c = ' + fmt(c) + '  C = ' + fmt(C) + ' deg',
             'area = ' + fmt(area),
             'perimeter = ' + fmt(a + b + c),
+            w('in rad: A = ' + fmt(casutil.rad(A)) + ', B = ' +
+              fmt(casutil.rad(B)) + ', C = ' + fmt(casutil.rad(C))),
             w('area = (1/2) a b sin C')]
 
 
@@ -4068,14 +4276,43 @@ def t_tri_area(a, b, C):
             w('sin ' + fmt(C) + ' = ' + sf3(math.sin(casutil.rad(C))))]
 
 
+def _exv(tree, v):
+    # exact text for tree when it is clean and matches v, else fmt(v)
+    try:
+        t = caseng.simplify(tree)
+        try:
+            t2 = caspoly.collect(caspoly.expand(t))
+            if len(caseng.tostr(t2)) <= len(caseng.tostr(t)):
+                t = t2
+        except Exception:
+            pass
+        s = caseng.tostr(t)
+        if s.find('.') < 0 and not caseng.vars_in(t) and \
+                abs(casutil.ev(t) - v) < 1e-9 * (1 + abs(v)):
+            return s
+    except Exception:
+        pass
+    return fmt(v)
+
+
 def _arc(r, th):
     arc = r * th
     area = 0.5 * r * r * th
     chord = 2.0 * r * math.sin(th / 2.0)
     seg = 0.5 * r * r * (th - math.sin(th))
+    R = _exn(r)
+    T = _exn(th)
+    half = ('*', ('/', ('n', 1), ('n', 2)), ('^', R, ('n', 2)))
+    segt = fmt(seg)
+    chdt = fmt(chord)
+    if caseng.tostr(T).find('pi') >= 0:
+        segt = _exv(('*', half, ('-', T, ('sin', T))), seg)
+        chdt = _exv(('*', ('*', ('n', 2), R), ('sin', ('/', T, ('n', 2)))), chord)
     return ['arc = ' + fmt(arc), 'sector area = ' + fmt(area),
-            'chord = ' + fmt(chord), 'segment area = ' + fmt(seg),
-            'sector perimeter = ' + fmt(arc + 2.0 * r),
+            'chord = ' + chdt, 'segment area = ' + segt,
+            'sector perimeter = ' + (fmt(arc + 2.0 * r) if segt == fmt(seg) else
+                                     _exv(('+', ('*', R, T), ('*', ('n', 2), R)),
+                                          arc + 2.0 * r)),
             w('arc = r th, area = (1/2) r^2 th, th in rad'),
             w('th = ' + fmt(th) + ' rad = ' + fmt(casutil.deg(th)) + ' deg')]
 
@@ -4102,8 +4339,19 @@ def t_r2d(x):
             w('deg = rad x 180 / pi')]
 
 
+def _defined(f, x, deg):
+    # f really defined at x: no denominator (or cos under tan) near 0
+    ds = []
+    _danger(f, ds)
+    for d in ds:
+        v = _val(d, x, deg)
+        if v is not None and abs(v) < 1e-9:
+            return False
+    return True
+
+
 def _eqn_lines(f, lo, hi, deg):
-    rs = _scan(f, lo, hi, deg)
+    rs = [r for r in _scan(f, lo, hi, deg) if _defined(f, r, deg)]
     unit = ' deg' if deg else ''
     lines = []
     if not rs:
@@ -4316,6 +4564,55 @@ def t_recip(x):
     return lines
 
 
+def t_ratios(sv, cv, tv, quad):
+    # every ratio exactly from one rational ratio and the quadrant
+    q = _whole(quad, 'quadrant')
+    if q < 1 or q > 4:
+        raise ValueError('quadrant is 1 to 4')
+    given = [x for x in (sv, cv, tv) if x is not None]
+    if len(given) != 1:
+        raise ValueError('give one of sin, cos, tan')
+    r = caseng._fltrat(float(given[0]))
+    if r is None:
+        raise ValueError('give the ratio as a fraction')
+    p, d = r
+    ssg = 1 if q in (1, 2) else -1
+    csg = 1 if q in (1, 4) else -1
+    if sv is not None:
+        if abs(p) > d:
+            raise ValueError('|sin| must be at most 1')
+        S = _ss(p, d, 1)
+        C = _ss(csg, d, d * d - p * p)
+    elif cv is not None:
+        if abs(p) > d:
+            raise ValueError('|cos| must be at most 1')
+        C = _ss(p, d, 1)
+        S = _ss(ssg, d, d * d - p * p)
+    else:
+        h = p * p + d * d
+        C = _ss(csg * d, 1, 1)
+        C = _ssdiv(C, _ss(1, 1, h))
+        S = _ssdiv(_ss(ssg * abs(p), 1, 1), _ss(1, 1, h))
+    if (S and (_ssval(S) > 0) != (ssg > 0)) or (C and (_ssval(C) > 0) != (csg > 0)):
+        raise ValueError('that sign does not fit quadrant ' + str(q))
+    out = ['sin x = ' + _ssstr(S), 'cos x = ' + _ssstr(C)]
+    if C:
+        out.append('tan x = ' + _ssstr(_ssdiv(S, C)))
+        out.append(w('sec x = ' + _ssstr(_ssdiv(_ss(1, 1, 1), C))))
+    else:
+        out.append('tan x is undefined')
+    if S:
+        out.append(w('cosec x = ' + _ssstr(_ssdiv(_ss(1, 1, 1), S))))
+        if C:
+            out.append(w('cot x = ' + _ssstr(_ssdiv(C, S))))
+    ang = casutil.deg(math.atan2(_ssval(S), _ssval(C)))
+    if ang < 0:
+        ang += 360.0
+    out.append(w('x = ' + sf3(ang) + ' deg in quadrant ' + str(q)))
+    out.append(w('sin^2 x + cos^2 x = 1'))
+    return out
+
+
 def t_arcs(v):
     x = float(v)
     lines = []
@@ -4335,12 +4632,16 @@ def t_arcs(v):
     return lines
 
 
-def t_identity(f, g):
+def t_identity(f, g, a, b):
     bad = None
     tested = 0
+    if (a is None) != (b is None):
+        raise ValueError('give both a and b, or neither')
+    if a is not None and b <= a:
+        raise ValueError('need a < b')
     i = 0
     while i < 40:
-        x = 0.17 + i * 0.13
+        x = 0.17 + i * 0.13 if a is None else a + (b - a) * (i + 0.5) / 40.0
         u = _val(f, x)
         v = _val(g, x)
         i += 1
@@ -4356,7 +4657,9 @@ def t_identity(f, g):
         raise ValueError('neither side could be evaluated')
     if bad is None:
         return ['holds at every x tested',
-                w(str(tested) + ' values of x in 0.17 to 5.2 rad'),
+                w(str(tested) + ' values of x in ' +
+                  ('0.17 to 5.2' if a is None else fmt(a) + ' to ' + fmt(b)) +
+                  ' rad'),
                 warn('testing is not a proof')]
     return ['not an identity', 'x = ' + sf3(bad[0]) + ' rad',
             'f = ' + sf3(bad[1]) + ', g = ' + sf3(bad[2]),
@@ -4487,6 +4790,23 @@ def _lpieces(arg):
     for b, e, key in mo[1]:
         out.append([b, e])
     return out
+
+
+def _exn(v):
+    # exact node for a typed number: fractions, multiples of pi, surds
+    if isinstance(v, int):
+        return ('n', v)
+    r = caseng._fltrat(float(v))
+    if r is not None:
+        return caseng._ratnode(r)
+    q = caseng._fltrat(v / math.pi)
+    if q is not None and q[1] <= 12 and abs(q[0]) <= 48:
+        return caseng.simplify(('*', caseng._ratnode(q), ('v', 'pi')))
+    q = caseng._fltrat(v * v)
+    if q is not None and q[1] <= 64 and q[0] <= 4096:
+        t = caseng.simplify(('sqrt', caseng._ratnode(q)))
+        return t if v > 0 else caseng.simplify(('neg', t))
+    return ('n', v)
 
 
 def _sumtree(items):
@@ -4732,7 +5052,9 @@ def t_loglin(data):
     return ['b = ' + sf3(b), 'k = ' + sf3(k), m(caseng.simplify(node)),
             str(len(ps)) + ' points',
             w('log y vs x: gradient log b, intercept log k'),
-            w('gradient = ' + sf3(g))]
+            w('gradient = ' + sf3(g)),
+            'log10: gradient = ' + sf3(g / math.log(10.0)) +
+            ', intercept = ' + sf3(c / math.log(10.0))]
 
 
 def _halflife(k):
@@ -4741,7 +5063,22 @@ def _halflife(k):
     return math.log(2.0) / (k if k > 0 else -k)
 
 
-def t_expmodel(t1, N1, t2, N2):
+def t_expmodel(t1, N1, t2, N2, t, N):
+    lines = _expmodel(t1, N1, t2, N2)
+    k = (math.log(N2) - math.log(N1)) / (t2 - t1)
+    A = N1 / math.exp(k * t1)
+    if t is not None:
+        lines.insert(2, 'N(' + fmt(t) + ') = ' + sf3(A * math.exp(k * t)))
+    if N is not None:
+        if N <= 0 or (A > 0) != (N > 0) or k == 0:
+            lines.insert(2, warn('N never reaches ' + fmt(N)))
+        else:
+            lines.insert(2, 'N = ' + fmt(N) + ' at t = ' +
+                         sf3(math.log(N / A) / k))
+    return lines
+
+
+def _expmodel(t1, N1, t2, N2):
     _pos(N1, 'N1')
     _pos(N2, 'N2')
     if t1 == t2:
@@ -4831,6 +5168,8 @@ SECTIONS = [
         ('Foot of perpendicular', 'a,b,c,px,py', t_footperp),
         ('Circle from general', 'D(k),E(k),F(k)', t_circle_gen),
         ('Circle centre+radius', 'a,b,r', t_circle_cr),
+        ('Point and circle', 'a,b,r,px,py', t_circpt),
+        ('Circle, centre on line', 'x1,y1,x2,y2,a,b,c', t_circline),
         ('Circle through 3 pts', 'x1,y1,x2,y2,x3,y3', t_circle3),
         ('Line meets circle', 'm,c,a,b,r', t_linecircle),
         ('Tangent to circle', 'a,b,px,py', t_tangent),
@@ -4841,6 +5180,7 @@ SECTIONS = [
     ('D', 'Sequences and series', [
         ('Arithmetic a,d,n', 'a,d,n', t_arith),
         ('Geometric a,r,n', 'a,r,n', t_geo),
+        ('AP sum, first and last', 'n,first,last', t_apfl),
         ('AP: n for Sn > k', 'a,d,k', t_ap_n),
         ('GP: n for Sn > k', 'a,r,k', t_gp_n),
         ('AP from 2 terms', 'p,up,q,uq', t_ap2),
@@ -4876,7 +5216,8 @@ SECTIONS = [
         ('Double angle (deg)', 'A', t_double),
         ('sec cosec cot (deg)', 'x', t_recip),
         ('arcsin arccos arctan', 'v', t_arcs),
-        ('Identity check (rad)', 'f(x),g(x)', t_identity),
+        ('Exact ratios from one', 'sin,cos,tan,quadrant', t_ratios),
+        ('Identity check (rad)', 'f(x),g(x),a?,b?', t_identity),
     ]),
     ('F', 'Exponentials and logs', [
         ('Solve a^x = b', 'a,b', t_ax_b),
@@ -4887,7 +5228,7 @@ SECTIONS = [
         ('y = k b^x from 2 pts', 'x1,y1,x2,y2', t_expolaw),
         ('Log-log fit y=ax^n', 'data*', t_loglog),
         ('Log-lin fit y=kb^x', 'data*', t_loglin),
-        ('N = A e^(kt) 2 pts', 't1,N1,t2,N2', t_expmodel),
+        ('N = A e^(kt) 2 pts', 't1,N1,t2,N2,t?,N?', t_expmodel),
         ('Evaluate A e^(kt)', 'A,k,t', t_expeval),
         ('Compound interest', 'P,r,n', t_compound_int),
     ]),

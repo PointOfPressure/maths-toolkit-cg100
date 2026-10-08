@@ -1329,9 +1329,9 @@ def t_valat(f, a):
     _chk(f, ('x',))
     d1 = _diff(f)
     d2 = _diff(d1)
-    return ['f(' + _f(a) + ') = ' + _f(_val(f, a)),
-            "f'(" + _f(a) + ') = ' + _f(_val(d1, a)),
-            "f''(" + _f(a) + ') = ' + _f(_val(d2, a)),
+    return ['f(' + _f(a) + ') = ' + _f(_z(_val(f, a))),
+            "f'(" + _f(a) + ') = ' + _f(_z(_val(d1, a))),
+            "f''(" + _f(a) + ') = ' + _f(_z(_val(d2, a))),
             _w("f'(x) = " + _ts(d1)),
             _w("f''(x) = " + _ts(d2))]
 
