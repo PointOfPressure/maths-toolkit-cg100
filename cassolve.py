@@ -274,11 +274,46 @@ def _expparts(f, var):
         return None
     return (base, out)
 
+def _exp2(g, var, base, parts):
+    # c1 b^(A1 x + B1) + c2 b^(A2 x + B2) = 0: one log, no polynomial in b^x
+    ts = _terms(g)
+    if len(ts) != 2 or len(parts) != 2:
+        return None
+    got = []
+    for t, s in ts:
+        hit = None
+        for p in parts:
+            c = _S(_prod([(t, 1), (p[0], -1)]))
+            if not _has(c, var):
+                hit = (_S(_prod([(_num(s), 1), (c, 1)])), p)
+        if hit is None:
+            return None
+        got.append(hit)
+    (c1, p1), (c2, p2) = got
+    if p1 is p2:
+        return None
+    A = _S(_sum([(p1[2], 1), (p2[2], -1)]))
+    rhs = _S(_prod([(_num(-1), 1), (c2, 1), (c1, -1)]))
+    v = _val(rhs)
+    av = _val(A)
+    if v is None or av is None or isinstance(v, complex) or v <= 0 or av == 0:
+        return None
+    dB = _S(_sum([(p2[3], 1), (p1[3], -1)]))
+    if base == ('v', 'e'):
+        top = _sum([(caseng._sfn('ln', rhs), 1), (dB, 1)])
+        return [_S(_prod([(top, 1), (A, -1)]))]
+    lb = caseng._sfn('ln', base)
+    top = _sum([(caseng._sfn('ln', rhs), 1), (_prod([(dB, 1), (lb, 1)]), 1)])
+    return [_S(_prod([(top, 1), (A, -1), (lb, -1)]))]
+
 def _expsolve(f, var, depth):
     ep = _expparts(f, var)
     if ep is None:
         return None
     base, parts = ep
+    r = _exp2(_S(f), var, base, parts)
+    if r:
+        return r
     unit = None
     for n, b, A, B in parts:
         v = _val(A)
@@ -453,7 +488,7 @@ def solve_any(tree, var='x', deg=False):
     if r:
         return (r, True)
     import cascalc
-    return ([_num(v) for v in cascalc.solve(tree, var, deg)], False)
+    return ([_num(v) for v in cascalc.solve(tree, var, deg, True)], False)
 
 # ---- trigonometric equations ---------------------------------------------
 

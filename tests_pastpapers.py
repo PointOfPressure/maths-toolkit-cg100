@@ -473,6 +473,19 @@ CASES += [
     ('y422-jun25', '11e', 'fstat', 'pdf from a cdf', '(24x+20)/(9x+15)-4/3,0,5', 'E(X) = 1.41'),
     ('y422-jun25', '11e', 'fstat', 'pdf from a cdf', '(24x+20)/(9x+15)-4/3,0,5', 'Var(X) = 1.62'),
     ('y422-jun25', '11b(ii)', 'mcalc', "f, f' and f'' at a", '(24x+20)/(9x+15),1', "f'(1) = 5/16"),
+    # numeric solve and stationary points search out to 10^6 and say so
+    ('y420-jun23', '17c(ii)', 'CAS', 'solve f(x)=0', '-75e^(0.035x)+275e^(-0.005x)', 'x = 32.5'),
+    ('y420-jun23', '17c(ii)', 'CAS', 'solve exact f(x)=0', '-75e^(0.035x)+275e^(-0.005x)', 'x = 25*ln(11/3)'),
+    ('y420-jun24', '17c(ii)', 'CAS', 'stationary points', '10(200-x)ln(200/(200-x))', '(126, 736)  max'),
+    ('y435-jun19', '5d(i)', 'CAS', 'solve f(x)=0', '37500-7500*1.08^x', 'x = 20.9'),
+    ('y435-jun19', '5d(i)', 'CAS', 'solve f(x)=0', '37500-7500*1.08^x', 'searched -10^6 <= x <= 10^6'),
+    # odd roots of negatives are real
+    ('y420-jun24', '7b', 'fcalc', 'Singular endpoint int', '1/(x-2)^(1/3),1,2', 'integral = -3/2'),
+    # no surd read off a large decimal
+    ('y435-jun19', '5d(ii)', 'CALC', 'Calculate', '21*3000+(37500-7500*1.08^21)', '62746.24713'),
+    ('y422-jun19', '3c', 'fstat', 'aX+bY+c', '2,20,0,133.25,51.1225,22.5,7.29,700', 'Var(W) = 3120'),
+    # calculator nCr key
+    ('y422-nov20', '1a', 'CALC', 'Calculate', '1/10C4', '1/210'),
 ]
 
 TOOLS = {}
@@ -545,7 +558,18 @@ def _output(module, label, inputs, ask):
         return 'parse error: ' + str(e)
     return _flat(casutil.call_tool(t[1], vals))
 
+NOT = [
+    # outputs that must not appear
+    ('y435-jun19', '5d(ii)', 'CALC', 'Calculate', '21*3000+(37500-7500*1.08^21)', 'sqrt'),
+    ('y422-jun19', '3c', 'fstat', 'aX+bY+c', '2,20,0,133.25,51.1225,22.5,7.29,700', 'sqrt'),
+    ('y422-nov20', '1a', 'CALC', 'Calculate', '1/10C4', 'c'),
+]
+
 def run(check):
+    for paper, q, module, label, inputs, unwanted in NOT:
+        out = output(module, label, inputs)
+        check('past paper ' + paper + ' Q' + q + ' ' + label + ' <' + inputs + '>: no ' + repr(unwanted),
+              unwanted not in out, out.replace('\n', ' | ')[:300])
     for paper, q, module, label, inputs, expected in CASES:
         out = output(module, label, inputs)
         check('past paper ' + paper + ' Q' + q + ' ' + label + ' <' + inputs + '>: has ' + repr(expected),

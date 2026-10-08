@@ -458,6 +458,17 @@ def _at(tree, val, deg, var):
         return caseng.evalf(tree, val, deg)
     return caseng.evalf(tree, val, deg, {var: val})
 
+def _rv(tree, val, deg, var):
+    # a real sample for the root scans: complex or undefined raises
+    v = _at(tree, val, deg, var)
+    if isinstance(v, complex):
+        if -1e-12 < v.imag < 1e-12:
+            return v.real
+        raise ValueError('complex')
+    if v != v:
+        raise ValueError('undefined')
+    return v
+
 def defint(tree, a, b, deg=False, n=200, var='x'):
     if n % 2:
         n += 1
@@ -478,8 +489,8 @@ def defint(tree, a, b, deg=False, n=200, var='x'):
 
 def _bisect(tree, a, b, deg=False, var='x'):
     try:
-        fa = _at(tree, a, deg, var)
-        fb = _at(tree, b, deg, var)
+        fa = _rv(tree, a, deg, var)
+        fb = _rv(tree, b, deg, var)
     except:
         return None
     if (fa < 0 and fb < 0) or (fa > 0 and fb > 0):
@@ -488,7 +499,7 @@ def _bisect(tree, a, b, deg=False, var='x'):
     while i < 60:
         m = (a + b) / 2
         try:
-            fm = _at(tree, m, deg, var)
+            fm = _rv(tree, m, deg, var)
         except:
             return None
         if fm == 0 or (b - a) < 1e-7:
@@ -509,8 +520,8 @@ def _touch(tree, lo, hi, deg, var='x'):
         m1 = lo + (hi - lo) / 3.0
         m2 = hi - (hi - lo) / 3.0
         try:
-            f1 = _at(tree, m1, deg, var)
-            f2 = _at(tree, m2, deg, var)
+            f1 = _rv(tree, m1, deg, var)
+            f2 = _rv(tree, m2, deg, var)
         except:
             return None
         if (f1 if f1 >= 0 else -f1) <= (f2 if f2 >= 0 else -f2):
@@ -520,7 +531,7 @@ def _touch(tree, lo, hi, deg, var='x'):
         i += 1
     m = (lo + hi) / 2.0
     try:
-        fm = _at(tree, m, deg, var)
+        fm = _rv(tree, m, deg, var)
     except:
         return None
     return m if -1e-9 < fm < 1e-9 else None
@@ -533,17 +544,111 @@ def _add(roots, r):
             return
     roots.append(r)
 
-def solve(tree, var='x', deg=False):
+WIDE = 1e6         # the wide search reaches |x| = WIDE ...
+OUTER = 100        # ... with this many log-spaced samples each side beyond 20
+RANGE = [-20.0, 20.0]   # the interval the last solve() searched
+_TRIG = ('sin', 'cos', 'tan', 'sec', 'cosec', 'cot')
+
+def periodic(n, var='x'):
+    # a trig function of var anywhere in the tree
+    t = n[0]
+    if t == 'n' or t == 'v':
+        return False
+    if t in _TRIG and has_var(n[1], var):
+        return True
+    if len(n) == 2:
+        return periodic(n[1], var)
+    return periodic(n[1], var) or periodic(n[2], var)
+
+def _isroot(tree, r, fa, fb, deg, var):
+    # a bisected sign change is a root, not a pole or a jump
+    try:
+        fr = _rv(tree, r, deg, var)
+    except:
+        return False
+    big = fa if fa >= 0 else -fa
+    nb = fb if fb >= 0 else -fb
+    if nb > big:
+        big = nb
+    afr = fr if fr >= 0 else -fr
+    return afr <= 1e-6 or afr <= 1e-6 * big
+
+def _outer(tree, var, roots):
+    # log-spaced scan of 20 < |x| < WIDE for sign changes
+    ratio = (WIDE / 20.0) ** (1.0 / OUTER)
+    for side in (1.0, -1.0):
+        px = side * 20.0
+        try:
+            py = _rv(tree, px, False, var)
+        except:
+            py = None
+        k = 1
+        while k <= OUTER and len(roots) < MAXROOTS:
+            x = side * 20.0 * ratio ** k
+            try:
+                y = _rv(tree, x, False, var)
+            except:
+                y = None
+            # strict: where f underflows to 0 there is no root
+            if y is not None and py is not None and ((py < 0 < y) or (py > 0 > y)):
+                lo, hi = (px, x) if px < x else (x, px)
+                r = _bisect(tree, lo, hi, False, var)
+                if r is not None and _isroot(tree, r, py, y, False, var):
+                    _add(roots, r)
+            px = x
+            py = y
+            k += 1
+
+def solve(tree, var='x', deg=False, wide=False):
+    # sign-change scan of -20..20 (or +-360 degrees); wide also scans out to
+    # +-WIDE when f has no trig function of x or nothing was found inside
     roots = []
+    RANGE[0] = -360.0 if deg else -20.0
+    RANGE[1] = -RANGE[0]
     if not has_var(tree, var):
         return roots
+    roots = _inner(tree, var, deg)
+    if wide and not deg and len(roots) < MAXROOTS and (not roots or not periodic(tree, var)):
+        _outer(tree, var, roots)
+        RANGE[0] = -WIDE
+        RANGE[1] = WIDE
+    i = 0
+    while i < len(roots):
+        roots[i] = _snap(tree, roots[i], deg, var)
+        i += 1
+    roots.sort()
+    return roots
+
+def _snap(tree, r, deg, var):
+    # -4.77e-8 -> 0 when f is no further from 0 there
+    try:
+        fr = _rv(tree, r, deg, var)
+        fr = fr if fr >= 0 else -fr
+        for c in (0.0,):
+            if c != r and -1e-6 < c - r < 1e-6:
+                fc = _rv(tree, c, deg, var)
+                if (fc if fc >= 0 else -fc) <= fr:
+                    return c
+    except:
+        pass
+    return r
+
+def range_str(var='x'):
+    # 'searched -20 <= x <= 20' for the last solve()
+    if RANGE[1] == WIDE:
+        return 'searched -10^6 <= ' + var + ' <= 10^6'
+    return ('searched ' + str(int(RANGE[0])) + ' <= ' + var + ' <= ' +
+            str(int(RANGE[1])))
+
+def _inner(tree, var, deg):
+    roots = []
     hi = 360.0 if deg else 20.0
     step = 2.0 * hi / SAMPLES
     ys = []
     i = 0
     while i <= SAMPLES:
         try:
-            ys.append(_at(tree, -hi + i * step, deg, var))
+            ys.append(_rv(tree, -hi + i * step, deg, var))
         except:
             ys.append(None)
         i += 1

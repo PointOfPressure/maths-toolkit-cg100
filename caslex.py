@@ -1,4 +1,4 @@
-UFUNCS = ("sqrt", "asinh", "acosh", "atanh", "asin", "acos", "atan",
+UFUNCS = ("sqrt", "cbrt", "asinh", "acosh", "atanh", "asin", "acos", "atan",
           "sinh", "cosh", "tanh", "sech", "cosech", "coth",
           "sin", "cos", "tan", "sec", "cosec", "cot",
           "log", "exp", "ln", "abs", "arg", "conj", "re", "im")
@@ -6,7 +6,7 @@ BINFUNCS = ("ncr", "npr", "logb")
 FUNCS = UFUNCS + BINFUNCS
 # longest first: cosech before cosec before cos
 WORDS = ["arcsinh", "arccosh", "arctanh", "arcsin", "arccos", "arctan",
-         "asinh", "acosh", "atanh", "cosech", "conj", "sqrt", "asin", "acos",
+         "asinh", "acosh", "atanh", "cosech", "conj", "sqrt", "cbrt", "asin", "acos",
          "atan", "sinh", "cosh", "tanh", "cosec", "sech", "coth", "logb",
          "ncr", "npr", "abs", "arg", "mod", "log", "exp", "sec", "cot", "sin",
          "cos", "tan", "ans", "inf", "ln", "pi", "re", "im", "e", "i", "x", "y"]
@@ -51,6 +51,12 @@ def tokenize(s):
             else:
                 toks.append(('num', int(txt)))
             i = j
+            continue
+        if (c == 'C' or c == 'P') and toks and toks[-1][0] in ('num', 'rp') \
+                and i + 1 < n and s[i + 1] in "0123456789(":
+            # calculator nCr / nPr keys: 10C4, 5P2
+            toks.append(('op', c))
+            i += 1
             continue
         if ('a' <= c <= 'z') or ('A' <= c <= 'Z'):
             matched = None
@@ -109,7 +115,7 @@ def _implicit(toks):
         prev = t
     return out
 
-PREC = {'+': 2, '-': 2, '*': 3, '/': 3, 'u': 4, '^': 5}
+PREC = {'+': 2, '-': 2, '*': 3, '/': 3, 'u': 4, 'C': 4.5, 'P': 4.5, '^': 5}
 RIGHT = {'^': True, 'u': True}
 
 def parse(s):
@@ -180,7 +186,10 @@ def parse(s):
             else:
                 if not st:
                     return None
-                st.append((name, st.pop()))
+                if name == 'cbrt':
+                    st.append(('^', st.pop(), ('/', ('n', 1), ('n', 3))))
+                else:
+                    st.append((name, st.pop()))
         elif k == 'post':
             if not st:
                 return None
@@ -198,6 +207,8 @@ def parse(s):
                 a = st.pop()
                 if o == '^' and a == ('v', 'e'):
                     st.append(('exp', b))
+                elif o == 'C' or o == 'P':
+                    st.append(('ncr' if o == 'C' else 'npr', a, b))
                 else:
                     st.append((o, a, b))
     if len(st) != 1:

@@ -765,6 +765,13 @@ CASES = [
 
 # the paper's own numbers for each fix made after the audit
 CASES += [
+    # numeric solving beyond -20..20; x^1.5 = k no longer crashes
+    ('73573-jun19', '8bii', 'casui:CAS', 'solve exact f(x)=0', '5(4+11e^(-0.068066x))=21', 'x = 58.87', None, False, False),
+    ('73573-nov20', '5a', 'casui:CAS', 'solve exact f(x)=0', 'e^(-0.0435935x)=0.1', 'x = 52.8', None, False, False),
+    ('73573-jun22', '7b', 'casui:CAS', 'solve exact f(x)=0', '0.2*x^1.5=60000', 'x = 4481', None, False, False),
+    ('73571-jun18', '11b', 'casui:CAS', 'solve exact f(x)=0', '10+100(x/30)^3-50(x/30)^4=4.5*1.063^x', 'x = 49.009', None, False, False),
+    # real cube root
+    ('73571-jun19', '15ai', 'casui:Calculate', 'Calculate', '(-3)^(1/3)', '-1.44224957', None, False, False),
 ]
 
 def run(check):

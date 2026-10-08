@@ -18,6 +18,8 @@ MAXTRIAL = 1000    # trial division cap when extracting n-th roots
 MAXLOGPOW = 64     # ln(a)/ln(b): search b^j only to this j
 MAXFACTGAP = 8     # n!/(n-k)! expanded only for k up to this
 MAXNCR = 8         # nCr(n,k) expanded symbolically only for k up to this
+MAXSQ = 1e5        # exactstr: a float is read as a surd only below this square ...
+MAXRAD = 1000      # ... and with a radicand up to this
 
 # ---- complex helpers (the device has complex but no cmath) ----------------
 
@@ -339,14 +341,18 @@ def exactstr(v, tol=1e-12):
             num = 'pi' if p == 1 else str(p) + 'pi'
             return sgn + num + ('' if q == 1 else '/' + str(q))
         q += 1
+    # a surd only when the radicand is small: a big float squared is always
+    # near some integer (62746.25 is not sqrt(3937091530))
     sq = av * av
+    if sq > MAXSQ:
+        return None
     ts = tol * (sq if sq > 1 else 1.0) * 4
     q = 1
     while q <= 16:
         p = int(round(sq * q))
         if p and abs(p - sq * q) < ts * q:
             a, b = _sqrt_split(p * q)
-            if b != 1:
+            if 1 < b <= MAXRAD:
                 g = gcd(a, q)
                 a //= g
                 qq = q // g
@@ -1982,6 +1988,13 @@ def evalf(n, x, deg=False, env=None):
         if _cx(base) or _cx(expo):
             return _cpow(base, expo)
         if base < 0 and float(expo) != int(expo):
+            # odd roots of a negative real are real, as on the calculator
+            r = _ratval(n[2])
+            if r is None and isinstance(expo, float):
+                r = _fltrat(expo)
+            if r is not None and r[1] % 2 == 1:
+                v = (-base) ** (float(r[0]) / r[1])
+                return -v if r[0] % 2 else v
             return _cpow(complex(base), expo)
         if isinstance(base, int) and isinstance(expo, int) and expo > 64 \
                 and base not in (0, 1, -1):

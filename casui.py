@@ -1010,6 +1010,13 @@ def _forms(text):
     caseng.ANS = val
     ANS[0] = simp if simp is not None else ('n', val)
     seen = []
+    v = casutil.clean(val)
+    if simp is not None and isinstance(v, float) and caseng._ratval(simp) is not None \
+            and len(caseng.tostr(simp)) > 12:
+        # a long exact fraction: the plain number reads better first
+        s = casutil._sf(v, 10)
+        forms.append(('a', s))
+        seen.append(s)
     if simp is not None and len(caseng.tostr(simp)) <= 60:
         ex = caseng.tostr(simp)
         # re-read the printed form so a complex/rational constant typesets as fractions
@@ -1304,9 +1311,9 @@ def _cas_op(op, tree, s):
         return lines
     if op == 5:
         d1 = _tidy(caseng.diff(tree))
-        roots = cascalc.solve(d1)
+        roots = cascalc.solve(d1, wide=True)
         if not roots:
-            return [('!', 'no stationary points found in the search range')]
+            return [('!', 'no stationary points found'), ('w', cascalc.range_str())]
         d2 = _tidy(caseng.diff(d1))
         lines = []
         for r in roots:
@@ -1315,6 +1322,7 @@ def _cas_op(op, tree, s):
             kind = 'min' if (c is not None and c > 1e-9) else ('max' if (c is not None and c < -1e-9) else 'inflection?')
             lines.append('(' + casutil.fmt(r) + ', ' + casutil.fmt(y) + ')  ' + kind)
         lines.append(('mw', d1))
+        lines.append(('w', cascalc.range_str()))
         return lines
     if op == 6:
         return [('m', _tidy(tree))]
@@ -1353,10 +1361,10 @@ def _cas_op(op, tree, s):
             if v is None:
                 return None
             target = ('-', tree, ('n', v[0]))
-        roots = cascalc.solve(target, deg=casutil.DEG)
+        roots = cascalc.solve(target, deg=casutil.DEG, wide=True)
         if not roots:
-            return [('!', 'no real roots found in the search range')]
-        return ['x = ' + ', '.join([casutil.fmt(r) for r in roots])]
+            return [('!', 'no real roots found'), ('w', cascalc.range_str())]
+        return ['x = ' + ', '.join([casutil.fmt(r) for r in roots]), ('w', cascalc.range_str())]
     if op == 12:
         v = casutil.ask('x', 'evaluate at')
         if v is None:
@@ -1417,9 +1425,10 @@ def _cas_op2(op, tree, s):
         if roots:
             return _roots_lines(roots, True)
         roots, exact = cassolve.solve_any(tree, 'x', casutil.DEG)
+        import cascalc
         if not roots:
-            return [('!', 'no solutions found')]
-        return _roots_lines(roots, exact)
+            return [('!', 'no solutions found'), ('w', cascalc.range_str())]
+        return _roots_lines(roots, exact) + [('w', cascalc.range_str())]
     if op == 20:
         g = cassolve.general_trig(tree, 'x', 'n')
         if not g:
