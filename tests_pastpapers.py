@@ -466,6 +466,15 @@ CASES = [
     ('y435-spec', '5(iv)', 'fxpure', 'Cayley-Hamilton 3x3', '1/2,-1/sqrt(2),1/2,1/sqrt(2),0,-1/sqrt(2),1/2,1/sqrt(2),1/2,4', 'M^4 = I'),
 ]
 
+# the paper's own numbers for each fix made after the audit
+CASES += [
+    # quotient made monic lost the leading coefficient of a repeated factor
+    ('y422-jun25', '11b(ii)', 'CAS', 'd/dx', '(24x+20)/(9x+15)-4/3', '20/(3*x+5)^2'),
+    ('y422-jun25', '11e', 'fstat', 'pdf from a cdf', '(24x+20)/(9x+15)-4/3,0,5', 'E(X) = 1.41'),
+    ('y422-jun25', '11e', 'fstat', 'pdf from a cdf', '(24x+20)/(9x+15)-4/3,0,5', 'Var(X) = 1.62'),
+    ('y422-jun25', '11b(ii)', 'mcalc', "f, f' and f'' at a", '(24x+20)/(9x+15),1', "f'(1) = 5/16"),
+]
+
 TOOLS = {}
 
 def _tool(modname, label):

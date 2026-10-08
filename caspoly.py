@@ -867,12 +867,25 @@ def sqfree(D):
     return out
 
 def denfactored(D, var):
+    # sqfree gives monic factors: make each primitive over the integers and
+    # keep what is left of D's leading coefficient, so 4x^2+4x+1 -> (2x+1)^2
     parts = []
+    k = D[-1]
     for a, m in sqfree(D):
+        c = pcontent(a)
+        if a[-1][0] < 0:
+            c = rneg(c)
+        a = [rdiv(x, c) for x in a]
+        i = 0
+        while i < m:
+            k = rdiv(k, a[-1])
+            i += 1
         t = ptree(a, var)
         f = factor(t, var)
         base = t if f is None else f
         parts.append(base if m == 1 else ('^', base, ('n', m)))
+    if k != R1:
+        parts.append(ratnode(k))
     node = parts[0]
     i = 1
     while i < len(parts):
