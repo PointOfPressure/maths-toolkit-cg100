@@ -172,7 +172,10 @@ CASES = [
     ('O', 'PMCC test 1 tail', '0.6,20,5',
      ['reject H0 at 5%', 'critical value = 0.3783']),
     ('O', 'PMCC test 1 tail', '0.5,40,5',
-     ['no critical value', 'no entry for n = 40']),
+     ['critical value = 0.2638', 'from t(38)']),
+    # pmcc-table-n: 7357/3 Jun24 Q16, n = 50 one tail 2.5% is 0.2787
+    ('O', 'PMCC test 1 tail', '-0.45,50,2.5',
+     ['reject H0 at 2.5%', 'critical value = 0.2787']),
     ('O', 'PMCC test 2 tail', '0.6,20,5',
      ['reject H0 at 5%', 'critical value = 0.4438']),
     ('O', 'PMCC test 2 tail', '0.4,20,5',
@@ -183,6 +186,30 @@ CASES = [
     ('O', 'PMCC crit value', '10,5',
      ['1 tail r = 0.5494', '2 tail r = +/- 0.6319']),
     ('O', 'PMCC crit value', '40,5',
-     ['1 tail: no table entry', '2 tail: no table entry',
-      'table holds n = 4..30']),
+     ['1 tail r = 0.2638', '2 tail r = +/- 0.312', 'from t(38)']),
+    # sig-percent-trap: 7357/3 Jun18 Q17a, 0.1 is read as 10%
+    ('O', 'HT binomial two tail', '10,0.5,7,0.1',
+     ['do not reject H0 at 10%', 'sig 0.1 read as 10%', 'CR: X <= 1 or X >= 9']),
+    ('O', 'HT binomial two tail', '10,0.5,7,10', ['do not reject H0 at 10%']),
+    ('O', 'z test mean upper', '50,10,25,54,0.05',
+     ['reject H0 at 5%', 'sig 0.05 read as 5%']),
+    ('O', 'Critical z value', '0.01', ['1 tail z = 2.326', 'sig 0.01 read as 1%']),
+    ('O', 'Critical z value', '0.5', ['1 tail z = 2.576']),
+    # n over 1000
+    ('N', 'Binomial P(X<=k)', '5000,0.3,1480', ['P(X <= 1480) = 0.274']),
+    ('N', 'Binomial P(X=k)', '2000,0.5,1000', ['P(X = 1000) = 0.0178']),
+    ('N', 'Binomial least k', '5000,0.3,0.95', ['k = 1553']),
+    ('O', 'HT binomial upper', '3000,0.2,640,5',
+     ['reject H0 at 5%', 'p-value = 0.0365', 'CR: X >= 637']),
+    # venn3: 7357/3 Jun22 Q16a (C, D, T pets, 240 households)
+    ('M', 'Three-set Venn', '153,70,45,48,21,32,17,240',
+     ['only A = 101', 'only B = 7', 'only C = 9', 'A and B only = 31',
+      'all three = 17', 'none = 56']),
+    # stats-sxx-input: 7357/3 Jun22 Q18c, mean 1.73, sd 0.265
+    ('L', 'Stats from summary', '40,69.2,?,2.81', ['mean = 1.73', 'sd (n) = 0.265']),
+    # outlier-given-q: 7357/3 Jun23 Q15ai, 1393 -+ 1.5(1570 - 1167)
+    ('L', 'Outlier limits', '1167,1393,1570', ['median -+ 1.5 IQR = 788.5 to 1997.5']),
+    # hist-fd-input: 7357/3 Jun18 Q12 frequencies from densities
+    ('L', 'Grouped from fd', '155,160,0.8,160,170,2.4,170,180,2,180,190,1',
+     ['n = 58', 'median = 170', '160-170: f = 2.4 x 10 = 24']),
 ]

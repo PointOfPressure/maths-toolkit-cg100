@@ -118,4 +118,56 @@ CASES = [
     ('S', 'Ladder, smooth wall', '4,200,60,0.25', ['it slips']),
     # 0.4 x 900 x 4 tan 60 = 400 + 700 x
     ('S', 'Ladder, smooth wall', '4,200,60,0.4,700,?', ['can climb x = 2.99 m']),
+
+    # ---- past papers (AQA 7357/2) ----
+    # vt-cumulative: Jun18 Q12b, displacement back to 0 at t = 8 and 14.25
+    ('Q', 'v-t graph points', '0,0,4,-2,6,2,11,2,12,0,13,-4,16,-4,20,0',
+     ['back at s = 0 at t = 8, 14.25', 's(12) = 7']),
+    # param-letters: Jun23 Q14, v = kt^3 - kt^2 + t + 1 and v(3) = 18k + 4
+    ('Q', 'a(t) to v and s', '3k*t^2-2k*t+1,1,?,3',
+     ['v = k*t^3-k*t^2+t+1', 'v(3) = 18*k+4 m/s']),
+    # Jun25 Q19a: v = 6t^2 i + (4t + q) j
+    ('Q', 'Vector r(t) to v, a', '2t^3,2t^2+q*t,?', ['v = (6*t^2)i + (q+4*t)j']),
+    # vec-exact-speed: Nov20 Q14a, speed 4sqrt5
+    ('Q', 'Vector r(t) to v, a', 't^3-5t^2,8t-t^2,2',
+     ['v(2) = (-8, 4) m/s', 'speed = 4sqrt(5) m/s']),
+    # vec-a-to-v: Jun25 Q19b style, a = 6t j, v(0) = 4i + 8j
+    ('Q', 'Vector a(t) to v, r', '0,6t,4,8,0,0,2',
+     ['v = (4)i + (3*t^2+8)j', 'r(2) = (8, 24) m']),
+    # vec-suvat-symbolic: Jun22 Q16bi r = (-4 + 1.5t^2, 5 - 2t^2)
+    ('Q', 'Vector SUVAT', '-4,5,0,0,3,-4', ['r = (3*t^2/2-4, -2*t^2+5)']),
+    # proj-landing-speed and proj-unknown-u: Jun18 Q16a u sin35 = 9.81 x 1.5
+    ('Q', 'Projectile launch', '20,30', ['lands at (17.3, -10) m/s, speed 20 m/s']),
+    ('Q', 'Projectile find u', '35,1.5,?,?,9.81', ['u = 25.7 m/s']),
+    ('Q', 'Projectile find u', '30,?,35.3479', ['u = 20 m/s']),
+    # mech-solve-unknown: Jun22 Q19a mu = 0.693
+    ('R', 'Rough slope', '20,25,?,230,9.8,1.2', ['mu = 0.693']),
+    # Nov20 Q18a mu = 0.17, then Q18bi the string breaks moving up at 0.5
+    ('R', 'Slope and pulley', '0.2,16.26,?,2,9.81,543*9.81/625', ['mu = 0.17']),
+    ('R', 'Rough slope', '0.2,atan(7/24)*180/pi,0.17,0,9.81,?,0.5',
+     ['a = -4.35 m/s^2', '0.0288 m up']),
+    ('R', 'Slope and pulley', '4,30,0.2,?,9.8,0.43', ['m2 = 3 kg']),
+    # Jun18 Q17ai R = 63.6 N then T = 78 N
+    ('R', 'Tow bar in a line', '410,72,300,140,?,0.2', ['R2 = 63.6 N', 'T = 78 N']),
+    # Jun23 Q19a: D = 2cos 40, R2 = 0.600 N
+    ('R', 'Tow bar in a line', '1.5,0.7,2cos(40pi/180),0.8,?,0.06', ['R2 = 0.6 N']),
+    # Jun23 Q15: D = 0.32 N
+    ('R', 'Friction horizontal', '0.65/9.8,0.4,?,0,9.8,0.91', ['P = 0.32 N']),
+    ('R', 'Friction horizontal', '10,?,40,0,9.8,1', ['mu = 0.306']),
+    # slope-angled-force: Jun25 Q16a T = 56.0 N, Q16b a = 0.023, R = 65.1
+    ('R', 'Slope, pull at angle', '10,20,30,?,0,0,15', ['P = 56 N']),
+    ('R', 'Slope, pull at angle', '10,20,30,54,0.2', ['a = 0.0229 m/s^2', 'R = 65.1 N']),
+    # moments-unknown: Jun19 Q14a m = 0.21, Q14b n = 3.5, Jun22 Q14a m = 9.9,
+    # Nov20 Q13a W = 3g, Jun23 Q17ai M = 9.6
+    ('S', 'Moments: find unknown', '0.28*0.03,m*0.04', ['m = 21/100', 'm = 0.21']),
+    ('S', 'Moments: find unknown', '0.21*0.04,0.048n*0.05', ['n = 7/2']),
+    ('S', 'Moments: find unknown', '12*66,m*80', ['m = 99/10']),
+    ('S', 'Moments: find unknown', '2W,1.5*4g', ['w = 3*g']),
+    ('S', 'Moments: find unknown', '4g*3.6,M*g*1.5', ['m = 48/5']),
+    # beam-no-loads, reactions in g: Jun23 Q17ai/b
+    ('S', 'Beam on two supports', '7,9.6,1.4,5', ['= 4g', '= 5.6g']),
+    ('S', 'Beam on two supports', '7,9.6,1.4,5.6', ['R at 1.4 m = 47 N = 4.8g']),
+    # beam-g: Jun25 Q18a with g = 9.81, R_B = 1960 N
+    ('S', 'Beam on two supports', '2.5,400/9.81,0,0.6,2.3,30,9.81',
+     ['R at 0.6 m = 1960 N', 'g = 9.81']),
 ]

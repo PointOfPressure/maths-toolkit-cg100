@@ -9,7 +9,7 @@ T = (
         ('First principles', 'f(x),a'),
         ('Parametric dy/dx', 'x(t),y(t),t?'),
         ('Implicit dy/dx', 'F(xy),x?,y?'),
-        ('Implicit dy/dx = 0', 'F(xy)'),
+        ('Implicit dy/dx = 0', 'F(xy),x?'),
         ('Connected rates', 'y(x),x,dx/dt'),
         ('Inverse derivative', 'f(x),a'),
         ("f, f' and f'' at a", 'f(x),a'),
@@ -19,7 +19,7 @@ T = (
         ('Definite integral', 'f(x),a,b'),
         ('Area under curve', 'f(x),a,b'),
         ('Area between curves', 'f(x),g(x),a?,b?'),
-        ('Substitution u=g(x)', 'f(x),u(x)'),
+        ('Substitution u=g(x)', 'f(x),u(x),a?,b?'),
         ('Integration by parts', 'u(x),dv(x)'),
         ('Riemann sum table', 'f(x),a,b'),
         ('Separable DE', 'f(x),g(y)'),
@@ -29,9 +29,10 @@ T = (
     ('I', 'Numerical methods', (
         ('Sign change table', 'f(x),a,b,n?'),
         ('Newton-Raphson', 'f(x),x0,n?'),
-        ('Fixed point x=g(x)', 'g(x),x0,n?'),
+        ('Fixed point x=g(x)', 'g(x),x0,n?,i0?'),
         ('Bisection', 'f(x),a,b,n?'),
         ('Trapezium rule', 'f(x),a,b,n'),
+        ('Trapezium from y values', 'h,y values*'),
         ('Iterate to n dp', 'g(x),x0,dp'),
     )),
     ('J', 'Vectors', (
@@ -46,5 +47,6 @@ T = (
         ('Resultant of forces', 'xy*'),
         ('Position r0 + v t', 'r0[3],v[3],t'),
         ('Angle between vectors', 'a[3],b[3]'),
+        ('Quadrilateral ABCD', 'a[3],b[3],c[3],d[3]'),
     )),
 )

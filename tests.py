@@ -18,6 +18,7 @@ casutil.ask = lambda *a, **k: None
 
 FAILS = []
 COUNT = [0]
+PENDING = [False]
 
 def check(label, cond, detail=''):
     COUNT[0] += 1
@@ -72,6 +73,11 @@ def module_cases(modname):
     except Exception as e:
         check(tname + ' loads', False, repr(e))
         cases = []
+    # ENGINE_PENDING: mark-scheme cases waiting on an engine fix; skipped
+    # unless run with --pending
+    pending = getattr(tmod, 'ENGINE_PENDING', []) if cases else []
+    if PENDING[0]:
+        cases = pending
     seen = {}
     for code, title, tools in mod.SECTIONS:
         check(modname + ' section ' + code + ' has tools', len(tools) > 0)
@@ -90,6 +96,8 @@ def module_cases(modname):
             continue
         covered[key] = True
         run_case(seen[key][0], label, text, needles, code)
+    if PENDING[0]:
+        return
     for key in seen:
         check(modname + ' has a case for ' + key, key in covered)
 
@@ -206,7 +214,17 @@ def _depth_check():
     check('cas recursion under 40 frames', worst[0] - base < 40, worst[0] - base)
 
 if __name__ == '__main__':
-    only = sys.argv[1:]
+    only = [a for a in sys.argv[1:] if a != '--pending']
+    if '--pending' in sys.argv:
+        # only the ENGINE_PENDING cases: see which engine fixes have landed
+        PENDING[0] = True
+        for mname in (only or MODULES):
+            module_cases(mname)
+        for f in FAILS:
+            print('PENDING  ' + f)
+        print(str(COUNT[0]) + ' pending checks, ' + str(len(FAILS)) +
+              ' still failing')
+        sys.exit(0)
     engine()
     cas_engine()
     for mname in (only or MODULES):
