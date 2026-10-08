@@ -1844,6 +1844,60 @@ def t_rthsuccess(p, r, n):
     out.append('Var = r(1-p)/p^2 = ' + p5(r * (1.0 - p) / (p * p)))
     return out
 
+def _pmfdict(n, p):
+    # n > 0: B(n, p); n = 0: Po(p) to its far tail
+    if n > 0:
+        return dict([(k, casutil.binom_pmf(n, p, k)) for k in range(n + 1)])
+    top = int(p + 12.0 * math.sqrt(p) + 20)
+    return dict([(k, casutil.poisson_pmf(p, k)) for k in range(top + 1)])
+
+def t_discsum(k, terms):
+    # T = sum coef (X1 + .. + Xcount), each X ~ B(n, p) (or Po(p) when n = 0)
+    if len(terms) % 4 or not terms:
+        raise ValueError('terms come in fours: coef,count,n,p')
+    dist = {0: 1.0}
+    E = 0.0
+    V = 0.0
+    i = 0
+    while i < len(terms):
+        c, cnt, n, p = terms[i:i + 4]
+        c = _int(c, 'coef')
+        cnt = _whole(cnt, 'count', 1, 50)
+        n = _whole(n, 'n', 0, 200)
+        if n > 0:
+            _prob(p, 'p')
+            m, v = n * p, n * p * (1.0 - p)
+        else:
+            _mu(p, 'mu')
+            m, v = p, p
+        E += c * cnt * m
+        V += c * c * cnt * v
+        one = _pmfdict(n, p)
+        j = 0
+        while j < cnt:
+            nxt = {}
+            for a in dist:
+                for b in one:
+                    key = a + c * b
+                    nxt[key] = nxt.get(key, 0.0) + dist[a] * one[b]
+            dist = nxt
+            if len(dist) > 5000:
+                raise ValueError('too many values')
+            j += 1
+        i += 4
+    k = _int(k, 'k')
+    pk = dist.get(k, 0.0)
+    le = 0.0
+    for a in dist:
+        if a <= k:
+            le += dist[a]
+    f4 = lambda v: fmt(v, 10 if casutil.FULL else 4)
+    out = ['P(T=' + fmt(k) + ') = ' + f4(pk), 'P(T<=' + fmt(k) + ') = ' + f4(min(le, 1.0)),
+           'P(T>=' + fmt(k) + ') = ' + f4(max(1.0 - le + pk, 0.0)),
+           'E(T) = ' + p5(E), 'Var(T) = ' + p5(V)]
+    out.append(w('distribution of T by adding up every combination'))
+    return out
+
 def t_normsum(k, terms):
     # W = sum of coef * (X1 + ... + Xcount), every copy independent
     if len(terms) % 4 or not terms:
@@ -3420,6 +3474,7 @@ SECTIONS = [
         ('Poisson mu, P(X<=k)', 'k,p', t_poismu_le),
         ('Sum of Poissons', 'k,mu*', t_poissum),
         ('Poisson check from table', 'x f pairs*', t_pois_table),
+        ('Sum of B and Po', 'k,terms*', t_discsum),
         ('Poisson approx to B', 'n,p,k', t_papprox),
         ('Poisson model check', 'data*', t_poischeck),
         ('Binomial P(X=k)', 'n,p,k', t_binom),

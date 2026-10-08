@@ -20,6 +20,7 @@ T = (
         ('Poisson mu, P(X<=k)', 'k,p'),
         ('Sum of Poissons', 'k,mu*'),
         ('Poisson check from table', 'x f pairs*'),
+        ('Sum of B and Po', 'k,terms*'),
         ('Poisson approx to B', 'n,p,k'),
         ('Poisson model check', 'data*'),
         ('Binomial P(X=k)', 'n,p,k'),
