@@ -635,6 +635,9 @@ CASES += [
     # exact surd values of trig at pi/12, pi/5, ...
     ('y420-spec', '14(iv)', 'CALC', 'Calculate', 'cos(pi/12)^6', '(15*sqrt(3)+26)/64'),
     ('y420-jun25', '9b(ii)', 'CALC', 'Calculate', '2sin(pi/5)', 'sqrt(-2*sqrt(5)+10)/2'),
+    ('y422-jun19', '9b', 'fstat', 'Piecewise pdf P(lo<X<hi)', 'x/25,(10-x)/25,0,5,10,0,6', 'P(0<X<6) = 17/25'),
+    ('y422-spec', '2(ii)(A)', 'fstat', 'Piecewise pdf P(lo<X<hi)', '1/3,1/3+x^2,-1,0,1,-1,1/2', '13/24'),
+    ('y420-nov21', '5b', 'fcore', 'Maclaurin approx', 'ln(1+2x),2,0.1', '% error = 100(series - f)/f = -1.27%'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

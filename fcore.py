@@ -4245,6 +4245,8 @@ def t_macapprox(f, n, a):
     else:
         out.append('f(a) = ' + casutil.sf3(tv))
         out.append('error = ' + casutil.sf3(tv - s))
+        if tv != 0:
+            out.append('% error = 100(series - f)/f = ' + casutil.sf3(100.0 * (s - tv) / tv) + '%')
     I = _ival(f)
     if I is None:
         out.append(_warn('validity: not a standard form'))

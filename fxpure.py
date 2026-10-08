@@ -875,14 +875,15 @@ def t_verify1(F, cand):
 def t_verify2(F, cand):
     return _verify(F, cand, 2)
 
-def t_behave(F, u0):
+def t_behave(F, u0, n0):
     _only(F, ['n', 'u'], 'F')
+    n0 = 0 if n0 is None else _iv(n0, 'n0', -1000, 1000)
     seq = [u0]
     broke = False
     diverged = False
     n = 0
     while n < 300:
-        v = _ev(F, {'u': seq[n], 'n': n})
+        v = _ev(F, {'u': seq[n], 'n': n + n0})
         if v is None:
             broke = True
             break
@@ -933,9 +934,9 @@ def t_behave(F, u0):
         i += 1
     out = []
     if broke:
-        out.append(_warn('F undefined at u(' + str(m) + ')'))
+        out.append(_warn('F undefined at u(' + str(m + n0) + ')'))
     elif diverged:
-        out.append('divergent: |u(n)| > 1e12 by n=' + str(m))
+        out.append('divergent: |u(n)| > 1e12 by n=' + str(m + n0))
     elif conv:
         out.append('convergent: u(n) -> ' + _f(seq[m]))
     elif period:
@@ -952,7 +953,7 @@ def t_behave(F, u0):
         out.append('oscillating (steps alternate sign)')
     if 'n' not in caseng.vars_in(F):
         try:
-            roots = cascalc.solve(('-', F, ('v', 'u')), 'u')
+            roots = cascalc.solve(('-', F, ('v', 'u')), 'u', False, True)
         except Exception:
             roots = []
         dF = None
@@ -983,7 +984,7 @@ def t_behave(F, u0):
                     (', repelling' if abs(g) > 1 + 1e-9 else ", |F'| = 1")
             out.append('fixed point ' + _f(r) + tag)
         if not roots:
-            out.append(_w('no fixed point F(u) = u in -20..20'))
+            out.append(_w('no fixed point F(u) = u: ' + cascalc.range_str('u')))
         out.append(_w('a limit L must satisfy L = F(L)'))
     out.append(_w(_termline(seq, 0, 8)))
     pts = [(float(i), seq[i]) for i in range(min(len(seq), 40))]
@@ -2738,7 +2739,7 @@ SECTIONS = [
         ('2nd order + c in letters', 'a(k),b(k),c(k)', t_rec2k),
         ('Verify u(n+1)=F(n,u)', 'F(n,u),u(n)', t_verify1),
         ('Verify u(n+2)=F(n,u,v)', 'F(n,u,v),u(n)', t_verify2),
-        ('Behaviour u(n+1)=F', 'F(n,u),u0', t_behave),
+        ('Behaviour u(n+1)=F', 'F(n,u),u0,n0?', t_behave),
         ('Associated sequence', 'F(n,u),u0,g(n,u)', t_assoc),
         ('Ratio u(n+1)/u(n)', 'a,b,u0,u1', t_ratio),
     ]),

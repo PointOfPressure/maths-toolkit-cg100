@@ -9,7 +9,7 @@ T = (
         ('2nd order + c in letters', 'a(k),b(k),c(k)'),
         ('Verify u(n+1)=F(n,u)', 'F(n,u),u(n)'),
         ('Verify u(n+2)=F(n,u,v)', 'F(n,u,v),u(n)'),
-        ('Behaviour u(n+1)=F', 'F(n,u),u0'),
+        ('Behaviour u(n+1)=F', 'F(n,u),u0,n0?'),
         ('Associated sequence', 'F(n,u),u0,g(n,u)'),
         ('Ratio u(n+1)/u(n)', 'a,b,u0,u1'),
     )),

@@ -1133,6 +1133,27 @@ def t_pdfpw(f, g, a, b, c):
     out.append(w('E(X) = sum of int x f over each piece'))
     return out
 
+def t_pdfpwp(f, g, a, b, c, lo, hi):
+    # P(lo < X < hi) for f on [a, b], g on [b, c], across the join
+    if not (a < b < c):
+        raise ValueError('need a < b < c')
+    if hi <= lo:
+        raise ValueError('need lo < hi')
+    tot = 0.0
+    parts = []
+    for h, p, q in ((f, a, b), (g, b, c)):
+        l2 = lo if lo > p else p
+        h2 = hi if hi < q else q
+        if h2 > l2:
+            v, x = _moment([_piece(h, l2, h2)], 0)
+            if v is None:
+                raise ValueError('cannot integrate f(x)')
+            tot += v
+            parts.append(fmt(v))
+    out = ['P(' + fmt(lo) + '<X<' + fmt(hi) + ') = ' + fmt(casutil.clean(tot))]
+    out.append(w('sum over the pieces: ' + ' + '.join(parts) if parts else 'outside [a, c]'))
+    return out
+
 def _cdf_fn(F, a, b):
     def val(x):
         if x <= a:
@@ -1227,6 +1248,11 @@ def t_rect(a, b, c, d):
         out.append(w('P = (overlap)/(b-a) = ' + fmt(hi - lo if hi > lo
                                                      else 0) + '/' +
                      fmt(b - a)))
+    elif c is not None:
+        # two independent values, one each side of c
+        p = min(max((c - a) / (b - a), 0.0), 1.0)
+        out.append('P(X<c) = ' + fmt(p))
+        out.append('P(one < c < other) = 2p(1-p) = ' + fmt(2.0 * p * (1.0 - p)))
     out.append(w('E(X) = int x/(b-a) dx = (a+b)/2'))
     out.append(w('E(X^2) = (b^3-a^3)/3(b-a)'))
     out.append(w('Var = E(X^2)-E(X)^2 = (b-a)^2/12'))
@@ -3373,6 +3399,7 @@ SECTIONS = [
         ('pdf P(c<X<d)', 'f(x),a,b,c,d', t_pdfp),
         ('E of g(X) from a pdf', 'g(x),f(x),a,b', t_pdfg),
         ('Piecewise pdf', 'f(x),g(x),a,b,c', t_pdfpw),
+        ('Piecewise pdf P(lo<X<hi)', 'f(x),g(x),a,b,c,lo,hi', t_pdfpwp),
         ('Rectangular U(a,b)', 'a,b,c?,d?', t_rect),
         ('pdf in terms of a', 'f(x),lo(a),hi(a)', t_pdfa),
         ('pdf constants', 'E,f(x),a,b,g(x)?,c?', t_pdfconst),

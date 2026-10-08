@@ -41,6 +41,7 @@ T = (
         ('pdf P(c<X<d)', 'f(x),a,b,c,d'),
         ('E of g(X) from a pdf', 'g(x),f(x),a,b'),
         ('Piecewise pdf', 'f(x),g(x),a,b,c'),
+        ('Piecewise pdf P(lo<X<hi)', 'f(x),g(x),a,b,c,lo,hi'),
         ('Rectangular U(a,b)', 'a,b,c?,d?'),
         ('pdf in terms of a', 'f(x),lo(a),hi(a)'),
         ('pdf constants', 'E,f(x),a,b,g(x)?,c?'),
