@@ -227,7 +227,18 @@ TAYLOR = [
     ('asin(x)', 5, '0 1 0 1/6 0 3/40'),
 ]
 
+LNFORM = [
+    ('2*acosh(2)-sqrt(3)', '2*ln(sqrt(3)+2)-sqrt(3)'),
+    ('ln(2)+ln(5)/2-ln(10)/2', 'ln(2)/2'),
+    ('2*asinh(4/3)/3-1/3', '2*ln(3)/3-1/3'),
+    ('3*ln(25)-3*ln(9)+4', '6*ln(5/3)+4'),
+    ('atanh(1/2)', 'ln(3)/2'),
+]
+
 def run(check):
+    for src, want in LNFORM:
+        got = TS(casalg.lnform(caseng.simplify(P(src))))
+        check('cas lnform ' + src, got == want, got)
     for src, n, want in TAYLOR:
         r = casalg.taylor(caseng.simplify(P(src)), 'x', n)
         got = None if r is None else ' '.join([str(a) if b == 1 else str(a) + '/' + str(b) for a, b in r])

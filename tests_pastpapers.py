@@ -530,6 +530,17 @@ CASES += [
     ('y422-jun22', '10b', 'fstat', 'Chi-sq contributions', '2,3,9,18,5,3,13,12', '1.8240'),
     ('y422-nov21', '5c', 'fstat', 'Estimates from sums', '10,299.6,8981.0', 'xbar = 29.96'),
     ('y422-jun19', '1b', 'fstat', 'DRV find k', '127-39x+3x^2,1,6', 'k = 1/216'),
+    # exact answers in log form; volumes and integrals to infinity exact
+    ('y420-jun19', '13b', 'CAS', 'definite integral a..b', 'acosh(x) ; 1,2', '2*ln(sqrt(3)+2)-sqrt(3)'),
+    ('y420-jun22', '7', 'CAS', 'definite integral a..b', '(x+1)/((x-1)(x^2+1)) ; 2,3', 'ln(2)/2'),
+    ('y420-spec', '15', 'CAS', 'definite integral a..b', 'asinh(2x) ; 0,2/3', '2*ln(3)/3-1/3'),
+    ('y420-jun25', '7', 'fcalc', 'Integral to infinity', '1/(x^2-4),3', 'integral = ln(5)/4'),
+    ('y420-jun25', '16b', 'CAS', 'definite integral a..b', '(x+3)^2/(x^2+9) ; 0,4', '6*ln(5/3)+4'),
+    ('y420-nov20', '10', 'fcalc', 'Volume about y-axis', 'sqrt(2acosh(y)),1,2', 'V = (4*ln(sqrt(3)+2)-2*sqrt(3))*pi'),
+    ('y420-spec', '12(iii)', 'fcalc', 'Volume about x-axis', '1/(1+x^2),-1,1', 'V = pi*(pi/4+1/2)'),
+    ('y420-jun24', '12a(i)', 'fcalc', 'Solve a cosh+b sinh=c', '1,-2,0', 'x = ln(3)/2'),
+    ('y420-jun24', '16', 'fcalc', 'Int 1/sqrt(x2+a2)', 'sqrt(3)/2,1/2,3/2', 'integral = ln(2*sqrt(3)/3+1)'),
+    ('y420-jun19', '15', 'fcalc', 'Int 1/sqrt(x2+a2)', '1,1/2,2', 'integral = ln(sqrt(5)/2+3/2)'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

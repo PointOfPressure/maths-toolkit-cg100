@@ -176,6 +176,119 @@ def combine_log(node):
     out = [((name, arg), 1)]
     return _sum(out + rest)
 
+MAXPRIME = 1000    # trial division for the primes of a log argument
+
+def _primes(n, acc, k):
+    # add k * (exponent of p) for each prime p of the positive integer n
+    d = 2
+    while d <= MAXPRIME and d * d <= n:
+        while n % d == 0:
+            acc[d] = caspoly.radd(acc.get(d, caspoly.R0), k)
+            n //= d
+        d += 1 if d == 2 else 2
+    if n > 1:
+        acc[n] = caspoly.radd(acc.get(n, caspoly.R0), k)
+
+def _rgcd(a, b):
+    # gcd of two positive rationals
+    return (caseng.gcd(a[0], b[0]), a[1] * b[1] // caseng.gcd(a[1], b[1]))
+
+def _hypln(n, d):
+    # asinh u -> ln(u + sqrt(u^2+1)), acosh u -> ln(u + sqrt(u^2-1)),
+    # atanh u -> ln((1+u)/(1-u))/2
+    t = n[0]
+    if t == 'asinh':
+        u = n[1]
+        return ('ln', ('+', u, ('sqrt', ('+', ('^', u, _num(2)), _num(1)))))
+    if t == 'acosh':
+        u = n[1]
+        return ('ln', ('+', u, ('sqrt', ('-', ('^', u, _num(2)), _num(1)))))
+    if t == 'atanh':
+        u = n[1]
+        return ('/', ('ln', ('/', ('+', _num(1), u), ('-', _num(1), u))), _num(2))
+    return n
+
+def lnform(node):
+    # exact constants in log form: inverse hyperbolics as logs, and the
+    # constant logs combined: ln 2 + ln5/2 - ln10/2 -> ln(2)/2,
+    # arsinh(sqrt3) - arsinh(sqrt3/3) -> ln((2sqrt(3)+3)/3)
+    n = _S(_walk(node, _hypln, 0))
+    if n[0] != '+' and n[0] != '-':
+        # a product such as pi(3ln25 - 3ln9 + 4): each bracketed sum
+        coef, fl, cxc, out = caseng._termparts([(n, 1)])
+        hit = False
+        for f in out:
+            if f[0][0] in ('+', '-') and 'ln' in caseng.tostr(f[0]):
+                f[0] = _lnsum(f[0])
+                hit = True
+        return caseng._termnode(coef, fl, cxc, out) if hit else n
+    return _lnsum(n)
+
+def _lnsum(n):
+    acc = {}
+    surd = []
+    rest = []
+    for t, s in _terms(n):
+        coef, fl, cxc, out = caseng._termparts([(t, 1)])
+        if fl is None and cxc is None and len(out) == 1 and out[0][0][0] == 'ln' \
+                and caseng._ratval(out[0][1]) == R1 and not caseng.vars_in(out[0][0][1]):
+            k = coef if s > 0 else (-coef[0], coef[1])
+            a = out[0][0][1]
+            r = caseng._ratval(a)
+            if r is not None and r[0] > 0:
+                _primes(r[0], acc, k)
+                _primes(r[1], acc, (-k[0], k[1]))
+            else:
+                surd.append((a, k))
+            continue
+        rest.append((t, s))
+    items = [(_num(p), e) for p, e in acc.items() if e[0] != 0] + surd
+    if not items:
+        return _S(_sum(rest)) if rest else _num(0)
+    g = None
+    for b, e in items:
+        ae = (abs(e[0]), e[1])
+        g = ae if g is None else _rgcd(g, ae)
+    if surd:
+        # keep the surd argument whole and let a prime go under a root:
+        # ln(2+sqrt3) - ln(3)/2 -> ln((2+sqrt3)/sqrt3), not ln((7+4sqrt3)/3)/2
+        gs = None
+        for b, e in surd:
+            ae = (abs(e[0]), e[1])
+            gs = ae if gs is None else _rgcd(gs, ae)
+        ok = True
+        for p, e in acc.items():
+            if caspoly.rdiv(e, gs)[1] > 2:
+                ok = False
+        if ok:
+            g = gs
+    # a single log term with a positive multiple: g ln(prod b^(e/g))
+    neg = 0
+    for b, e in items:
+        if e[0] < 0:
+            neg += 1
+    if neg * 2 > len(items):
+        g = (-g[0], g[1])
+    arg = _prod([(caseng._pow(b, caseng._ratnode(caspoly.rdiv(e, g))), 1) for b, e in items])
+    best = arg
+    sa = caseng.tostr(arg)
+    fs = []
+    if 'sqrt' in sa:
+        # a surd in a denominator, or a bracket times a surd: tidy it
+        fs = [rationalise, caspoly.expand]
+        if '/' in sa:
+            fs.append(lambda a: caspoly.expand(rationalise(a)))
+    for f in fs:
+        try:
+            a2 = _S(f(arg))
+        except Exception:
+            continue
+        if len(caseng.tostr(a2)) < len(caseng.tostr(best)):
+            best = a2
+    arg = best
+    lg = _prod([(caseng._ratnode(g), 1), (('ln', arg), 1)])
+    return _sum([(lg, 1)] + rest)
+
 def logbase(node, b):
     # a^x -> b^(x log_b a)  (4^x -> 2^(2x))
     def step(x, d):
@@ -981,6 +1094,8 @@ def _split(g):
             caseng._termnode(R1, None, None, bot))
 
 # f ~ c e^(a x) x^b as x -> +inf, as (c, a, b): c a tree, a and b floats
+VAN = -1e9         # a = VAN: tends to 0 at an unknown rate (ln of something -> 1)
+
 def _asy(f, var):
     t = f[0]
     if not caseng._hasvar(f, var):
@@ -1016,6 +1131,10 @@ def _asy(f, var):
         b = _asy(f[2], var)
         if a is None or b is None:
             return None
+        for p, q in ((a, b), (b, a)):
+            # a vanishing log times anything but a constant: rate unknown
+            if p[1] == VAN and (q[1] != 0.0 or q[2] != 0.0 or t == '/'):
+                return None
         if t == '*':
             return (_S(('*', a[0], b[0])), a[1] + b[1], a[2] + b[2])
         return (_S(('/', a[0], b[0])), a[1] - b[1], a[2] - b[2])
@@ -1040,6 +1159,19 @@ def _asy(f, var):
         if cv < 0 and p != int(p):
             return None
         return (_S(('^', a[0], f[2])), a[1] * p, a[2] * p)
+    if t == 'ln':
+        a = _asy(f[1], var)
+        if a is None or a[1] != 0.0 or a[2] != 0.0:
+            return None
+        try:
+            cv = caseng.evalf(a[0], 0.0)
+        except Exception:
+            return None
+        if isinstance(cv, complex) or cv <= 0:
+            return None
+        if abs(cv - 1.0) < 1e-15:
+            return (_num(1), VAN, 0.0)
+        return (_S(('ln', a[0])), 0.0, 0.0)
     if t == 'exp':
         r = linin(_S(f[1]), var)
         if r is None:

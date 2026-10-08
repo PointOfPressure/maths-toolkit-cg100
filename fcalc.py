@@ -67,6 +67,46 @@ def _exact_int(tree, a, b, var='x'):
             return (hi - lo, F, True)
     return (_num(tree, a, b, var), F, False)
 
+def _exact_val(F, a, b, val, var='x'):
+    # F(b) - F(a) exactly (a, b numbers, b may be None for infinity), when
+    # it agrees with the numeric value; else None
+    import casalg
+    try:
+        lo = caseng.simplify(caseng.subst(F, var, caseng._sconst(a)))
+        if b is None:
+            G = casalg.combine_log(caseng.strip_abs(F))
+            hi = casalg.limit(G, var, None, 1)
+            if hi is None or (hi[0] == 'n' and isinstance(hi[1], float) and
+                              (hi[1] != hi[1] or abs(hi[1]) > 1e300)):
+                return None
+        else:
+            hi = caseng.simplify(caseng.subst(F, var, caseng._sconst(b)))
+        ex = caseng.simplify(('-', hi, lo))
+        v = caseng.evalf(ex, 0.0)
+    except Exception:
+        return None
+    if isinstance(v, complex) or abs(v - val) > 1e-6 * (1.0 + abs(val)):
+        return None
+    return ex
+
+def _exact_lines(head, ex, val):
+    # 'V = 2pi(2ln(2+sqrt3) - sqrt3)' and its log form, when they say more
+    # than the decimal line
+    import casalg
+    out = []
+    s = caseng.tostr(ex)
+    if s.replace('*', '') == _f(val) or len(s) > 60:
+        return out
+    out.append(head + s)
+    try:
+        lf = casalg.lnform(ex)
+        ls = caseng.tostr(lf)
+        if ls != s and len(ls) <= 60:
+            out.append(head + ls)
+    except Exception:
+        pass
+    return out
+
 def _gap(tree, a, b, var='x'):
     # True if the integrand is undefined somewhere strictly inside [a, b]
     i = 1
@@ -221,6 +261,10 @@ def t_int_inf(f, a):
             if abs(hi - lo - val) <= 1e-6 * (1.0 + abs(val)):
                 val = hi - lo
     out = [_verdict_line(kind, val)]
+    if kind == 'c' and F is not None:
+        ex = _exact_val(F, a, None, val)
+        if ex is not None:
+            out = _exact_lines('integral = ', ex, val) + out
     out.append(_w('int f dx from ' + _f(a) + ' to infinity'))
     if F is not None:
         out.append(_mw(F))
@@ -305,6 +349,10 @@ def _volume(f, a, b, var, axis):
     out = ['V = ' + _f(v)]
     if _f(v) != casutil.sf3(v):
         out.append('  = ' + casutil.sf3(v))
+    if exact and F is not None:
+        ex = _exact_val(F, a, b, val, var)
+        if ex is not None:
+            out = _exact_lines('V = ', caseng.simplify(('*', ('v', 'pi'), ex)), v) + out
     lab = 'y^2 dx' if axis == 'x' else 'x^2 dy'
     out.append(_w('V = pi * int ' + lab + ', ' + _f(a) + ' to ' + _f(b)))
     if F is not None:
@@ -621,7 +669,32 @@ def t_hyp_solve(a, b, c):
     for s, v in ans:
         head.append(s)
         head.append('  = ' + _f(v))
-    return head + out
+    # the same roots exactly: x = ln((c +- sqrt(c^2-a^2+b^2))/(a+b))
+    A = _xnode(a)
+    B = _xnode(b)
+    Cn = _xnode(c)
+    ex = []
+    try:
+        if abs(a + b) < 1e-12:
+            ex.append(('ln', ('/', ('-', A, B), ('*', ('n', 2), Cn))))
+        else:
+            D = ('-', ('+', ('^', Cn, ('n', 2)), ('^', B, ('n', 2))), ('^', A, ('n', 2)))
+            for sg in ('+', '-'):
+                ex.append(('ln', ('/', (sg, Cn, ('sqrt', D)), ('+', A, B))))
+    except Exception:
+        ex = []
+    exact = []
+    for t in ex:
+        try:
+            v = caseng.evalf(t, 0.0)
+        except Exception:
+            continue
+        if isinstance(v, complex) or v != v:
+            continue
+        for ln in _lnlines('x = ', t, v):
+            if ln not in exact:
+                exact.append(ln)
+    return exact + head + out
 
 def t_hyp_ident(x):
     s = _sh(x)
@@ -688,11 +761,35 @@ def t_hyp_plot(xmax):
     out.append(_w('  tanh = ' + _f(_th(xmax))))
     return out
 
+def _xnode(v):
+    # the exact number a typed value stands for (sqrt(3)/2 from 0.866..)
+    import caslex
+    s = caseng.exactstr(v, 1e-12)
+    t = caslex.parse(s.replace('pi', '*pi').lstrip('*').replace('(*pi', '(pi')) if s else None
+    if t is None:
+        return ('n', v)
+    try:
+        if abs(caseng.evalf(t, 0.0) - v) > 1e-9 * (1.0 + abs(v)):
+            return ('n', v)
+    except Exception:
+        return ('n', v)
+    return caseng.simplify(t)
+
+def _lnlines(head, tree, val):
+    # exact line(s) for a tree: as typed and in log form
+    try:
+        return _exact_lines(head, caseng.simplify(tree), val)
+    except Exception:
+        return []
+
 def t_int_arsinh(a, p, q):
     a = _pos(a, 'a')
     val = _ash(q / a) - _ash(p / a)
     F = ('asinh', ('/', X, _nn(a)))
-    out = ['integral = ' + _f(val)]
+    A = _xnode(a)
+    ex = ('-', ('asinh', ('/', _xnode(q), A)), ('asinh', ('/', _xnode(p), A)))
+    out = _lnlines('integral = ', ex, val)
+    out.append('integral = ' + _f(val))
     out.append(_w('int 1/sqrt(x^2+a^2) dx = arsinh(x/a)'))
     out.append(_mw(F))
     out.append(_w('arsinh(' + _f(q / a) + ') - arsinh(' + _f(p / a) + ')'))
@@ -707,7 +804,10 @@ def t_int_arcosh(a, p, q):
     val = math.log(q / a + math.sqrt(q * q / (a * a) - 1.0)) - \
         math.log(p / a + math.sqrt(p * p / (a * a) - 1.0))
     F = ('acosh', ('/', X, _nn(a)))
-    out = ['integral = ' + _f(val)]
+    A = _xnode(a)
+    ex = ('-', ('acosh', ('/', _xnode(q), A)), ('acosh', ('/', _xnode(p), A)))
+    out = _lnlines('integral = ', ex, val)
+    out.append('integral = ' + _f(val))
     out.append(_w('int 1/sqrt(x^2-a^2) dx = arcosh(x/a)'))
     out.append(_mw(F))
     out.append(_w('arcosh(' + _f(q / a) + ') - arcosh(' + _f(p / a) + ')'))

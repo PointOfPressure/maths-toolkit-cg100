@@ -1288,6 +1288,9 @@ def _cas_op(op, tree, s):
             ex = None
         if ex is not None:
             out = [('m', ex)]
+            lf = _lnform(ex)
+            if lf is not None:
+                out.append(('m', lf))
             try:
                 d = casutil.ev(ex)
                 if not isinstance(d, complex):
@@ -1404,6 +1407,20 @@ def _cas_op(op, tree, s):
         plot.run([tree], -6.0, 6.0, 'y', 'y = ' + s)
         return None
     return _cas_op2(op, tree, s)
+
+def _lnform(ex):
+    # the log form of an exact constant when it differs: 2acosh(2) - sqrt3 ->
+    # 2ln(2+sqrt3) - sqrt3, ln2 + ln5/2 - ln10/2 -> ln(2)/2
+    import caseng
+    import casalg
+    s = caseng.tostr(ex)
+    if 'ln' not in s and 'asinh' not in s and 'acosh' not in s and 'atanh' not in s:
+        return None
+    try:
+        lf = casalg.lnform(ex)
+    except Exception:
+        return None
+    return None if caseng.tostr(lf) == s else lf
 
 def _roots_lines(roots, exact):
     import caseng
