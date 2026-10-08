@@ -572,6 +572,11 @@ CASES += [
     ('y422-jun22', '9e', 'fstat', 'CLT sample mean', '10,440/12,30,7,1', 'P(Xbar<=7) = 0.003482'),
     ('y422-jun24', '11c', 'fstat', 'CLT sample mean', '50,(51^2-1)/12,100,48,1', 'P(Xbar<48) = 0.08658'),
     ('y422-jun25', '10c', 'fstat', 'CLT sample mean', '0,2.88,100,0.25,1', 'P(Xbar>0.25) = 0.06647'),
+    # vectors, lines and planes with an unknown
+    ('y420-jun19', '2', 'fcore', 'Vectors in k', '1,2,c,2,-c,6', 'perpendicular when c = -1/2'),
+    ('y420-nov20', '8a', 'fcore', 'Lines meet in k', '0,2,2,-1,1,3,-1,2,k,2,3,4', 'they meet at (-3/5, 13/5, 19/5)'),
+    ('y420-jun23', '16', 'fcore', 'Point-line dist in k', '4,1,0,3,1,-5,2,b,3,3', 'distance 3 when b = -2, 2'),
+    ('y420-nov21', '15', 'fcore', 'Three planes in k', '-4,k,7,4,1,-2,5,l,2,3,1,2', 'k = -13: sheaf when l = 5'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

@@ -2227,20 +2227,59 @@ def t_planes3k(a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3):
     if det == ('n', 0):
         raise ValueError('det = 0 for every value: no single point')
     out = ['det = ' + caseng.tostr(_sfac(det))]
-    pt = []
-    j = 0
-    while j < 3:
-        Mj = [[(rhs[r] if c == j else M[r][c]) for c in range(3)] for r in range(3)]
-        num = _sdet(Mj)
-        pt.append(caseng.simplify(('/', _sfac(num), _sfac(det))))
-        j += 1
-    out.append('point (' + ', '.join([caseng.tostr(p) for p in pt]) + ')')
+    if len(_lets([det])) == len(_lets([x for r in M for x in r] + rhs)):
+        # the point only when it has no more letters than det (else too long)
+        j = 0
+        while j < 3:
+            Mj = [[(rhs[r] if c == j else M[r][c]) for c in range(3)] for r in range(3)]
+            num = _sdet(Mj)
+            out.append('xyz'[j] + ' = ' + caseng.tostr(caseng.simplify(('/', _sfac(num), _sfac(det)))))
+            j += 1
     vs = _lets([det])
     if len(vs) == 1:
         rs = _letroots(det, vs[0])
         out.append('no single point when ' + vs[0] + ' = ' + _rootstr(rs) if rs else
                    'one point for every real ' + vs[0])
+        out += _planes_cases(M, rhs, vs[0], rs)
     out.append(_w("Cramer: x = det(M_x)/det M, M_x has d in column 1"))
+    return out
+
+def _planes_cases(M, rhs, v, rs):
+    # at each singular value: a second letter in the right side is chosen
+    # to make the planes consistent (sheaf); with none, sheaf or prism
+    out = []
+    for r in rs[:3]:
+        Ms = [[caseng.simplify(caseng.subst(e, v, r)) for e in row] for row in M]
+        bs = [caseng.simplify(caseng.subst(e, v, r)) for e in rhs]
+        others = _lets(bs + [e for row in Ms for e in row])
+        if len(others) == 1:
+            u = others[0]
+            vals = None
+            for j in range(3):
+                Mj = [[(bs[q] if c == j else Ms[q][c]) for c in range(3)] for q in range(3)]
+                N = _sdet(Mj)
+                if N == ('n', 0):
+                    continue
+                if not cascalc.has_var(N, u):
+                    vals = []
+                    break
+                got = [caseng.tostr(x) for x in _letroots(N, u)]
+                vals = got if vals is None else [x for x in vals if x in got]
+            if vals:
+                out.append(v + ' = ' + caseng.tostr(r) + ': sheaf when ' + u + ' = ' + ', '.join(vals))
+                out.append(_w('otherwise no solution'))
+            else:
+                out.append(v + ' = ' + caseng.tostr(r) + ': no solution for any ' + u)
+        elif not others:
+            try:
+                A = [[caseng.evalf(e, 0.0) for e in row] for row in Ms]
+                b = [caseng.evalf(e, 0.0) for e in bs]
+            except Exception:
+                continue
+            if isinstance(A[0][0], complex):
+                continue
+            res = _planes_sing(A, b)
+            out.append(v + ' = ' + caseng.tostr(r) + ': ' + res[0])
     return out
 
 def _planes_poly(M, rhs):
@@ -2274,12 +2313,115 @@ def _planes_poly(M, rhs):
         else:
             pt.append(('/', _pfac(N, v), _pfac(Dj, v)))
         j += 1
-    out.append('point (' + ', '.join([caseng.tostr(p) for p in pt]) + ')')
+    for j in range(3):
+        out.append('xyz'[j] + ' = ' + caseng.tostr(pt[j]))
     if len(D) > 1:
         rs = _proots(D)
         out.append('no single point when ' + v + ' = ' + _rootstr(rs) if rs else
                    'one point for every real ' + v)
+        out += _planes_cases(M, rhs, v, rs)
     out.append(_w("Cramer: x = det(M_x)/det M, M_x has d in column 1"))
+    return out
+
+def _svec(ts):
+    return [caseng.simplify(t) for t in ts]
+
+def _sdot(a, b):
+    return _sx(('+', ('+', ('*', a[0], b[0]), ('*', a[1], b[1])), ('*', a[2], b[2])))
+
+def _scross(a, b):
+    return [_sx(('-', ('*', a[1], b[2]), ('*', a[2], b[1]))),
+            _sx(('-', ('*', a[2], b[0]), ('*', a[0], b[2]))),
+            _sx(('-', ('*', a[0], b[1]), ('*', a[1], b[0])))]
+
+def _svs(v):
+    return '(' + ', '.join([caseng.tostr(e) for e in v]) + ')'
+
+def _one_letter(ts):
+    vs = _lets(ts)
+    if len(vs) != 1:
+        raise ValueError('use one letter, e.g. k')
+    return vs[0]
+
+def _common(eqs, v):
+    # letter values that make every expression in eqs zero
+    vals = None
+    for e in eqs:
+        e = _sx(e)
+        if e == ('n', 0):
+            continue
+        if not cascalc.has_var(e, v):
+            return []
+        got = [caseng.tostr(x) for x in _letroots(e, v)]
+        vals = got if vals is None else [x for x in vals if x in got]
+    return vals
+
+def t_vecsk(a1, a2, a3, b1, b2, b3):
+    # a.b and a x b with a letter: perpendicular and parallel values
+    a = _svec([a1, a2, a3])
+    b = _svec([b1, b2, b3])
+    v = _one_letter(a + b)
+    dot = _sdot(a, b)
+    out = ['a.b = ' + caseng.tostr(_sfac(dot))]
+    rs = _letroots(dot, v)
+    out.append('perpendicular when ' + v + ' = ' + _rootstr(rs) if rs else
+               'never perpendicular')
+    cr = _scross(a, b)
+    out.append('a x b = ' + _svs(cr))
+    par = _common(cr, v)
+    if par is None:
+        out.append('parallel for every ' + v)
+    elif par:
+        out.append('parallel when ' + v + ' = ' + ', '.join(par))
+    else:
+        out.append('never parallel')
+    out.append(_w('perpendicular: a.b = 0; parallel: a x b = 0'))
+    return out
+
+def t_linesk(p1, p2, p3, d1, d2, d3, q1, q2, q3, e1, e2, e3):
+    # lines r = p + s d, r = q + t e meet when (q - p).(d x e) = 0
+    p = _svec([p1, p2, p3])
+    d = _svec([d1, d2, d3])
+    q = _svec([q1, q2, q3])
+    e = _svec([e1, e2, e3])
+    v = _one_letter(p + d + q + e)
+    n = _scross(d, e)
+    pq = [_sx(('-', q[i], p[i])) for i in range(3)]
+    trip = _sdot(pq, n)
+    out = ['(q-p).(d x e) = ' + caseng.tostr(_sfac(trip))]
+    rs = _letroots(trip, v)
+    if not rs:
+        out.append('the lines never meet')
+    for r in rs[:2]:
+        P = [caseng.evalf(caseng.subst(t, v, r), 0.0) for t in p]
+        D = [caseng.evalf(caseng.subst(t, v, r), 0.0) for t in d]
+        Q = [caseng.evalf(caseng.subst(t, v, r), 0.0) for t in q]
+        E = [caseng.evalf(caseng.subst(t, v, r), 0.0) for t in e]
+        if isinstance(P[0], complex):
+            continue
+        out.append(v + ' = ' + caseng.tostr(r) + ':')
+        sub = t_line_meet(P, D, Q, E)
+        out += [ln for ln in sub if not isinstance(ln, tuple)][:2]
+    out.append(_w('coplanar: (q-p).(d x e) = 0'))
+    out.append(_w('and d, e not parallel, then they meet'))
+    return out
+
+def t_ptlinek(x1, x2, x3, a1, a2, a3, d1, d2, d3, D):
+    # distance from P to the line r = a + t d, with a letter
+    P = _svec([x1, x2, x3])
+    A = _svec([a1, a2, a3])
+    d = _svec([d1, d2, d3])
+    v = _one_letter(P + A + d)
+    ap = [_sx(('-', P[i], A[i])) for i in range(3)]
+    c = _scross(ap, d)
+    num = _sdot(c, c)
+    den = _sdot(d, d)
+    d2 = caseng.simplify(('/', num, den))
+    out = ['distance^2 = ' + caseng.tostr(d2)]
+    if D is not None:
+        rs = _letroots(_sx(('-', num, ('*', _nn(D * D), den))), v)
+        out.append('distance ' + _f(D) + ' when ' + v + ' = ' + (_rootstr(rs) if rs else 'none'))
+    out.append(_w('d = |AP x d|/|d|'))
     return out
 
 def t_abk(a, b, c, d, p, q, r, s):
@@ -3925,6 +4067,9 @@ SECTIONS = [
         ('Plane pt + 2 dirs', 'a[3],b[3],c[3]', t_plane_2dirs),
         ('Plane cartesian->vec', 'n[3],d', t_plane_to_vec),
         ('Three planes', 'n1[3],d1,n2[3],d2,n3[3],d3', t_planes3),
+        ('Vectors in k', 'a1(k),a2(k),a3(k),b1(k),b2(k),b3(k)', t_vecsk),
+        ('Lines meet in k', 'p1(k),p2(k),p3(k),d1(k),d2(k),d3(k),q1(k),q2(k),q3(k),e1(k),e2(k),e3(k)', t_linesk),
+        ('Point-line dist in k', 'x1(k),x2(k),x3(k),a1(k),a2(k),a3(k),d1(k),d2(k),d3(k),D?', t_ptlinek),
         ('Three planes in k', 'a1(k),b1(k),c1(k),d1(k),a2(k),b2(k),c2(k),d2(k),a3(k),b3(k),c3(k),d3(k)', t_planes3k),
         ('Angle between lines', 'd1[3],d2[3]', t_angle_lines),
         ('Angle line and plane', 'd[3],n[3]', t_angle_lp),
