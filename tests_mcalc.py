@@ -52,6 +52,7 @@ CASES = [
     ('G', 'Stationary points', 'x^3-6x+1', ['min at (sqrt(2), -4*sqrt(2)+1)']),
     # 7357/1 Jun19 Q13
     ('G', 'Stationary points', 'e^(3x-5)/x^2', ['min at (2/3, 9/(4*e^3))']),
+    ('G', 'Stationary points', 'x*e^(-x/30)', ['max at (30, 30/e)']),
     # incdec-domain-edge: 7357/3 Jun18 Q6d, convex for 1 < x < 4
     ('G', 'Inflection points', 'x/sqrt(2x-2)',
      ['inflection at (4, 2sqrt(6)/3)', 'convex for 1 < x < 4', 'concave for x > 4']),

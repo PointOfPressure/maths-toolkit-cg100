@@ -425,4 +425,10 @@ ENGINE_PENDING = [
     # [exactstr-silly] the root shows as sqrt(80331954)/2 until exactstr
     # stops matching large radicands; 7357/3 Jun22 Q7b d = 4481
     ('B', 'Solve f(x)=g(x)', '0.2*x^1.5,60000', ['(4480, 60000)']),
+    # [exactstr-silly] 7357/2 Jun23 Q7bi S(120) = 6787.16, shown as
+    # 31sqrt(47935) by fmt today
+    ('D', 'Geometric a,r,n', '50.1,1.002,120', ['S(120) = 6790']),
+    # [exactstr-silly] 7357/2 Jun24 Q7bi style: k from 10^3.9 shows as a
+    # fake surd; MS k = 7940
+    ('F', 'y = k b^x from 2 pts', '0,10^3.9,40,10^5.28', ['k = 7940']),
 ]

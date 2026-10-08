@@ -137,7 +137,7 @@ def _proots(p, lo, hi):
     out = []
     for r in caspoly.roots_rational(p):
         v = r[0] / float(r[1])
-        if lo <= v <= hi:
+        if -1e4 <= v <= 1e4:
             out.append(v)
         qr = caspoly.pdivmod(p, [caspoly.rneg(r), caspoly.R1])
         if qr is not None and not qr[1]:
@@ -147,10 +147,15 @@ def _proots(p, lo, hi):
     c = [q[0] / float(q[1]) for q in p]
     n = 400
     h = (hi - lo) / n
-    prev = _hv(c, lo)
+    xs = [lo + i * h for i in range(n + 1)]
+    # and out to +-10000 on a log scale
+    far = [hi * math.pow(500.0, i / 60.0) for i in range(1, 61)]
+    xs = [-x for x in reversed(far)] + xs + far if hi > 0 and lo < 0 else xs
+    prev = _hv(c, xs[0])
     i = 1
-    while i <= n:
-        x = lo + i * h
+    while i < len(xs):
+        x = xs[i]
+        h = x - xs[i - 1]
         cur = _hv(c, x)
         if cur == 0:
             out.append(x)
@@ -955,7 +960,8 @@ def t_stationary(f):
     for r in rs[:8]:
         y = casutil.evx(f, r)
         ex = None
-        if y is not None and (_f(r).find('.') >= 0 or _f(y).find('.') >= 0):
+        if y is not None and (_f(r).find('.') >= 0 or
+                              caseng._fltrat(y) is None):
             try:
                 ex = _exactpt(f, d1, r)
             except Exception:
