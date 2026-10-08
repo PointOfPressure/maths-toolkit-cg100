@@ -143,9 +143,85 @@ def expand(node, trig=True, logs=True):
     caseng.FOLD[0] = False
     try:
         n = caspoly.expand(_walk(_S(n), step, 0))
+        if trig:
+            n = expairs(n)
     finally:
         caseng.FOLD[0] = True
     return n
+
+def _eiparts(t):
+    # c * e^(i k u) -> (c tree, k rational, u tree) else None
+    coef, fl, cxc, out = caseng._termparts([(t, 1)])
+    hit = None
+    arg = None
+    for f in out:
+        if f[0][0] == 'exp' and caseng._ratval(f[1]) == R1:
+            hit = f
+            arg = f[0][1]
+            break
+        if f[0] == ('v', 'e'):
+            hit = f
+            arg = f[1]
+            break
+    if hit is None:
+        return None
+    c2, f2, cx2, o2 = caseng._termparts([(arg, 1)])
+    if f2 is not None or cx2 is None or cx2.real != 0 or not o2:
+        return None
+    k = caseng._fltrat(cx2.imag)
+    if k is None:
+        return None
+    k = caspoly.rmul(k, c2)
+    rest = [f for f in out if f is not hit]
+    c = caseng._termnode(coef, fl, cxc, rest)
+    u = caseng._termnode(R1, None, None, o2)
+    return (c, k, u)
+
+def expairs(node):
+    # c e^(iku) + c e^(-iku) -> 2c cos(ku); c e^(iku) - c e^(-iku) -> 2ic sin(ku)
+    n = _S(node)
+    ts = _terms(n)
+    info = []
+    for t, s in ts:
+        p = _eiparts(t)
+        if p is not None and s < 0:
+            p = (_S(('neg', p[0])), p[1], p[2])
+        info.append(p)
+    if len([p for p in info if p is not None]) < 2:
+        return node
+    used = [False] * len(ts)
+    out = []
+    hit = False
+    for i in range(len(ts)):
+        if used[i] or info[i] is None:
+            continue
+        ci, ki, ui = info[i]
+        for j in range(i + 1, len(ts)):
+            if used[j] or info[j] is None:
+                continue
+            cj, kj, uj = info[j]
+            if kj != (-ki[0], ki[1]) or caseng.tostr(ui) != caseng.tostr(uj):
+                continue
+            ang = _S(_prod([(caseng._ratnode(ki if ki[0] > 0 else kj), 1), (ui, 1)]))
+            same = caseng.tostr(ci) == caseng.tostr(cj)
+            opp = caseng.tostr(_S(('neg', ci))) == caseng.tostr(cj)
+            if same:
+                out.append((_prod([(_num(2), 1), (ci, 1), (('cos', ang), 1)]), 1))
+            elif opp:
+                cp = ci if ki[0] > 0 else cj
+                out.append((_prod([(_num(2j), 1), (cp, 1), (('sin', ang), 1)]), 1))
+            else:
+                continue
+            used[i] = True
+            used[j] = True
+            hit = True
+            break
+    if not hit:
+        return node
+    for i in range(len(ts)):
+        if not used[i]:
+            out.append(ts[i])
+    return _S(_sum(out))
 
 def combine_log(node):
     # a ln u + b ln v -> ln(u^a v^b)

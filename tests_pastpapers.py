@@ -582,6 +582,13 @@ CASES += [
     ('y422-nov21', '9b', 'fstat', 'Discrete uniform in n', '-n,n,10', 'Var(sum of 10) = 10*n^2/3+10*n/3'),
     ('y422-jun23', '11a', 'fstat', 'DRV table in p', '0,1-p,1,p', 'E(X) = p'),
     ('y422-jun24', '11b', 'fstat', 'Discrete uniform in n', '25,n,100', 'Var(mean of 100) = '),
+    # C + iS series and e^(ix) + e^(-ix) = 2cos x
+    ('y420-jun22', '14a', 'CAS', 'expand', '(3-e^(2i*x))*(3-e^(-2i*x))', '-6*cos(2*x)+10'),
+    ('y420-jun24', '13b(i)', 'CAS', 'expand', '(3-e^(i*x))*(3-e^(-i*x))', '-6*cos(x)+10'),
+    ('y420-jun19', '16a', 'CAS', 'expand', '(2-e^(i*x))*(2-e^(-i*x))', '-4*cos(x)+5'),
+    ('y420-jun22', '14b', 'fcore', 'C + iS series', '1,1/3,2,1', 'S = (6*sin(theta))/(-3*cos(2*theta)+5)'),
+    ('y420-jun24', '13b(ii)', 'fcore', 'C + iS series', '1/3,1/3,1,1', 'S = (3*sin(theta))/(-6*cos(theta)+10)'),
+    ('y420-jun25', '15b', 'fcore', 'C + iS series', '1,1/3,4,1', 'C = (-3*cos(3*theta)+9*cos(theta))/(-6*cos(4*theta)+10)'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

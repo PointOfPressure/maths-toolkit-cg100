@@ -3180,6 +3180,104 @@ def _subst_all(t, sub):
         t = caseng.subst(t, k, sub[k])
     return t
 
+# ---- C + iS series -----------------------------------------------------------
+
+def _rq(v, name):
+    r = caseng._fltrat(v)
+    if r is None:
+        raise ValueError(name + ' must be a fraction')
+    return r
+
+def _trig(fn, k):
+    # cos(k theta) as a tree; k a rational pair
+    if k[0] == 0:
+        return ('n', 1) if fn == 'cos' else ('n', 0)
+    return caseng.simplify((fn, ('*', caspoly.ratnode(k), ('v', 'theta'))))
+
+def t_ciss(a, r, d, s0, n):
+    # sum of a r^k e^(i(s0 + k d)theta): C + iS as a GP, real and imaginary
+    # parts over the real denominator 1 - 2r cos(d theta) + r^2
+    A = _rq(a, 'a')
+    R = _rq(r, 'r')
+    D = _rq(d, 'step')
+    S0 = _rq(s0, 'start')
+    if R[0] == 0:
+        raise ValueError('r must not be 0')
+    if n is None and abs(R[0]) >= R[1]:
+        raise ValueError('|r| < 1 for the infinite sum')
+    rm = caspoly.rmul
+    # numerator a e^(i s0)(1 - r^n e^(ind))(1 - r e^(-id)) as (coefficient, angle)
+    terms = [(A, S0), (caspoly.rneg(rm(A, R)), caspoly.rsub(S0, D))]
+    if n is not None:
+        n = _iv(n, 'n', 1, 500)
+        rn = (R[0] ** n, R[1] ** n)
+        sn = caspoly.radd(S0, rm((n, 1), D))
+        terms.append((caspoly.rneg(rm(A, rn)), sn))
+        terms.append((rm(rm(A, rn), R), caspoly.rsub(sn, D)))
+    den = [(caspoly.radd(caspoly.R1, rm(R, R)), (0, 1)), (rm((-2, 1), R), D)]
+    # clear the fractions: top and bottom times L
+    L = 1
+    for c, k in terms + den:
+        L = L * c[1] // casutil.gcd(L, c[1])
+
+    def build(fn, items, g):
+        t = ('n', 0)
+        for c, k in items:
+            t = ('+', t, ('*', caspoly.ratnode(rm(c, (L, g))), _trig(fn, k)))
+        return caseng.simplify(t)
+
+    def content(t):
+        g = 0
+        raw = []
+        caseng._flatadd(t, 1, raw)
+        for u, sg in raw:
+            r = caspoly.term_of(u)
+            if r is None or r[0][1] != 1:
+                return 1
+            g = casutil.gcd(g, r[0][0])
+        return g or 1
+
+    def frac(fn):
+        # one fraction, the common integer factor of top and bottom removed
+        top = build(fn, terms, 1)
+        bt = build('cos', den, 1)
+        g = casutil.gcd(content(top), content(bt))
+        if g > 1:
+            top = build(fn, terms, g)
+            bt = build('cos', den, g)
+        return (top, bt)
+    C, cb = frac('cos')
+    S, sb = frac('sin')
+    bot = cb
+    out = ['C = (' + caseng.tostr(C) + ')/(' + caseng.tostr(cb) + ')',
+           'S = (' + caseng.tostr(S) + ')/(' + caseng.tostr(sb) + ')']
+    if n is None:
+        out.append(_w('C + iS = a e^(i s theta)/(1 - r e^(i d theta))'))
+    else:
+        out.append(_w('C + iS = a e^(i s theta)(1 - (r e^(i d theta))^n)/(1 - r e^(i d theta))'))
+    out.append(_w('(1 - r e^(i d theta))(1 - r e^(-i d theta))'))
+    out.append(_w('  = 1 - 2r cos(d theta) + r^2'))
+    # check against the series at theta = 0.7
+    th = 0.7
+    cs = 0.0
+    ss = 0.0
+    k = 0
+    lim = n if n is not None else 2000
+    term = a
+    while k < lim and (n is not None or abs(term) > 1e-15):
+        ang = (s0 + k * d) * th
+        cs += term * math.cos(ang)
+        ss += term * math.sin(ang)
+        term *= r
+        k += 1
+    env = {'theta': th}
+    cv = caseng.evalf(C, 0.0, False, env) / caseng.evalf(cb, 0.0, False, env)
+    sv = caseng.evalf(S, 0.0, False, env) / caseng.evalf(sb, 0.0, False, env)
+    ok = abs(cv - cs) < 1e-9 and abs(sv - ss) < 1e-9
+    out.append(_w('at theta = 0.7: C = ' + _f(cs, 6) + ', S = ' + _f(ss, 6) +
+                  (', agrees' if ok else ', DISAGREES')))
+    return out
+
 def t_vieta(coeffs):
     co, n = _coeffs(coeffs, 2, 4)
     e = _elem(co)
@@ -4100,6 +4198,7 @@ SECTIONS = [
         ('Method of differences', 'f(r),n?', t_diffs),
         ('Maclaurin series', 'f(x),n', t_maclaurin),
         ('Maclaurin approx', 'f(x),n,a', t_macapprox),
+        ('C + iS series', 'a,r,step,start,n?', t_ciss),
         ('Binomial (1+x)^p', 'p,n', t_binom),
     ]),
 ]

@@ -1337,7 +1337,10 @@ def _cas_op(op, tree, s):
     if op == 6:
         return [('m', _tidy(tree))]
     if op == 7:
-        return [('m', caspoly.expand(tree))]
+        import casalg
+        e = caspoly.expand(tree)
+        p = casalg.expairs(e)
+        return [('m', e)] if p == e else [('m', e), ('m', p), ('w', 'e^(ix) + e^(-ix) = 2cos x')]
     if op == 8:
         r = caspoly.factor(tree)
         if r is None:

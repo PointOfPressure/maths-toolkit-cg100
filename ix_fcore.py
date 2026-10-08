@@ -103,6 +103,7 @@ T = (
         ('Method of differences', 'f(r),n?'),
         ('Maclaurin series', 'f(x),n'),
         ('Maclaurin approx', 'f(x),n,a'),
+        ('C + iS series', 'a,r,step,start,n?'),
         ('Binomial (1+x)^p', 'p,n'),
     )),
 )
