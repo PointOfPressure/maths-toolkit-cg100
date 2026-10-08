@@ -647,6 +647,7 @@ CASES += [
     ('y435-spec', '5(v)', 'fcore', 'Describe a 3x3', '1/2,-1/sqrt(2),1/2,1/sqrt(2),0,-1/sqrt(2),1/2,1/sqrt(2),1/2', 'rotation 90 deg about (1, 0, 1)'),
     ('y435-spec', '4(i)', 'fxpure', 'Partials of g(x,y,z)', '(y-2x)*(y+z)^2-18,1,4,-7', 'dg/dy = (-4*x+3*y+z)*(y+z)'),
     ('y422-jun25', '10a', 'fstat', 'Sum of B and Po', '5,1,1,6,0.4,-1,2,3,0.4', 'P(T=5) = 0.002484'),
+    ('y435-nov21', '2c', 'fxpure', 'Isomorphism G to H', '8,0,1,2,3,4,5,6,7,1,2,3,4,5,6,7,0,2,3,4,5,6,7,0,1,3,4,5,6,7,0,1,2,4,5,6,7,0,1,2,3,5,6,7,0,1,2,3,4,6,7,0,1,2,3,4,5,7,0,1,2,3,4,5,6,0,1,2,3,4,5,6,7,1,2,3,4,5,6,7,0,2,3,4,5,6,7,0,1,3,4,5,6,7,0,1,2,4,5,6,7,0,1,2,3,5,6,7,0,1,2,3,4,6,7,0,1,2,3,4,5,7,0,1,2,3,4,5,6', '4 isomorphisms'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

@@ -1513,11 +1513,18 @@ def _partial_ok(G, H, phi):
 
 def _iso(G, eg, H, eh):
     # an isomorphism G -> H as a list, or None
+    r = _isos(G, eg, H, eh, 1)
+    return r[0] if r else None
+
+MAXISO = 8         # isomorphisms listed
+
+def _isos(G, eg, H, eh, cap):
+    # up to cap isomorphisms G -> H, by backtracking over element images
     n = len(G)
     og = _orders(G, eg)
     oh = _orders(H, eh)
     if sorted(og) != sorted(oh):
-        return None
+        return []
     phi = [-1] * n
     used = [False] * n
     phi[eg] = eh
@@ -1525,6 +1532,9 @@ def _iso(G, eg, H, eh):
     todo = [a for a in range(n) if a != eg]
     cand = [0] * len(todo)
     depth = 0
+    found = []
+    if not todo:
+        return [phi]
     while 0 <= depth < len(todo):
         g = todo[depth]
         if phi[g] >= 0:
@@ -1547,12 +1557,15 @@ def _iso(G, eg, H, eh):
             depth += 1
             if depth < len(todo):
                 cand[depth] = 0
+            else:
+                found.append(list(phi))
+                if len(found) >= cap:
+                    return found
+                depth -= 1
         else:
             cand[depth] = 0
             depth -= 1
-    if depth < 0:
-        return None
-    return phi
+    return found
 
 def _maplines(phi, gname, hname):
     out = []
@@ -1587,9 +1600,14 @@ def t_giso(n, tables):
             out.append(_w('no order-preserving map works'))
     else:
         out.append('G and H are isomorphic')
-        out.append('phi:')
-        for ln in _maplines(phi, lambda i: str(gl[i]), lambda i: str(hl[i])):
-            out.append(ln)
+        allp = _isos(G, eg, H, eh, MAXISO)
+        k = 0
+        for ph in allp:
+            k += 1
+            out.append('phi' + str(k) + ':')
+            for ln in _maplines(ph, lambda i: str(gl[i]), lambda i: str(hl[i])):
+                out.append(ln)
+        out.append(str(len(allp)) + (' or more' if len(allp) >= MAXISO else '') + ' isomorphisms')
         out.append(_w('phi(ab) = phi(a)phi(b) for all ' + str(n * n) + ' pairs'))
     out.append(_w('orders in G: ' + ' '.join([str(v) for v in sorted(og)])))
     out.append(_w('orders in H: ' + ' '.join([str(v) for v in sorted(oh)])))
