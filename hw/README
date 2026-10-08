@@ -1,0 +1,4 @@
+mpya-d.mpy: the same 3-line module built by mpy-cross 1.9.4 with the four
+feature-flag combinations (a unicode, b none, c unicode+cache-lookup-bc,
+d cache-lookup-bc). hwtest.py imports each; whichever loads says the
+device can run precompiled modules, which would cut load time.

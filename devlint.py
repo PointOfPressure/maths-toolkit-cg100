@@ -3,13 +3,14 @@ import os
 import sys
 
 DEVICE_FILES = [
-    "maths.py", "casui.py", "casutil.py", "caslex.py", "caseng.py",
+    "maths.py", "casui.py", "nat.py", "casutil.py", "caslex.py", "caseng.py",
     "casrender.py", "cascalc.py", "caspoly.py", "casalg.py", "cassolve.py",
     "plot.py", "formulae.py",
     "tables.py",
     "mpure.py", "mcalc.py", "mstat.py", "mmech.py",
     "fcore.py", "fcalc.py", "fmech.py", "fstat.py",
     "falgo.py", "fnum.py", "fxpure.py", "ffpt.py",
+    "hwtest.py",
 ]
 
 # measured on device by hwcheck.py 2026-08-09; adding a name claims hardware has it

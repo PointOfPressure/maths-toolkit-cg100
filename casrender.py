@@ -87,6 +87,8 @@ def build(n, lvl):
         return ('row', [('atom', '|', sz), build(n[1], lvl), ('atom', '|', sz)])
     if t in caseng.UFUNCS and t != 'exp' and t != 'sqrt':
         return ('row', [('atom', t, sz), ('paren', build(n[1], lvl), sz)])
+    if t == 'exp' and n[1] == ('n', 1):
+        return ('atom', 'e', sz)
     if t == 'exp':
         return ('sup', ('atom', 'e', sz), build(n[1], lvl + 1), sz)
     if t == 'sqrt':

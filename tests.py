@@ -159,6 +159,8 @@ MODULES = ['mpure', 'mcalc', 'mstat', 'mmech',
 def cas_engine():
     import tests_cas
     tests_cas.run(check)
+    import tests_nat
+    tests_nat.run(check)
     _depth_check()
 
 def _depth_check():

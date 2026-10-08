@@ -110,7 +110,9 @@ def install(*extra):
 
 
 def press(*codes):
+    # idle, key, idle: the UI waits for release before reading the next key
     for c in codes:
+        KEYS.append(None)
         KEYS.append(c)
         KEYS.append(None)
 
@@ -139,55 +141,52 @@ def save(prefix, outdir="shots"):
 def _scenes():
     import casui
     import caslex
-    import casutil
     import plot
     quad = ('Quadratic', 'a,b,c', lambda a, b, c: [
         'x = 1/2 + i*sqrt(3)/2', 'x = 1/2 - i*sqrt(3)/2',
         ('m', caslex.parse('(1+sqrt(3)i)/2')),
         ('!', 'no real roots'),
         ('w', 'disc = b^2 - 4ac = -3'), ('w', 'vertex (1/2, 3/4)')])
-    tools = [quad, ('Simultaneous', 'a1,b1,c1,a2,b2,c2', None), ('Inequality', 'a,b,c', None)]
-    sections = [(chr(65 + i), 'Section title number ' + str(i + 1), tools) for i in range(19)]
 
     def result_scene(mode):
-        import casioshot
-        casioshot.press(*([94] * mode))
+        press(*([94] * mode))
         casui.result('Quadratic', '1,-1,1', lambda: quad[2](1, -1, 1))
 
-    def input_scene(text, spec, label):
-        import casioshot
-        keys = []
-        for ch in text:
-            for code in casui.UNSHIFT:
-                if casui.UNSHIFT[code] == ch:
-                    keys.append(code)
-                    break
-        casioshot.press(*keys)
-        casui.input_line(label, spec, '')
+    def calc(*keys):
+        casui.HIST[:] = []
+        casui.CALC.clear()
+        press(*keys)
+        casui.calc_section()
+
+    def tool_input(*keys):
+        casui._LAST.clear()
+        press(*keys)
+        casui.input_line('Quadratic', 'a,b,c', '')
 
     return [
-        ("home", lambda: casui.menu('MATHS TOOLKIT  AQA 7357 + MEI H645',
-                                    ['Calculate', 'CAS  f(x)', 'Maths  AQA 7357', 'Further  MEI H645', 'Formulae  AQA', 'Angle: RAD'])),
-        ("sections", lambda: casui.menu('MATHS 7357', [c + '  ' + t for c, t, tl in sections], 4)),
-        ("tools", lambda: casui.menu('B Algebra and functions', [t[0] for t in tools])),
-        ("input-empty", lambda: input_scene('', 'a,b,c', 'Quadratic')),
-        ("input-values", lambda: input_scene('1,-3,2', 'a,b,c', 'Quadratic')),
-        ("input-matrix", lambda: input_scene('1,2,3,4,5,6,7,8,9', 'A[3x3]', 'Determinant')),
+        ("home", lambda: casui.main()),
+        ("home-sel", lambda: (press(25, 25, 34), casui.main())),
+        ("maths", lambda: casui.qual_section('Maths  AQA 7357', casui.MATHS)),
+        ("maths-p3", lambda: (press(26, 26, 25), casui.qual_section('Maths  AQA 7357', casui.MATHS))),
+        ("further", lambda: casui.paper_section('Further  MEI H645', casui.FURTHER)),
+        ("tools", lambda: (press(25, 34, 95), casui.qual_section('Maths  AQA 7357', casui.MATHS))),
+        # 1 frac 3 right + sqrt 2 right EXE
+        ("calc-frac", lambda: calc(81, 42, 83, 25, 84, 43, 82, 25, 95)),
+        # x^2 key after a number, e^, then a second line
+        ("calc-hist", lambda: calc(82, 45, 84, 83, 95, 81, 42, 82, 25, 84, 46, 81, 25, 95, 94,
+                                   85, 82, 95, 82)),
+        # type, EXIT, come back: the line and the history are still there
+        ("calc-return", lambda: (calc(81, 42, 83, 25, 84, 43, 82, 25, 95, 23, 64, 64), casui.calc_section())),
+        ("calc-edit", lambda: calc(81, 42, 83, 25, 84, 43, 82, 25, 95, 23)),
+        ("calc-complex", lambda: calc(55, 82, 84, 83, 31, 63, 56, 75, 55, 81, 85, 31, 63, 56, 95)),
+        ("input-empty", lambda: tool_input()),
+        ("input-values", lambda: tool_input(81, 51, 85, 83, 51, 82)),
+        ("symbols", lambda: (press(35, 25, 34), casui.input_line('CAS', 'f(x)', ''))),
         ("result-answer", lambda: result_scene(0)),
         ("result-working", lambda: result_scene(1)),
-        ("result-full", lambda: result_scene(2)),
-        ("calc", lambda: casui.result('Calculate', '(2+3i)/(1-i)',
-                                      lambda: casui._calc_lines(caslex.parse('(2+3i)/(1-i)'), casutil.ev(caslex.parse('(2+3i)/(1-i)'))))),
-        ("calc-frac", lambda: casui.result('Calculate', 'sqrt(8)/(1/3+1/6)',
-                                           lambda: casui._calc_lines(caslex.parse('sqrt(8)/(1/3+1/6)'), casutil.ev(caslex.parse('sqrt(8)/(1/3+1/6)'))))),
-        ("cas-int", lambda: casui.result('integrate', 'x*e^x', casui._cas_op(2, caslex.parse('x*e^x'), 'x*e^x'))),
-        ("cas-partial", lambda: casui.result('partial fractions', '(3x+5)/((x-1)(x+2))',
-                                             casui._cas_op(9, caslex.parse('(3x+5)/((x-1)(x+2))'), ''))),
+        ("cas-int", lambda: casui.result('integrate', 'f(x) = x*e^x', casui._cas_op(2, caslex.parse('x*e^x'), 'x*e^x'))),
+        ("flash", lambda: casui.flash('b: unknown x')),
         ("plot-cubic", lambda: plot.run([caslex.parse('x^3-3x')], -4, 4, 'y', 'y = x^3-3x')),
-        ("plot-trace", lambda: (press(24, 25, 25, 25), plot.run([caslex.parse('sin(x)'), caslex.parse('cos(x)')], -6, 6, 'y', 'sin, cos'))),
-        ("plot-polar", lambda: plot.run([caslex.parse('1+cos(x)')], 0, 1, 'polar', 'r = 1+cos(th)')),
-        ("plot-points", lambda: plot.run([(1, 2), (2, 3.5), (3, 3), (4, 5), (5, 6.2)], 0, 1, 'points', 'scatter')),
-        ("flash", lambda: (casui._draw_input('Quadratic', 'a,b,c', list('1,x'), 3, False, False, 0), casui.flash('b: unknown x'))),
     ]
 
 

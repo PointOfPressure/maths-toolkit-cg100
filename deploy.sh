@@ -14,5 +14,7 @@ for f in "$DEST"/*.py; do
     [ $keep = 1 ] || { echo "delete $(basename "$f")"; rm -f "$f"; }
 done
 for d in $FILES; do echo "copy $d"; cp "$d" "$DEST/$d"; done
+# hwtest probes: tiny .mpy builds that tell us if precompiled modules load
+for m in hw/*.mpy; do [ -e "$m" ] && cp "$m" "$DEST/"; done
 sync
 echo "done: $(echo $FILES | wc -w) files"
