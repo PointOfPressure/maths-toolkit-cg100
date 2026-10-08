@@ -1329,6 +1329,36 @@ def t_lincomb(a, b, c, mx, vx, my, vy, wv):
     out.append(w('X, Y Normal so W is Normal'))
     return out
 
+def t_normsum(k, terms):
+    # W = sum of coef * (X1 + ... + Xcount), every copy independent
+    if len(terms) % 4 or not terms:
+        raise ValueError('terms come in fours: coef,count,mean,sd')
+    E = 0.0
+    V = 0.0
+    parts = []
+    i = 0
+    while i < len(terms):
+        c, n, mu, sd = terms[i:i + 4]
+        n = _whole(n, 'count', 1, 100000)
+        if sd < 0:
+            raise ValueError('sd must be >= 0')
+        E += c * n * mu
+        V += c * c * n * sd * sd
+        parts.append(fmt(c * c) + '*' + fmt(n) + '*' + p5(sd * sd))
+        i += 4
+    out = ['W ~ N(' + p5(E) + ', ' + p5(V) + ')', 'SD = ' + p5(_sqrt(V))]
+    if k is not None and V > 0:
+        z = (k - E) / _sqrt(V)
+        pl = casutil.phi(z)
+        out.append('P(W<' + fmt(k) + ') = ' + fmt(pl, 10 if casutil.FULL else 4))
+        out.append('P(W>' + fmt(k) + ') = ' + fmt(1.0 - pl, 10 if casutil.FULL else 4))
+        out.append(w('z = (k - E)/SD = ' + p5(z)))
+    out.append(w('E = sum coef*count*mean'))
+    out.append(w('Var = sum coef^2*count*sd^2'))
+    out.append(w('= ' + ' + '.join(parts)))
+    out.append(w('count n means X1+..+Xn, not nX'))
+    return out
+
 def t_nsum(mu, var, n, wv):
     if var < 0:
         raise ValueError('Var(X) must be >= 0')
@@ -2753,6 +2783,7 @@ SECTIONS = [
         ('Normal P from sample', 'a,b,data*', t_nsample),
         ('aX+bY+c', 'a,b,c,mx,vx,my,vy,k?', t_lincomb),
         ('nX vs X1+..+Xn', 'mu,var,n,k?', t_nsum),
+        ('Sum of Normals', 'k,terms*', t_normsum),
         ('Normal prob plot', 'data*', t_nplot),
     ]),
     ('R', 'Bivariate data', [

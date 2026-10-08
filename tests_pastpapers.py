@@ -549,6 +549,11 @@ CASES += [
     ('y420-jun25', '12', 'fcore', 'Roots with a relation', '(a,2/a,b,-b),1,-1,?,?,18', 'coeff of x^2 = 11'),
     ('y420-jun25', '12', 'fcore', 'Roots with a relation', '(a,2/a,b,-b),1,-1,?,?,18', 'coeff of x^1 = -9'),
     ('y420-jun23', '10a', 'fcore', 'Roots with a relation', '(a,b,a+b),1,-4,?,-6', 'z2 = 1+sqrt(2)i'),
+    # sums of Normals and of n copies
+    ('y422-nov20', '3b', 'fstat', 'Sum of Normals', '0,1,8,51.5,1.1,-1,2,100.7,1.6,-1,1,201.3,1.7', 'W ~ N(9.3, 17.69)'),
+    ('y422-nov20', '3b', 'fstat', 'Sum of Normals', '0,1,8,51.5,1.1,-1,2,100.7,1.6,-1,1,201.3,1.7', 'P(W>0) = 0.9865'),
+    ('y422-jun24', '3c', 'fstat', 'Sum of Normals', '0,1,1,46,3.1,-1,1,35,2.4,-1,1,12,2.2', 'W ~ N(-1, 20.21)'),
+    ('y422-jun24', '3c', 'fstat', 'Sum of Normals', '0,1,1,46,3.1,-1,1,35,2.4,-1,1,12,2.2', 'P(W<0) = 0.588'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

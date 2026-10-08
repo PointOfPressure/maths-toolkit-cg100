@@ -46,6 +46,7 @@ T = (
         ('Normal P from sample', 'a,b,data*'),
         ('aX+bY+c', 'a,b,c,mx,vx,my,vy,k?'),
         ('nX vs X1+..+Xn', 'mu,var,n,k?'),
+        ('Sum of Normals', 'k,terms*'),
         ('Normal prob plot', 'data*'),
     )),
     ('R', 'Bivariate data', (
