@@ -665,11 +665,210 @@ def rearrange(f, var='x', yname='y'):
 
 # ---- series ---------------------------------------------------------------
 
+# ---- truncated power series (exact rational coefficients) ---------------
+# Each series is a list of n+1 rationals (p, q).  Every operation is O(n^2), so
+# a 12-term series of e^(sin x) costs a few hundred multiplications instead of
+# twelve symbolic derivatives.
+
+def _tz(n):
+    return [caspoly.R0] * (n + 1)
+
+def _tmul(a, b, n):
+    out = _tz(n)
+    i = 0
+    while i <= n:
+        if a[i][0]:
+            j = 0
+            while i + j <= n:
+                if b[j][0]:
+                    out[i + j] = caspoly.radd(out[i + j], caspoly.rmul(a[i], b[j]))
+                j += 1
+        i += 1
+    return out
+
+def _tdiv(a, b, n):
+    if b[0][0] == 0:
+        return None
+    out = _tz(n)
+    k = 0
+    while k <= n:
+        s = a[k]
+        j = 1
+        while j <= k:
+            if b[j][0]:
+                s = caspoly.rsub(s, caspoly.rmul(b[j], out[k - j]))
+            j += 1
+        out[k] = caspoly.rdiv(s, b[0])
+        k += 1
+    return out
+
+def _tpow(a, al, n):
+    # a^al, al rational (p, q); a0 = 0 only for whole al >= 0
+    if al[1] == 1 and 0 <= al[0] <= 64:
+        out = [caspoly.R1] + _tz(n)[1:]
+        i = 0
+        while i < al[0]:
+            out = _tmul(out, a, n)
+            i += 1
+        return out
+    if a[0][0] == 0:
+        return None
+    b0 = caseng._ratpow(a[0], al)
+    r0 = None if b0 is None else caseng._ratval(b0)
+    if r0 is None:
+        return None
+    out = [r0] + _tz(n)[1:]
+    a1 = caspoly.radd(al, caspoly.R1)
+    k = 1
+    while k <= n:
+        s = caspoly.R0
+        j = 1
+        while j <= k:
+            if a[j][0]:
+                c = caspoly.rsub(caspoly.rmul(a1, (j, 1)), (k, 1))
+                s = caspoly.radd(s, caspoly.rmul(caspoly.rmul(c, a[j]), out[k - j]))
+            j += 1
+        out[k] = caspoly.rdiv(s, caspoly.rmul((k, 1), a[0]))
+        k += 1
+    return out
+
+def _tder(a, n):
+    return [caspoly.rmul((k + 1, 1), a[k + 1]) for k in range(n)] + [caspoly.R0]
+
+def _tint(a, c0, n):
+    return [c0] + [caspoly.rdiv(a[k - 1], (k, 1)) for k in range(1, n + 1)]
+
+def _tsc(a, n, hyp):
+    # (sin a, cos a) or (sinh a, cosh a) for a0 = 0
+    s = _tz(n)
+    c = [caspoly.R1] + _tz(n)[1:]
+    k = 1
+    while k <= n:
+        ss = caspoly.R0
+        cc = caspoly.R0
+        j = 1
+        while j <= k:
+            if a[j][0]:
+                ja = caspoly.rmul((j, 1), a[j])
+                ss = caspoly.radd(ss, caspoly.rmul(ja, c[k - j]))
+                cc = caspoly.radd(cc, caspoly.rmul(ja, s[k - j]))
+            j += 1
+        s[k] = caspoly.rdiv(ss, (k, 1))
+        c[k] = caspoly.rdiv(cc, (k, 1)) if hyp else caspoly.rneg(caspoly.rdiv(cc, (k, 1)))
+        k += 1
+    return s, c
+
+def _tconst(node):
+    r = caspoly.ratof(node)
+    if r is None and node[0] == 'n' and isinstance(node[1], float):
+        r = caseng._fltrat(node[1])
+    return r
+
+def taylor(f, var, n):
+    # Maclaurin coefficients c_0..c_n of f as rationals, or None
+    try:
+        return _tay(f, var, n)
+    except (ZeroDivisionError, TypeError, ValueError):
+        return None
+
+def _tay(f, var, n):
+    t = f[0]
+    if not caseng._hasvar(f, var):
+        r = _tconst(f)
+        return None if r is None else [r] + _tz(n)[1:]
+    if t == 'v':
+        out = _tz(n)
+        if n >= 1:
+            out[1] = caspoly.R1
+        return out
+    if t == 'neg':
+        a = _tay(f[1], var, n)
+        return None if a is None else [caspoly.rneg(c) for c in a]
+    if t in ('+', '-', '*', '/'):
+        a = _tay(f[1], var, n)
+        b = None if a is None else _tay(f[2], var, n)
+        if b is None:
+            return None
+        if t == '+':
+            return [caspoly.radd(a[i], b[i]) for i in range(n + 1)]
+        if t == '-':
+            return [caspoly.rsub(a[i], b[i]) for i in range(n + 1)]
+        if t == '*':
+            return _tmul(a, b, n)
+        return _tdiv(a, b, n)
+    if t == '^':
+        if caseng._hasvar(f[2], var):
+            return None
+        al = _tconst(caseng.simplify(f[2]))
+        a = None if al is None else _tay(f[1], var, n)
+        return None if a is None else _tpow(a, al, n)
+    if t not in ('exp', 'ln', 'sqrt', 'sin', 'cos', 'tan', 'sec', 'cosec', 'cot',
+                 'sinh', 'cosh', 'tanh', 'sech', 'cosech', 'coth',
+                 'asin', 'atan', 'asinh', 'atanh'):
+        return None
+    a = _tay(f[1], var, n)
+    if a is None:
+        return None
+    if t == 'sqrt':
+        return _tpow(a, (1, 2), n)
+    if t == 'ln':
+        if a[0] != caspoly.R1:
+            return None
+        d = _tdiv(_tder(a, n), a, n)
+        return None if d is None else _tint(d, caspoly.R0, n)
+    if a[0][0] != 0:
+        return None
+    if t == 'exp':
+        b = [caspoly.R1] + _tz(n)[1:]
+        k = 1
+        while k <= n:
+            s = caspoly.R0
+            j = 1
+            while j <= k:
+                if a[j][0]:
+                    s = caspoly.radd(s, caspoly.rmul(caspoly.rmul((j, 1), a[j]), b[k - j]))
+                j += 1
+            b[k] = caspoly.rdiv(s, (k, 1))
+            k += 1
+        return b
+    if t in ('asin', 'atan', 'asinh', 'atanh'):
+        sq = _tmul(a, a, n)
+        sg = caspoly.R1 if t in ('atan', 'asinh') else (-1, 1)
+        w = [caspoly.radd(caspoly.R1, caspoly.rmul(sg, sq[0]))] + \
+            [caspoly.rmul(sg, sq[k]) for k in range(1, n + 1)]
+        if t in ('asin', 'asinh'):
+            w = _tpow(w, (-1, 2), n)
+            d = None if w is None else _tmul(_tder(a, n), w, n)
+        else:
+            d = _tdiv(_tder(a, n), w, n)
+        return None if d is None else _tint(d, caspoly.R0, n)
+    hyp = t in ('sinh', 'cosh', 'tanh', 'sech', 'cosech', 'coth')
+    s, c = _tsc(a, n, hyp)
+    one = [caspoly.R1] + _tz(n)[1:]
+    if t in ('sin', 'sinh'):
+        return s
+    if t in ('cos', 'cosh'):
+        return c
+    if t in ('tan', 'tanh'):
+        return _tdiv(s, c, n)
+    if t in ('sec', 'sech'):
+        return _tdiv(one, c, n)
+    return None
+
 def maclaurin(f, var='x', n=4):
     if n > MAXTERMS:
         n = MAXTERMS
     items = []
     g = _S(f)
+    co = taylor(g, var, n - 1) if n >= 1 else None
+    if co is not None:
+        k = 0
+        while k < n:
+            if co[k][0]:
+                items.append((_prod([(caspoly.ratnode(co[k]), 1),
+                                     (caseng._pow(('v', var), _num(k)), 1)]), 1))
+            k += 1
+        return _sum(items) if items else _num(0)
     k = 0
     fact = 1
     while k < n:

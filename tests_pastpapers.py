@@ -502,6 +502,16 @@ CASES += [
     ('y420-jun19', '17c(i)', 'fcalc', 'Integrating factor', '0.1,-2,10,0', 'C = 20*e'),
     ('y420-jun19', '17c(i)', 'fcalc', 'Integrating factor', '0.1,-2,10,0', '20*e^(-x/10+1)-20'),
     ('y420-jun24', '17b', 'fcalc', 'Integrating factor', '1/(200-x),10,0,0', 'C = 10*ln(200)'),
+    # Maclaurin by power-series arithmetic, up to n = 12
+    ('y420-jun24', '10a', 'fcore', 'Maclaurin series', 'ln(1+x^3),9', 'x^9/3-x^6/2+x^3'),
+    # '?' coefficients found from a given root
+    ('y420-spec', '4', 'fcore', 'Cubic real coeffs', '1,-5,?,-15,1+2i', 'c = 11'),
+    ('y420-spec', '4', 'fcore', 'Cubic real coeffs', '1,-5,?,-15,1+2i', 'z1 = 3'),
+    ('y420-jun25', '12', 'fcore', 'Quartic real coeffs', '1,-1,?,?,18,3i', 'c = 11'),
+    ('y420-jun25', '12', 'fcore', 'Quartic real coeffs', '1,-1,?,?,18,3i', 'd = -9'),
+    ('y420-jun25', '12', 'fcore', 'Quartic real coeffs', '1,-1,?,?,18,3i', '1/2+sqrt(7)i/2'),
+    # decimal right-hand side
+    ('y420-jun25', '17b(i)', 'fcalc', 'PI polynomial RHS', '1,0.3,0.02,0.4', 'A*e^(-x/10)+B*e^(-x/5)+20'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

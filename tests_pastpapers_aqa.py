@@ -773,6 +773,10 @@ CASES += [
     # letters as parameters in CAS solve and factorise
     ('73572-jun19', '7bi', 'casui:CAS', 'solve exact f(x)=0', '3x^2+6p*x=0', 'x = -2*p', None, False, False),
     ('73572-jun19', '7bi', 'casui:CAS', 'factorise', '3x^2+6p*x', '3*x*(x+2*p)', None, False, False),
+    # the lost a^k of N/(ax+b)^k
+    ('73572-jun24', '9ci', 'casui:CAS', 'series (Maclaurin)', '12x/((1+3x)(2-3x))', '-9*x^2+6*x', '3', False, False),
+    ('73572-jun24', '9ci', 'casui:CAS', 'd/dx', '12x/((1+3x)(2-3x))', '(108*x^2+24)/((3*x+1)^2*(3*x-2)^2)', None, False, False),
+    ('73573-jun22', '10d', 'mcalc:G', 'Stationary points', '(x^2+10)/(2x+5)', "f'(x) = (2*x^2+10*x-20)/(2*x+5)^2", None, False, False),
     # real cube root
     ('73571-jun19', '15ai', 'casui:Calculate', 'Calculate', '(-3)^(1/3)', '-1.44224957', None, False, False),
 ]

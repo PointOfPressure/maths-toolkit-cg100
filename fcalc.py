@@ -973,7 +973,10 @@ def _gauss(M, rhs):
     return [rhs[i] / M[i][i] for i in range(n)]
 
 def _poly_coeffs(tree):
+    # simplified first, so a decimal constant (0.4) reads as 2/5
     p = caspoly.poly(tree, 'x')
+    if p is None:
+        p = caspoly.poly(caseng.simplify(tree), 'x')
     if p is None:
         raise ValueError('f(x) must be a polynomial in x')
     if not p:

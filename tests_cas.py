@@ -214,7 +214,20 @@ SOLVE = [
     ('tanh(x)-1/2', ['ln(3)/2']),
 ]
 
+TAYLOR = [
+    # power-series arithmetic: (f, n, coefficients as p/q strings)
+    ('e^(sin(x))', 5, '1 1 1/2 0 -1/8 -1/15'),
+    ('ln(1+x^3)', 9, '0 0 0 1 0 0 -1/2 0 0 1/3'),
+    ('tan(x)', 5, '0 1 0 1/3 0 2/15'),
+    ('(4-x^3)^(-1/2)', 6, '1/2 0 0 1/16 0 0 3/256'),
+    ('asin(x)', 5, '0 1 0 1/6 0 3/40'),
+]
+
 def run(check):
+    for src, n, want in TAYLOR:
+        r = casalg.taylor(caseng.simplify(P(src)), 'x', n)
+        got = None if r is None else ' '.join([str(a) if b == 1 else str(a) + '/' + str(b) for a, b in r])
+        check('cas taylor ' + src, got == want, got)
     for src, want in CANON:
         got = S(src)
         check('cas canonical ' + src, got == want, got)

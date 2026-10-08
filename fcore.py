@@ -1033,10 +1033,54 @@ def _checkroot(co, z, out):
                 q += ('-' if re > 0 else '+') + _f(2 * abs(re)) + 'z'
             out.append(_w('with its conjugate: factor ' + q + '+' + _f(md * md)))
 
+_CNAMES = 'abcde'
+
+def _unknowns(co, z):
+    # fill '?' coefficients from the known root z: p(z) = 0 is linear in them,
+    # one real equation for a real z, two for a non-real one
+    U = [i for i in range(len(co)) if co[i] is None]
+    if not U:
+        return co, []
+    if z is None:
+        raise ValueError('give the known root z to find ' + _CNAMES[U[0]])
+    z = _cx(z)
+    n = len(co) - 1
+    R = complex(0, 0)
+    for i in range(len(co)):
+        if co[i] is not None:
+            R -= co[i] * z ** (n - i)
+    ws = [z ** (n - i) for i in U]
+    real = abs(z.imag) < 1e-12
+    if len(U) == 1:
+        if abs(ws[0]) < 1e-15:
+            raise ValueError('z = 0 gives no equation for ' + _CNAMES[U[0]])
+        v = R / ws[0]
+        if abs(v.imag) > 1e-9 * (1 + abs(v.real)):
+            raise ValueError('no real ' + _CNAMES[U[0]] + ' has this root')
+        vals = [v.real]
+    elif len(U) == 2 and not real:
+        a11, a12, a21, a22 = ws[0].real, ws[1].real, ws[0].imag, ws[1].imag
+        det = a11 * a22 - a12 * a21
+        if abs(det) < 1e-12:
+            raise ValueError('the root does not fix both unknowns')
+        vals = [(R.real * a22 - a12 * R.imag) / det, (a11 * R.imag - a21 * R.real) / det]
+    else:
+        raise ValueError('one ? for a real root, at most two for a non-real one')
+    co = list(co)
+    lines = []
+    for k in range(len(U)):
+        v = _snap(vals[k])
+        co[U[k]] = v
+        lines.append(_CNAMES[U[k]] + ' = ' + _f(v))
+    return co, lines
+
 def t_cubic(a, b, c, d, z):
+    (a, b, c, d), found = _unknowns([a, b, c, d], z)
     if a == 0:
         raise ValueError('a must not be 0')
     rs, out = _rootlines([a, b, c, d], 'z')
+    if found:
+        out = found + [_w('from p(z) = 0 at the given root')] + out
     if z is not None:
         _checkroot([a, b, c, d], z, out)
     out.append(_w('sum = -b/a = ' + _f(-b * 1.0 / a)))
@@ -1050,9 +1094,12 @@ def t_cubic(a, b, c, d, z):
     return out
 
 def t_quartic(a, b, c, d, e, z):
+    (a, b, c, d, e), found = _unknowns([a, b, c, d, e], z)
     if a == 0:
         raise ValueError('a must not be 0')
     rs, out = _rootlines([a, b, c, d, e], 'z')
+    if found:
+        out = found + [_w('from p(z) = 0 at the given root')] + out
     if z is not None:
         _checkroot([a, b, c, d, e], z, out)
     out.append(_w('sum = -b/a = ' + _f(-b * 1.0 / a)))
@@ -3092,6 +3139,11 @@ def _mac(f, n):
     for v in caseng.vars_in(f):
         if v != 'x':
             raise ValueError('f(x): type it in x')
+    import casalg
+    rat = casalg.taylor(caseng.simplify(f), 'x', n)
+    if rat is not None:
+        co = [r[0] * 1.0 / r[1] for r in rat]
+        return co, caseng.simplify(caspoly.ptree(caspoly.ptrim(list(rat)), 'x'))
     co = []
     rat = []
     ok = True
@@ -3124,7 +3176,7 @@ def _mac(f, n):
 
 def t_maclaurin(f, n):
     # s3, s4, s5
-    n = _iv(n, 'n', 1, 8)
+    n = _iv(n, 'n', 1, 12)
     co, tree = _mac(f, n)
     out = ['f(x) =', _m(tree)]
     I = _ival(f)
@@ -3144,7 +3196,7 @@ def t_maclaurin(f, n):
 
 def t_macapprox(f, n, a):
     # s3: use the series to approximate f(a)
-    n = _iv(n, 'n', 1, 8)
+    n = _iv(n, 'n', 1, 12)
     co, tree = _mac(f, n)
     s = 0.0
     k = n
