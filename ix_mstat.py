@@ -7,12 +7,14 @@ T = (
     )),
     ('L', 'Data presentation', (
         ('Summary stats', 'data*'),
-        ('Stats from summary', 'n,sumx,sumx2'),
+        ('Stats from summary', 'n,sumx,sumx2,Sxx?'),
         ('Frequency table', 'value freq pairs*'),
         ('Grouped table', 'lower upper freq*'),
+        ('Grouped from fd', 'lower upper fd*'),
         ('Coding x from y', 'a,b,ybar,sdy'),
         ('Combine two groups', 'n1,m1,s1,n2,m2,s2'),
         ('Outliers', 'data*'),
+        ('Outlier limits', 'Q1,Q2,Q3,k?'),
         ('Histogram', 'lower upper freq*'),
         ('Box plot', 'data*'),
         ('Cumulative frequency', 'lower upper freq*'),
@@ -25,6 +27,7 @@ T = (
         ('Two-way table counts', 'nAB,nAnotB,nBnotA,nNeither'),
         ('Tree two stage', 'pA,pB_A,pB_notA'),
         ('Venn: find the ?', 'pA,pB,pAandB,pAorB'),
+        ('Three-set Venn', 'A,B,C,AB,AC,BC,ABC,total?'),
     )),
     ('N', 'Statistical distributions', (
         ('Binomial P(X=k)', 'n,p,k'),

@@ -91,7 +91,9 @@ def _rest_lines(v):
         return []
     out = []
     n = 0
-    for r in cascalc.solve(v, 't'):
+    p = caspoly.poly(v, 't')
+    rs = _troots(v) if p is not None and len(p) <= 3 else cascalc.solve(v, 't')
+    for r in rs:
         if r >= -1e-9 and n < 4:
             out.append(_w('v = 0 at t = ' + _s3(r if r > 0 else 0.0)))
             n += 1
@@ -425,7 +427,9 @@ def t_dist(f, t0, t1):
     if t1 == t0:
         raise ValueError('t0 and t1 must differ')
     turns = []
-    for r in cascalc.solve(f, 't'):
+    p = caspoly.poly(f, 't')
+    for r in (_troots(f) if p is not None and len(p) <= 3 else
+              cascalc.solve(f, 't')):
         if t0 + 1e-9 < r and r < t1 - 1e-9:
             turns.append(r)
     turns.sort()

@@ -234,11 +234,84 @@ def _bin(n, p):
     ni = _int(n, 'n')
     if ni < 1:
         raise ValueError('n must be 1 or more')
-    if ni > 1000:
-        raise ValueError('n too large (max 1000)')
+    if ni > 100000:
+        raise ValueError('n too large (max 100000)')
     if p < 0.0 or p > 1.0:
         raise ValueError('p must be between 0 and 1')
     return ni
+
+
+# For n over 1000 the probabilities come from one table built outward from
+# the mode and scaled to sum to 1, so nothing underflows and each tool does
+# one pass of about 20 standard deviations, not n^2 work.
+_BT = [None]
+
+
+def _btab(n, p):
+    t = _BT[0]
+    if t is not None and t[0] == n and t[1] == p:
+        return t
+    q = 1.0 - p
+    if p <= 0.0 or q <= 0.0:
+        k0 = 0 if p <= 0.0 else n
+        t = (n, p, k0, [1.0], [1.0])
+        _BT[0] = t
+        return t
+    m = int((n + 1) * p)
+    if m > n:
+        m = n
+    up = [1.0]
+    v = 1.0
+    k = m
+    while k < n:
+        v = v * (n - k) / (k + 1.0) * p / q
+        if v < 1e-18:
+            break
+        up.append(v)
+        k += 1
+    dn = []
+    v = 1.0
+    k = m
+    while k > 0:
+        v = v * k / (n - k + 1.0) * q / p
+        if v < 1e-18:
+            break
+        dn.append(v)
+        k -= 1
+    dn.reverse()
+    vals = dn + up
+    tot = 0.0
+    for v in vals:
+        tot += v
+    pm = [v / tot for v in vals]
+    cum = []
+    c = 0.0
+    for v in pm:
+        c += v
+        cum.append(c)
+    t = (n, p, m - len(dn), pm, cum)
+    _BT[0] = t
+    return t
+
+
+def _pmf(n, p, k):
+    if n <= 1000:
+        return casutil.binom_pmf(n, p, k)
+    t = _btab(n, p)
+    i = k - t[2]
+    return t[3][i] if 0 <= i < len(t[3]) else 0.0
+
+
+def _cdf(n, p, k):
+    if n <= 1000:
+        return casutil.binom_cdf(n, p, k)
+    t = _btab(n, p)
+    i = k - t[2]
+    if i < 0:
+        return 0.0
+    if i >= len(t[4]):
+        return 1.0
+    return t[4][i]
 
 
 def _sd(sigma):
@@ -257,6 +330,22 @@ def _alpha(sig):
     return sig / 100.0
 
 
+def _sigp(sig):
+    # 10 means 10%; 0.1 (up to 0.2) is read as the proportion 10%
+    if 0.0 < sig <= 0.2:
+        pct = sig * 100.0
+        return (pct, _W('sig ' + _f(sig) + ' read as ' + _f(pct) + '%'))
+    return (sig, None)
+
+
+def _signote(sig, fn):
+    pct, note = _sigp(sig)
+    out = fn(pct)
+    if note is not None:
+        out.insert(1, note)
+    return out
+
+
 def _zc(a):
     # (critical z, came from the table?) - falls back to the inverse cdf
     v = tables.z_crit(a)
@@ -267,6 +356,14 @@ def _zc(a):
 
 def _cr_low(n, p, a):
     # largest c with P(X <= c) <= a, or -1 when the region is empty
+    if n > 1000:
+        t = _btab(n, p)
+        c = t[2] - 1
+        for v in t[4]:
+            if v > a + 1e-12:
+                break
+            c += 1
+        return c
     c = -1
     acc = 0.0
     i = 0
@@ -281,6 +378,16 @@ def _cr_low(n, p, a):
 
 def _cr_up(n, p, a):
     # smallest c with P(X >= c) <= a, or n+1 when the region is empty
+    if n > 1000:
+        t = _btab(n, p)
+        c = t[2] + len(t[4])
+        i = len(t[4]) - 1
+        while i >= 0:
+            if 1.0 - (t[4][i - 1] if i > 0 else 0.0) > a + 1e-12:
+                break
+            c = t[2] + i
+            i -= 1
+        return c
     c = n + 1
     acc = 0.0
     i = n
@@ -291,6 +398,56 @@ def _cr_up(n, p, a):
         c = i
         i -= 1
     return c
+
+
+def _tupper(t, v):
+    # P(T > t) for T ~ t with v (whole) degrees of freedom, t >= 0
+    th = math.atan(t / math.sqrt(v))
+    c2 = math.cos(th) ** 2
+    if v % 2:
+        s = 0.0
+        term = 1.0
+        k = 1
+        while k <= v - 2:
+            s += term
+            term = term * c2 * (k + 1) / (k + 2.0)
+            k += 2
+        a = 2.0 / math.pi * (th + math.sin(th) * math.cos(th) * s) if v > 1 \
+            else 2.0 * th / math.pi
+    else:
+        s = 0.0
+        term = 1.0
+        k = 0
+        while k <= v - 2:
+            s += term
+            term = term * c2 * (k + 1) / (k + 2.0)
+            k += 2
+        a = math.sin(th) * s
+    return (1.0 - a) / 2.0
+
+
+def _rcrit_t(n, q):
+    # PMCC critical value at one-tail level q from t(n - 2)
+    v = n - 2
+    lo = 0.0
+    hi = 60.0
+    k = 0
+    while k < 60:
+        mid = (lo + hi) / 2.0
+        if _tupper(mid, v) > q:
+            lo = mid
+        else:
+            hi = mid
+        k += 1
+    t = (lo + hi) / 2.0
+    return t / math.sqrt(v + t * t)
+
+
+def _pmcc_crit(n, q):
+    cv = tables.pmcc_crit(n, q)
+    if cv is None and n > 30:
+        cv = _rcrit_t(n, q)
+    return cv
 
 
 def _verdict(rej, sig):
@@ -439,10 +596,14 @@ def t_summary(data):
     return lines
 
 
-def t_fromsum(n, sumx, sumx2):
+def t_fromsum(n, sumx, sumx2, sxx):
     ni = _int(n, 'n')
     if ni < 1:
         raise ValueError('n must be 1 or more')
+    if sumx2 is None:
+        if sxx is None:
+            raise ValueError('give sum x^2 or Sxx')
+        sumx2 = sxx + sumx * sumx / ni
     mean = sumx / ni
     vp = sumx2 / ni - mean * mean
     if vp < 0.0:
@@ -579,6 +740,22 @@ def t_combine(n1, m1, s1, n2, m2, s2):
     lines.append(_WARN('sd entered with the n divisor'))
     return lines
 
+def t_fences(q1, med, q3, k):
+    # outlier limits from given quartiles
+    if q3 < q1:
+        raise ValueError('need Q1 <= Q3')
+    k = 1.5 if k is None else k
+    iqr = q3 - q1
+    lines = ['Q1 - ' + _f(k) + ' IQR = ' + _c(q1 - k * iqr, 6),
+             'Q3 + ' + _f(k) + ' IQR = ' + _c(q3 + k * iqr, 6),
+             'IQR = ' + _c(iqr, 6)]
+    if med is not None:
+        lines.append('median -+ ' + _f(k) + ' IQR = ' + _c(med - k * iqr, 6) +
+                     ' to ' + _c(med + k * iqr, 6))
+    lines.append(_W('outside the limits counts as an outlier'))
+    return lines
+
+
 def t_outliers(data):
     n, mean, sdn, s1, sx, sxx, ss = _stats(data)
     srt = _srt(data)
@@ -610,6 +787,19 @@ def t_outliers(data):
     lines.append(_W('mean = ' + _f(mean) + '   sd (n) = ' + _f(sdn)))
     lines.append(_WARN('an outlier can still be genuine data'))
     return lines
+
+
+def t_groupedfd(data):
+    # classes given as lower, upper, frequency density
+    cl = _tri(data)
+    out = []
+    fl = []
+    for lo, hi, fd in cl:
+        fr = fd * (hi - lo)
+        fl += [lo, hi, fr]
+        out.append(_W(_f(lo) + '-' + _f(hi) + ': f = ' + _f(fd) + ' x ' +
+                      _f(hi - lo) + ' = ' + _f(fr)))
+    return t_grouped(fl) + [_W('frequency = density x width')] + out
 
 
 def t_hist(data):
@@ -819,6 +1009,27 @@ def t_twoway(nAB, nAnotB, nBnotA, nNeither):
     return lines
 
 
+def t_venn3(a, b, c, ab, ac, bc, abc, tot):
+    # three sets from the totals and the overlaps (counts or probabilities)
+    r = [abc, ab - abc, ac - abc, bc - abc]
+    oa = a - r[1] - r[2] - abc
+    ob = b - r[1] - r[3] - abc
+    oc = c - r[2] - r[3] - abc
+    union = oa + ob + oc + r[1] + r[2] + r[3] + abc
+    lines = ['only A = ' + _p(oa), 'only B = ' + _p(ob), 'only C = ' + _p(oc),
+             'A and B only = ' + _p(r[1]), 'A and C only = ' + _p(r[2]),
+             'B and C only = ' + _p(r[3]), 'all three = ' + _p(abc),
+             'A or B or C = ' + _p(union)]
+    if tot is not None:
+        lines.append('none = ' + _p(tot - union))
+    lines.append(_W('only A = A - (A and B) - (A and C) + (all three)'))
+    lines.append(_W('A or B or C = A + B + C - AB - AC - BC + ABC'))
+    if min(oa, ob, oc, r[1], r[2], r[3], abc) < 0 or \
+            (tot is not None and tot - union < 0):
+        lines.append(_WARN('a region is negative: check the numbers'))
+    return lines
+
+
 def t_venn(pA, pB, pAB, pU):
     vals = [pA, pB, pAB, pU]
     miss = [i for i in range(4) if vals[i] is None]
@@ -903,13 +1114,14 @@ def t_tree(pA, pB_A, pB_notA):
 def t_bpmf(n, p, k):
     ni = _bin(n, p)
     ki = _int(k, 'k')
-    pk = casutil.binom_pmf(ni, p, ki)
+    pk = _pmf(ni, p, ki)
     lines = ['P(X = ' + _p(ki) + ') = ' + _f(pk)]
     if ki < 0 or ki > ni:
         lines.append(_WARN('k is outside 0..' + _p(ni)))
         return lines
     lines.append(_W('X ~ B(' + _p(ni) + ', ' + _f(p) + ')'))
-    lines.append(_W('nCk = ' + _p(casutil.ncr(ni, ki))))
+    if ni <= 60:
+        lines.append(_W('nCk = ' + _p(casutil.ncr(ni, ki))))
     lines.append(_W('nCk p^k (1-p)^(n-k) = ' + _f(pk)))
     return lines
 
@@ -917,9 +1129,9 @@ def t_bpmf(n, p, k):
 def t_bcdf(n, p, k):
     ni = _bin(n, p)
     ki = _int(k, 'k')
-    c = casutil.binom_cdf(ni, p, ki)
+    c = _cdf(ni, p, ki)
     return ['P(X <= ' + _p(ki) + ') = ' + _f(c),
-            'P(X < ' + _p(ki) + ') = ' + _f(casutil.binom_cdf(ni, p, ki - 1)),
+            'P(X < ' + _p(ki) + ') = ' + _f(_cdf(ni, p, ki - 1)),
             'P(X > ' + _p(ki) + ') = ' + _f(1.0 - c),
             _W('X ~ B(' + _p(ni) + ', ' + _f(p) + ')'),
             _W('sum of P(X=0) .. P(X=' + _p(ki) + ')')]
@@ -928,9 +1140,9 @@ def t_bcdf(n, p, k):
 def t_bge(n, p, k):
     ni = _bin(n, p)
     ki = _int(k, 'k')
-    below = casutil.binom_cdf(ni, p, ki - 1)
+    below = _cdf(ni, p, ki - 1)
     return ['P(X >= ' + _p(ki) + ') = ' + _f(1.0 - below),
-            'P(X > ' + _p(ki) + ') = ' + _f(1.0 - casutil.binom_cdf(ni, p, ki)),
+            'P(X > ' + _p(ki) + ') = ' + _f(1.0 - _cdf(ni, p, ki)),
             _W('X ~ B(' + _p(ni) + ', ' + _f(p) + ')'),
             _W('P(X >= k) = 1 - P(X <= k-1)'),
             _W('P(X <= ' + _p(ki - 1) + ') = ' + _f(below))]
@@ -942,8 +1154,8 @@ def t_brange(n, p, a, b):
     bi = _int(b, 'b')
     if bi < ai:
         raise ValueError('b must be at least a')
-    lo = casutil.binom_cdf(ni, p, ai - 1)
-    hi = casutil.binom_cdf(ni, p, bi)
+    lo = _cdf(ni, p, ai - 1)
+    hi = _cdf(ni, p, bi)
     return ['P(' + _p(ai) + ' <= X <= ' + _p(bi) + ') = ' + _f(hi - lo),
             _W('X ~ B(' + _p(ni) + ', ' + _f(p) + ')'),
             _W('P(X <= ' + _p(bi) + ') = ' + _f(hi)),
@@ -958,7 +1170,18 @@ def t_binv(n, p, prob):
     acc = 0.0
     prev = 0.0
     k = 0
-    while True:
+    if ni > 1000:
+        t = _btab(ni, p)
+        k = t[2]
+        for v in t[4]:
+            prev = acc
+            acc = v
+            if acc >= prob - 1e-12:
+                break
+            k += 1
+        if k > ni:
+            k = ni
+    while ni <= 1000:
         prev = acc
         acc += casutil.binom_pmf(ni, p, k)
         if acc >= prob - 1e-12 or k >= ni:
@@ -1092,7 +1315,7 @@ def t_napprox(n, p, a, b):
     zl = -40.0 if lo == 0 and a is None else (lo - 0.5 - mu) / sd
     zh = 40.0 if hi == ni and b is None else (hi + 0.5 - mu) / sd
     ap = casutil.phi(zh) - casutil.phi(zl)
-    pk = casutil.binom_pmf(ni, p, lo)
+    pk = _pmf(ni, p, lo)
     ex = 0.0
     k = lo
     r = p / (1.0 - p)
@@ -1277,8 +1500,8 @@ def _htbin(n, p0, x, sig, tail):
     if p0 <= 0.0 or p0 >= 1.0:
         raise ValueError('p0 must be strictly between 0 and 1')
     a = _alpha(sig)
-    lo = casutil.binom_cdf(ni, p0, xi)
-    up = 1.0 - casutil.binom_cdf(ni, p0, xi - 1)
+    lo = _cdf(ni, p0, xi)
+    up = 1.0 - _cdf(ni, p0, xi - 1)
     lines = []
     if tail == 'low':
         cr = _cr_low(ni, p0, a)
@@ -1291,7 +1514,7 @@ def _htbin(n, p0, x, sig, tail):
         lines.append(_W('compare with alpha = ' + _f(a)))
         if cr >= 0:
             lines.append(_W('P(X <= ' + _p(cr) + ') = ' +
-                            _f(casutil.binom_cdf(ni, p0, cr))))
+                            _f(_cdf(ni, p0, cr))))
     elif tail == 'up':
         cr = _cr_up(ni, p0, a)
         rej = xi >= cr
@@ -1303,7 +1526,7 @@ def _htbin(n, p0, x, sig, tail):
         lines.append(_W('compare with alpha = ' + _f(a)))
         if cr <= ni:
             lines.append(_W('P(X >= ' + _p(cr) + ') = ' +
-                            _f(1.0 - casutil.binom_cdf(ni, p0, cr - 1))))
+                            _f(1.0 - _cdf(ni, p0, cr - 1))))
     else:
         h = a / 2.0
         cl = _cr_low(ni, p0, h)
@@ -1336,15 +1559,15 @@ def _htbin(n, p0, x, sig, tail):
 
 
 def t_htb_low(n, p0, x, sig):
-    return _htbin(n, p0, x, sig, 'low')
+    return _signote(sig, lambda s: _htbin(n, p0, x, s, 'low'))
 
 
 def t_htb_up(n, p0, x, sig):
-    return _htbin(n, p0, x, sig, 'up')
+    return _signote(sig, lambda s: _htbin(n, p0, x, s, 'up'))
 
 
 def t_htb_two(n, p0, x, sig):
-    return _htbin(n, p0, x, sig, 'two')
+    return _signote(sig, lambda s: _htbin(n, p0, x, s, 'two'))
 
 
 def _ztest(mu0, sigma, n, xbar, sig, tail):
@@ -1397,15 +1620,15 @@ def _cregion(tail, mu0, dz):
     return 'CR: xbar >= ' + _c(mu0 + dz, 4)
 
 def t_htz_low(mu0, sigma, n, xbar, sig):
-    return _ztest(mu0, sigma, n, xbar, sig, 'low')
+    return _signote(sig, lambda s: _ztest(mu0, sigma, n, xbar, s, 'low'))
 
 
 def t_htz_up(mu0, sigma, n, xbar, sig):
-    return _ztest(mu0, sigma, n, xbar, sig, 'up')
+    return _signote(sig, lambda s: _ztest(mu0, sigma, n, xbar, s, 'up'))
 
 
 def t_htz_two(mu0, sigma, n, xbar, sig):
-    return _ztest(mu0, sigma, n, xbar, sig, 'two')
+    return _signote(sig, lambda s: _ztest(mu0, sigma, n, xbar, s, 'two'))
 
 
 def _htr(r, n, sig, tails):
@@ -1416,7 +1639,7 @@ def _htr(r, n, sig, tails):
         raise ValueError('n must be 3 or more')
     a = _alpha(sig)
     q = a if tails == 1 else a / 2.0
-    cv = tables.pmcc_crit(ni, q)
+    cv = _pmcc_crit(ni, q)
     if cv is None:
         return ['no critical value',
                 'r = ' + _f(r) + '   n = ' + _p(ni),
@@ -1438,19 +1661,25 @@ def _htr(r, n, sig, tails):
         lines.append(_W('H1: rho =/= 0, two tail at ' + _f(sig) + '%'))
         lines.append(_W('table read at ' + _f(q * 100.0) + '% one tail'))
     lines.append(_W('compare |r| = ' + _f(ar) + ' with ' + _c(cv, 4)))
+    if ni > 30:
+        lines.append(_W('n > 30: critical value from t(' + _p(ni - 2) + ')'))
     lines.append(_WARN('a sample r tests the population rho'))
     return lines
 
 
 def t_htr1(r, n, sig):
-    return _htr(r, n, sig, 1)
+    return _signote(sig, lambda s: _htr(r, n, s, 1))
 
 
 def t_htr2(r, n, sig):
-    return _htr(r, n, sig, 2)
+    return _signote(sig, lambda s: _htr(r, n, s, 2))
 
 
 def t_zcrit(sig):
+    return _signote(sig, _zcrit)
+
+
+def _zcrit(sig):
     a = _alpha(sig)
     z1, t1 = _zc(a)
     z2, t2 = _zc(a / 2.0)
@@ -1464,12 +1693,16 @@ def t_zcrit(sig):
 
 
 def t_rcrit(n, sig):
+    return _signote(sig, lambda s: _rcrit(n, s))
+
+
+def _rcrit(n, sig):
     ni = _int(n, 'n')
     if ni < 3:
         raise ValueError('n must be 3 or more')
     a = _alpha(sig)
-    c1 = tables.pmcc_crit(ni, a)
-    c2 = tables.pmcc_crit(ni, a / 2.0)
+    c1 = _pmcc_crit(ni, a)
+    c2 = _pmcc_crit(ni, a / 2.0)
     lines = []
     if c1 is None:
         lines.append('1 tail: no table entry')
@@ -1481,6 +1714,8 @@ def t_rcrit(n, sig):
         lines.append('2 tail r = +/- ' + _c(c2, 4))
     lines.append(_W('n = ' + _p(ni) + ' at ' + _f(sig) + '%'))
     lines.append(_W('two tail reads the ' + _f(a * 50.0) + '% column'))
+    if ni > 30:
+        lines.append(_W('n > 30: from t(' + _p(ni - 2) + ')'))
     if c1 is None or c2 is None:
         lines.append(_WARN('table holds n = 4..30 at 5, 2.5, 1, 0.5%'))
     return lines
@@ -1494,12 +1729,14 @@ SECTIONS = [
     ]),
     ('L', 'Data presentation', [
         ('Summary stats', 'data*', t_summary),
-        ('Stats from summary', 'n,sumx,sumx2', t_fromsum),
+        ('Stats from summary', 'n,sumx,sumx2,Sxx?', t_fromsum),
         ('Frequency table', 'value freq pairs*', t_freq),
         ('Grouped table', 'lower upper freq*', t_grouped),
+        ('Grouped from fd', 'lower upper fd*', t_groupedfd),
         ('Coding x from y', 'a,b,ybar,sdy', t_coding),
         ('Combine two groups', 'n1,m1,s1,n2,m2,s2', t_combine),
         ('Outliers', 'data*', t_outliers),
+        ('Outlier limits', 'Q1,Q2,Q3,k?', t_fences),
         ('Histogram', 'lower upper freq*', t_hist),
         ('Box plot', 'data*', t_box),
         ('Cumulative frequency', 'lower upper freq*', t_cumfreq),
@@ -1512,6 +1749,7 @@ SECTIONS = [
         ('Two-way table counts', 'nAB,nAnotB,nBnotA,nNeither', t_twoway),
         ('Tree two stage', 'pA,pB_A,pB_notA', t_tree),
         ('Venn: find the ?', 'pA,pB,pAandB,pAorB', t_venn),
+        ('Three-set Venn', 'A,B,C,AB,AC,BC,ABC,total?', t_venn3),
     ]),
     ('N', 'Statistical distributions', [
         ('Binomial P(X=k)', 'n,p,k', t_bpmf),
