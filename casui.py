@@ -68,9 +68,20 @@ def wait_release():
         pass
     _HELD[0] = 0
 
+# No key for this many polls (roughly 10-15 minutes) quits, so a forgotten
+# session can't keep the calculator awake and drain the battery.
+IDLE = 6000000
+
+class Idle(BaseException):
+    pass
+
 def wait_key():
     k = readkey()
+    n = 0
     while not k:
+        n += 1
+        if n > IDLE:
+            raise Idle()
         k = readkey()
     return k
 
@@ -1638,6 +1649,10 @@ def main():
                 settings()
         except Home:
             pass
+        except Idle:
+            clear_screen()
+            show_screen()
+            return
         except MemoryError:
             del HIST[:-3]
             _WRAPS.clear()
