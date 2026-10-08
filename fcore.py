@@ -1950,7 +1950,81 @@ def _desc3(A):
     if diag:
         return ['stretch: x by ' + _f(A[0][0]) + ', y by ' + _f(A[1][1]) +
                 ', z by ' + _f(A[2][2])]
+    gen = _orth3(A)
+    if gen is not None:
+        return gen
     return ['not a single standard map']
+
+def _null3(B):
+    # a non-zero vector v with B v = 0 (rank 2): cross product of two rows
+    best = None
+    for i, j in ((0, 1), (0, 2), (1, 2)):
+        v = _cross3(B[i], B[j])
+        m = math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2)
+        if best is None or m > best[0]:
+            best = (m, v)
+    if best is None or best[0] < 1e-9:
+        return None
+    v = [c / best[0] for c in best[1]]
+    return v
+
+def _nicev(v):
+    # a direction as small whole numbers when it is one
+    big = max([abs(c) for c in v])
+    for k in range(1, 25):
+        w2 = [c / big * k for c in v]
+        if all([abs(c - round(c)) < 1e-6 for c in w2]):
+            return [int(round(c)) for c in w2]
+    # surd components: as decimals
+    return [casutil.clean(_snap(c / big)) for c in v]
+
+def _orth3(A):
+    # any rotation (det 1) or reflection (det -1, trace 1) from eigenvectors
+    for i in range(3):
+        for j in range(3):
+            d = sum([A[i][k] * A[j][k] for k in range(3)])
+            if abs(d - (1.0 if i == j else 0.0)) > 1e-9:
+                return None
+    det = _det3(A)
+    tr = A[0][0] + A[1][1] + A[2][2]
+    if det > 0:
+        B = [[A[i][j] - (1.0 if i == j else 0.0) for j in range(3)] for i in range(3)]
+        ax = _null3(B)
+        if ax is None:
+            return None
+        sv = [A[2][1] - A[1][2], A[0][2] - A[2][0], A[1][0] - A[0][1]]
+        if sum([sv[k] * ax[k] for k in range(3)]) < 0:
+            ax = [-c for c in ax]
+        c = (tr - 1.0) / 2.0
+        th = (180.0 / PI) * (math.acos(max(-1.0, min(1.0, c))))
+        return ['rotation ' + _f(casutil.clean(_snap(th)), 6 if abs(th - round(th)) > 1e-9 else None) +
+                ' deg about ' + _fv(_nicev(ax)),
+                _w('axis: eigenvector for 1; cos t = (trace - 1)/2'),
+                _w('anticlockwise seen from the tip of the axis')]
+    B = [[A[i][j] + (1.0 if i == j else 0.0) for j in range(3)] for i in range(3)]
+    nv = _null3(B)
+    if nv is None:
+        return None
+    n = _nicev(nv)
+    if abs(tr - 1.0) < 1e-9:
+        return ['reflection in the plane ' + _planestr(n),
+                _w('normal: eigenvector for -1')]
+    th = (180.0 / PI) * (math.acos(max(-1.0, min(1.0, (tr + 1.0) / 2.0))))
+    return ['rotation ' + _f(casutil.clean(_snap(th))) + ' deg about ' + _fv(n) +
+            ' and reflection in ' + _planestr(n)]
+
+def _planestr(n):
+    t = ''
+    for c, nm in zip(n, ('x', 'y', 'z')):
+        if c == 0:
+            continue
+        c = casutil.clean(c)
+        s = ('' if abs(c) == 1 else _f(abs(c))) + nm
+        if not t:
+            t = ('-' if c < 0 else '') + s
+        else:
+            t += (' - ' if c < 0 else ' + ') + s
+    return t + ' = 0'
 
 def t_describe3(A):
     det = _det3(A)
@@ -1959,8 +2033,7 @@ def t_describe3(A):
     if det < 0:
         out.append(_w('det < 0: orientation reversed'))
     out.append(_w('|det| = volume scale factor = ' + _f(abs(det))))
-    out.append(_w('checks rotations of 90, 180, 270 deg about'))
-    out.append(_w('an axis and reflections in x/y/z = 0'))
+    out.append(_w('orthogonal maps from the eigenvectors for 1 and -1'))
     return out
 
 def t_then3(A, B):

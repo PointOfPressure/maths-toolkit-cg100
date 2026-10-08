@@ -643,6 +643,8 @@ CASES += [
     ('y422-nov21', '6a', 'fstat', 'Poisson check from table', '0,34,1,65,2,55,3,24,4,14,5,6,6,2', 'variance = 1.7682'),
     ('y420-nov20', '6', 'fcore', 'Solve in z and z*', 'z^2-4i*conj(z)+11', 'z = 1+2i'),
     ('y435-nov21', '3d', 'fxpure', 'M^n in n (3x3)', '3,3,0,0,2,2,1,3,4', 'M^n[33] = 3*6^n/5+2/5'),
+    ('y435-nov20', '5d', 'fcore', 'Describe a 3x3', '1/3,-2/3,-2/3,-2/3,1/3,-2/3,-2/3,-2/3,1/3', 'reflection in the plane x + y + z = 0'),
+    ('y435-spec', '5(v)', 'fcore', 'Describe a 3x3', '1/2,-1/sqrt(2),1/2,1/sqrt(2),0,-1/sqrt(2),1/2,1/sqrt(2),1/2', 'rotation 90 deg about (1, 0, 1)'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
