@@ -3,6 +3,7 @@
 # SHM, damping, coupled systems and a = v dv/dx). The rest is in fcore.
 import math
 import caseng
+import caslex
 import cascalc
 import caspoly
 import casutil
@@ -554,6 +555,9 @@ def t_cart_eq_polar(F):
     import cassolve
     R = ('v', 'r')
     T = ('v', 'theta')
+    # x^2 + y^2 is r^2 straight away (expanding it in cos and sin is slow)
+    F = caseng.simplify(F)
+    F = caseng.subst_tree(F, caseng.simplify(caslex.parse('x^2+y^2')), ('^', R, ('n', 2)))
     G = caseng.subst(caseng.subst(F, 'x', ('*', R, ('cos', T))), 'y', ('*', R, ('sin', T)))
     G = caseng.simplify(caspoly.expand(caseng.simplify(G)))
     co = cassolve.pcoeffs(G, 'r')
