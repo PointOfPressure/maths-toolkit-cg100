@@ -1588,6 +1588,23 @@ def _sexp(a):
     if len(out) == 1 and out[0][0][0] == 'ln' and _ratval(out[0][1]) == (1, 1) \
             and fl is None and cxc is None:
         return _pow(out[0][0][1], _ratnode(coef))
+    if a[0] == '+' or a[0] == '-':
+        # e^(k ln u + v) = u^k e^v: an integrating factor e^(-ln x + ln(1+x^2)/2)
+        raw = []
+        _flatadd(a, 1, raw)
+        logs = []
+        rest = []
+        for t, sg in raw:
+            c, f2, c2, o2 = _termparts([(t, 1)])
+            if len(o2) == 1 and o2[0][0][0] == 'ln' and _ratval(o2[0][1]) == (1, 1) \
+                    and f2 is None and c2 is None:
+                logs.append((_pow(o2[0][0][1], _ratnode(c if sg > 0 else _rneg(c))), 1))
+            else:
+                rest.append((t, sg))
+        if logs:
+            if rest:
+                logs.append((_sexp(_addf(rest)), 1))
+            return _mulf(logs)
     if cxc is not None and fl is None and cxc.real == 0 and len(out) == 1 \
             and out[0][0] == ('v', 'pi') and _ratval(out[0][1]) == (1, 1):
         im = _fltrat(cxc.imag)

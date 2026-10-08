@@ -523,7 +523,8 @@ def t_poissum(k, mus):
               ' = ' + sf3(tot))]
 
 def _bin_n(n):
-    return _whole(n, 'n', 1, 1000)
+    # n > 1000 sums the binomial in logs (casutil._bcdf_big)
+    return _whole(n, 'n', 1, 10000000)
 
 def t_binom(n, p, k):
     n = _bin_n(n)
@@ -665,6 +666,7 @@ def t_papprox(n, p, k):
     out = ['Po(' + sf3(mu) + ') approximates B',
            'Po P(X=k) = ' + sf3(pk),
            'Po P(X<=k) = ' + sf3(pc),
+           'Po P(X>k) = ' + sf3(1.0 - pc if pc < 1.0 else 0.0),
            'B  P(X=k) = ' + sf3(bk),
            'B  P(X<=k) = ' + sf3(bc)]
     if n < 50 or p > 0.1:

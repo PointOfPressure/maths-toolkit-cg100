@@ -411,9 +411,61 @@ def poisson_cdf(mu, k):
         i += 1
     return c
 
+def lnfact(n):
+    # ln n!: exact sum below 30, Stirling's series (error < 1e-13) above
+    if n < 30:
+        r = 0.0
+        i = 2
+        while i <= n:
+            r += math.log(i)
+            i += 1
+        return r
+    x = float(n)
+    return (x * math.log(x) - x + 0.5 * math.log(2.0 * PI * x) + 1.0 / (12.0 * x)
+            - 1.0 / (360.0 * x * x * x) + 1.0 / (1260.0 * x ** 5))
+
+def _blpmf(n, p, k):
+    # ln P(X = k), X ~ B(n, p), 0 < p < 1
+    return (lnfact(n) - lnfact(k) - lnfact(n - k) + k * math.log(p) +
+            (n - k) * math.log(1.0 - p))
+
+MAXTAIL = 20000     # terms summed for one binomial tail when n > 1000
+
+def _bcdf_big(n, p, k):
+    # P(X <= k) for large n: sum the shorter side from k outwards in ratios
+    if p <= 0.0:
+        return 1.0
+    if p >= 1.0:
+        return 0.0 if k < n else 1.0
+    r = p / (1.0 - p)
+    if k <= n * p:
+        t = math.exp(_blpmf(n, p, k))
+        s = t
+        j = k
+        i = 0
+        while j > 0 and i < MAXTAIL and t > 1e-18 * s:
+            t = t * j / ((n - j + 1) * r)
+            s += t
+            j -= 1
+            i += 1
+        return s if s < 1.0 else 1.0
+    j = k + 1
+    t = math.exp(_blpmf(n, p, j))
+    s = t
+    i = 0
+    while j < n and i < MAXTAIL and t > 1e-18 * s:
+        t = t * (n - j) / (j + 1) * r
+        s += t
+        j += 1
+        i += 1
+    v = 1.0 - s
+    return v if v > 0.0 else 0.0
+
 def binom_pmf(n, p, k):
     if n < 0 or k < 0 or k > n:
         return 0.0
+    if n > 1000 and 0.0 < p < 1.0:
+        return math.exp(_blpmf(n, p, k))
     q = 1.0 - p
     r = 1.0
     used = 0
@@ -439,6 +491,8 @@ def binom_cdf(n, p, k):
         return 1.0
     if p >= 1.0:
         return 0.0
+    if n > 1000:
+        return _bcdf_big(n, p, k)
     c = 0.0
     i = 0
     while i <= k:

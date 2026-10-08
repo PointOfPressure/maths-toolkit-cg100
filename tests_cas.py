@@ -98,6 +98,8 @@ CANON = [
     # a repeated linear denominator keeps its leading coefficient
     ('x/(2x+1)^2', 'x/(2*x+1)^2'), ('x/(4x^2+4x+1)', 'x/(2*x+1)^2'),
     ('x/(x^2+x+1/4)', '4*x/(2*x+1)^2'),
+    # e^(k ln u + v) = u^k e^v
+    ('e^(-ln(x)+ln(x^2+1)/2)', 'sqrt(x^2+1)/x'), ('e^(x-ln(2))', 'e^(x)/2'),
 ]
 
 EXPAND = [
@@ -149,6 +151,9 @@ DIFF = [
 ]
 
 INTEG = [
+    # letter coefficients in a linear argument
+    ('e^(a*x)', 'e^(a*x)/a'), ('x*e^(a*x)', 'e^(a*x)*x/a-e^(a*x)/a^2'),
+    ('sin(k*x)', '-cos(k*x)/k'), ('1/(a*x+b)', 'ln(|a*x+b|)/a'),
     ('x^3', 'x^4/4'), ('1/x', 'ln(|x|)'), ('e^(3x)', 'e^(3*x)/3'),
     ('2^x', '2^x/ln(2)'), ('sin(2x)', '-cos(2*x)/2'), ('cos(x)', 'sin(x)'),
     ('tan(x)', '-ln(|cos(x)|)'), ('sec(x)^2', 'tan(x)'),

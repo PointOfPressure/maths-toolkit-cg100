@@ -486,6 +486,22 @@ CASES += [
     ('y422-jun19', '3c', 'fstat', 'aX+bY+c', '2,20,0,133.25,51.1225,22.5,7.29,700', 'Var(W) = 3120'),
     # calculator nCr key
     ('y422-nov20', '1a', 'CALC', 'Calculate', '1/10C4', '1/210'),
+    # binomial and Poisson approximation beyond n = 1000
+    ('y422-nov20', '2a(ii)', 'fstat', 'Poisson approx to B', '1200,0.00025,3', 'Po P(X=k) = 0.00333'),
+    ('y422-nov20', '2a(ii)', 'fstat', 'Poisson approx to B', '1200,0.00025,3', 'Po P(X>k) = 0.000266'),
+    ('y422-jun23', '1c', 'fstat', 'Poisson approx to B', '10000,1/1296,10', 'Po P(X=k) = 0.0919'),
+    ('y422-jun23', '1c', 'fstat', 'Poisson approx to B', '10000,1/1296,10', 'Po P(X>k) = 0.157'),
+    ('y422-jun23', '1c', 'fstat', 'Binomial P(X=k)', '10000,1/1296,10', 'P(X=k) = 0.0919'),
+    # integrating factor: e^(k ln u) simplified, letters, exact constants
+    ('y420-nov20', '16b', 'fcalc', 'Integrating factor', '-1/(x(1+x^2)),0', 'sqrt(x^2+1)/x'),
+    ('y420-nov20', '16d', 'fcalc', 'Integrating factor', '-1/(x(1+x^2)),x*e^(-x)/sqrt(1+x^2)', 'IF*Q = e^(-x)'),
+    ('y420-nov20', '16d', 'fcalc', 'Integrating factor', '-1/(x(1+x^2)),x*e^(-x)/sqrt(1+x^2)', '(C-e^(-x))*x/sqrt(x^2+1)'),
+    ('y420-nov21', '17b(i)', 'fcalc', 'Integrating factor', 'a,a,0,0', '-e^(-a*x)+1'),
+    ('y420-jun19', '17e(i)', 'fcalc', 'Integrating factor', '0.1,k*x,0,0', 'C = 100*k'),
+    ('y420-jun19', '17e(i)', 'fcalc', 'Integrating factor', '0.1,k*x,0,0', '100*e^(-x/10)*k+10*k*x-100*k'),
+    ('y420-jun19', '17c(i)', 'fcalc', 'Integrating factor', '0.1,-2,10,0', 'C = 20*e'),
+    ('y420-jun19', '17c(i)', 'fcalc', 'Integrating factor', '0.1,-2,10,0', '20*e^(-x/10+1)-20'),
+    ('y420-jun24', '17b', 'fcalc', 'Integrating factor', '1/(200-x),10,0,0', 'C = 10*ln(200)'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

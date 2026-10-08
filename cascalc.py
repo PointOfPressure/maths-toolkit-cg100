@@ -105,6 +105,23 @@ def linear_coeff(arg, var):
         b = int(bi)
     return (a, b)
 
+def _symlin(arg, var):
+    # the coefficient A of var in a linear arg holding other letters (a x + b)
+    import casalg
+    try:
+        r = casalg.linin(caseng.simplify(arg), var)
+    except Exception:
+        return None
+    if r is None or has_var(r[0], var) or r[0] == ('n', 0):
+        return None
+    return caseng.simplify(r[0])
+
+def _over(F, k):
+    # F / k where k is a number or a letter coefficient tree
+    if isinstance(k, tuple):
+        return F if k == ('n', 1) else ('/', F, k)
+    return F if k == 1 else ('/', F, ('n', k))
+
 BYPARTS_MAX = 3
 
 def _liate(n, var):
@@ -265,6 +282,9 @@ def tidy(node):
     except:
         return caseng.simplify(node)
 
+_SYMOK = ('sin', 'cos', 'exp', 'sinh', 'cosh', 'tan', 'cot', 'sec', 'cosec',
+          'tanh', 'sech', 'coth', 'ln')
+
 def integ(n, var='x', depth=0):
     t = n[0]
     if t == 'n':
@@ -333,6 +353,10 @@ def integ(n, var='x', depth=0):
                 inner = ('v', var) if lc[1] == 0 else b
                 F = ('*', a, ('ln', ('abs', inner)))
                 return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
+            if lc is None:
+                k = _symlin(b, var)
+                if k is not None:
+                    return _over(('*', a, ('ln', ('abs', b))), k)
         try:
             db = caseng.simplify(caseng.diff(b, var))
             if db != ('n', 0):
@@ -364,6 +388,10 @@ def integ(n, var='x', depth=0):
             if lc is not None and lc[0] != 0 and a != ('n', 0):
                 F = ('/', n, ('ln', a))
                 return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
+            if lc is None and a != ('n', 0):
+                k = _symlin(b, var)
+                if k is not None:
+                    return _over(('/', n, ('ln', a)), k)
         if a[0] in ('sin', 'cos') and b[0] == 'n' and isinstance(b[1], int) \
                 and b[1] >= 3 and b[1] % 2:
             F = _oddtrigpow(a, b[1], var, depth)
@@ -416,6 +444,10 @@ def integ(n, var='x', depth=0):
         return _usub(n, var, depth)
     arg = n[1]
     lc = linear_coeff(arg, var)
+    if lc is None and t in _SYMOK:
+        k = _symlin(arg, var)
+        if k is not None:
+            lc = (k, None)
     if lc is None or lc[0] == 0:
         return None
     if t == 'sin':
@@ -442,7 +474,7 @@ def integ(n, var='x', depth=0):
         F = ('*', ('n', 2), ('atan', ('exp', arg)))
     elif t == 'coth':
         F = ('ln', ('abs', ('sinh', arg)))
-    elif t == 'sqrt':
+    elif t == 'sqrt' and not isinstance(lc[0], tuple):
         return _powrule(arg, 1, 2, lc[0])
     elif t == 'ln':
         F = ('-', ('*', arg, ('ln', arg)), arg)
@@ -450,7 +482,7 @@ def integ(n, var='x', depth=0):
         if _liate(n, var) <= 1:
             return _byparts(n, ('n', 1), var, depth)
         return _usub(n, var, depth)
-    return F if lc[0] == 1 else ('/', F, ('n', lc[0]))
+    return _over(F, lc[0])
 
 def _at(tree, val, deg, var):
     # evalf's positional arg is always x

@@ -848,11 +848,19 @@ def t_intfactor(P, Q, x0, y0):
     gen = _tidy(('/', ('+', R, ('v', 'C')), IF))
     out.append('y =')
     out.append(_m(gen))
+    _also(out, gen)
     out.append(_w('P = ' + _ts(P) + ',  Q = ' + _ts(Q)))
     out.append(_w('int P dx = ' + _ts(ip)))
     out.append(_w('IF*Q = ' + _ts(prod)))
     out.append(_w('int IF*Q dx = ' + _ts(R)))
     if x0 is not None and y0 is not None:
+        Ct = _exact_c(R, IF, x0, y0)
+        if Ct is not None:
+            out.append('C = ' + caseng.tostr(Ct))
+            y = _tidy(('/', ('+', R, Ct), IF))
+            out.append(_m(y))
+            _also(out, y)
+            return out
         rv = _at(R, x0)
         iv = _at(IF, x0)
         if rv is None or iv is None or abs(iv) < 1e-12:
@@ -862,6 +870,52 @@ def t_intfactor(P, Q, x0, y0):
             out.append('C = ' + _f(C))
             out.append(_m(_tidy(('/', ('+', R, _nn(C)), IF))))
     return out
+
+def _also(out, t):
+    # the multiplied-out form too when it is shorter: 1 - e^(-ax)
+    try:
+        e = caspoly.expand(t)
+    except Exception:
+        return
+    if len(caseng.tostr(e)) < len(caseng.tostr(t)):
+        out.append(_m(e))
+
+def _exact_c(R, IF, x0, y0):
+    # C = y0 IF(x0) - R(x0) exactly (20e, 10ln(200), or with letters); None
+    # if it is not exact or IF(x0) is 0 or undefined
+    a = caseng._sconst(x0)
+    b = caseng._sconst(y0)
+    if a[0] == 'n' and isinstance(a[1], float) or b[0] == 'n' and isinstance(b[1], float):
+        return None
+    try:
+        iv = caseng.simplify(caseng.subst(IF, 'x', a))
+        rv = caseng.simplify(caseng.subst(R, 'x', a))
+        if iv == ('n', 0):
+            return None
+        C = caseng.simplify(('-', ('*', b, iv), rv))
+        env = {}
+        for v in caseng.vars_in(C):
+            if v not in ('pi', 'e'):
+                env[v] = 0.7
+        val = caseng.evalf(C, 0.0, False, env)
+        ivv = caseng.evalf(iv, 0.0, False, env)
+    except Exception:
+        return None
+    if isinstance(val, complex) or val != val or ivv == 0 or len(caseng.tostr(C)) > 30:
+        return None
+    if _hasfloat(C):
+        return None
+    return C
+
+def _hasfloat(t):
+    if t[0] == 'n':
+        return isinstance(t[1], float)
+    if t[0] == 'v':
+        return False
+    for k in t[1:]:
+        if _hasfloat(k):
+            return True
+    return False
 
 def t_second_order(a, b, c):
     kind, p, q, disc = _aux(a, b, c)

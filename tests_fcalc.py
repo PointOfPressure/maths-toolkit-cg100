@@ -112,7 +112,7 @@ CASES = [
      ['e^(-t)/2+e^(3*t)/2', 'e^(3*t)-e^(-t)']),
     ('D', 'Coupled equations', '0,1,-1,0,1,0', ['cos(t)', '-sin(t)']),
     ('D', 'Separable DE', 'x,y,?,?', ['ln(|y|) = x^2/2 + c', 'int f(x) dx = x^2/2']),
-    ('D', 'Separable DE', 'x,y,0,2', ['e^(x^2/2+ln(2))', 'c = ln(2) from (0, 2)',
+    ('D', 'Separable DE', 'x,y,0,2', ['2*e^(x^2/2)', 'c = ln(2) from (0, 2)',
                                       'y keeps the sign it has at x0']),
     ('D', 'Separable DE', '2x,y^2+1,0,1', ['tan(x^2+pi/4)', 'atan(y) = x^2 + pi/4']),
     ('D', 'PI polynomial RHS', '1,0,1,x,0,0', ['x-sin(x)', 'A = 0,  B = -1']),
