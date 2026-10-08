@@ -3,9 +3,14 @@
 # A row is a list. An item is a str token or a template [kind, slot, slot...]:
 # F fraction [num, den], P power [exp], R sqrt [arg], N nth root [idx, arg],
 # L log base [base, arg], A modulus [arg].
+# A kind ending in '(' is a bracket pair round one box, like the calculator's
+# own: '(' plain, 'sin(' a function, and so on. ')' at the end steps out.
 from casioplot import *
 
 NSLOT = {'F': 2, 'P': 1, 'R': 1, 'N': 2, 'L': 2, 'A': 1}
+
+def nslot(kind):
+    return NSLOT.get(kind, 1)
 
 ASC = {'medium': 13, 'small': 8}
 DESC = {'medium': 4, 'small': 2}
@@ -23,7 +28,7 @@ _UNARY = ('+', '-', '*', ',', '=')
 
 def new(kind):
     t = [kind]
-    n = NSLOT[kind]
+    n = nslot(kind)
     while n > 0:
         t.append([])
         n -= 1
@@ -80,6 +85,8 @@ def lin(row):
             out += '((' + lin(it[2]) + ')^(1/(' + lin(it[1]) + ')))'
         elif k == 'L':
             out += 'logb(' + lin(it[1]) + ',' + lin(it[2]) + ')'
+        elif k[-1] == '(':
+            out += k + lin(it[1]) + ')'
         else:
             out += 'abs(' + lin(it[1]) + ')'
     while opens > 0:
@@ -140,7 +147,9 @@ class Ed:
                 t[1].insert(0, row.pop(self.i))
             # (a+b) over something: the fraction bar replaces the brackets
             g = t[1]
-            if len(g) > 2 and g[0] == '(' and g[-1] == ')':
+            if len(g) == 1 and not isinstance(g[0], str) and g[0][0] == '(':
+                t[1] = g = g[0][1]
+            elif len(g) > 2 and g[0] == '(' and g[-1] == ')':
                 depth = 0
                 n = 0
                 while n < len(g) - 1:
@@ -176,7 +185,7 @@ class Ed:
         elif self.stack:
             parent, pos, slot = self.stack[-1]
             t = parent[pos]
-            if slot + 1 < NSLOT[t[0]]:
+            if slot + 1 < nslot(t[0]):
                 self.stack[-1] = (parent, pos, slot + 1)
                 self.row = t[slot + 2]
                 self.i = 0
@@ -190,7 +199,7 @@ class Ed:
             if isinstance(it, str):
                 self.i -= 1
             else:
-                self._enter(self.i - 1, NSLOT[it[0]] - 1, True)
+                self._enter(self.i - 1, nslot(it[0]) - 1, True)
         elif self.stack:
             parent, pos, slot = self.stack[-1]
             if slot > 0:
@@ -240,7 +249,7 @@ class Ed:
                 if s:
                     filled = True
             if filled:
-                self._enter(self.i - 1, NSLOT[it[0]] - 1, True)
+                self._enter(self.i - 1, nslot(it[0]) - 1, True)
             else:
                 row.pop(self.i - 1)
                 self.i -= 1
@@ -269,6 +278,26 @@ class Ed:
             n += 1
         self.row = parent
         self.i = pos
+
+    def close(self):
+        # ')' at the end of a bracket's box (or of boxes ending inside one)
+        # steps out past the bracket instead of typing a stray ')'
+        row = self.row
+        at_end = self.i == len(row)
+        n = len(self.stack) - 1
+        while n >= 0 and at_end:
+            parent, pos, slot = self.stack[n]
+            t = parent[pos]
+            if slot + 1 != nslot(t[0]):
+                break
+            if t[0][-1] == '(':
+                while len(self.stack) > n + 1:
+                    self.stack.pop()
+                self._leave(True)
+                return True
+            at_end = pos == len(parent) - 1
+            n -= 1
+        return False
 
     def clear(self):
         self.set([])
@@ -317,6 +346,29 @@ def _measure(row, lvl):
 
 _SW = {}        # (shown token, size) -> width
 
+_INV = ('asin(', 'acos(', 'atan(', 'asinh(', 'acosh(', 'atanh(')
+
+def _fname(kind):
+    # name before a bracket and its raised -1 for inverse functions
+    if kind in _INV:
+        return kind[1:-1], '-1'
+    return kind[:-1], ''
+
+def _fw(name, sup, sz):
+    return strw(name, sz) + (strw(sup, 'small') + 1 if sup else 0)
+
+def _bw(sz, aa, ad):
+    # bracket widths: text brackets for one line, drawn ones round a fraction
+    if aa > ASC[sz] + 3 or ad > DESC[sz] + 1:
+        return 5, 5, True
+    return cw('(', sz), cw(')', sz), False
+
+def _flat(row):
+    for it in row:
+        if not isinstance(it, str) or it == '*':
+            return False
+    return len(row) > 0
+
 def mitem(it, lvl, prev=None):
     sz = _sz(lvl)
     if isinstance(it, str):
@@ -353,8 +405,22 @@ def mitem(it, lvl, prev=None):
     if k == 'L':
         bw, ba, bd = measure(it[1], lvl + 1)
         aw, aa, ad = measure(it[2], lvl)
+        lw, rw, tall = _bw(sz, aa, ad)
+        if tall:
+            aa += 1
+            ad += 1
         dn = 4 + bd
-        return (strw('log', sz) + bw + 1 + strw('()', sz) + aw, aa, ad if ad > dn else dn)
+        return (strw('log', sz) + bw + 1 + lw + aw + rw, aa, ad if ad > dn else dn)
+    if k[-1] == '(':
+        name, sup = _fname(k)
+        aw, aa, ad = measure(it[1], lvl)
+        lw, rw, tall = _bw(sz, aa, ad)
+        a = aa + 1 if tall else aa
+        if sup:
+            up = (7 if sz == 'medium' else 4) + ASC['small']
+            if up > a:
+                a = up
+        return (_fw(name, sup, sz) + lw + aw + rw, a, ad + 1 if tall else ad)
     aw, aa, ad = measure(it[1], lvl)
     return (aw + 8, aa + 1, ad + 1)
 
@@ -426,6 +492,40 @@ def _line(pen, x0, y0, x1, y1, c):
             err += dx
             y0 += sy
 
+def _paren(pen, x, base, aa, ad, right, c):
+    # a bracket the height of what it holds, in a 5 pixel cell
+    top = base - aa
+    bot = base + ad
+    i, o = (3, 1) if right else (1, 3)
+    _line(pen, x + o, top, x + i, top + 2, c)
+    _vl(pen, x + i, top + 2, bot - 2, c)
+    _line(pen, x + i, bot - 2, x + o, bot, c)
+
+def _bracket(pen, it, x, base, lvl, c):
+    sz = _sz(lvl)
+    k = it[0]
+    name, sup = _fname(k)
+    aw, aa, ad = measure(it[1], lvl)
+    lw, rw, tall = _bw(sz, aa, ad)
+    y = base - ASC[sz]
+    if sup:
+        _text(pen, x, y, name, sz, c)
+        x += strw(name, sz)
+        _text(pen, x, base - (7 if sz == 'medium' else 4) - ASC['small'], sup, 'small', c)
+        x += strw(sup, 'small') + 1
+        name = ''
+    if tall:
+        if name:
+            _text(pen, x, y, name, sz, c)
+            x += strw(name, sz)
+        _paren(pen, x, base, aa, ad, False, c)
+        _paren(pen, x + lw + aw, base, aa, ad, True, c)
+    else:
+        _text(pen, x, y, name + '(', sz, c)
+        x += strw(name, sz)
+        _text(pen, x + lw + aw, y, ')', sz, c)
+    draw_row(pen, it[1], x + lw, base, lvl)
+
 def draw_row(pen, row, x, base, lvl):
     sz = _sz(lvl)
     w, a, d = measure(row, lvl)
@@ -456,11 +556,23 @@ def draw_row(pen, row, x, base, lvl):
     bx = x
     prev = None
     n = 0
+    ed = pen.ed.row if pen.ed is not None else None
     for it in row:
         if isinstance(it, str) and it != '*':
             if not buf:
                 bx = x
             buf += _tok(it, prev)
+        elif (not isinstance(it, str) and it[0][-1] == '(' and it[0] not in _INV
+              and it[1] is not ed and _flat(it[1])):
+            # a bracket holding plain text joins the run: one draw call
+            if not buf:
+                bx = x
+            buf += it[0]
+            p = None
+            for t in it[1]:
+                buf += _tok(t, p)
+                p = t
+            buf += ')'
         else:
             if buf:
                 _text(pen, bx, base - ASC[sz], buf, sz, pen.color)
@@ -517,11 +629,10 @@ def draw_item(pen, it, x, base, lvl, prev=None):
         bw, ba, bd = measure(it[1], lvl + 1)
         draw_row(pen, it[1], x, base + 4, lvl + 1)
         x += bw + 1
-        aw, aa, ad = measure(it[2], lvl)
-        _text(pen, x, base - ASC[sz], '(', sz, c)
-        x += strw('(', sz)
-        draw_row(pen, it[2], x, base, lvl)
-        _text(pen, x + aw, base - ASC[sz], ')', sz, c)
+        _bracket(pen, ['(', it[2]], x, base, lvl, c)
+        return
+    if k[-1] == '(':
+        _bracket(pen, it, x, base, lvl, c)
         return
     aw, aa, ad = measure(it[1], lvl)
     _vl(pen, x + 2, base - aa - 1, base + ad, c)
@@ -612,7 +723,7 @@ def typed(ed, k, shift, alpha):
         tok = ALPHADICT.get(k)
         if tok is None:
             return False
-        ed.ins(tok)
+        put(ed, tok)
         return True
     if shift:
         if k == 44:
@@ -648,8 +759,15 @@ def typed(ed, k, shift, alpha):
         tok = UNSHIFT.get(k)
     if tok is None:
         return False
-    ed.ins(tok)
+    put(ed, tok)
     return True
+
+def put(ed, tok):
+    # functions and '(' open a bracket pair; ')' steps out of one
+    if tok[-1] == '(':
+        ed.tmpl(tok)
+    elif tok != ')' or not ed.close():
+        ed.ins(tok)
 
 def starts_op(k, shift, alpha):
     # keys that continue from Ans after a result: + - x / ^ x^2
@@ -657,17 +775,17 @@ def starts_op(k, shift, alpha):
         return False
     return k in (84, 85, 74, 75, 44, 45)
 
-SYMBOLS = ['|x|', 'nroot', 'log_b', '!', 'nCr(', 'nPr(', 'pi', 'e', 'i',
+SYMBOLS = ['Abs', 'nroot', 'log_b', '!', 'nCr(', 'nPr(', 'pi', 'e', 'i',
            'ans', 'sec(', 'cosec(', 'cot(', 'sinh(', 'cosh(', 'tanh(',
            'asinh(', 'acosh(', 'atanh(', 'arg(', 'conj(', 're(', 'im(',
            'exp(', 'y', 'n', 'r', 't', '=', '?']
 
 def symbol(ed, s):
-    if s == '|x|':
+    if s == 'Abs':
         ed.tmpl('A')
     elif s == 'nroot':
         ed.tmpl('N')
     elif s == 'log_b':
         ed.tmpl('L')
     else:
-        ed.ins(s)
+        put(ed, s)

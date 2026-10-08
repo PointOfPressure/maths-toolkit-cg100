@@ -177,6 +177,9 @@ def _scenes():
                                    85, 82, 95, 82)),
         # type, EXIT, come back: the line and the history are still there
         ("calc-return", lambda: (calc(81, 42, 83, 25, 84, 43, 82, 25, 95, 23, 64, 64), casui.calc_section())),
+        # cos( pi frac 3 ) + log_2 16, then sin-1( 0.5 and log( 1000 ) on the next line
+        ("calc-funcs", lambda: calc(53, 31, 61, 42, 83, 25, 56, 84, 31, 44, 82, 25, 81, 73, 25, 95,
+                                    31, 52, 91, 92, 72, 56, 84, 31, 45, 81, 91, 91, 91)),
         ("calc-edit", lambda: calc(81, 42, 83, 25, 84, 43, 82, 25, 95, 23)),
         ("calc-complex", lambda: calc(55, 82, 84, 83, 31, 63, 56, 75, 55, 81, 85, 31, 63, 56, 95)),
         ("input-empty", lambda: tool_input()),

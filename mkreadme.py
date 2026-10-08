@@ -68,6 +68,7 @@ yellow S / red A for SHIFT / ALPHA, Rad/Deg, and Busy while something slow runs.
 | --- | --- |
 | fraction key, divide | fraction; takes the term before it as the top |
 | ^, x^2, e^x, sqrt | power / root boxes; SHIFT sqrt nth root, SHIFT ^ log base |
+| sin, cos, tan, SHIFT log, SHIFT ln, ( | bracket pair round the cursor, sized to fit; `)` at the end steps out |
 | arrows | move between boxes; up/down between top and bottom of a fraction |
 | MENU | symbols |
 | SHIFT DEL | clear |
