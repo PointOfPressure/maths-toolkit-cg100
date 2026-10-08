@@ -521,6 +521,15 @@ CASES += [
     ('y420-jun19', '14a(i)', 'fcore', 'Det 3x3 in terms of k', '-1,a,0,2,3,1,1,b,1', '-a+b-3'),
     ('y420-jun22', '4b', 'fcore', 'Det 2x2 in terms of k', 'k,1,-3,4', '4*k+3'),
     ('y435-jun23', '5a', 'fcore', 'Matrix 2x2 in terms of k', 'a,0,2,3', 'lambda = a, v = (a-3, 2)'),
+    # statistics to 5 s.f. where 3 s.f. misleads
+    ('y422-jun22', '6a', 'fstat', 'CI mean from summary', '40,12.296,0.25994,95', '(12.215, 12.377)'),
+    ('y422-spec', '10(ii)', 'fstat', 'CI mean from summary', '60,1.49597,sqrt(0.00008515),95', '(1.4936, 1.4983)'),
+    ('y422-jun25', '3b', 'fstat', 'CI mean from summary', '50,24.878,0.5664,95', '(24.721, 25.035)'),
+    ('y422-jun25', '6c', 'fstat', 'Predict y from x', '50,0,100.03,20,100.49,40,101.15,60,101.41,80,102.04,100,102.44', 'y = 101.26'),
+    ('y422-jun22', '5a', 'fstat', 'Regression y on x', '20,2.012,22,2.036,24,2.065,26,2.074,28,2.114,30,2.140,32,2.149,34,2.176,36,2.192', 'y = 1.7858 + 0.01145x'),
+    ('y422-jun22', '10b', 'fstat', 'Chi-sq contributions', '2,3,9,18,5,3,13,12', '1.8240'),
+    ('y422-nov21', '5c', 'fstat', 'Estimates from sums', '10,299.6,8981.0', 'xbar = 29.96'),
+    ('y422-jun19', '1b', 'fstat', 'DRV find k', '127-39x+3x^2,1,6', 'k = 1/216'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

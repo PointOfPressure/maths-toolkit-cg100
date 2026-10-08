@@ -11,6 +11,14 @@ import caspoly
 
 fmt = casutil.fmt
 sf3 = casutil.sf3
+
+def p5(v):
+    # 5 s.f. for means, CI ends, regression coefficients and predictions,
+    # where 3 s.f. misleads (a CI end of 12.215 printed as 12.2)
+    return casutil.fmt(v, 10 if casutil.FULL else 5)
+
+def dp4(v):
+    return '%.4f' % v
 w = casutil.w
 warn = casutil.warn
 
@@ -344,10 +352,15 @@ def t_drvk(g, a, b):
     k = 1.0 / tot
     ps = [k * v for v in gs]
     e1, e2, var = _moments(xs, ps)
-    out = ['k = ' + fmt(k)]
+    # exactly when the total is rational: k = 1/216, not 0.00463
+    r = caseng._fltrat(tot)
+    ks = fmt(k)
+    if r is not None and r[0] > 0:
+        ks = str(r[1]) if r[0] == 1 else str(r[1]) + '/' + str(r[0])
+    out = ['k = ' + ks]
     _ev_var_lines(e1, e2, var, out)
     out.append(w('P(X=x) = k*g(x), sum P = 1'))
-    out.append(w('k * ' + fmt(tot) + ' = 1 so k = ' + fmt(k)))
+    out.append(w('k * ' + fmt(tot) + ' = 1 so k = ' + ks))
     _shown(xs, ps, out)
     return out
 
@@ -1447,8 +1460,9 @@ def _ranks(v):
         i = j + 1
     return r
 
-def _yline(a, b, y, x):
-    return y + ' = ' + sf3(a) + (' + ' if b >= 0 else ' - ') + sf3(abs(b)) + x
+def _yline(a, b, y, x, f=None):
+    f = f or p5
+    return y + ' = ' + f(a) + (' + ' if b >= 0 else ' - ') + f(abs(b)) + x
 
 def t_scatter(data):
     xs, ys = _xy(data, 2)
@@ -1645,7 +1659,8 @@ def t_regyx(data):
         raise ValueError('x values all equal')
     b = sxy / sxx
     a = my - b * mx
-    out = [_yline(a, b, 'y', 'x'), 'b = ' + sf3(b), 'a = ' + sf3(a)]
+    out = [_yline(a, b, 'y', 'x'), 'b = ' + p5(b), 'a = ' + p5(a),
+           w('3 s.f.: ' + _yline(a, b, 'y', 'x', sf3))]
     if syy > 0:
         r = sxy / math.sqrt(sxx * syy)
         out.append('r^2 = ' + sf3(r * r))
@@ -1671,7 +1686,8 @@ def t_regxy(data):
         raise ValueError('y values all equal')
     d = sxy / syy
     c = mx - d * my
-    out = [_yline(c, d, 'x', 'y'), 'd = ' + sf3(d), 'c = ' + sf3(c)]
+    out = [_yline(c, d, 'x', 'y'), 'd = ' + p5(d), 'c = ' + p5(c),
+           w('3 s.f.: ' + _yline(c, d, 'x', 'y', sf3))]
     out.append(w('d = Sxy/Syy = ' + sf3(sxy) + '/' + sf3(syy)))
     out.append(w('c = xbar - d ybar'))
     out.append(w('use to estimate x from a given y'))
@@ -1734,7 +1750,8 @@ def t_predy(x0, data):
         raise ValueError('x values all equal')
     b = sxy / sxx
     a = my - b * mx
-    out = ['y = ' + sf3(a + b * x0), _yline(a, b, 'y', 'x')]
+    out = ['y = ' + p5(a + b * x0), _yline(a, b, 'y', 'x'),
+           w('3 s.f.: y = ' + sf3(a + b * x0))]
     if x0 < min(xs) or x0 > max(xs):
         out.append(warn('extrapolation: x outside data'))
     else:
@@ -1749,7 +1766,8 @@ def t_predx(y0, data):
         raise ValueError('y values all equal')
     d = sxy / syy
     c = mx - d * my
-    out = ['x = ' + sf3(c + d * y0), _yline(c, d, 'x', 'y')]
+    out = ['x = ' + p5(c + d * y0), _yline(c, d, 'x', 'y'),
+           w('3 s.f.: x = ' + sf3(c + d * y0))]
     if y0 < min(ys) or y0 > max(ys):
         out.append(warn('extrapolation: y outside data'))
     else:
@@ -1908,6 +1926,10 @@ def t_contrib(rows, cols, data):
         out.append('r' + fmt(i + 1) + ': ' + ' '.join(parts))
         i += 1
     out.append('chi^2 = ' + sf3(chi))
+    i = 0
+    while i < r:
+        out.append(w('4 d.p. r' + fmt(i + 1) + ': ' + ' '.join([dp4(v) for v in con[i]])))
+        i += 1
     out.append(w('(O-E)^2/E per cell; + means O > E'))
     out.append(w('big contributions show where the'))
     out.append(w('association comes from'))
@@ -2124,10 +2146,12 @@ def _estimates(n, mean, ss, out):
     if ss < 0:
         ss = 0.0
     s2 = ss / (n - 1)
-    out.append('xbar = ' + sf3(mean))
-    out.append('s^2 = ' + sf3(s2))
-    out.append('s = ' + sf3(_sqrt(s2)))
+    out.append('xbar = ' + p5(mean))
+    out.append('s^2 = ' + p5(s2))
+    out.append('s = ' + p5(_sqrt(s2)))
     out.append('SE = s/sqrt(n) = ' + sf3(_sqrt(s2) / math.sqrt(n)))
+    out.append(w('3 s.f.: xbar = ' + sf3(mean) + ', s^2 = ' + sf3(s2) +
+                 ', s = ' + sf3(_sqrt(s2))))
     out.append(w('n = ' + fmt(n) + ', Sxx = ' + sf3(ss)))
     out.append(w('s^2 = Sxx/(n-1): unbiased for sigma^2'))
     out.append(w('divisor n would give ' + sf3(ss / n)))
@@ -2170,13 +2194,13 @@ def _ztest(mu0, sd, n, xbar, pct, tail, out):
     out.append(_pfmt(p))
     out.append(_verdict(az > zc, pct))
     _computed(tabled, out)
-    out.append(w('H0: mu = ' + sf3(mu0)))
+    out.append(w('H0: mu = ' + p5(mu0)))
     if tail == 2:
-        out.append(w('H1: mu is not ' + sf3(mu0) + ' (2 tail)'))
+        out.append(w('H1: mu is not ' + p5(mu0) + ' (2 tail)'))
     elif z >= 0:
-        out.append(w('H1: mu > ' + sf3(mu0) + ' (1 tail)'))
+        out.append(w('H1: mu > ' + p5(mu0) + ' (1 tail)'))
     else:
-        out.append(w('H1: mu < ' + sf3(mu0) + ' (1 tail)'))
+        out.append(w('H1: mu < ' + p5(mu0) + ' (1 tail)'))
     out.append(w('SE = sigma/sqrt(n) = ' + sf3(se)))
     out.append(w('z = (xbar-mu0)/SE, Xbar ~ N(mu0, SE^2)'))
     if tail == 1:
@@ -2206,8 +2230,10 @@ def t_ztest_data(mu0, sigma, pct, tail, data):
     return out
 
 def _ci_lines(centre, half, out):
-    out.insert(0, '(' + sf3(centre - half) + ', ' + sf3(centre + half) + ')')
-    out.insert(1, 'centre ' + sf3(centre) + ' +/- ' + sf3(half))
+    out.insert(0, '(' + p5(centre - half) + ', ' + p5(centre + half) + ')')
+    out.insert(1, 'centre ' + p5(centre) + ' +/- ' + p5(half))
+    out.insert(2, w('3 s.f. (' + sf3(centre - half) + ', ' + sf3(centre + half) + ')'))
+    out.insert(3, w('centre ' + sf3(centre) + ' +/- ' + sf3(half)))
 
 def t_ci_z(xbar, sigma, n, pct):
     _pos(sigma, 'sigma')
@@ -2251,7 +2277,7 @@ def _ci_unknown(n, xbar, s, pct, what):
     half = k * se
     _ci_lines(xbar, half, out)
     _computed(tabled, out)
-    out.append(w(what + ' = ' + sf3(xbar) + ', s = ' + sf3(s) +
+    out.append(w(what + ' = ' + p5(xbar) + ', s = ' + p5(s) +
                  ', n = ' + fmt(n)))
     out.append(w('SE = s/sqrt(n) = ' + sf3(se)))
     return out
