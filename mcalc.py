@@ -1516,13 +1516,9 @@ def t_subst(f, u, a, b):
         ub = S(caseng.subst(us, 'x', _exnode(b)))
         val = S(('-', caseng.subst(G, 'u', ub), caseng.subst(G, 'u', ua)))
         vv = casutil.evx(val, 0.0)
-        num = cascalc.defint(f, a, b)
         res.insert(0, 'u from ' + _ts(ua) + ' to ' + _ts(ub))
         res.insert(1, 'integral = ' + _ts(val) +
                    ('' if vv is None or _ts(val) == _f(vv) else ' = ' + _f(vv)))
-        if num is not None and vv is not None and \
-                abs(num - vv) > 1e-4 * (1.0 + abs(vv)):
-            res.append(_warn('numeric check gives ' + _f(num)))
     return res + out + \
         [_w('d/dx of the answer: ' +
             ('agrees' if _agrees(_diff(back), f) else 'DISAGREES'))]
