@@ -623,6 +623,10 @@ CASES += [
     # powers of sin and cos in multiple angles
     ('y420-nov20', '12b', 'fcore', 'sin^m t cos^n t', '3,3', '(-sin 6t+3 sin 2t)/32'),
     ('y420-spec', '14(ii)', 'fcore', 'cos nt, sin nt powers', '6', 'cos 6t = 32c^6-48c^4+18c^2-1'),
+    # cartesian and polar equations
+    ('y420-jun19', '7a', 'fcalc', 'Cartesian eqn to polar', '(x^2+y^2)^2-2c^2*x*y', 'r^2 = c^2*sin(2*theta)'),
+    ('y420-jun25', '6a', 'fcalc', 'Cartesian eqn to polar', '(x^2+y^2)^2-x*y', 'r^2 = sin(2*theta)/2'),
+    ('y420-nov21', '14b(i)', 'fcalc', 'Polar eqn to cartesian', 'a*(cos(x)+2sin(x))', '(x - a/2)^2 + (y - a)^2 = 5*a^2/4'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

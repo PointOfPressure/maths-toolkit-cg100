@@ -17,6 +17,8 @@ T = (
         ('Cartesian to polar', 'x,y'),
         ('Plot r = f(theta)', 'r(x)'),
         ('Polar area', 'r(x),a,b'),
+        ('Cartesian eqn to polar', 'F(x,y)'),
+        ('Polar eqn to cartesian', 'r(x)'),
     )),
     ('H', 'Hyperbolic functions', (
         ('Six hyperbolics at x', 'x'),

@@ -548,6 +548,99 @@ def t_polar_plot(r):
         out.append(_w('largest |r| = ' + _f(abs(best)) + ' at th = ' + _f(bth)))
     return out
 
+def t_cart_eq_polar(F):
+    # F(x, y) = 0 with x = r cos t, y = r sin t; a power of r cancelled:
+    # (x^2+y^2)^2 = 2c^2 xy -> r^2 = c^2 sin 2t
+    import cassolve
+    R = ('v', 'r')
+    T = ('v', 'theta')
+    G = caseng.subst(caseng.subst(F, 'x', ('*', R, ('cos', T))), 'y', ('*', R, ('sin', T)))
+    G = caseng.simplify(caspoly.expand(caseng.simplify(G)))
+    co = cassolve.pcoeffs(G, 'r')
+    if co is None:
+        return ['r and theta:', _m(G)]
+    # a coefficient that does not change with theta is its value at 0:
+    # cos^4 + 2cos^2 sin^2 + sin^4 -> 1
+    env = {}
+    for v in caseng.vars_in(G):
+        if v not in ('r', 'theta'):
+            env[v] = 1.37
+    for k in range(len(co)):
+        if 'theta' not in caseng.vars_in(co[k]):
+            continue
+        vals = []
+        for t in (0.0, 0.4, 1.3, 2.9):
+            env['theta'] = t
+            try:
+                vals.append(caseng.evalf(co[k], 0.0, False, env))
+            except Exception:
+                vals.append(None)
+        if None not in vals and max(vals) - min(vals) < 1e-9 * (1 + abs(vals[0])):
+            co[k] = caseng.simplify(caseng.subst(co[k], 'theta', ('n', 0)))
+    nz = [k for k in range(len(co)) if co[k] != ('n', 0)]
+    if not nz:
+        return ['every point']
+    lo = nz[0]
+    nz2 = [k - lo for k in nz]
+    co = co[lo:]
+    out = []
+    if lo:
+        out.append(_w('divided by r^' + str(lo) + ' (r = 0 is the pole)'))
+    if len(nz2) == 2:
+        d = nz2[1]
+        rhs = caseng.simplify(('neg', ('/', co[0], co[d])))
+        # 2 cos t sin t -> sin 2t
+        st = ('sin', T)
+        r2 = caseng.simplify(caseng.subst_tree(rhs, st, ('/', ('sin', ('*', ('n', 2), T)),
+                                                          ('*', ('n', 2), ('cos', T)))))
+        if 'cos(theta)' not in caseng.tostr(r2) and len(caseng.tostr(r2)) < len(caseng.tostr(rhs)):
+            rhs = r2
+        lhs = 'r' if d == 1 else 'r^' + str(d)
+        out.insert(0, lhs + ' = ' + caseng.tostr(rhs))
+    else:
+        out.insert(0, '0 =')
+        out.insert(1, _m(caseng.simplify(G)))
+    out.append(_w('x = r cos theta, y = r sin theta'))
+    return out
+
+def t_polar_eq_cart(r):
+    # r = f(theta) as a cartesian equation (theta typed as x)
+    # r = p cos t + q sin t: multiply by r -> x^2 + y^2 = px + qy, a circle
+    pc = caseng.simplify(caseng.subst(r, 'x', ('n', 0)))
+    qs = caseng.simplify(caseng.subst(r, 'x', ('/', ('v', 'pi'), ('n', 2))))
+    test = caseng.simplify(('-', r, ('+', ('*', pc, ('cos', ('v', 'x'))), ('*', qs, ('sin', ('v', 'x'))))))
+    env = {}
+    for v in caseng.vars_in(r):
+        if v != 'x':
+            env[v] = 1.37
+    zero = True
+    for t in (0.3, 1.1, 2.3):
+        env['x'] = t
+        try:
+            if abs(caseng.evalf(test, t, False, env)) > 1e-9:
+                zero = False
+        except Exception:
+            zero = False
+    out = []
+    if zero:
+        hx = caseng.simplify(('/', pc, ('n', 2)))
+        hy = caseng.simplify(('/', qs, ('n', 2)))
+        rad2 = caseng.simplify(caspoly.expand(('+', ('^', hx, ('n', 2)), ('^', hy, ('n', 2)))))
+        out.append('x^2 + y^2 = ' + caseng.tostr(caseng.simplify(('+', ('*', pc, ('v', 'x')), ('*', qs, ('v', 'y'))))))
+        out.append('(x - ' + caseng.tostr(hx) + ')^2 + (y - ' + caseng.tostr(hy) + ')^2 = ' +
+                   caseng.tostr(rad2))
+        import cassolve
+        out.append('centre (' + caseng.tostr(hx) + ', ' + caseng.tostr(hy) + '), radius ' +
+                   caseng.tostr(cassolve._sqrt_sym(rad2, 'x')))
+        out.append(_w('times r: r^2 = p r cos t + q r sin t'))
+    elif 'x' not in caseng.vars_in(r):
+        out.append('x^2 + y^2 = ' + caseng.tostr(caseng.simplify(('^', r, ('n', 2)))))
+        out.append(_w('a circle about the pole'))
+    else:
+        raise ValueError('only r = p cos t + q sin t or r = constant')
+    out.append(_w('x = r cos theta, y = r sin theta, r^2 = x^2 + y^2'))
+    return out
+
 def t_polar_area(r, a, b):
     a, b = _order(a, b)
     sq = _sq(r)
@@ -1553,6 +1646,8 @@ SECTIONS = [
         ('Cartesian to polar', 'x,y', t_xy_to_polar),
         ('Plot r = f(theta)', 'r(x)', t_polar_plot),
         ('Polar area', 'r(x),a,b', t_polar_area),
+        ('Cartesian eqn to polar', 'F(x,y)', t_cart_eq_polar),
+        ('Polar eqn to cartesian', 'r(x)', t_polar_eq_cart),
     ]),
     # Pa3 a4 a5 Pa6 a7 a8
     ('H', 'Hyperbolic functions', [
