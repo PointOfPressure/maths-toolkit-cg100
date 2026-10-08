@@ -1599,6 +1599,208 @@ def _vfac(t):
             pass
     return t
 
+# ---- constants fixed by conditions -------------------------------------------
+
+NSTART = (0.5, -0.5, 2.0, 0.05, 10.0, -100.0)
+
+def _nsolve(eqs, lets):
+    # real Newton on eqs (trees = 0) in the letters, from a spread of starts;
+    # -> list of solutions (lists of floats), duplicates removed
+    m = len(lets)
+    if m == 0 or m > 3 or len(eqs) < m:
+        return []
+
+    def F(xs):
+        env = {}
+        for i in range(m):
+            env[lets[i]] = xs[i]
+        return [float(caseng.evalf(e, 0.0, False, env)) for e in eqs[:m]]
+    starts = []
+    for i in range(len(NSTART)):
+        starts.append([NSTART[(i + 2 * j) % len(NSTART)] * (1 + 0.37 * j) for j in range(m)])
+    sols = []
+    for xs in starts:
+        try:
+            it = 0
+            while it < 60:
+                f = F(xs)
+                if max([abs(v) for v in f]) < 1e-13:
+                    break
+                J = []
+                for j in range(m):
+                    ys = list(xs)
+                    h = 1e-7 * (1 + abs(ys[j]))
+                    ys[j] += h
+                    g = F(ys)
+                    J.append([(g[i] - f[i]) / h for i in range(m)])
+                A = [[J[j][i] for j in range(m)] for i in range(m)]
+                d = _lin_solve(A, [-v for v in f])
+                if d is None:
+                    break
+                xs = [xs[i] + d[i] for i in range(m)]
+                it += 1
+            env = {}
+            for i in range(m):
+                env[lets[i]] = xs[i]
+            ok = True
+            for e in eqs:
+                if abs(caseng.evalf(e, 0.0, False, env)) > 1e-9:
+                    ok = False
+        except Exception:
+            ok = False
+        if not ok:
+            continue
+        xs = [casutil.clean(v) for v in xs]
+        dup = False
+        for s2 in sols:
+            if max([abs(s2[i] - xs[i]) for i in range(m)]) < 1e-7 * (1 + max([abs(v) for v in xs])):
+                dup = True
+        if not dup:
+            sols.append(xs)
+    return sols
+
+def _lin_solve(A, b):
+    m = len(b)
+    A = [list(A[i]) + [b[i]] for i in range(m)]
+    for c in range(m):
+        piv = c
+        for r in range(c, m):
+            if abs(A[r][c]) > abs(A[piv][c]):
+                piv = r
+        if abs(A[piv][c]) < 1e-300:
+            return None
+        A[c], A[piv] = A[piv], A[c]
+        for r in range(m):
+            if r != c:
+                f = A[r][c] / A[c][c]
+                for k in range(c, m + 1):
+                    A[r][k] -= f * A[c][k]
+    return [A[i][m] / A[i][i] for i in range(m)]
+
+def _parse_list(parts, what):
+    out = []
+    for p in parts:
+        t = caslex.parse(p)
+        if t is None:
+            raise ValueError('cannot read ' + what)
+        out.append(caseng.simplify(t))
+    return out
+
+def _qfmt(v):
+    # a fraction with a denominator up to 1000 (a = 1/600), else 5 s.f.
+    r = caseng._fltrat(v) if isinstance(v, float) else None
+    if r is not None:
+        return str(r[0]) if r[1] == 1 else str(r[0]) + '/' + str(r[1])
+    return fmt(v) if not isinstance(v, float) else p5(v)
+
+def _constlines(lets, sols, out):
+    if not sols:
+        out.insert(0, 'no values satisfy every condition')
+        return
+    k = 0
+    for xs in sols:
+        if k:
+            out.insert(k, w('or:'))
+            k += 1
+        out.insert(k, ', '.join([lets[i] + ' = ' + _qfmt(xs[i]) for i in range(len(lets))]))
+        k += 1
+
+def t_drvconst(E, V, pairs):
+    # x, P pairs with letters; sum P = 1, E(X) = E, Var(X) = V
+    if len(pairs) < 4 or len(pairs) % 2:
+        raise ValueError('give x,P pairs')
+    ts = _parse_list(pairs, 'the table')
+    xs = ts[0::2]
+    ps = ts[1::2]
+    lets = _plets(ps)
+    eqs = [_S(('-', _sumt(ps), ('n', 1)))]
+    if E is not None:
+        eqs.append(_S(('-', _sumt([('*', xs[i], ps[i]) for i in range(len(xs))]), ('n', E))))
+    if V is not None:
+        e1 = _sumt([('*', xs[i], ps[i]) for i in range(len(xs))])
+        e2 = _sumt([('*', ('^', xs[i], ('n', 2)), ps[i]) for i in range(len(xs))])
+        eqs.append(_S(('-', ('-', e2, ('^', e1, ('n', 2))), ('n', V))))
+    sols = []
+    for xs1 in _nsolve(eqs, lets):
+        env = {}
+        for i in range(len(lets)):
+            env[lets[i]] = xs1[i]
+        good = True
+        for p in ps:
+            v = caseng.evalf(p, 0.0, False, env)
+            if v < -1e-12 or v > 1 + 1e-12:
+                good = False
+        if good:
+            sols.append(xs1)
+    out = [w('sum P = 1' + (', E(X) = ' + fmt(E) if E is not None else '') +
+             (', Var(X) = ' + fmt(V) if V is not None else '')),
+           w('every P between 0 and 1')]
+    _constlines(lets, sols, out)
+    return out
+
+def t_pdfconst(E, f, a, b, g, c):
+    # f on [a, b] (and g on [b, c]) with letters; total 1 and E(X) = E
+    pieces = [(f, a, b)]
+    if g is not None:
+        if c is None:
+            raise ValueError('give c, the end of the second piece')
+        pieces.append((g, b, c))
+    lets = _plets([f] + ([g] if g is not None else []))
+    tot = ('n', 0)
+    mom = ('n', 0)
+    for h, lo, hi in pieces:
+        tot = ('+', tot, _sdef(h, ('n', lo), ('n', hi)))
+        mom = ('+', mom, _sdef(('*', ('v', 'x'), h), ('n', lo), ('n', hi)))
+    eqs = [_sxp(('-', tot, ('n', 1)))]
+    if E is not None:
+        eqs.append(_sxp(('-', mom, ('n', E))))
+    sols = []
+    for xs1 in _nsolve(eqs, lets):
+        env = {}
+        for i in range(len(lets)):
+            env[lets[i]] = xs1[i]
+        good = True
+        for h, lo, hi in pieces:
+            for k in range(1, 8):
+                env['x'] = lo + (hi - lo) * k / 8.0
+                if caseng.evalf(h, 0.0, False, env) < -1e-12:
+                    good = False
+        if good:
+            sols.append(xs1)
+    out = [w('total int f dx = 1' + (', E(X) = ' + fmt(E) if E is not None else '')),
+           w('f >= 0 on each piece')]
+    _constlines(lets, sols, out)
+    return out
+
+def t_cdfconst(F, a, b, x0, p):
+    # F on [a, b] with letters: F(a) = 0, F(b) = 1 and F(x0) = p
+    lets = _plets([F])
+    at = lambda v: caseng.subst(F, 'x', ('n', v))
+    eqs = [_S(at(a)), _S(('-', at(b), ('n', 1)))]
+    if x0 is not None and p is not None:
+        eqs.append(_S(('-', at(x0), ('n', p))))
+    if len(eqs) < len(lets):
+        raise ValueError('need F(x0) = p for a third constant')
+    sols = []
+    for xs1 in _nsolve(eqs, lets):
+        env = {}
+        for i in range(len(lets)):
+            env[lets[i]] = xs1[i]
+        good = True
+        prev = None
+        for k in range(9):
+            env['x'] = a + (b - a) * k / 8.0
+            v = caseng.evalf(F, 0.0, False, env)
+            if prev is not None and v < prev - 1e-12:
+                good = False
+            prev = v
+        if good:
+            sols.append(xs1)
+    out = [w('F(a) = 0, F(b) = 1' + (', F(' + fmt(x0) + ') = ' + fmt(p) if x0 is not None else '')),
+           w('F non-decreasing')]
+    _constlines(lets, sols, out)
+    return out
+
 def t_normsum(k, terms):
     # W = sum of coef * (X1 + ... + Xcount), every copy independent
     if len(terms) % 4 or not terms:
@@ -3123,6 +3325,7 @@ SECTIONS = [
         ('Discrete uniform', 'a,b,c?,d?', t_dunif),
         ('Discrete uniform in n', 'a(n),b(n),m?', t_dunifa),
         ('DRV table in p', 'x p pairs$*', t_drva),
+        ('DRV table constants', 'E,Var,x p pairs$*', t_drvconst),
     ]),
     ('B', 'Binomial and Poisson', [
         ('Poisson P(X=k)', 'mu,k', t_pois),
@@ -3154,6 +3357,8 @@ SECTIONS = [
         ('Piecewise pdf', 'f(x),g(x),a,b,c', t_pdfpw),
         ('Rectangular U(a,b)', 'a,b,c?,d?', t_rect),
         ('pdf in terms of a', 'f(x),lo(a),hi(a)', t_pdfa),
+        ('pdf constants', 'E,f(x),a,b,g(x)?,c?', t_pdfconst),
+        ('cdf constants', 'F(x),a,b,x0?,p?', t_cdfconst),
         ('cdf in terms of a', 'F(x),lo(a),hi(a)', t_cdfa),
     ]),
     ('N', 'Normal distribution', [

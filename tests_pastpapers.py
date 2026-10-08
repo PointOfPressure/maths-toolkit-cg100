@@ -603,6 +603,10 @@ CASES += [
     ('y420-spec', '16(ii)(A)', 'fcalc', 'Second order in k', '1,2k,k^2+9', '(A*cos(3*x)+B*sin(3*x))*e^(-k*x)'),
     ('y420-jun24', '17b', 'fcalc', 'Integrating factor', '1/(200-x),10,0,0', '10*(-x+200)*ln(200/(-x+200))'),
     ('y420-jun25', '17a(iii)', 'fcalc', 'Separable DE', '0.2,20-y,0,0', '-20*e^(-x/5)+20'),
+    # distributions with constants fixed by conditions
+    ('y422-jun22', '3a', 'fstat', 'DRV table constants', '1.8,?,0,a,1,b,2,0.24,3,0.32,4,b^2', 'a = 1/5, b = 1/5'),
+    ('y422-nov21', '11a', 'fstat', 'pdf constants', '2,a*x^2,0,2,b*(3-x)^2,3', 'a = 1/8, b = 2'),
+    ('y422-jun24', '12a', 'fstat', 'cdf constants', 'a*(x^2+b*x+c),20,30,25,11/24', 'a = 1/600, b = 10, c = -600'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

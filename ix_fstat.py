@@ -10,6 +10,7 @@ T = (
         ('Discrete uniform', 'a,b,c?,d?'),
         ('Discrete uniform in n', 'a(n),b(n),m?'),
         ('DRV table in p', 'x p pairs$*'),
+        ('DRV table constants', 'E,Var,x p pairs$*'),
     )),
     ('B', 'Binomial and Poisson', (
         ('Poisson P(X=k)', 'mu,k'),
@@ -41,6 +42,8 @@ T = (
         ('Piecewise pdf', 'f(x),g(x),a,b,c'),
         ('Rectangular U(a,b)', 'a,b,c?,d?'),
         ('pdf in terms of a', 'f(x),lo(a),hi(a)'),
+        ('pdf constants', 'E,f(x),a,b,g(x)?,c?'),
+        ('cdf constants', 'F(x),a,b,x0?,p?'),
         ('cdf in terms of a', 'F(x),lo(a),hi(a)'),
     )),
     ('N', 'Normal distribution', (
