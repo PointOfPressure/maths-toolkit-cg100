@@ -3645,7 +3645,19 @@ def t_sumpoly(fr, a, b):
     a = _iv(a, 'a', -1000000, 1000000)
     p = caspoly.poly(fr, 'r')
     if p is None:
-        raise ValueError('f(r) must be a polynomial in r')
+        if b is None:
+            raise ValueError('f(r) is not a polynomial: give b for a value')
+        # not a polynomial: add the terms (as mpure Sigma sum does)
+        b = _iv(b, 'b', a, a + 100000)
+        tot = 0.0
+        r = a
+        while r <= b:
+            v = _at(fr, 'r', float(r))
+            if v is None:
+                raise ValueError('f(' + str(r) + ') is undefined')
+            tot += v
+            r += 1
+        return ['sum = ' + _f(tot), _w('terms added one by one, r = ' + str(a) + ' to ' + str(b))]
     if len(p) > 7:
         raise ValueError('degree up to 6')
     Ps = _sumtable(len(p))
@@ -3662,7 +3674,14 @@ def t_sumpoly(fr, a, b):
         tot = caspoly.rsub(caspoly.peval(S, (b, 1)), base)
         out.append('sum = ' + _f(_ratf(tot)))
     out.append('S(n) =')
-    out.append(_m(caseng.simplify(caspoly.ptree(Sa, 'n'))))
+    St = caseng.simplify(caspoly.ptree(Sa, 'n'))
+    try:
+        Sf = caspoly.factor(St, 'n')
+    except Exception:
+        Sf = None
+    if Sf is not None and caseng.tostr(Sf) != caseng.tostr(St):
+        out.append(_m(Sf))
+    out.append(_m(St))
     out.append(_w('r = ' + str(a) + ' to n'))
     out.append(_w('sum r = n(n+1)/2, sum r^2 = n(n+1)(2n+1)/6,'))
     out.append(_w('sum r^3 = n^2(n+1)^2/4; combine term by term'))
@@ -3795,6 +3814,26 @@ def t_diffs(fr, n):
         gs = '(' + gs + ')'
     out = ['g(r) = ' + caseng.tostr(g),
            'S(n) = ' + _f(g1v) + ' - ' + gs]
+    # and as one fraction: n/(2n+1)
+    g1r = caseng._fltrat(g1v) if not isinstance(g1v, int) else (g1v, 1)
+    if g1r is not None:
+        try:
+            one = caspoly.ratnorm(('-', caspoly.ratnode(g1r), gn), 'n')
+        except Exception:
+            one = None
+        if one is not None and one[0] == '/':
+            # integer numerator: n(3n+5)/(4(n+1)(n+2)), not (3n^2/4+5n/4)/..
+            P = caspoly.poly(one[1], 'n')
+            if P is not None:
+                L = 1
+                for c in P:
+                    L = L * c[1] // casutil.gcd(L, c[1])
+                if L > 1:
+                    top = caseng.simplify(caspoly.ptree([caspoly.rmul(c, (L, 1)) for c in P], 'n'))
+                    ft = caspoly.factor(top, 'n')
+                    one = ('/', ft if ft is not None else top, ('*', ('n', L), one[2]))
+        if one is not None:
+            out.append('S(n) = ' + caseng.tostr(one))
     if n is not None:
         nn = _iv(n, 'n', 1, 1000000000)
         gt = gval(float(nn) + 1.0)

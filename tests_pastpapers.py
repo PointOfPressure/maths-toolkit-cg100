@@ -593,6 +593,12 @@ CASES += [
     ('y420-jun19', '15', 'CAS', 'definite integral a..b', '1/sqrt(4x^2-4x+2) ; 3/4,3/2', 'ln(sqrt(5)/2+3/2)/2'),
     ('y420-nov21', '16b', 'CAS', 'definite integral a..b', 'x^2/sqrt(4+x^2) ; 0,2', '-2*ln(sqrt(2)+1)+2*sqrt(2)'),
     ('y420-jun25', '16a', 'CAS', 'definite integral a..b', '(x+3)/sqrt(x^2+9) ; 0,4', '3*ln(3)+2'),
+    # sums factorised; method of differences as one fraction
+    ('y420-nov20', '1', 'fcore', 'Sum f(r), r = a..b', 'r(r+1)(r+3),1', '(3*n+13)*n*(n+1)*(n+2)/12'),
+    ('y420-jun25', '3', 'fcore', 'Sum f(r), r = a..b', 'r(r+2),1', '(2*n+7)*n*(n+1)/6'),
+    ('y420-spec', '11(i)', 'fcore', 'Sum f(r), r = a..b', '1/r^2,1,10', 'sum = 1.55'),
+    ('y420-nov21', '1b', 'fcore', 'Method of differences', '1/((2r-1)(2r+1))', 'S(n) = n/(2*n+1)'),
+    ('y420-jun23', '3a', 'fcore', 'Method of differences', '1/(r(r+2))', 'S(n) = (3*n+5)*n/(4*(n+1)*(n+2))'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
