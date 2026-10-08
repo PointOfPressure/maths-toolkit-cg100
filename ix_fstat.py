@@ -85,6 +85,11 @@ T = (
         ('CI mean from summary', 'n,xbar,s,conf%'),
         ('CI paired data', 'conf%,x y pairs*'),
         ('CI to test mu0', 'lo,hi,mu0'),
+        ('t test for a mean', 'mu0,s,n,xbar,sig%,tail'),
+        ('t test from data', 'mu0,sig%,tail,data*'),
+        ('t test from sums', 'mu0,n,sumx,sumx2,sig%,tail'),
+        ('t interval', 'n,xbar,s,conf%'),
+        ('t interval from data', 'conf%,data*'),
         ('Sample size for width', 'sigma,fullwidth,conf%'),
     )),
     ('W', 'Wilcoxon signed rank', (

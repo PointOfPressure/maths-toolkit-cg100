@@ -2259,6 +2259,87 @@ def t_ztest_data(mu0, sigma, pct, tail, data):
                  (', s = ' + sf3(s) if sigma is None else '')))
     return out
 
+def _ttest(mu0, s, n, xbar, pct, tail, out):
+    tail = _tail(tail)
+    a = _level(pct, 'sig%')
+    if s <= 0:
+        raise ValueError('s must be > 0')
+    df = n - 1
+    se = s / math.sqrt(n)
+    t = (xbar - mu0) / se
+    at = abs(t)
+    p1 = _t_sf(at, df)
+    p = 2.0 * p1 if tail == 2 else p1
+    tc, tabled = _tstar(df, a / 2.0 if tail == 2 else a)
+    sgn = '-' if (tail == 1 and t < 0) else ''
+    out.append('t = ' + fmt(t, 10 if casutil.FULL else 4))
+    out.append('df = ' + fmt(df))
+    out.append('crit = ' + ('+/-' if tail == 2 else sgn) + fmt(tc, 10 if casutil.FULL else 4))
+    out.append(_pfmt(p))
+    out.append(_verdict(at > tc, pct))
+    _computed(tabled, out)
+    out.append(w('H0: mu = ' + p5(mu0)))
+    if tail == 2:
+        out.append(w('H1: mu is not ' + p5(mu0) + ' (2 tail)'))
+    elif t >= 0:
+        out.append(w('H1: mu > ' + p5(mu0) + ' (1 tail)'))
+    else:
+        out.append(w('H1: mu < ' + p5(mu0) + ' (1 tail)'))
+    out.append(w('SE = s/sqrt(n) = ' + p5(se)))
+    out.append(w('t = (xbar-mu0)/SE, t_' + fmt(df) + ' under H0'))
+    out.append(w('assumes a Normal parent, sigma unknown'))
+
+def t_ttest(mu0, s, n, xbar, pct, tail):
+    n = _whole(n, 'n', 2, 10 ** 6)
+    out = []
+    _ttest(mu0, s, n, xbar, pct, tail, out)
+    return out
+
+def t_ttest_data(mu0, pct, tail, data):
+    n, mean, s = _mean_sd(data)
+    if s <= 0:
+        raise ValueError('all values equal')
+    out = []
+    _ttest(mu0, s, n, mean, pct, tail, out)
+    out.append(w('xbar = ' + p5(mean) + ', s = ' + p5(s) + ', n = ' + fmt(n)))
+    return out
+
+def t_ttest_sums(mu0, n, sx, sxx, pct, tail):
+    n = _whole(n, 'n', 2, 10 ** 6)
+    ss = sxx - sx * sx / n
+    if ss <= 0:
+        raise ValueError('sum x^2 too small for sum x')
+    s = math.sqrt(ss / (n - 1))
+    out = []
+    _ttest(mu0, s, n, sx / n, pct, tail, out)
+    out.append(w('xbar = ' + p5(sx / n) + ', s = ' + p5(s) + ' from the sums'))
+    return out
+
+def _tci(n, xbar, s, pct, out):
+    n = _whole(n, 'n', 2, 10 ** 6)
+    if s <= 0:
+        raise ValueError('s must be > 0')
+    cl = _level(pct, 'conf%')
+    tk, tabled = _tstar(n - 1, (1.0 - cl) / 2.0)
+    se = s / math.sqrt(n)
+    out.append('t* = ' + fmt(tk, 10 if casutil.FULL else 4) + ' (df ' + fmt(n - 1) + ')')
+    _ci_lines(xbar, tk * se, out)
+    _computed(tabled, out)
+    out.append(w('xbar +/- t* s/sqrt(n), SE = ' + p5(se)))
+    out.append(w('assumes a Normal parent'))
+
+def t_tci(n, xbar, s, pct):
+    out = []
+    _tci(n, xbar, s, pct, out)
+    return out
+
+def t_tci_data(pct, data):
+    n, mean, s = _mean_sd(data)
+    out = []
+    _tci(n, mean, s, pct, out)
+    out.append(w('xbar = ' + p5(mean) + ', s = ' + p5(s) + ', n = ' + fmt(n)))
+    return out
+
 def _ci_lines(centre, half, out):
     out.insert(0, '(' + p5(centre - half) + ', ' + p5(centre + half) + ')')
     out.insert(1, 'centre ' + p5(centre) + ' +/- ' + p5(half))
@@ -2822,6 +2903,11 @@ SECTIONS = [
         ('CI mean from summary', 'n,xbar,s,conf%', t_ci_sum),
         ('CI paired data', 'conf%,x y pairs*', t_ci_paired),
         ('CI to test mu0', 'lo,hi,mu0', t_ci_in),
+        ('t test for a mean', 'mu0,s,n,xbar,sig%,tail', t_ttest),
+        ('t test from data', 'mu0,sig%,tail,data*', t_ttest_data),
+        ('t test from sums', 'mu0,n,sumx,sumx2,sig%,tail', t_ttest_sums),
+        ('t interval', 'n,xbar,s,conf%', t_tci),
+        ('t interval from data', 'conf%,data*', t_tci_data),
         ('Sample size for width', 'sigma,fullwidth,conf%', t_ci_n),
     ]),
     ('W', 'Wilcoxon signed rank', [
