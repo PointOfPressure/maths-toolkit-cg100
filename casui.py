@@ -1,7 +1,9 @@
-# Screens: home grid, section grids, tool lists, the natural-display editor,
+# Screens: home grid, word grids for every menu, the natural-display editor,
 # the result screen, Calculate (with history), CAS, Graph and Solve.
 # Only casioplot is imported up front; the engine loads the first time a screen
 # needs it, so the home screen appears straight away.
+# Drawing is the slow part on the calculator, so screens redraw only what a
+# key changed: moving in a grid repaints two tiles, not the screen.
 from casioplot import *
 
 KEYCODES = set([
@@ -25,23 +27,48 @@ DIGITS = {81: 1, 82: 2, 83: 3, 71: 4, 72: 5, 73: 6, 61: 7, 62: 8, 63: 9, 91: 0}
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-ACC = (40, 120, 220)
-GREY = (120, 120, 130)
-LGREY = (200, 205, 215)
+INK = (24, 28, 36)
+ACC = (0, 96, 200)
+GREY = (110, 115, 125)
+LGREY = (196, 202, 212)
+BAR = (232, 236, 242)       # status bar
+TILE = (244, 246, 250)      # unselected word tile
 HL = (222, 232, 252)
-RED = (205, 60, 60)
+RED = (200, 50, 50)
 GREEN = (30, 150, 90)
 ORANGE = (235, 130, 30)
 PURPLE = (130, 70, 200)
 TEAL = (20, 150, 160)
+YEL = (250, 200, 30)
 
 W = 384
-TOP = 26        # first body pixel under the header
-BOT = 177       # last body pixel above the footer
+H = 192
+SBH = 20        # status bar height
+TOP = 22        # first body pixel
+BOT = 191       # last body pixel
 
 DEG = False     # mirrors casutil.DEG so the home screen needs no engine
 
 # ---- keys -------------------------------------------------------------------
+# Arrows and DEL repeat while held, like the built-in apps.
+
+def _clock():
+    for name in ('time', 'utime'):
+        try:
+            m = __import__(name)
+        except Exception:
+            continue
+        if hasattr(m, 'ticks_ms'):
+            return m.ticks_ms
+        if hasattr(m, 'monotonic'):
+            return lambda: int(m.monotonic() * 1000)
+    return None
+
+_NOW = _clock()
+REPEAT = (UP, DOWN, LEFT, RIGHT, DEL)
+DELAY = 380     # ms before a held key repeats
+RATE = 60       # ms between repeats
+_HELD = [0, 0]  # key still down, time of its next repeat
 
 def readkey():
     k = getkey()
@@ -50,6 +77,7 @@ def readkey():
 def wait_release():
     while readkey():
         pass
+    _HELD[0] = 0
 
 def wait_key():
     k = readkey()
@@ -58,8 +86,27 @@ def wait_key():
     return k
 
 def next_key():
-    wait_release()
-    return wait_key()
+    k0 = _HELD[0]
+    if k0:
+        rep = k0 in REPEAT and _NOW is not None
+        while True:
+            k = readkey()
+            if k != k0:
+                break
+            if rep and _NOW() >= _HELD[1]:
+                _HELD[1] = _NOW() + RATE
+                return k0
+        if k and k != HOME:
+            _HELD[0] = k
+            _HELD[1] = _NOW() + DELAY if _NOW else 0
+            return k
+    k = wait_key()
+    _HELD[0] = k
+    _HELD[1] = _NOW() + DELAY if _NOW else 0
+    if k == HOME:
+        wait_release()
+        raise Home()
+    return k
 
 # ---- drawing ------------------------------------------------------------------
 
@@ -145,6 +192,14 @@ def box(x0, y0, x1, y1, c):
     set_pixel(x0 + 1, y0 + 1, c); set_pixel(x1 - 1, y0 + 1, c)
     set_pixel(x0 + 1, y1 - 1, c); set_pixel(x1 - 1, y1 - 1, c)
 
+def rbox(x0, y0, x1, y1, c):
+    # filled, rounded corners
+    hline(x0 + 2, x1 - 2, y0, c)
+    hline(x0 + 1, x1 - 1, y0 + 1, c)
+    rect(x0, y0 + 2, x1, y1 - 2, c)
+    hline(x0 + 1, x1 - 1, y1 - 1, c)
+    hline(x0 + 2, x1 - 2, y1, c)
+
 def line(x0, y0, x1, y1, c):
     dx = x1 - x0 if x1 > x0 else x0 - x1
     dy = -(y1 - y0 if y1 > y0 else y0 - y1)
@@ -185,172 +240,252 @@ def disc(cx, cy, r, c, fill):
 def ctext(cx, y, s, c, size):
     draw_string(cx - text_w(s, size) // 2, y, s, c, size)
 
-def header(title, right=None):
-    draw_string(6, 4, clip(title, 290 if right else 372, 'medium'), ACC, 'medium')
-    if right:
-        draw_string(W - 6 - text_w(right, 'small'), 8, right, GREY, 'small')
-    hline(0, W - 1, 23, LGREY)
+# ---- status bar -----------------------------------------------------------------
+# Title on the left, SHIFT / ALPHA / angle on the right, like the built-in apps.
 
-def footer(s):
-    hline(0, W - 1, 178, LGREY)
-    draw_string(6, 181, clip(s, 372, 'small'), GREY, 'small')
+_SB = ['', None]    # what the bar shows now, so a key that changes nothing redraws nothing
+
+def _ind(shift, alpha):
+    if shift:
+        return 'S'
+    if alpha:
+        return 'A'
+    return ''
+
+def status(title, shift=False, alpha=False, right=None):
+    rect(0, 0, W - 1, SBH - 1, BAR)
+    hline(0, W - 1, SBH, LGREY)
+    draw_string(6, 2, clip(title, 250, 'medium'), INK, 'medium')
+    _status_right(_ind(shift, alpha), right)
+
+def _status_right(ind, right):
+    _SB[0] = ind
+    _SB[1] = right
+    x = W - 6
+    s = right if right is not None else ('Deg' if DEG else 'Rad')
+    rect(262, 0, W - 1, SBH - 1, BAR)
+    x -= text_w(s, 'medium')
+    draw_string(x, 2, s, GREY, 'medium')
+    if ind:
+        x -= 22
+        rbox(x, 2, x + 15, 17, YEL if ind == 'S' else RED)
+        ctext(x + 8, 2, ind, INK if ind == 'S' else WHITE, 'medium')
+
+def status_mode(shift, alpha, right=None):
+    # repaint only the indicator corner when SHIFT / ALPHA changes
+    ind = _ind(shift, alpha)
+    if ind != _SB[0] or right != _SB[1]:
+        _status_right(ind, right)
+        return True
+    return False
+
+def header(title, right=None):
+    status(title, False, False, right)
+
+def body_clear():
+    rect(0, TOP, W - 1, BOT, WHITE)
+
+# ---- popup ---------------------------------------------------------------------
 
 def flash(msg):
-    lines = wrap(msg, 340, 'medium')[:3]
-    h = 14 + 18 * len(lines)
+    lines = wrap(msg, 320, 'medium')[:4]
+    h = 18 + 19 * len(lines)
     y0 = 96 - h // 2
-    rect(20, y0, 363, y0 + h, WHITE)
-    box(20, y0, 363, y0 + h, RED)
-    box(21, y0 + 1, 362, y0 + h - 1, RED)
-    y = y0 + 8
+    rbox(28, y0 + 2, 359, y0 + h + 2, LGREY)     # shadow
+    rbox(26, y0, 357, y0 + h, WHITE)
+    box(26, y0, 357, y0 + h, RED)
+    y = y0 + 9
     for ln in lines:
         ctext(192, y, ln, RED, 'medium')
-        y += 18
+        y += 19
     show_screen()
     next_key()
     wait_release()
 
-# ---- list menu ------------------------------------------------------------------
+class Home(BaseException):
+    # HOME from anywhere: unwinds to the home grid, past tools' own handlers
+    pass
 
-ROWS = 7
-PITCH = 21
+# ---- grids ----------------------------------------------------------------------
+# Every menu is a grid. Word tiles for lists of options, icon tiles for the home
+# screen. Moving repaints the two tiles involved; scrolling repaints the body.
 
-def _draw_menu(title, opts, sel, top, hint):
-    clear_screen()
-    n = len(opts)
-    header(title, str(sel + 1) + '/' + str(n) if n > ROWS else None)
-    r = 0
-    while r < ROWS and top + r < n:
-        i = top + r
-        y = TOP + 1 + r * PITCH
-        if i == sel:
-            rect(3, y, 376, y + PITCH - 3, HL)
-            vline(3, y, y + PITCH - 3, ACC)
-            vline(4, y, y + PITCH - 3, ACC)
-        if i < 9:
-            draw_string(10, y + 3, str(i + 1), ACC if i == sel else GREY, 'small')
-        draw_string(26, y + 1, clip(opts[i], 345, 'medium'), BLACK, 'medium')
-        r += 1
-    if top > 0:
-        ctext(372, TOP - 1, '^', GREY, 'small')
-    if top + ROWS < n:
-        ctext(372, 168, 'v', GREY, 'small')
-    footer(hint)
-    show_screen()
+class Grid:
+    def __init__(self, title, tiles, cols, rows, icons):
+        self.title = title
+        self.tiles = tiles
+        self.cols = cols
+        self.rows = rows
+        self.icons = icons
+        self.top = 0
+        n = len(tiles)
+        self.nrows = (n + cols - 1) // cols
+        self.bar = self.nrows > rows
+        self.tw = (W - (6 if self.bar else 0)) // cols
+        self.th = (H - TOP) // rows
+        self.lines = []
+        if not icons:
+            for label in tiles:
+                ls = wrap(label, self.tw - 10, 'medium')
+                if len(ls) > 2:
+                    ls = [ls[0], clip(' '.join(ls[1:]), self.tw - 10, 'medium')]
+                self.lines.append(ls)
 
-def menu(title, opts, sel=0, hint='EXE open   EXIT back   1-9 jump'):
-    if not opts:
-        return -1
-    n = len(opts)
-    if sel >= n:
-        sel = 0
-    top = 0
-    while True:
-        if sel < top:
-            top = sel
-        if sel >= top + ROWS:
-            top = sel - ROWS + 1
-        _draw_menu(title, opts, sel, top, hint)
-        k = next_key()
-        if k == UP:
-            sel = (sel - 1) % n
-        elif k == DOWN:
-            sel = (sel + 1) % n
-        elif k == LINESTART:
-            sel = 0
-        elif k == LINEEND:
-            sel = n - 1
-        elif k == PAGEUP or k == LEFT:
-            sel = sel - ROWS if sel >= ROWS else 0
-        elif k == PAGEDOWN or k == RIGHT:
-            sel = sel + ROWS if sel + ROWS < n else n - 1
-        elif k == OK or k == EXE:
-            wait_release()
-            return sel
-        elif k == EXITK:
-            wait_release()
-            return -1
+    def xy(self, i):
+        return ((i % self.cols) * self.tw, TOP + (i // self.cols - self.top) * self.th)
+
+    def tile(self, i, on, full):
+        x0, y0 = self.xy(i)
+        x1 = x0 + self.tw - 1
+        y1 = y0 + self.th - 1
+        if self.icons:
+            label, paint = self.tiles[i]
+            if full:
+                paint(x0 + self.tw // 2, y0 + 30)
+            c = ACC if on else WHITE
+            box(x0 + 2, y0 + 1, x1 - 2, y1 - 1, c)
+            box(x0 + 3, y0 + 2, x1 - 3, y1 - 2, c)
+            ctext(x0 + self.tw // 2, y0 + 58, label, ACC if on else INK, 'medium')
+            return
+        ls = self.lines[i]
+        if on:
+            rbox(x0 + 2, y0 + 2, x1 - 2, y1 - 2, ACC)
+            c = WHITE
         else:
-            d = DIGITS.get(k, None)
-            if d is not None and 1 <= d <= n:
-                wait_release()
-                return d - 1
+            if not full:
+                rbox(x0 + 2, y0 + 2, x1 - 2, y1 - 2, WHITE)
+            box(x0 + 2, y0 + 2, x1 - 2, y1 - 2, LGREY)
+            c = INK
+        y = y0 + (self.th - 18 * len(ls)) // 2
+        for s in ls:
+            ctext(x0 + self.tw // 2, y, s, c, 'medium')
+            y += 18
 
-# ---- icon grid ----------------------------------------------------------------------
-# A tile is (label, painter). painter(cx, cy) draws a ~44px icon centred there.
+    def scrollbar(self):
+        if not self.bar:
+            return
+        x = W - 4
+        rect(x, TOP, x + 2, BOT, BAR)
+        span = BOT - TOP + 1
+        t0 = TOP + span * self.top // self.nrows
+        t1 = TOP + span * (self.top + self.rows) // self.nrows - 1
+        rect(x, t0, x + 2, t1 if t1 <= BOT else BOT, ACC)
 
-GCOLS = 4
-GROWS = 2
+    def draw(self, sel):
+        clear_screen()
+        status(self.title)
+        i = self.top * self.cols
+        end = (self.top + self.rows) * self.cols
+        while i < len(self.tiles) and i < end:
+            self.tile(i, i == sel, True)
+            i += 1
+        self.scrollbar()
 
-def _draw_grid(title, right, tiles, sel):
-    clear_screen()
-    per = GCOLS * GROWS
-    page = sel // per
-    pages = (len(tiles) + per - 1) // per
-    if pages > 1:
-        right = (right + '  ' if right else '') + str(page + 1) + '/' + str(pages)
-    header(title, right)
-    tw = W // GCOLS
-    th = (192 - TOP) // GROWS
-    big = True
-    for label, paint in tiles[page * per:(page + 1) * per]:
-        if text_w(label, 'medium') > tw - 6:
-            big = False
-    i = page * per
-    while i < len(tiles) and i < (page + 1) * per:
-        c = (i - page * per) % GCOLS
-        r = (i - page * per) // GCOLS
-        x0 = c * tw
-        y0 = TOP + r * th
-        label, paint = tiles[i]
-        if i == sel:
-            rect(x0 + 3, y0 + 1, x0 + tw - 4, y0 + th - 3, HL)
-            box(x0 + 2, y0, x0 + tw - 3, y0 + th - 2, ACC)
-            box(x0 + 3, y0 + 1, x0 + tw - 4, y0 + th - 3, ACC)
-        paint(x0 + tw // 2, y0 + 28)
-        lines = [label] if big else wrap(label, tw - 2, 'small')
-        if len(lines) == 1:
-            ctext(x0 + tw // 2, y0 + (56 if big else 60), lines[0], ACC if i == sel else BLACK,
-                  'medium' if big else 'small')
-        else:
-            ctext(x0 + tw // 2, y0 + 55, lines[0], ACC if i == sel else BLACK, 'small')
-            ctext(x0 + tw // 2, y0 + 66, clip(lines[1], tw - 2, 'small'), ACC if i == sel else BLACK, 'small')
-        i += 1
-    show_screen()
-
-def grid(title, tiles, sel=0, right=None):
-    n = len(tiles)
-    if sel >= n:
+def grid_run(g, sel):
+    n = len(g.tiles)
+    if sel >= n or sel < 0:
         sel = 0
-    per = GCOLS * GROWS
+    cols = g.cols
+    g.top = 0
+    r = sel // cols
+    if r >= g.rows:
+        g.top = r - g.rows + 1
+    g.draw(sel)
+    show_screen()
     while True:
-        _draw_grid(title, right() if right else None, tiles, sel)
         k = next_key()
+        old = sel
         if k == RIGHT:
             sel = (sel + 1) % n
         elif k == LEFT:
             sel = (sel - 1) % n
         elif k == DOWN:
-            sel = sel + GCOLS if sel + GCOLS < n else (sel % GCOLS if sel // per == (n - 1) // per else n - 1)
+            if sel + cols < n:
+                sel += cols
+            elif sel // cols < g.nrows - 1:
+                sel = n - 1
+            else:
+                sel = sel % cols
         elif k == UP:
-            sel = sel - GCOLS if sel >= GCOLS else sel
+            if sel >= cols:
+                sel -= cols
+            else:
+                sel = (g.nrows - 1) * cols + sel
+                if sel >= n:
+                    sel -= cols
         elif k == PAGEDOWN:
-            sel = sel + per if sel + per < n else n - 1
+            sel = sel + cols * g.rows if sel + cols * g.rows < n else n - 1
         elif k == PAGEUP:
-            sel = sel - per if sel >= per else 0
+            sel = sel - cols * g.rows if sel >= cols * g.rows else sel % cols
+        elif k == LINESTART:
+            sel = 0
+        elif k == LINEEND:
+            sel = n - 1
         elif k == OK or k == EXE:
             wait_release()
             return sel
         elif k == EXITK:
             wait_release()
             return -1
+        elif k == SETTINGS:
+            settings()
+            g.draw(sel)
+            show_screen()
+            continue
         else:
             d = DIGITS.get(k, None)
-            if d is not None and d >= 1:
-                j = (sel // per) * per + d - 1
-                if j < n:
-                    wait_release()
-                    return j
+            if d is not None and 1 <= d <= n:
+                wait_release()
+                return d - 1
+            continue
+        if sel == old:
+            continue
+        r = sel // cols
+        top = g.top
+        if r < top:
+            top = r
+        elif r >= top + g.rows:
+            top = r - g.rows + 1
+        if top != g.top:
+            g.top = top
+            g.draw(sel)
+        else:
+            g.tile(old, False, False)
+            g.tile(sel, True, False)
+        show_screen()
+
+def _cols_for(labels):
+    # three across when every label fits on two lines, else two
+    for s in labels:
+        if len(wrap(s, 118, 'medium')) > 2:
+            return 2
+        for word in s.split(' '):
+            if text_w(word, 'medium') > 118:
+                return 2
+    return 3
+
+def menu(title, opts, sel=0, hint=None):
+    if not opts:
+        return -1
+    return grid_run(Grid(title, opts, _cols_for(opts), 4, False), sel)
+
+def grid(title, tiles, sel=0, right=None):
+    return grid_run(Grid(title, tiles, 4, 2, True), sel)
+
+def pick(title, labels, sel=0):
+    # symbols: short labels, five across
+    return grid_run(Grid(title, labels, 5, 5, False), sel)
+
+def settings():
+    global DEG
+    i = menu('Settings: angle', ['Radians', 'Degrees'], 1 if DEG else 0)
+    if i >= 0:
+        DEG = i == 1
+        try:
+            import casutil
+            casutil.DEG = DEG
+        except ImportError:
+            pass
 
 # ---- icons ---------------------------------------------------------------------------
 
@@ -433,23 +568,9 @@ def ic_angle(cx, cy):
         x += 1
     ctext(cx + 6, cy - 22, 'DEG' if DEG else 'RAD', ORANGE, 'small')
 
-def badge(code, color):
-    def paint(cx, cy):
-        disc(cx, cy - 2, 20, color, True)
-        size = 'large' if len(code) == 1 else 'medium'
-        ctext(cx, cy - 2 - (10 if size == 'large' else 7), code, WHITE, size)
-    return paint
-
 # ---- natural-display editor ----------------------------------------------------------
 
 _LAST = {}      # label|spec -> the row last typed there, so going back never loses it
-
-def _mode(shift, alpha):
-    if shift:
-        return 'SHIFT'
-    if alpha:
-        return 'ALPHA'
-    return 'DEG' if DEG else 'RAD'
 
 def _fields(spec):
     import casutil
@@ -460,30 +581,42 @@ def _fields(spec):
         names.append(name)
     return names if len(names) > 1 else None
 
+def _field_at(ed):
+    # which comma-separated field the caret is in
+    row = ed.root
+    end = ed.stack[0][1] if ed.stack else ed.i
+    n = 0
+    i = 0
+    while i < end and i < len(row):
+        if row[i] == ',':
+            n += 1
+        i += 1
+    return n
+
 def _draw_input(label, spec, ed, shift, alpha, names):
     import nat
     clear_screen()
-    header(label, _mode(shift, alpha))
-    draw_string(6, TOP + 2, clip(spec.replace(',', ', '), 372, 'medium'), GREY, 'medium')
+    status(label, shift, alpha)
+    draw_string(8, TOP + 3, clip(spec.replace(',', ', '), 368, 'medium'), GREY, 'medium')
     w, a, d = nat.measure(ed.root, 0)
-    base = 72 if a <= 24 else 50 + a - 2
-    box(2, 46, 381, base + d + 8, LGREY)
-    nat.draw(ed, ed.root, 8, base, 368)
+    base = TOP + 34 + (a - 13 if a > 13 else 0)
+    box(3, TOP + 23, W - 4, base + d + 7, ACC)
+    nat.draw(ed, ed.root, 10, base, 362)
     y = base + d + 14
-    if names and ed.root:
-        parts = _split(nat.lin(ed.root))
+    if names:
+        parts = _split(nat.lin(ed.root)) if ed.root else []
+        cur = _field_at(ed)
         i = 0
-        x = 6
-        while i < len(names) and y < 166:
+        x = 8
+        while i < len(names) and y < BOT - 16:
             s = names[i] + ' = ' + (parts[i] if i < len(parts) else '')
-            s = clip(s, 118, 'small')
-            draw_string(x, y, s, GREY if i < len(parts) else LGREY, 'small')
+            s = clip(s, 118, 'medium')
+            draw_string(x, y, s, ACC if i == cur else (INK if i < len(parts) else LGREY), 'medium')
             x += 124
             i += 1
             if i % 3 == 0:
-                x = 6
-                y += 13
-    footer('EXE run   MENU symbols   SHIFT DEL clear   EXIT back')
+                x = 8
+                y += 20
     show_screen()
 
 def _split(text):
@@ -516,7 +649,7 @@ def edit_key(ed, k, shift, alpha):
             ed.clear()
         else:
             ed.dele()
-    elif k == MENU:
+    elif k == MENU or k == TOOLS:
         symbols(ed)
     else:
         return nat.typed(ed, k, shift, alpha)
@@ -533,23 +666,33 @@ def input_line(label, spec, last=''):
     shift = False
     alpha = False
     names = _fields(spec)
+    dirty = True
     while True:
-        _draw_input(label, spec, ed, shift, alpha, names)
+        if dirty:
+            _draw_input(label, spec, ed, shift, alpha, names)
+        dirty = True
         k = next_key()
-        if k == SHIFT:
-            shift = not shift
-            alpha = False
-            continue
-        if k == ALPHA:
-            alpha = not alpha
-            shift = False
+        if k == SHIFT or k == ALPHA:
+            if k == SHIFT:
+                shift = not shift
+                alpha = False
+            else:
+                alpha = not alpha
+                shift = False
+            status_mode(shift, alpha)
+            show_screen()
+            dirty = False
             continue
         if k == EXITK:
             _LAST[key] = nat.copy(ed.root)
             wait_release()
             return None
+        if k == SETTINGS:
+            settings()
+            continue
         if k == OK or k == EXE:
             if not ed.root:
+                dirty = False
                 continue
             if nat.empty_hole(ed.root):
                 flash('fill in the empty box')
@@ -557,48 +700,11 @@ def input_line(label, spec, last=''):
             _LAST[key] = nat.copy(ed.root)
             wait_release()
             return nat.lin(ed.root)
-        edit_key(ed, k, shift, alpha)
+        if not edit_key(ed, k, shift, alpha) and not shift and not alpha:
+            dirty = False
+            continue
         shift = False
         alpha = False
-
-# ---- small grid picker (symbols) ------------------------------------------------------
-
-def pick(title, labels, sel=0):
-    cols = 4
-    rows = 6
-    per = cols * rows
-    n = len(labels)
-    while True:
-        clear_screen()
-        page = sel // per
-        header(title, str(page + 1) + '/' + str((n + per - 1) // per))
-        i = page * per
-        while i < n and i < (page + 1) * per:
-            c = (i - page * per) % cols
-            r = (i - page * per) // cols
-            x0 = c * 96
-            y0 = TOP + r * 25
-            if i == sel:
-                rect(x0 + 3, y0 + 1, x0 + 92, y0 + 22, HL)
-                box(x0 + 2, y0, x0 + 93, y0 + 23, ACC)
-            ctext(x0 + 48, y0 + 4, labels[i], ACC if i == sel else BLACK, 'medium')
-            i += 1
-        show_screen()
-        k = next_key()
-        if k == RIGHT:
-            sel = (sel + 1) % n
-        elif k == LEFT:
-            sel = (sel - 1) % n
-        elif k == DOWN:
-            sel = sel + cols if sel + cols < n else sel
-        elif k == UP:
-            sel = sel - cols if sel >= cols else sel
-        elif k == OK or k == EXE:
-            wait_release()
-            return sel
-        elif k == EXITK:
-            wait_release()
-            return -1
 
 # ---- result screen -------------------------------------------------------------------
 
@@ -615,7 +721,7 @@ def _blocks(lines, mode):
             if kind == 'm' or kind == 'mw':
                 b = casrender.build(ln[1], 0)
                 bw, ba, bd = casrender.measure(b)
-                if bw <= 372:
+                if bw <= 368:
                     out.append((kind, b, ba + bd + 6))
                     continue
                 kind = 'a' if kind == 'm' else 'w'
@@ -625,79 +731,124 @@ def _blocks(lines, mode):
         else:
             kind = 'a'
             text = ln
-        for part in wrap(text, 372 if kind != 'w' else 364, 'medium'):
-            out.append((kind, part, 19))
+            b = _typeset(text)
+            if b is not None:
+                bw, ba, bd = casrender.measure(b)
+                if bw <= 368:
+                    out.append(('m', b, ba + bd + 6))
+                    continue
+        for part in wrap(text, 368 if kind != 'w' else 360, 'medium'):
+            out.append((kind, part, 20))
     return out
+
+_MATHY = ('/', '^', 'sqrt(')
+
+def _typeset(text):
+    # 'x = 1/2 + i*sqrt(3)/2' -> 'x = ' then the expression as a fraction / root
+    j = text.find(' = ')
+    if j < 0 or j > 24 or '=' in text[j + 3:] or '  ' in text:
+        return None
+    rhs = text[j + 3:]
+    hit = False
+    for m in _MATHY:
+        if m in rhs:
+            hit = True
+    if not hit:
+        return None
+    import caslex
+    import casrender
+    try:
+        t = caslex.parse(rhs)
+    except Exception:
+        return None
+    if t is None:
+        return None
+    return ('row', [('atom', text[:j + 3], 'medium'), casrender.build(t, 0)])
+
+MODES = (None, 'working', 'full')
 
 def _draw_result(title, sub, blocks, top, mode, more):
     import casrender
     clear_screen()
-    header(title)
-    y = TOP + 1
+    status(title, False, False, MODES[mode] if more else '')
+    y = TOP + 3
     if sub:
-        draw_string(6, y, clip(sub, 372, 'small'), GREY, 'small')
-        y += 14
+        draw_string(8, y, clip(sub, 368, 'medium'), GREY, 'medium')
+        y += 20
+        hline(8, W - 9, y - 2, BAR)
+        y += 2
     i = top
     n = len(blocks)
     while i < n:
         kind, payload, h = blocks[i]
-        if y + h > BOT + 1:
+        if y + h > BOT + 2:
             break
         if kind == 'a':
-            draw_string(6, y, payload, BLACK, 'medium')
+            draw_string(8, y, payload, INK, 'medium')
         elif kind == 'w':
-            draw_string(14, y, payload, GREY, 'medium')
+            draw_string(16, y, payload, GREY, 'medium')
         elif kind == '!':
-            draw_string(6, y, payload, RED, 'medium')
+            draw_string(8, y, payload, RED, 'medium')
         else:
             bw, ba, bd = casrender.measure(payload)
-            casrender.COLOR = BLACK if kind == 'm' else GREY
-            casrender.draw(payload, 6 if kind == 'm' else 14, y + 3 + ba)
+            casrender.COLOR = INK if kind == 'm' else GREY
+            casrender.draw(payload, 8 if kind == 'm' else 16, y + 3 + ba)
         y += h
         i += 1
-    foot = ['FORMAT show working', 'FORMAT full precision', 'FORMAT answer only'][mode] if more else ''
-    if i < n or top > 0:
-        foot += '   ^v scroll ' + str(top + 1) + '-' + str(i) + '/' + str(n)
-    footer(foot + '   EXIT back')
+    if top > 0 or i < n:
+        # scroll position, right edge
+        span = BOT - TOP
+        t0 = TOP + span * top // n
+        t1 = TOP + span * i // n
+        vline(W - 3, TOP, BOT, BAR)
+        vline(W - 2, TOP, BOT, BAR)
+        vline(W - 3, t0, t1, ACC)
+        vline(W - 2, t0, t1, ACC)
     show_screen()
     return i
 
 def result(label, text, lines_fn):
     # lines_fn: callable giving the lines (called again for full precision),
-    # or a plain list for static content
+    # or a plain list for static content. Each form is worked out once.
     import casutil
     mode = 0
     top = 0
     more = not isinstance(lines_fn, list)
-    casutil.FULL = False
+    raw = {}
+    blocks = None
     try:
         while True:
-            lines = lines_fn if isinstance(lines_fn, list) else lines_fn()
-            blocks = _blocks(lines, mode)
-            if not blocks:
-                blocks = [('!', 'nothing to show', 19)]
+            if blocks is None:
+                full = mode == 2
+                casutil.FULL = full
+                if full not in raw:
+                    raw[full] = lines_fn if not more else lines_fn()
+                blocks = _blocks(raw[full], mode)
+                if not blocks:
+                    blocks = [('!', 'nothing to show', 20)]
             if top >= len(blocks):
                 top = len(blocks) - 1
             end = _draw_result(label, text, blocks, top, mode, more)
-            k = next_key()
-            if k == EXITK or k == OK or k == EXE:
-                wait_release()
-                return
-            if k == DOWN:
-                if end < len(blocks):
+            while True:
+                k = next_key()
+                if k == EXITK or k == OK or k == EXE:
+                    wait_release()
+                    return
+                if k == DOWN and end < len(blocks):
                     top += 1
-            elif k == UP:
-                if top > 0:
+                elif k == UP and top > 0:
                     top -= 1
-            elif k == PAGEDOWN:
-                if end < len(blocks):
+                elif k == PAGEDOWN and end < len(blocks):
                     top = end
-            elif k == PAGEUP:
-                top = top - 7 if top > 7 else 0
-            elif k == FORMAT and more:
-                mode = (mode + 1) % 3
-                casutil.FULL = (mode == 2)
-                top = 0
+                elif k == PAGEUP and top > 0:
+                    top = top - 7 if top > 7 else 0
+                elif k == FORMAT and more:
+                    mode = (mode + 1) % 3
+                    top = 0
+                    blocks = None
+                else:
+                    continue
+                break
     finally:
         casutil.FULL = False
 
@@ -797,7 +948,7 @@ def _draw_calc(ed, shift, alpha):
     import casrender
     casrender._MCACHE.clear()
     clear_screen()
-    header('Calculate', _mode(shift, alpha))
+    status('Calculate', shift, alpha)
     fresh = CALC.get('fresh')
     editing = CALC.get('editing')
     items = []
@@ -806,7 +957,7 @@ def _draw_calc(ed, shift, alpha):
         forms = e[1]
         note = None
         if e[2] != len(forms) - 1 and forms[-1][0] == 'a':
-            note = clip('= ' + forms[-1][1], 372, 'small')
+            note = clip('= ' + forms[-1][1], 372, 'medium')
         items.append((e[0], _ans_box(forms[e[2]]), None, note))
     if not fresh:
         items.append((ed.root, None, ed, None))
@@ -821,7 +972,7 @@ def _draw_calc(ed, shift, alpha):
         if ans is not None:
             h += ans[3] + ans[4] + 4
         if note:
-            h += 12
+            h += 18
         if blocks and total + h > BOT - TOP - 2:
             break
         blocks.insert(0, (row, ans, e, note, a, d, h))
@@ -845,13 +996,9 @@ def _draw_calc(ed, shift, alpha):
             else:
                 draw_string(378 - w, yb - 13, p, RED if kind == '!' else (BLACK if last else GREY), 'medium')
             if note:
-                draw_string(378 - text_w(note, 'small'), yb + ad + 2, note, GREY, 'small')
+                draw_string(378 - text_w(note, 'medium'), yb + ad + 2, note, GREY, 'medium')
         y += h
         n += 1
-    if fresh and HIST and len(HIST[-1][1]) > 1:
-        footer('FORMAT other form   UP recall   EXIT back')
-    else:
-        footer('EXE =   UP recall   SHIFT DEL clear   EXIT back')
     show_screen()
 
 def calc_section():
@@ -863,20 +1010,29 @@ def calc_section():
         CALC['pos'] = 0
     shift = False
     alpha = False
+    dirty = True
     while True:
-        _draw_calc(ed, shift, alpha)
+        if dirty:
+            _draw_calc(ed, shift, alpha)
+        dirty = True
         k = next_key()
-        if k == SHIFT:
-            shift = not shift
-            alpha = False
-            continue
-        if k == ALPHA:
-            alpha = not alpha
-            shift = False
+        if k == SHIFT or k == ALPHA:
+            if k == SHIFT:
+                shift = not shift
+                alpha = False
+            else:
+                alpha = not alpha
+                shift = False
+            status_mode(shift, alpha)
+            show_screen()
+            dirty = False
             continue
         if k == EXITK:
             wait_release()
             return
+        if k == SETTINGS:
+            settings()
+            continue
         fresh = CALC.get('fresh')
         if k == OK or k == EXE:
             if fresh or not ed.root:
@@ -1283,21 +1439,25 @@ FURTHER = (
         ('D', 'Differential equations', 'ffpt'), ('N', 'Number theory', 'ffpt'))),
 )
 
-MODCOL = {'mpure': ACC, 'mcalc': PURPLE, 'mstat': GREEN, 'mmech': ORANGE,
-          'fcore': ACC, 'fcalc': PURPLE, 'fmech': ORANGE, 'fstat': GREEN,
-          'falgo': TEAL, 'fnum': RED, 'fxpure': (90, 90, 160), 'ffpt': (160, 90, 60)}
-
 def _tools(code, title, mod):
     for c, t, tools in __import__(mod).SECTIONS:
         if c == code and t == title:
             return tools
     return []
 
+_SEL = {}       # grid title -> last tile picked, so coming back lands where you were
+
+def remembered(title, opts):
+    i = menu(title, opts, _SEL.get(title, 0))
+    if i >= 0:
+        _SEL[title] = i
+    return i
+
 def _tools_menu(code, title, mod):
     tools = _tools(code, title, mod)
-    sel = 0
+    labels = [t[0] for t in tools]
     while True:
-        sel = menu(code + '  ' + title, [t[0] for t in tools], sel)
+        sel = remembered(title, labels)
         if sel < 0:
             return
         label, spec, fn = tools[sel]
@@ -1308,29 +1468,21 @@ def _tools_menu(code, title, mod):
             flash('tool error: ' + str(e))
 
 def qual_section(title, secs):
-    tiles = [(t, badge(c, MODCOL.get(m, ACC))) for c, t, m in secs]
-    sel = 0
+    labels = [t for c, t, m in secs]
     while True:
-        sel = grid(title, tiles, sel)
+        sel = remembered(title, labels)
         if sel < 0:
             return
         _tools_menu(*secs[sel])
 
-PAPERCOL = (ACC, ORANGE, GREEN, TEAL, RED, (90, 90, 160), (160, 90, 60))
-
 def paper_section(title, papers):
-    tiles = []
-    i = 0
-    for name, code, secs in papers:
-        tiles.append((name, badge(code.split('/')[0][1:], PAPERCOL[i % len(PAPERCOL)])))
-        i += 1
-    sel = 0
+    labels = [name for name, code, secs in papers]
     while True:
-        sel = grid(title, tiles, sel)
+        sel = remembered(title, labels)
         if sel < 0:
             return
         name, code, secs = papers[sel]
-        qual_section(name + '  ' + code, secs)
+        qual_section(name, secs)
 
 def formulae_section():
     import formulae
@@ -1342,36 +1494,33 @@ def formulae_section():
         title, lines = formulae.SHEETS[sel]
         show_lines(title, [('w', ln) for ln in lines])
 
-def _toggle_angle():
-    global DEG
-    import casutil
-    casutil.DEG = not casutil.DEG
-    DEG = casutil.DEG
-
 HOME_TILES = [
     ('Calculate', ic_calc), ('CAS', ic_cas), ('Graph', ic_graph), ('Solve', ic_solve),
-    ('Maths', ic_pi), ('Further', ic_argand), ('Formulae', ic_book), ('Angle', ic_angle),
+    ('Maths', ic_pi), ('Further', ic_argand), ('Formulae', ic_book), ('Settings', ic_angle),
 ]
 
 def main():
     sel = 0
     while True:
-        sel = grid('Maths Toolkit', HOME_TILES, sel, lambda: 'AQA 7357 + MEI H645')
-        if sel < 0:
-            return
-        if sel == 0:
-            calc_section()
-        elif sel == 1:
-            cas_section()
-        elif sel == 2:
-            graph_section()
-        elif sel == 3:
-            solve_section()
-        elif sel == 4:
-            qual_section('Maths  AQA 7357', MATHS)
-        elif sel == 5:
-            paper_section('Further  MEI H645', FURTHER)
-        elif sel == 6:
-            formulae_section()
-        elif sel == 7:
-            _toggle_angle()
+        try:
+            sel = grid('Maths Toolkit', HOME_TILES, sel)
+            if sel < 0:
+                return
+            if sel == 0:
+                calc_section()
+            elif sel == 1:
+                cas_section()
+            elif sel == 2:
+                graph_section()
+            elif sel == 3:
+                solve_section()
+            elif sel == 4:
+                qual_section('Maths', MATHS)
+            elif sel == 5:
+                paper_section('Further', FURTHER)
+            elif sel == 6:
+                formulae_section()
+            elif sel == 7:
+                settings()
+        except Home:
+            pass
