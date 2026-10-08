@@ -165,6 +165,8 @@ def cas_engine():
     tests_notes.run(check)
     import tests_pastpapers
     tests_pastpapers.run(check)
+    import tests_pastpapers_aqa
+    tests_pastpapers_aqa.run(check)
     import tests_tex
     tests_tex.run(check)
     _depth_check()

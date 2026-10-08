@@ -478,10 +478,16 @@ CASES += [
 TOOLS = {}
 
 def _tool(modname, label):
+    # modname may carry a section code: 'mpure:B'
     key = modname + '/' + label
     if key not in TOOLS:
         TOOLS[key] = None
-        for code, title, tools in __import__(modname).SECTIONS:
+        code = None
+        if ':' in modname:
+            modname, code = modname.split(':')
+        for c, title, tools in __import__(modname).SECTIONS:
+            if code is not None and c != code:
+                continue
             for lab, spec, fn in tools:
                 if lab == label and TOOLS[key] is None:
                     TOOLS[key] = (spec, fn)
@@ -499,14 +505,28 @@ def _flat(lines):
             out.append(str(ln))
     return '\n'.join(out)
 
-def output(module, label, inputs):
-    if module == 'CALC':
+def output(module, label, inputs, ask=None, deg=False, full=False):
+    # CAS inputs may carry the follow-up answer as 'f(x) ; ask'
+    casutil.DEG = deg
+    casutil.FULL = full
+    try:
+        return _output(module, label, inputs, ask)
+    finally:
+        casutil.DEG = False
+        casutil.FULL = False
+
+def _output(module, label, inputs, ask):
+    if module in ('CALC', 'casui:Calculate'):
         casui.ANS[0] = ('n', 0)
-        return _flat(casui._forms(inputs))
-    if module == 'CAS':
+        try:
+            return _flat(casui._forms(inputs))
+        except Exception as e:
+            return 'error: ' + repr(e)
+    if module in ('CAS', 'casui:CAS'):
         parts = inputs.split(' ; ')
         expr = parts[0]
-        ask = parts[1] if len(parts) > 1 else None
+        if len(parts) > 1:
+            ask = parts[1]
         old = casutil.ask
         casutil.ask = lambda spec, lab='': None if ask is None else casutil.convert(spec, ask)
         try:
