@@ -13,10 +13,13 @@ T = (
         ('Poisson P(X=k)', 'mu,k'),
         ('Poisson a<=X<=b', 'mu,a,b'),
         ('Poisson least k', 'mu,p'),
+        ('Poisson mu, P(X=k)', 'k,p'),
+        ('Poisson mu, P(X<=k)', 'k,p'),
         ('Sum of Poissons', 'k,mu*'),
         ('Poisson approx to B', 'n,p,k'),
         ('Poisson model check', 'data*'),
         ('Binomial P(X=k)', 'n,p,k'),
+        ('Binomial least n', 'p,k,target'),
     )),
     ('G', 'Geometric distribution', (
         ('Geometric P(X=r)', 'p,r'),
@@ -25,6 +28,7 @@ T = (
     )),
     ('C', 'Continuous random vars', (
         ('pdf E Var and check', 'f(x),a,b'),
+        ('pdf find k', 'g(x),a,b'),
         ('pdf median quartiles', 'f(x),a,b'),
         ('Mode of a pdf', 'f(x),a,b'),
         ('cdf F(x) from a pdf', 'f(x),a,b,t'),

@@ -758,6 +758,32 @@ def t_zw(z, w):
                     ', Im(zw) = ' + _f(_cx(z * w).imag)))
     return lines
 
+def t_zconj(za, zb, zc):
+    a = _cx(za)
+    b = _cx(zb)
+    c = _cx(zc)
+    # (a1+b1)x + (b2-a2)y = c1, (a2+b2)x + (a1-b1)y = c2
+    p1 = a.real + b.real
+    q1 = b.imag - a.imag
+    p2 = a.imag + b.imag
+    q2 = a.real - b.real
+    det = p1 * q2 - q1 * p2
+    def eq(p, q, r):
+        return _f(p) + 'x ' + ('- ' + _f(-q) if q < 0 else '+ ' + _f(q)) + \
+            'y = ' + _f(r)
+    wk = [_w('z = x + iy, z* = x - iy'),
+          _w('Re: ' + eq(p1, q1, c.real)), _w('Im: ' + eq(p2, q2, c.imag))]
+    if abs(det) < 1e-12:
+        r1 = p1 * c.imag - p2 * c.real
+        r2 = q1 * c.imag - q2 * c.real
+        if abs(r1) < 1e-9 and abs(r2) < 1e-9:
+            return ['infinitely many z (a line)', _w('|a| = |b|: det = 0')] + wk
+        return ['no solution', _w('|a| = |b|: det = 0')] + wk
+    x = (c.real * q2 - q1 * c.imag) / det
+    y = (p1 * c.imag - p2 * c.real) / det
+    z = casutil.clean(complex(_snap(x), _snap(y)))
+    return ['z = ' + _f(z)] + wk + [_w('det = |a|^2 - |b|^2 = ' + _f(det))]
+
 def t_modarg(z):
     if z == 0:
         raise ValueError('arg(0) is undefined')
@@ -1056,6 +1082,10 @@ def _circlepts(cx, cy, r):
         i += 1
     return pts
 
+def _sqp(name, v):
+    p = _off(name, v)
+    return name + '^2' if p == name else '(' + p + ')^2'
+
 def t_loc_circle(z1, r):
     if r <= 0:
         raise ValueError('r must be > 0')
@@ -1063,12 +1093,33 @@ def t_loc_circle(z1, r):
     b = _cx(z1).imag
     _argand(_circlepts(a, b, r), '|z-a| = ' + _f(r))
     d = math.sqrt(a * a + b * b)
-    return ['circle centre ' + _f(z1) + ' radius ' + _f(r),
-            '(x-' + _f(a) + ')^2+(y-' + _f(b) + ')^2 = ' + _f(r * r),
-            'greatest |z| = ' + _f(d + r),
-            'least |z| = ' + _f(d - r if d > r else 0.0),
-            _w('|z-a| = r is the set of points r from a'),
-            _w('|a| = ' + _f(d))]
+    out = ['circle centre ' + _f(z1) + ' radius ' + _f(r),
+           _sqp('x', a) + '+' + _sqp('y', b) + ' = ' + _f(r * r),
+           'greatest |z| = ' + _f(d + r),
+           'least |z| = ' + _f(d - r if d > r else 0.0)]
+    wk = [_w('|z-a| = r is the set of points r from a'), _w('|a| = ' + _f(d))]
+    if d <= r + 1e-12:
+        return out + ['arg z takes every value: O is ' +
+                      ('on' if abs(d - r) < 1e-12 else 'inside') + ' the circle'] + wk
+    c = math.atan2(b, a)
+    h = math.asin(r / d)
+    tl = math.sqrt(d * d - r * r)
+    hi = c + h
+    lo = c - h
+    if hi > PI or lo <= -PI:
+        lo = _princ(lo)
+        hi = _princ(hi)
+        out.append('arg z: ' + _f(lo) + ' to pi, -pi to ' + _f(hi))
+        out.append('tangent points ' + _f(_rect(tl, lo)) + ', ' + _f(_rect(tl, hi)))
+    else:
+        out.append('greatest arg z = ' + _f(hi) + ' at ' + _f(_rect(tl, hi)))
+        out.append('least arg z = ' + _f(lo) + ' at ' + _f(_rect(tl, lo)))
+    wk.append(_w('tangents from O: arg a +- asin(r/|a|)'))
+    wk.append(_w('arg a = ' + _f(c) + ', asin(r/|a|) = ' + _f(h)))
+    wk.append(_w('tangent length sqrt(|a|^2 - r^2) = ' + _f(tl)))
+    wk.append(_w('degrees: ' + _f(casutil.deg(_princ(lo)), 4) + ' to ' +
+                 _f(casutil.deg(_princ(hi)), 4)))
+    return out + wk
 
 def _off(name, v):
     v = casutil.clean(v)
@@ -1417,6 +1468,19 @@ def t_inv2(A):
     out = _mlines('A^-1', _inv2(A))
     out.append(_w('det = ' + _f(d) + ', swap a and d, negate b and c'))
     out.append(_w('then divide every entry by det'))
+    return out
+
+def t_fromimg(p, P, q, Q):
+    S = [[p[0], q[0]], [p[1], q[1]]]
+    d = _det2(S)
+    if d == 0:
+        raise ValueError('p and q are parallel')
+    M = _mm([[P[0], Q[0]], [P[1], Q[1]]], _inv2(S))
+    M = [[casutil.clean(_snap(c)) for c in r] for r in M]
+    out = _mlines('M', M)
+    out.append('det M = ' + _f(_det2(M)))
+    out.append(_w('M [p q] = [P Q], so M = [P Q][p q]^-1'))
+    out.append(_w('det [p q] = ' + _f(d)))
     return out
 
 def t_inv3(A):
@@ -2270,7 +2334,7 @@ def t_pt_line(p, a, d):
     dist = _mag3(cr) / _mag3(d)
     t = _dot3(wv, d) / _dot3(d, d)
     foot = _step(a, d, t)
-    out = ['distance = ' + _f(dist), 'foot = ' + _fv(foot)]
+    out = ['distance = ' + _f(dist), 'foot = ' + _fv([_snap(c) for c in foot])]
     out.append(_w('d = |(p-a) x d|/|d|'))
     out.append(_w('(p-a) x d = ' + _fv(cr)))
     out.append(_w('t = (p-a).d/|d|^2 = ' + _f(t)))
@@ -2294,13 +2358,34 @@ def t_planes3(n1, d1, n2, d2, n3, d3):
     out.append(_w('det of the normals = 0: no single point'))
     return out
 
+def t_planes2(n1, d1, n2, d2):
+    _nonzero(n1, 'n1')
+    _nonzero(n2, 'n2')
+    if _para(n1, n2):
+        m2 = _dot3(n2, n2)
+        p = [d2 * c / m2 for c in n2]
+        gap = abs(_dot3(n1, p) - d1) / _mag3(n1)
+        if gap < 1e-9 * (1.0 + abs(d1)):
+            return ['the same plane', _w('n1 and n2 parallel, equations agree')]
+        return ['parallel: no common line', 'distance apart = ' + _f(gap),
+                _w('n1 and n2 are parallel')]
+    pt, dv = _sheafline([list(n1), list(n2)], [d1, d2])
+    dv = _posfirst(_simp_vec(dv))
+    c = abs(_dot3(n1, n2)) / (_mag3(n1) * _mag3(n2))
+    out = ['r = ' + _fv(pt) + ' + t' + _fv(dv)]
+    out += [ln for ln in _cart_line(pt, dv) if ln.find('=') >= 0]
+    out += _angle_lines(c)
+    out.append(_w('direction = n1 x n2 = ' + _fv(_cross3(n1, n2))))
+    out.append(_w('point: set one coordinate to 0, solve the other two'))
+    return out
+
 def t_pt_plane(p, n, k):
     _nonzero(n, 'n')
     mn = _mag3(n)
     gap = _dot3(n, p) - k
     dist = abs(gap) / mn
     foot = [p[i] - gap * n[i] / (mn * mn) for i in range(3)]
-    out = ['distance = ' + _f(dist), 'foot = ' + _fv(foot)]
+    out = ['distance = ' + _f(dist), 'foot = ' + _fv([_snap(c) for c in foot])]
     out.append(_w('d = |n.p - k|/|n|'))
     out.append(_w('n.p = ' + _f(_dot3(n, p)) + ',  |n| = ' + _f(mn)))
     return out
@@ -2469,6 +2554,189 @@ def t_rootsq(coeffs):
     out.append(_w('write f(x) = E(x^2) + x O(x^2), then'))
     out.append(_w('the new polynomial is E(y)^2 - y O(y)^2'))
     return out
+
+def _cub4(a, b, c, d):
+    vals = [a, b, c, d]
+    miss = [i for i in range(4) if vals[i] is None]
+    if len(miss) > 1:
+        raise ValueError('mark at most one coefficient ?')
+    if a is None:
+        return 0
+    if a == 0:
+        raise ValueError('a must not be 0')
+    return miss[0] if miss else -1
+
+def _realr(co):
+    # real roots; a cubic by the trigonometric / Cardano formula
+    if len(co) != 4 or co[0] == 0:
+        return [r for r in _roots(co) if not isinstance(r, complex)]
+    a = float(co[0])
+    b = co[1] / a
+    c = co[2] / a
+    d = co[3] / a
+    p = c - b * b / 3.0
+    q = 2.0 * b * b * b / 27.0 - b * c / 3.0 + d
+    disc = q * q / 4.0 + p * p * p / 27.0
+    if abs(p) < 1e-14:
+        ts = [_cbrt(-q)]
+    elif disc > 1e-14:
+        sd = math.sqrt(disc)
+        ts = [_cbrt(-q / 2.0 + sd) + _cbrt(-q / 2.0 - sd)]
+    elif disc > -1e-14:
+        ts = [3.0 * q / p, -3.0 * q / (2.0 * p)]
+    else:
+        r = 2.0 * math.sqrt(-p / 3.0)
+        ph = casutil.acos_safe(3.0 * q / (2.0 * p) * math.sqrt(-3.0 / p))
+        ts = [r * math.cos(ph / 3.0 - 2.0 * PI * k / 3.0) for k in range(3)]
+    out = []
+    for t in ts:
+        x = t - b / 3.0
+        for k in range(2):
+            f = ((x + b) * x + c) * x + d
+            g = (3.0 * x + 2.0 * b) * x + c
+            if g != 0:
+                x -= f / g
+        _addroot(out, _cleanroot(x))
+    out.sort()
+    return out
+
+def _relout(cands, unk, test):
+    names = 'abcd'
+    out = []
+    seen = []
+    for co, rs in cands:
+        co = [_cleanroot(v) for v in co]
+        if unk >= 0 and [1 for v in seen if abs(_cx(v - co[unk])) < 1e-9]:
+            continue
+        if unk >= 0:
+            seen.append(co[unk])
+        rs = _sortroots(_roots(co) if rs is None else [_cleanroot(v) for v in rs])
+        head = (names[unk] + ' = ' + _f(co[unk]) + ': ') if unk >= 0 else ''
+        out.append(head + 'roots ' + ', '.join([_f(v) for v in rs]))
+        if unk < 0:
+            out.append('relation holds: ' + ('yes' if test(rs) else 'no'))
+    if not out:
+        out.append('no real solution')
+    return out
+
+def _isap(rs):
+    if len(rs) != 3:
+        return False
+    for p in ((0, 1, 2), (1, 0, 2), (0, 2, 1)):
+        if caseng._cabs(_cx(rs[p[0]]) + _cx(rs[p[2]]) - 2 * _cx(rs[p[1]])) < 1e-7:
+            return True
+    return False
+
+def _isgp(rs):
+    if len(rs) != 3:
+        return False
+    for p in ((0, 1, 2), (1, 0, 2), (0, 2, 1)):
+        if caseng._cabs(_cx(rs[p[0]]) * _cx(rs[p[2]]) - _cx(rs[p[1]]) ** 2) < 1e-7:
+            return True
+    return False
+
+def _isdbl(rs):
+    for i in range(len(rs)):
+        for j in range(len(rs)):
+            if i != j and caseng._cabs(_cx(rs[i]) - 2 * _cx(rs[j])) < 1e-7:
+                return True
+    return False
+
+def _csqrt(v):
+    return math.sqrt(v) if v >= 0 else complex(0.0, math.sqrt(-v))
+
+def t_rootsap(a, b, c, d):
+    unk = _cub4(a, b, c, d)
+    if unk == 0:
+        raise ValueError('a must be known')
+    cands = []
+    if unk == 1:
+        for m in _realr([-2.0, 0.0, c / a, d / a]):
+            t = _csqrt(3.0 * m * m - c / a)
+            cands.append(([a, -3.0 * a * m, c, d], [m - t, m, m + t]))
+    elif unk == -1:
+        cands.append(([a, b, c, d], None))
+    else:
+        m = -b / (3.0 * a)
+        if unk == 2:
+            if m == 0:
+                raise ValueError('middle root 0: c not fixed')
+            t2 = m * m + d / (a * m)
+            co = [a, b, a * (3.0 * m * m - t2), d]
+        else:
+            t2 = 3.0 * m * m - c / a
+            co = [a, b, c, -a * m * (m * m - t2)]
+        t = _csqrt(t2)
+        cands.append((co, [m - t, m, m + t]))
+    return _relout(cands, unk, _isap) + [
+        _w('roots m-t, m, m+t: 3m = -b/a'),
+        _w('3m^2 - t^2 = c/a, m(m^2 - t^2) = -d/a')]
+
+def _cbrt(v):
+    return math.pow(v, 1.0 / 3) if v >= 0 else -math.pow(-v, 1.0 / 3)
+
+def t_rootsgp(a, b, c, d):
+    unk = _cub4(a, b, c, d)
+    if unk == 0:
+        if c == 0:
+            raise ValueError('c = 0: a not fixed')
+        co = [b ** 3 * d / float(c ** 3), b, c, d]
+    elif unk == 1:
+        m = _cbrt(-d / a)
+        if m == 0:
+            raise ValueError('d = 0: no GP')
+        co = [a, -c / m, c, d]
+    elif unk == 2:
+        co = [a, b, -b * _cbrt(-d / a), d]
+    elif unk == 3:
+        if b == 0:
+            raise ValueError('b = 0: d not fixed')
+        m = -c / float(b)
+        co = [a, b, c, -a * m ** 3]
+    else:
+        co = [a, b, c, d]
+    rs = None
+    m = _cbrt(-co[3] / float(co[0]))
+    if unk >= 0 and m != 0:
+        s1 = -co[1] / (co[0] * m)
+        D = (s1 - 1.0) ** 2 - 4.0
+        rt = _csqrt(D)
+        r = ((s1 - 1.0) + rt) / 2.0
+        rs = [m / r, m, m * r] if r != 0 else None
+    return _relout([(co, rs)], unk, _isgp) + [
+        _w('roots m/r, m, mr: m^3 = -d/a'),
+        _w('c/a = m(-b/a), so a c^3 = b^3 d')]
+
+def t_rootsdbl(a, b, c, d):
+    unk = _cub4(a, b, c, d)
+    if unk == 0:
+        raise ValueError('a must be known')
+    cands = []
+    if unk == 3:
+        B = b / float(a)
+        C = c / float(a)
+        for m in _realr([-7.0, -3.0 * B, -C]):
+            n = -B - 3.0 * m
+            cands.append(([a, b, c, -a * 2.0 * m * m * n], [m, 2.0 * m, n]))
+    elif unk == 2:
+        B = b / float(a)
+        D = d / float(a)
+        for m in _realr([-6.0, -2.0 * B, 0.0, D]):
+            if abs(m) > 1e-12:
+                n = -B - 3.0 * m
+                cands.append(([a, b, a * (2.0 * m * m + 3.0 * m * n), d], [m, 2.0 * m, n]))
+    elif unk == 1:
+        C = c / float(a)
+        D = d / float(a)
+        for m in _realr([-4.0 / 3, 0.0, 2.0 * C / 3, D]):
+            if abs(m) > 1e-12:
+                n = (C - 2.0 * m * m) / (3.0 * m)
+                cands.append(([a, -a * (3.0 * m + n), c, d], [m, 2.0 * m, n]))
+    else:
+        cands.append(([a, b, c, d], None))
+    return _relout(cands, unk, _isdbl) + [
+        _w('roots m, 2m, n: 3m + n = -b/a'),
+        _w('2m^2 + 3mn = c/a, 2m^2 n = -d/a')]
 
 # ---- S  Series --------------------------------------------------------------
 
@@ -2961,6 +3229,7 @@ SECTIONS = [
     # Pj1 j2-j4 j6-j11 Pj12 j13-j16 j19 j20
     ('J', 'Complex numbers', [
         ('Arithmetic z, w', 'z,w', t_zw),
+        ('Solve az + bz* = c', 'za,zb,zc', t_zconj),
         ('Argand sum/product', 'z,w', t_argops),
         ('Modulus-argument', 'z', t_modarg),
         ('From mod-arg form', 'r,theta', t_frommodarg),
@@ -2997,6 +3266,7 @@ SECTIONS = [
         ('Stretch or enlarge 2D', 'p,q', t_stretch2),
         ('Shear 2D', 'k,axis', t_shear2),
         ('Describe a 2x2', 'A[2x2]', t_describe),
+        ('2x2 from 2 images', 'p[2],P[2],q[2],Q[2]', t_fromimg),
         ('A then B (2x2)', 'A[2x2],B[2x2]', t_then2),
         ('Rotation 3D (axis)', 'axis,theta', t_rot3),
         ('Reflect 3D in plane', 'plane', t_ref3),
@@ -3021,6 +3291,7 @@ SECTIONS = [
         ('Angle between lines', 'd1[3],d2[3]', t_angle_lines),
         ('Angle line and plane', 'd[3],n[3]', t_angle_lp),
         ('Angle between planes', 'n1[3],n2[3]', t_angle_planes),
+        ('Two planes meet', 'n1[3],d1,n2[3],d2', t_planes2),
         ('Intersect two lines', 'a1[3],d1[3],a2[3],d2[3]', t_line_meet),
         ('Distance two lines', 'a1[3],d1[3],a2[3],d2[3]', t_line_dist),
         ('Line meets plane', 'a[3],d[3],n[3],k', t_line_plane),
@@ -3034,6 +3305,9 @@ SECTIONS = [
         ('Roots p a + q', 'p,q,coeffs*', t_rootlin),
         ('Roots 1/a', 'coeffs*', t_rootrecip),
         ('Roots a^2', 'coeffs*', t_rootsq),
+        ('Cubic roots in AP', 'a,b,c,d', t_rootsap),
+        ('Cubic roots in GP', 'a,b,c,d', t_rootsgp),
+        ('One root twice another', 'a,b,c,d', t_rootsdbl),
     ]),
     # Ps1 Ps2 s3 s4 s5
     ('S', 'Series, Maclaurin', [

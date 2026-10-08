@@ -354,6 +354,81 @@ def t_implicit(F, xv, yv):
         out.append(_warn('F = ' + _f(fv) + ': not on the curve'))
     return out
 
+def _ev2(t, x, y):
+    return casutil.evx(t, x, {'x': x, 'y': y})
+
+def _nr2(F, gi, J, x, y):
+    # 2-D Newton on F = 0 and J[gi] = 0, J = (Fx, Fy, Gx, Gy)
+    i = 0
+    while i < 14:
+        f = _ev2(F, x, y)
+        js = [_ev2(t, x, y) for t in J]
+        if f is None or None in js:
+            return None
+        g = js[gi]
+        det = js[0] * js[3] - js[1] * js[2]
+        if det == 0:
+            return None
+        dx = (f * js[3] - g * js[1]) / det
+        dy = (js[0] * g - js[2] * f) / det
+        st = abs(dx) + abs(dy)
+        if st > 4.0:
+            dx = dx * 4.0 / st
+            dy = dy * 4.0 / st
+        x -= dx
+        y -= dy
+        if abs(x) > 50 or abs(y) > 50:
+            return None
+        if abs(dx) + abs(dy) < 1e-10 * (1 + abs(x) + abs(y)):
+            f = _ev2(F, x, y)
+            g = _ev2(J[gi], x, y)
+            if f is None or g is None or abs(f) > 1e-8 or abs(g) > 1e-8:
+                return None
+            return (_near(x), _near(y))
+        i += 1
+    return None
+
+def _tanpts(F, gi, J):
+    found = []
+    for sx, sy in ((-2.9, -3.1), (2.7, 3.2), (-3.2, 2.8), (3.1, -2.6), (0.2, 0.1)):
+        p = _nr2(F, gi, J, sx, sy)
+        if p is None:
+            continue
+        dup = False
+        for q in found:
+            if abs(q[0] - p[0]) < 1e-6 * (1 + abs(p[0])) and \
+                    abs(q[1] - p[1]) < 1e-6 * (1 + abs(p[1])):
+                dup = True
+        if not dup and len(found) < 6:
+            found.append(p)
+    found.sort()
+    return found
+
+def t_implicit0(F):
+    _chk(F, ('x', 'y'))
+    Fx = _diff(F, 'x')
+    Fy = _diff(F, 'y')
+    Fxx = _diff(Fx, 'x')
+    Fxy = _diff(Fx, 'y')
+    Fyy = _diff(Fy, 'y')
+    hor = _tanpts(F, 0, (Fx, Fy, Fxx, Fxy))
+    ver = _tanpts(F, 1, (Fx, Fy, Fxy, Fyy))
+    out = []
+    for x, y in hor:
+        v = _ev2(Fy, x, y)
+        out.append('dy/dx = 0 at ' + _pt(x, y) +
+                   ('' if v is None or abs(v) > 1e-9 else ' (singular)'))
+    for x, y in ver:
+        v = _ev2(Fx, x, y)
+        if v is None or abs(v) > 1e-9:
+            out.append('vertical tangent at ' + _pt(x, y))
+    if not hor:
+        out.append('no point with dy/dx = 0 found')
+    out.append(_w('dF/dx = ' + _ts(Fx) + ' = 0 with F = 0'))
+    out.append(_w('vertical: dF/dy = ' + _ts(Fy) + ' = 0 with F = 0'))
+    out.append(_w('Newton from starts in -4..4, |x|,|y| <= 50'))
+    return out
+
 def t_connected(y, xv, dxdt):
     _chk(y, ('x',))
     dydx = _val(_diff(y), xv)
@@ -1025,6 +1100,7 @@ SECTIONS = [
         ('First principles', 'f(x),a', t_firstprin),
         ('Parametric dy/dx', 'x(t),y(t),t?', t_param),
         ('Implicit dy/dx', 'F(xy),x?,y?', t_implicit),
+        ('Implicit dy/dx = 0', 'F(xy)', t_implicit0),
         ('Connected rates', 'y(x),x,dx/dt', t_connected),
         ('Inverse derivative', 'f(x),a', t_invderiv),
         ("f, f' and f'' at a", 'f(x),a', t_valat),

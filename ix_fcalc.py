@@ -5,6 +5,7 @@ T = (
         ('Singular endpoint int', 'f(x),a,b'),
         ('Volume about x-axis', 'f(x),a,b'),
         ('Volume about y-axis', 'g(y),c,d'),
+        ('Volume between curves', 'f(x),g(x),a,b'),
         ('Mean value of f', 'f(x),a,b'),
         ('Integrate by partials', 'p(x),q(x)'),
         ('d/dx inverse trig', 'f(x),a?'),

@@ -345,13 +345,10 @@ def _ok_root(tree, r, scale, deg, var):
     return av <= 1e-6 * (1.0 + scale)
 
 
-def _roots(tree, lo, hi, deg=False, var='x', n=600):
+def _roots(tree, lo, hi, deg=False, var='x', n=600, ys=None):
     step = (hi - lo) / float(n)
-    ys = []
-    i = 0
-    while i <= n:
-        ys.append(_val(tree, lo + step * i, deg, var))
-        i += 1
+    if ys is None:
+        ys = [_val(tree, lo + step * i, deg, var) for i in range(n + 1)]
     out = []
     i = 1
     while i <= n and len(out) < 24:
@@ -906,6 +903,326 @@ def t_quad_ineq(a, b, c):
                   w('{x : ' + inside + '}')] + lines
 
 
+def _qexact(A, B, C):
+    # real roots of A t^2 + B t + C (whole numbers, A != 0) as (text, value)
+    Di = B * B - 4 * A * C
+    if Di < 0:
+        return []
+    if Di == 0:
+        r = _ssdiv(_ss(-B, 1, 1), _ss(2 * A, 1, 1))
+        return [(_ssstr(r), _ssval(r))]
+    r1 = _ssdiv(_ssadd(_ss(-B, 1, 1), _ss(1, 1, Di)), _ss(2 * A, 1, 1))
+    r2 = _ssdiv(_ssadd(_ss(-B, 1, 1), _ss(-1, 1, Di)), _ss(2 * A, 1, 1))
+    out = [(_ssstr(r1), _ssval(r1)), (_ssstr(r2), _ssval(r2))]
+    if out[0][1] > out[1][1]:
+        out.reverse()
+    return out
+
+
+def _pval(p, x):
+    v = 0.0
+    i = len(p) - 1
+    while i >= 0:
+        v = v * x + p[i][0] / float(p[i][1])
+        i -= 1
+    return v
+
+
+def _prootsx(p, var):
+    # real roots of a rational polynomial: exact up to degree 2
+    if len(p) <= 1:
+        return []
+    L = 1
+    for c in p:
+        L = casutil.lcm(L, c[1])
+    ci = [c[0] * (L // c[1]) for c in p]
+    if len(p) == 2:
+        return [(fmt(-ci[0] / float(ci[1])), -ci[0] / float(ci[1]))]
+    if len(p) == 3:
+        return _qexact(ci[2], ci[1], ci[0])
+    out = []
+    rp = caspoly.ptrim(list(p))
+    for r in caspoly.roots_rational(p):
+        qr = caspoly.pdivmod(rp, [caspoly.rneg(r), caspoly.R1])
+        if qr is not None and not qr[1]:
+            rp = qr[0]
+        v = r[0] / float(r[1])
+        out.append((fmt(v), v))
+    if len(rp) == 3 or len(rp) == 2:
+        rest = _prootsx(rp, var)
+    elif len(rp) > 3:
+        rest = [(fmt(r), r) for r in _pnum(rp, -50.0, 50.0, 500)]
+    else:
+        rest = []
+    for r in rest:
+        if not [1 for q in out if abs(q[1] - r[1]) < 1e-9]:
+            out.append(r)
+    out.sort(key=lambda q: q[1])
+    return out
+
+
+def _hv(c, x):
+    v = 0.0
+    i = len(c) - 1
+    while i >= 0:
+        v = v * x + c[i]
+        i -= 1
+    return v
+
+
+def _pnum(p, lo, hi, n):
+    # real roots of a rational polynomial by sampling with Horner
+    c = [q[0] / float(q[1]) for q in p]
+    step = (hi - lo) / float(n)
+    ys = [_hv(c, lo + step * i) for i in range(n + 1)]
+    out = []
+    for i in range(1, n + 1):
+        a = lo + step * (i - 1)
+        b = a + step
+        fa = ys[i - 1]
+        fb = ys[i]
+        if fa == 0.0:
+            cascalc._add(out, a)
+        elif (fa < 0) != (fb < 0) and fb != 0.0:
+            k = 0
+            while k < 56:
+                mid = (a + b) / 2.0
+                fm = _hv(c, mid)
+                if (fm < 0) == (fa < 0):
+                    a = mid
+                    fa = fm
+                else:
+                    b = mid
+                k += 1
+            cascalc._add(out, _snap((a + b) / 2.0))
+        elif i < n and abs(fb) < abs(fa) and abs(fb) < abs(ys[i + 1]) and \
+                (fb < 0) == (ys[i + 1] < 0):
+            u = a
+            v = b + step
+            k = 0
+            while k < 50:
+                m1 = u + (v - u) / 3.0
+                m2 = v - (v - u) / 3.0
+                if abs(_hv(c, m1)) <= abs(_hv(c, m2)):
+                    v = m2
+                else:
+                    u = m1
+                k += 1
+            r = (u + v) / 2.0
+            if abs(_hv(c, r)) < 1e-9 * (1.0 + abs(c[len(c) - 1])):
+                cascalc._add(out, _snap(r))
+    out.sort()
+    return out
+
+def _ivstr(var, lo, hi, closed):
+    lt = ' <= ' if closed else ' < '
+    gt = ' >= ' if closed else ' > '
+    if lo is None and hi is None:
+        return 'every ' + var
+    if lo is None:
+        return var + lt + hi[0]
+    if hi is None:
+        return var + gt + lo[0]
+    return lo[0] + lt + var + lt + hi[0]
+
+
+def _region(var, rs, sg, want, closed):
+    # rs sorted roots (text, value), sg the sign on each of the len(rs)+1 gaps
+    n = len(sg)
+    pieces = []
+    i = 0
+    while i < n:
+        if sg[i] == want:
+            j = i
+            if closed:
+                while j + 1 < n and sg[j + 1] == want:
+                    j += 1
+            lo = rs[i - 1] if i > 0 else None
+            hi = rs[j] if j < n - 1 else None
+            pieces.append((lo[1] if lo else -1e300, _ivstr(var, lo, hi, closed)))
+            i = j + 1
+        else:
+            i += 1
+    if closed:
+        k = 0
+        while k < len(rs):
+            if sg[k] != want and sg[k + 1] != want:
+                pieces.append((rs[k][1], var + ' = ' + rs[k][0]))
+            k += 1
+    pieces.sort()
+    if not pieces:
+        return 'no ' + var
+    return ' or '.join([p[1] for p in pieces])
+
+
+def _gapsigns(rs, val):
+    # sign of val(t) on each gap between the sorted roots
+    sg = []
+    i = 0
+    while i <= len(rs):
+        if not rs:
+            t = 0.0
+        elif i == 0:
+            t = rs[0][1] - 1.0
+        elif i == len(rs):
+            t = rs[i - 1][1] + 1.0
+        else:
+            t = (rs[i - 1][1] + rs[i][1]) / 2.0
+        v = val(t)
+        sg.append(0 if v is None or v == 0 else (1 if v > 0 else -1))
+        i += 1
+    return sg
+
+
+def t_disck(a, b, c):
+    pa = caspoly.poly(a, 'k')
+    pb = caspoly.poly(b, 'k')
+    pc = caspoly.poly(c, 'k')
+    if pa is None or pb is None or pc is None:
+        raise ValueError('a, b, c must be polynomials in k')
+    if not pa:
+        raise ValueError('a(k) is 0: not a quadratic')
+    D = caspoly.psub(caspoly.pmul(pb, pb),
+                     caspoly.pscale(caspoly.pmul(pa, pc), (4, 1)))
+    Dt = caspoly.ptree(D, 'k')
+    fac = caspoly.factor(Dt, 'k') if len(D) > 2 else None
+    wk = [w('D = b^2 - 4ac'), m(Dt)]
+    if fac is not None and caseng.tostr(fac) != caseng.tostr(Dt):
+        wk.append(m(fac))
+    if len(D) <= 1:
+        dv = _pval(D, 0.0)
+        if dv > 0:
+            out = ['distinct real roots for every k']
+        elif dv < 0:
+            out = ['no real roots for any k']
+        else:
+            out = ['equal roots for every k']
+        return out + [w('D = ' + fmt(dv) + ' does not depend on k')] + wk
+    rs = _prootsx(D, 'k')
+    sg = _gapsigns(rs, lambda t: _pval(D, t))
+    eq = ', '.join([r[0] for r in rs]) if rs else 'no k'
+    out = ['equal roots: ' + ('k = ' + eq if rs else eq),
+           'real roots: ' + _region('k', rs, sg, 1, True),
+           'distinct: ' + _region('k', rs, sg, 1, False),
+           'no real roots: ' + _region('k', rs, sg, -1, False)]
+    if [r for r in rs if r[0].find('sqrt') >= 0]:
+        wk.append(w('k = ' + ', '.join([sf3(r[1]) for r in rs])))
+    if len(pa) > 1:
+        for r in _prootsx(pa, 'k'):
+            wk.append(warn('k = ' + r[0] + ' makes a = 0: not quadratic'))
+    return out + wk
+
+
+def _cuts(d, lo, hi, n):
+    # roots, poles and domain edges of d on [lo, hi], sorted
+    step = (hi - lo) / float(n)
+    ys = [_val(d, lo + step * i) for i in range(n + 1)]
+    rs = _roots(d, lo, hi, False, 'x', n, ys)
+    pts = [(r, 'r') for r in rs]
+    i = 1
+    while i <= n:
+        p = ys[i - 1]
+        y = ys[i]
+        x0 = lo + step * (i - 1)
+        x1 = x0 + step
+        if (p is None) != (y is None):
+            a = x0
+            b = x1
+            k = 0
+            while k < 40:
+                mid = (a + b) / 2.0
+                if (_val(d, mid) is None) == (p is None):
+                    a = mid
+                else:
+                    b = mid
+                k += 1
+            pts.append((_snap((a + b) / 2.0), 'e'))
+        elif p is not None and ((p < 0 < y) or (p > 0 > y)):
+            hit = False
+            for r in rs:
+                if x0 - 1e-9 <= r <= x1 + 1e-9:
+                    hit = True
+            if not hit:
+                r = _bis(d, x0, x1, False, 'x')
+                if r is not None:
+                    pts.append((r, 'p'))
+        i += 1
+    pts.sort()
+    out = []
+    for x, k in pts:
+        if out and abs(out[len(out) - 1][0] - x) < 1e-7:
+            if k == 'e' and out[len(out) - 1][1] == 'e':
+                out[len(out) - 1] = (out[len(out) - 1][0], 'p')
+            continue
+        out.append((x, k))
+    return out
+
+
+def _ratcuts(d):
+    # (rs, kinds, sign function) for a rational d, else None
+    pf = caspoly.polyfrac(d, 'x')
+    if pf is None or not pf[1]:
+        return None
+    N = pf[0]
+    D = pf[1]
+    pr = _prootsx(D, 'x')
+    nr = [r for r in _prootsx(N, 'x')
+          if not [1 for q in pr if abs(q[1] - r[1]) < 1e-9]]
+    cuts = [(r[1], r, 'r') for r in nr] + [(r[1], r, 'p') for r in pr]
+    cuts.sort()
+    cn = [q[0] / float(q[1]) for q in N]
+    cd = [q[0] / float(q[1]) for q in D]
+
+    def val(x):
+        dv = _hv(cd, x)
+        return None if dv == 0 else _hv(cn, x) / dv
+    return ([c[1] for c in cuts], [c[2] for c in cuts], val,
+            len(N) > 3 or len(D) > 3)
+
+
+def t_ineq(f, g):
+    d = ('-', f, g)
+    lo = -20.0
+    hi = 20.0
+    rc = _ratcuts(d)
+    if rc is not None:
+        rs, kinds, val, wide = rc
+        sg = _gapsigns(rs, val)
+    else:
+        lo = -12.0
+        hi = 12.0
+        cuts = _cuts(d, lo, hi, 200)
+        rs = [(fmt(x), x) for x, k in cuts]
+        kinds = [k for x, k in cuts]
+        sg = []
+        i = 0
+        while i <= len(cuts):
+            a = lo if i == 0 else cuts[i - 1][0]
+            b = hi if i == len(cuts) else cuts[i][0]
+            v = _val(d, (a + b) / 2.0)
+            sg.append(0 if v is None or abs(v) < 1e-12 else (1 if v > 0 else -1))
+            i += 1
+    if len(rs) > 12:
+        raise ValueError('too many crossings to list')
+    eq = [rs[i] for i in range(len(rs)) if kinds[i] == 'r']
+    poles = [rs[i] for i in range(len(rs)) if kinds[i] == 'p']
+    out = ['f > g: ' + _region('x', rs, sg, 1, False),
+           'f < g: ' + _region('x', rs, sg, -1, False)]
+    if eq:
+        out.append('f = g at x = ' + ', '.join([r[0] for r in eq]))
+    for r in poles:
+        out.append('undefined at x = ' + r[0])
+    out.append(w('sign of f - g between the critical values'))
+    for r in rs:
+        if r[0].find('sqrt') >= 0:
+            out.append(w(r[0] + ' = ' + sf3(r[1])))
+    if rc is None:
+        out.append(warn('only -12 <= x <= 12 is searched'))
+    elif wide:
+        out.append(warn('roots past degree 2 searched in -50..50'))
+    return out
+
+
 def t_expand(f):
     t = caspoly.collect(caspoly.expand(f))
     return [m(t), w(caseng.tostr(t))]
@@ -1040,6 +1357,98 @@ def t_inverse(f):
     lines.append(w('domain of f-1 = range of f'))
     return lines
 
+
+def _endlim(f, x0, sgn):
+    # behaviour of f as x -> sgn * infinity: (value or None, sign of blow-up)
+    v1 = _val(f, x0 + sgn * 1e3)
+    v2 = _val(f, x0 + sgn * 1e6)
+    if v1 is None or v2 is None:
+        raise ValueError('f does not evaluate far out')
+    if abs(v2) > 1e4 and abs(v2) > 10.0 * abs(v1):
+        return (None, 1 if v2 > 0 else -1)
+    if abs(v2 - v1) > 1e-2 * (1.0 + abs(v2)):
+        raise ValueError('f does not settle far out')
+    return (_snap(round(v2, 6)), 0)
+
+
+def t_frange(f, a, b):
+    if a is not None and b is not None and b <= a:
+        raise ValueError('need a < b')
+    lo = a if a is not None else (b if b is not None else 0.0) - 20.0
+    hi = b if b is not None else (a if a is not None else 0.0) + 20.0
+    if a is None and b is None:
+        lo = -20.0
+        hi = 20.0
+    att = []
+    wk = []
+    for x in (a, b):
+        if x is not None:
+            v = _need(f, x)
+            att.append(v)
+            wk.append(w('f(' + fmt(x) + ') = ' + fmt(v)))
+    pp = caspoly.poly(f, 'x')
+    if pp is not None:
+        sts = _pnum(caspoly.pderiv(pp), lo, hi, 400) if len(pp) > 2 else []
+    else:
+        sts = _roots(cascalc.tidy(caseng.diff(f)), lo, hi, False, 'x', 200)
+    for r in sts[:6]:
+        if (a is None or r > a) and (b is None or r < b):
+            v = _val(f, r)
+            if v is not None:
+                att.append(v)
+                wk.append(w("f' = 0 at x = " + fmt(r) + ', f = ' + fmt(v)))
+    gap = False
+    prev = None
+    i = 0 if pp is None else 99
+    while i <= 60 and not gap:
+        x = lo + (hi - lo) * (i + 0.37) / 61.0
+        v = _val(f, x)
+        if v is None:
+            gap = True
+        elif prev is not None and (v < 0) != (prev[1] < 0):
+            r = _bis(f, prev[0], x, False, 'x')
+            gap = r is None or not _ok_root(f, r, abs(v) + abs(prev[1]), False, 'x')
+        prev = (x, v)
+        i += 1
+    lims = []
+    for x, sg in ((a, -1), (b, 1)):
+        if x is None:
+            L, blow = _endlim(f, lo if sg < 0 else hi, sg)
+            lims.append((L, blow))
+            wk.append(w('x -> ' + ('-' if sg < 0 else '') + 'inf: f -> ' +
+                        (fmt(L) if blow == 0 else ('inf' if blow > 0 else '-inf'))))
+    if not att and not lims:
+        raise ValueError('nothing to compare')
+    mn = min(att) if att else None
+    mx = max(att) if att else None
+    lo_s = None
+    hi_s = None
+    lo_strict = False
+    hi_strict = False
+    for L, blow in lims:
+        if blow < 0:
+            lo_s = '-inf'
+        if blow > 0:
+            hi_s = 'inf'
+        if blow == 0:
+            if mn is None or L < mn:
+                mn = L
+                lo_strict = True
+            if mx is None or L > mx:
+                mx = L
+                hi_strict = True
+    if lo_s and hi_s:
+        out = ['range: all real values']
+    elif hi_s:
+        out = ['range: f(x) ' + ('> ' if lo_strict else '>= ') + fmt(mn)]
+    elif lo_s:
+        out = ['range: f(x) ' + ('< ' if hi_strict else '<= ') + fmt(mx)]
+    else:
+        out = ['range: ' + fmt(mn) + (' < ' if lo_strict else ' <= ') + 'f(x)' +
+               (' < ' if hi_strict else ' <= ') + fmt(mx)]
+    if gap:
+        out.append(warn('f is undefined somewhere here: check the graph'))
+    return out + wk
 
 def t_transform(f, a, b, c, d):
     if b == 0:
@@ -1217,6 +1626,42 @@ def t_lineint(m1, c1, m2, c2):
         lines.append('the lines are perpendicular')
     return lines
 
+
+def t_tri3(x1, y1, x2, y2, x3, y3):
+    P = ((x1, y1), (x2, y2), (x3, y3))
+    cr = (x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)
+    if cr == 0:
+        raise ValueError('the points are collinear')
+    sq = []
+    for i, j in ((0, 1), (1, 2), (2, 0)):
+        dx = P[j][0] - P[i][0]
+        dy = P[j][1] - P[i][1]
+        sq.append(dx * dx + dy * dy)
+    out = ['area = ' + fmt(abs(cr) / 2.0),
+           'AB = ' + fmt(math.sqrt(sq[0])) + ', BC = ' + fmt(math.sqrt(sq[1])) +
+           ', CA = ' + fmt(math.sqrt(sq[2]))]
+    names = 'ABC'
+    angs = []
+    for i in range(3):
+        a = P[i]
+        b = P[(i + 1) % 3]
+        c = P[(i + 2) % 3]
+        u = (b[0] - a[0], b[1] - a[1])
+        v = (c[0] - a[0], c[1] - a[1])
+        dot = u[0] * v[0] + u[1] * v[1]
+        if abs(dot) < 1e-12 * (1.0 + sq[0] + sq[1] + sq[2]):
+            out.append('right angle at ' + names[i])
+        angs.append(names[i] + ' = ' + sf3(casutil.deg(
+            casutil.acos_safe(dot / math.sqrt((u[0] * u[0] + u[1] * u[1]) *
+                                              (v[0] * v[0] + v[1] * v[1]))))))
+    out.append('angles ' + ', '.join(angs) + ' deg')
+    if sq[0] == sq[1] or sq[1] == sq[2] or sq[0] == sq[2]:
+        out.append('isosceles')
+    out.append(w('area = |x1(y2-y3) + x2(y3-y1) + x3(y1-y2)|/2'))
+    out.append(w('AB^2 = ' + fmt(sq[0]) + ', BC^2 = ' + fmt(sq[1]) +
+                 ', CA^2 = ' + fmt(sq[2])))
+    out.append(w('right angle where two sides have m1 m2 = -1'))
+    return out
 
 def t_circle_gen(D, E, F):
     cx = -D / 2.0
@@ -1517,6 +1962,75 @@ def t_gp_n(a, r, k):
             w('S(' + str(n) + ') = ' + fmt(s))]
 
 
+def _pq(p, q):
+    pi = _whole(p, 'p')
+    qi = _whole(q, 'q')
+    if pi < 1 or qi < 1:
+        raise ValueError('term numbers start at 1')
+    if pi == qi:
+        raise ValueError('p and q must differ')
+    return (pi, qi)
+
+
+def _aplines(a, d):
+    return ['a = ' + fmt(a), 'd = ' + fmt(d),
+            'u(n) = ' + _linstr([d, a - d], ['n', '']),
+            'S(n) = ' + _linstr([d / 2.0, a - d / 2.0], ['n^2', 'n'])]
+
+
+def t_ap2(p, up, q, uq):
+    pi, qi = _pq(p, q)
+    d = (uq - up) / float(qi - pi)
+    a = up - (pi - 1) * d
+    return _aplines(a, d) + [
+        w('a + ' + str(pi - 1) + 'd = ' + fmt(up)),
+        w('a + ' + str(qi - 1) + 'd = ' + fmt(uq)),
+        w('subtract: ' + str(qi - pi) + 'd = ' + fmt(uq - up))]
+
+
+def t_apsum(p, up, q, sq):
+    pi, qi = _pq(p, q)
+    c2 = qi * (qi - 1) / 2.0
+    det = c2 - (pi - 1) * qi
+    if det == 0:
+        raise ValueError('these two facts do not fix a and d')
+    d = (sq - qi * up) / det
+    a = up - (pi - 1) * d
+    return _aplines(a, d) + [
+        w('a + ' + str(pi - 1) + 'd = ' + fmt(up)),
+        w('S(' + str(qi) + ') = ' + str(qi) + '/2 (2a + ' + str(qi - 1) +
+          'd) = ' + fmt(sq)),
+        w(str(qi) + 'a + ' + fmt(c2) + 'd = ' + fmt(sq))]
+
+
+def t_gp2(p, up, q, uq):
+    pi, qi = _pq(p, q)
+    if up == 0 or uq == 0:
+        raise ValueError('a GP term cannot be 0')
+    k = qi - pi
+    ratio = uq / float(up)
+    ak = k if k > 0 else -k
+    if k < 0:
+        ratio = 1.0 / ratio
+    if ratio < 0 and ak % 2 == 0:
+        raise ValueError('no real r: r^' + str(ak) + ' < 0')
+    mag = math.pow(abs(ratio), 1.0 / ak)
+    rs = [mag if ratio > 0 else -mag]
+    if ak % 2 == 0:
+        rs = [mag, -mag]
+    out = []
+    for r in rs:
+        a = up / math.pow(r, pi - 1)
+        s = 'r = ' + fmt(r) + ', a = ' + fmt(a)
+        if abs(r) < 1:
+            s += ', S(inf) = ' + fmt(a / (1.0 - r))
+        out.append(s)
+    out.append(w('r^' + str(ak) + ' = ' + fmt(ratio)))
+    out.append(w('a = u(' + str(pi) + ')/r^' + str(pi - 1)))
+    if len(rs) == 2:
+        out.append(warn('even power: r can take either sign'))
+    return out
+
 def t_binom_int(a, b, n):
     ni = _whole(n, 'n')
     if ni < 0 or ni > 20:
@@ -1619,6 +2133,58 @@ def t_recur(f, u1, n):
     return out + _behave(terms) + lines + \
         [w('u(n+1) = ' + caseng.tostr(caseng.simplify(f)))]
 
+
+def t_recsum(f, u1, N):
+    ni = _whole(N, 'N')
+    if ni < 1 or ni > 1000000:
+        raise ValueError('N must be 1 to 1000000')
+    m = ni if ni < 40 else 40
+    terms = [float(u1)]
+    while len(terms) < m:
+        v = _val(f, terms[len(terms) - 1], False, 'u')
+        if v is None:
+            raise ValueError('u(' + str(len(terms) + 1) + ') is undefined')
+        terms.append(v)
+    beh = _behave(terms)
+    per = 0
+    if beh and beh[0].startswith('periodic'):
+        per = int(beh[0].split(' ')[2])
+    out = []
+    if ni <= m:
+        tot = 0.0
+        for t in terms:
+            tot += t
+        out.append('sum u(1..' + str(ni) + ') = ' + fmt(tot))
+    elif per:
+        cyc = 0.0
+        for t in terms[:per]:
+            cyc += t
+        q = ni // per
+        r = ni % per
+        part = 0.0
+        for t in terms[:r]:
+            part += t
+        out.append('sum u(1..' + str(ni) + ') = ' + fmt(q * cyc + part))
+        out.append(w('period ' + str(per) + ', one cycle sums to ' + fmt(cyc)))
+        out.append(w(str(ni) + ' = ' + str(q) + ' x ' + str(per) + ' + ' + str(r)))
+        out.append(w(str(q) + ' x ' + fmt(cyc) + ' + ' + fmt(part)))
+    else:
+        if ni > 200:
+            raise ValueError('not periodic: N up to 200')
+        tot = 0.0
+        last = terms[0]
+        k = 1
+        tot = last
+        while k < ni:
+            last = _val(f, last, False, 'u')
+            if last is None:
+                raise ValueError('u(' + str(k + 1) + ') is undefined')
+            tot += last
+            k += 1
+        out.append('sum u(1..' + str(ni) + ') = ' + fmt(tot))
+        out.append('u(' + str(ni) + ') = ' + fmt(last))
+    out.append(w('u(1..4) = ' + ', '.join([fmt(t) for t in terms[:4]])))
+    return out + beh
 
 def t_uterm(u, n1, count):
     a = _whole(n1, 'n1')
@@ -2351,6 +2917,8 @@ SECTIONS = [
         ('Solve f(x)=g(x)', 'f(x),g(x)', t_meet),
         ('Linear inequality', 'a,b', t_lin_ineq),
         ('Quadratic inequality', 'a,b,c', t_quad_ineq),
+        ('Inequality f(x) > g(x)', 'f(x),g(x)', t_ineq),
+        ('Discriminant in k', 'a(k),b(k),c(k)', t_disck),
         ('Expand', 'f(x)', t_expand),
         ('Factorise', 'f(x)', t_factorise),
         ('Divide p(x) by d(x)', 'p(x),d(x)', t_pdiv),
@@ -2359,6 +2927,7 @@ SECTIONS = [
         ('Partial fractions', 'f(x),g(x)', t_partial),
         ('Composite fg and gf', 'f(x),g(x),x?', t_comp),
         ('Inverse function', 'f(x)', t_inverse),
+        ('Range of f on [a,b]', 'f(x),a,b', t_frange),
         ('Transform af(bx+c)+d', 'f(x),a,b,c,d', t_transform),
         ('Solve |ax+b|=cx+d', 'a,b,c,d', t_modeq),
         ('Proportion y=kx^n', 'n,x,y', t_prop),
@@ -2370,6 +2939,7 @@ SECTIONS = [
         ('Parallel through pt', 'm,x1,y1', t_parallel),
         ('Perpendicular thru pt', 'm,x1,y1', t_perpthru),
         ('Intersect y=mx+c', 'm1,c1,m2,c2', t_lineint),
+        ('Triangle 3 vertices', 'x1,y1,x2,y2,x3,y3', t_tri3),
         ('Circle from general', 'D,E,F', t_circle_gen),
         ('Circle centre+radius', 'a,b,r', t_circle_cr),
         ('Circle through 3 pts', 'x1,y1,x2,y2,x3,y3', t_circle3),
@@ -2384,10 +2954,14 @@ SECTIONS = [
         ('Geometric a,r,n', 'a,r,n', t_geo),
         ('AP: n for Sn > k', 'a,d,k', t_ap_n),
         ('GP: n for Sn > k', 'a,r,k', t_gp_n),
+        ('AP from 2 terms', 'p,up,q,uq', t_ap2),
+        ('AP from term and sum', 'p,up,q,Sq', t_apsum),
+        ('GP from 2 terms', 'p,up,q,uq', t_gp2),
         ('Binomial (a+bx)^n', 'a,b,n', t_binom_int),
         ('Binomial rational n', 'a,b,n', t_binom_rat),
         ('Sigma sum f(r) a..b', 'f(r),a,b', t_sigma),
         ('Recurrence u(n+1)', 'f(u),u1,n', t_recur),
+        ('Recurrence sum to N', 'f(u),u1,N', t_recsum),
         ('Terms of u(n)', 'u(n),n1,count', t_uterm),
         ('nCr and nPr', 'n,r', t_ncrnpr),
     ]),

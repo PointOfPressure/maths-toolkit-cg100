@@ -6,6 +6,8 @@ DEVICE_FILES = [
     "maths.py", "module.py", "font.py", "casui.py", "nat.py", "casutil.py", "caslex.py", "caseng.py",
     "casrender.py", "cascalc.py", "caspoly.py", "casalg.py", "cassolve.py",
     "plot.py", "formulae.py",
+    "notesui.py", "notes_ix.py", "notes_mp1.py", "notes_mp2.py", "notes_mp3.py", "notes_ms.py", "notes_mm.py",
+    "notes_cp1.py", "notes_cp2.py", "notes_cp3.py", "notes_st1.py", "notes_st2.py", "notes_xp.py",
     "tables.py",
     "mpure.py", "mcalc.py", "mstat.py", "mmech.py",
     "fcore.py", "fcalc.py", "fmech.py", "fstat.py",

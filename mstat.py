@@ -557,6 +557,28 @@ def t_coding(a, b, ybar, sdy):
             _W('sd x = |b| * sd y = ' + _f(sdx))]
 
 
+def t_combine(n1, m1, s1, n2, m2, s2):
+    for nn in (n1, n2):
+        if nn <= 0:
+            raise ValueError('n must be > 0')
+    if s1 < 0 or s2 < 0:
+        raise ValueError('sd must be >= 0')
+    n = n1 + n2
+    sx = n1 * m1 + n2 * m2
+    sxx = n1 * (s1 * s1 + m1 * m1) + n2 * (s2 * s2 + m2 * m2)
+    mean = sx / float(n)
+    vp = sxx / float(n) - mean * mean
+    if vp < 0.0:
+        vp = 0.0
+    lines = ['n = ' + _f(n), 'mean = ' + _f(mean), 'sd (n) = ' + _f(math.sqrt(vp)),
+             _W('sum x = n1 m1 + n2 m2 = ' + _f(sx)),
+             _W('sum x^2 = n(sd^2 + mean^2), total ' + _f(sxx)),
+             _W('var = sum x^2/n - mean^2 = ' + _f(vp))]
+    if n > 1:
+        lines.append(_W('s (n-1) = ' + _f(math.sqrt(vp * n / (n - 1.0)))))
+    lines.append(_WARN('sd entered with the n divisor'))
+    return lines
+
 def t_outliers(data):
     n, mean, sdn, s1, sx, sxx, ss = _stats(data)
     srt = _srt(data)
@@ -797,6 +819,57 @@ def t_twoway(nAB, nAnotB, nBnotA, nNeither):
     return lines
 
 
+def t_venn(pA, pB, pAB, pU):
+    vals = [pA, pB, pAB, pU]
+    miss = [i for i in range(4) if vals[i] is None]
+    for v, nm in ((pA, 'P(A)'), (pB, 'P(B)'), (pAB, 'P(A and B)'), (pU, 'P(A or B)')):
+        if v is not None:
+            _prob(v, nm)
+    pre = []
+    if len(miss) == 1:
+        if pA is None:
+            pA = pU - pB + pAB
+        elif pB is None:
+            pB = pU - pA + pAB
+        elif pAB is None:
+            pAB = pA + pB - pU
+        else:
+            pU = pA + pB - pAB
+        pre.append(_W('P(A or B) = P(A) + P(B) - P(A and B)'))
+    elif len(miss) == 2 and pAB is None:
+        pre.append(_WARN('two unknowns: A, B taken as independent'))
+        if pU is None:
+            pAB = pA * pB
+        elif pA is None:
+            if pB >= 1.0:
+                raise ValueError('P(B) = 1: P(A) not fixed')
+            pA = (pU - pB) / (1.0 - pB)
+            pAB = pA * pB
+        else:
+            if pA >= 1.0:
+                raise ValueError('P(A) = 1: P(B) not fixed')
+            pB = (pU - pA) / (1.0 - pA)
+            pAB = pA * pB
+        pre.append(_W('P(A and B) = P(A)P(B)'))
+    else:
+        raise ValueError('mark one ? (or two with P(A and B))')
+    for v, nm in ((pA, 'P(A)'), (pB, 'P(B)'), (pAB, 'P(A and B)')):
+        if v < -1e-12 or v > 1.0 + 1e-12:
+            raise ValueError('no valid ' + nm + ': ' + _f(v))
+    pA = casutil.clean(pA)
+    pB = casutil.clean(pB)
+    pAB = casutil.clean(pAB)
+    if pAB > min(pA, pB) + 1e-12 or pA + pB - pAB > 1.0 + 1e-12:
+        raise ValueError('these values do not fit one Venn diagram')
+    found = []
+    names = ('P(A)', 'P(B)', 'P(A and B)', 'P(A or B)')
+    got = (pA, pB, pAB, pA + pB - pAB)
+    for i in miss:
+        found.append(names[i] + ' = ' + _p(got[i]))
+    regions = _W('A only ' + _p(pA - pAB) + ', B only ' + _p(pB - pAB) +
+                 ', both ' + _p(pAB) + ', neither ' + _p(1.0 - pA - pB + pAB))
+    return found + t_union(pA, pB, pAB)[1:] + pre + [regions]
+
 def t_tree(pA, pB_A, pB_notA):
     _prob(pA, 'P(A)')
     _prob(pB_A, 'P(B|A)')
@@ -898,6 +971,62 @@ def t_binv(n, p, prob):
             _W('X ~ B(' + _p(ni) + ', ' + _f(p) + ')')]
 
 
+def _bge_n(n, p, k):
+    # P(X >= k) for X ~ B(n, p), summing the k lower terms in logs
+    if k <= 0:
+        return 1.0
+    if k > n:
+        return 0.0
+    lq = math.log(1.0 - p)
+    lr = math.log(p) - lq
+    lt = n * lq
+    s = 0.0
+    j = 0
+    while j < k:
+        s += math.exp(lt)
+        lt += math.log((n - j) / (j + 1.0)) + lr
+        j += 1
+    v = 1.0 - s
+    return v if v > 0.0 else 0.0
+
+
+def _leastn(p, k, target):
+    # least n with P(X >= k) > target; P(X >= k) grows with n
+    if p <= 0.0 or p >= 1.0:
+        raise ValueError('p must be strictly between 0 and 1')
+    if k != int(k) or k < 1 or k > 50:
+        raise ValueError('k must be a whole number 1 to 50')
+    k = int(k)
+    if target <= 0.0 or target >= 1.0:
+        raise ValueError('target must be strictly between 0 and 1')
+    hi = k
+    while _bge_n(hi, p, k) <= target:
+        hi *= 2
+        if hi > 10000000:
+            raise ValueError('n would be over 10^7')
+    lo = k - 1
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if _bge_n(mid, p, k) > target:
+            hi = mid
+        else:
+            lo = mid
+    return (hi, _bge_n(hi, p, k), _bge_n(hi - 1, p, k))
+
+
+def t_bleastn(p, k, target):
+    n, pn, pm = _leastn(p, k, target)
+    k = int(k)
+    lines = ['n = ' + _p(n),
+             'P(X >= ' + _p(k) + ') = ' + _c(pn, 6) + ' at n = ' + _p(n),
+             _W('n = ' + _p(n - 1) + ': P(X >= ' + _p(k) + ') = ' + _c(pm, 6)),
+             _W('X ~ B(n, ' + _f(p) + '), need P(X >= ' + _p(k) + ') > ' + _f(target))]
+    if k == 1:
+        lines.append(_W('1 - (1-p)^n > ' + _f(target) + ': n > ln(' + _f(1.0 - target) +
+                        ')/ln(' + _f(1.0 - p) + ') = ' +
+                        _f(math.log(1.0 - target) / math.log(1.0 - p))))
+    return lines
+
 def t_bmv(n, p):
     ni = _bin(n, p)
     mean = ni * p
@@ -944,6 +1073,79 @@ def t_nbetween(mu, sigma, a, b):
             _W('P(X < a) = ' + _f(casutil.phi(za))),
             _W('subtract: ' + _f(casutil.phi(zb) - casutil.phi(za)))]
 
+
+def t_napprox(n, p, a, b):
+    ni = _bin(n, p)
+    if p <= 0.0 or p >= 1.0:
+        raise ValueError('p must be strictly between 0 and 1')
+    lo = 0 if a is None else _int(a, 'a')
+    hi = ni if b is None else _int(b, 'b')
+    if lo < 0:
+        lo = 0
+    if hi > ni:
+        hi = ni
+    if hi < lo:
+        raise ValueError('need a <= b')
+    mu = ni * p
+    var = mu * (1.0 - p)
+    sd = math.sqrt(var)
+    zl = -40.0 if lo == 0 and a is None else (lo - 0.5 - mu) / sd
+    zh = 40.0 if hi == ni and b is None else (hi + 0.5 - mu) / sd
+    ap = casutil.phi(zh) - casutil.phi(zl)
+    pk = casutil.binom_pmf(ni, p, lo)
+    ex = 0.0
+    k = lo
+    r = p / (1.0 - p)
+    while k <= hi:
+        ex += pk
+        pk = pk * (ni - k) / (k + 1.0) * r
+        k += 1
+    if a is None:
+        what = 'X <= ' + _p(hi)
+        cc = 'Y < ' + _f(hi + 0.5)
+    elif b is None:
+        what = 'X >= ' + _p(lo)
+        cc = 'Y > ' + _f(lo - 0.5)
+    else:
+        what = _p(lo) + ' <= X <= ' + _p(hi)
+        cc = _f(lo - 0.5) + ' < Y < ' + _f(hi + 0.5)
+    lines = ['P(' + what + ') ~ ' + _f(ap),
+             'exact binomial = ' + _f(ex),
+             'Y ~ N(' + _f(mu) + ', ' + _f(var) + ')',
+             _W('continuity correction: P(' + cc + ')'),
+             _W('mean np = ' + _f(mu) + ', var np(1-p) = ' + _f(var)),
+             _W('sd = ' + _f(sd))]
+    if mu <= 5 or ni - mu <= 5:
+        lines.append(_WARN('np or n(1-p) <= 5: approximation is poor'))
+    return lines
+
+def t_ncond(mu, sigma, a, b, c, d):
+    _sd(sigma)
+
+    def cdf(x, inf):
+        return inf if x is None else casutil.phi((x - mu) / sigma)
+
+    def show(lo, hi):
+        if lo is None and hi is None:
+            return 'any X'
+        if lo is None:
+            return 'X < ' + _f(hi)
+        if hi is None:
+            return 'X > ' + _f(lo)
+        return _f(lo) + ' < X < ' + _f(hi)
+    lo = c if a is None else (a if c is None else max(a, c))
+    hi = d if b is None else (b if d is None else min(b, d))
+    pb = cdf(d, 1.0) - cdf(c, 0.0)
+    if pb <= 0:
+        raise ValueError('P(condition) = 0')
+    if lo is not None and hi is not None and hi <= lo:
+        pab = 0.0
+    else:
+        pab = cdf(hi, 1.0) - cdf(lo, 0.0)
+    return ['P(' + show(a, b) + ' | ' + show(c, d) + ') = ' + _f(pab / pb),
+            _W('both: P(' + show(lo, hi) + ') = ' + _f(pab)),
+            _W('condition: P(' + show(c, d) + ') = ' + _f(pb)),
+            _W('P(A|B) = P(A and B)/P(B)')]
 
 def t_ninv(mu, sigma, p):
     _sd(sigma)
@@ -1175,6 +1377,7 @@ def _ztest(mu0, sigma, n, xbar, sig, tail):
              'z = ' + _f(z),
              'p-value = ' + _f(pv),
              'critical z = ' + crit,
+             _cregion(tail, mu0, zc * se),
              _W('H0: mu = ' + _f(mu0) + '   ' + h1),
              _W('z = (xbar - mu)/(sigma/sqrt(n))'),
              _W('= (' + _f(xbar) + ' - ' + _f(mu0) + ')/' + _f(se) +
@@ -1185,6 +1388,13 @@ def _ztest(mu0, sigma, n, xbar, sig, tail):
     lines.append(_WARN('needs a Normal population, sigma known'))
     return lines
 
+
+def _cregion(tail, mu0, dz):
+    if tail == 'two':
+        return 'CR: xbar <= ' + _c(mu0 - dz, 4) + ' or >= ' + _c(mu0 + dz, 4)
+    if tail == 'low':
+        return 'CR: xbar <= ' + _c(mu0 - dz, 4)
+    return 'CR: xbar >= ' + _c(mu0 + dz, 4)
 
 def t_htz_low(mu0, sigma, n, xbar, sig):
     return _ztest(mu0, sigma, n, xbar, sig, 'low')
@@ -1288,6 +1498,7 @@ SECTIONS = [
         ('Frequency table', 'value freq pairs*', t_freq),
         ('Grouped table', 'lower upper freq*', t_grouped),
         ('Coding x from y', 'a,b,ybar,sdy', t_coding),
+        ('Combine two groups', 'n1,m1,s1,n2,m2,s2', t_combine),
         ('Outliers', 'data*', t_outliers),
         ('Histogram', 'lower upper freq*', t_hist),
         ('Box plot', 'data*', t_box),
@@ -1300,6 +1511,7 @@ SECTIONS = [
         ('Conditional P(A|B)', 'pAandB,pB', t_cond),
         ('Two-way table counts', 'nAB,nAnotB,nBnotA,nNeither', t_twoway),
         ('Tree two stage', 'pA,pB_A,pB_notA', t_tree),
+        ('Venn: find the ?', 'pA,pB,pAandB,pAorB', t_venn),
     ]),
     ('N', 'Statistical distributions', [
         ('Binomial P(X=k)', 'n,p,k', t_bpmf),
@@ -1307,11 +1519,14 @@ SECTIONS = [
         ('Binomial P(X>=k)', 'n,p,k', t_bge),
         ('Binomial P(a<=X<=b)', 'n,p,a,b', t_brange),
         ('Binomial least k', 'n,p,prob', t_binv),
+        ('Binomial least n', 'p,k,target', t_bleastn),
         ('Binomial mean var', 'n,p', t_bmv),
         ('Normal P(X<x)', 'mu,sigma,x', t_nlt),
         ('Normal P(X>x)', 'mu,sigma,x', t_ngt),
         ('Normal P(a<X<b)', 'mu,sigma,a,b', t_nbetween),
         ('Inverse Normal', 'mu,sigma,p', t_ninv),
+        ('Normal approx to B', 'n,p,a,b', t_napprox),
+        ('Normal conditional', 'mu,sigma,a,b,c,d', t_ncond),
         ('Standardise z', 'mu,sigma,x', t_std),
         ('Normal find mu or sd', 'mu,sigma,x,p', t_nfind),
         ('Normal mu and sd', 'x1,p1,x2,p2', t_nboth),

@@ -319,6 +319,42 @@ def _volume(f, a, b, var, axis):
 def t_vol_x(f, a, b):
     return _volume(f, a, b, _ivar(f, 'x'), 'x')
 
+def t_vol_between(f, g, a, b):
+    a, b = _order(a, b)
+    var = _ivar(('+', f, g), 'x')
+    tree = caseng.simplify(('-', _sq(f), _sq(g)))
+    val, F, exact = _exact_int(tree, a, b, var)
+    if val is None:
+        raise ValueError('cannot integrate over that range')
+    v = PI * abs(val)
+    txt = _f(abs(val))
+    parts = txt.split('/')
+    if len(parts) <= 2 and parts[0].isdigit() and parts[len(parts) - 1].isdigit():
+        top = '' if parts[0] == '1' else parts[0]
+        out = ['V = ' + top + 'pi' + ('/' + parts[1] if len(parts) == 2 else '')]
+    else:
+        out = ['V = ' + _f(v)]
+    if out[0][4:] != casutil.sf3(v):
+        out.append('  = ' + casutil.sf3(v))
+    out.append(_w('V = pi int (f^2 - g^2) dx, ' + _f(a) + ' to ' + _f(b)))
+    if F is not None:
+        out.append(_mw(F))
+    out.append(_w('int (f^2 - g^2) dx = ' + _f(val, 6)))
+    k = 1
+    while k < 20:
+        x = a + (b - a) * k / 20.0
+        fx = _at(f, x, var)
+        gx = _at(g, x, var)
+        if fx is not None and gx is not None and abs(fx) < abs(gx) - 1e-12:
+            out.append(_wn('|g| > |f| somewhere: check which is outer'))
+            break
+        k += 1
+    if not exact:
+        out.append(_wn('integral found numerically'))
+    if _gap(tree, a, b, var):
+        out.append(_wn(GAPMSG))
+    return out
+
 def t_vol_y(g, c, d):
     return _volume(g, c, d, _ivar(g, 'y'), 'y')
 
@@ -1282,6 +1318,7 @@ SECTIONS = [
         ('Singular endpoint int', 'f(x),a,b', t_int_sing),
         ('Volume about x-axis', 'f(x),a,b', t_vol_x),
         ('Volume about y-axis', 'g(y),c,d', t_vol_y),
+        ('Volume between curves', 'f(x),g(x),a,b', t_vol_between),
         ('Mean value of f', 'f(x),a,b', t_mean),
         ('Integrate by partials', 'p(x),q(x)', t_partial_int),
         ('d/dx inverse trig', 'f(x),a?', t_invtrig_diff),

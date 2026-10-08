@@ -10,6 +10,17 @@ def table(secs):
         out.append('| ' + code + ' ' + title + ' | ' + ', '.join(t[0] for t in tools) + ' |')
     return '\n'.join(out)
 
+def notes():
+    import notesui
+    out = ['| Paper | Topics |', '| --- | --- |']
+    for name, mods in casui.NOTE_PAPERS:
+        if not mods:
+            import formulae
+            out.append('| ' + name + ' | ' + '; '.join(s[0] for s in formulae.SHEETS) + ' |')
+            continue
+        out.append('| ' + name + ' | ' + '; '.join(t[0] for t in notesui.topics(name)) + ' |')
+    return '\n'.join(out)
+
 def papers(papers):
     out = []
     for name, code, secs in papers:
@@ -22,9 +33,9 @@ txt = '''# Maths Toolkit for the Casio fx-CG100 (AQA 7357 + MEI H645)
 
 A calculator app in stock MicroPython 1.9.4 using the built-in `casioplot`.
 An expression calculator with complex numbers, a CAS (simplify, expand,
-factorise, solve, differentiate, integrate, series, limits), a plotter, the
-AQA formulae booklet, and %d tools mapped section by section to two
-specifications:
+factorise, solve, differentiate, integrate, series, limits), a plotter,
+revision notes (the AQA formulae booklet plus notes for every paper sat), and
+%d tools mapped section by section to two specifications:
 
 - A-level Mathematics: **AQA 7357**
 - A-level Further Mathematics: **OCR B (MEI) H645**, every paper: Core Pure
@@ -51,7 +62,7 @@ Python ~300x slower than a laptop): no large fills, and only what a key
 changed is redrawn.
 
 Home is an icon grid: Calculate, CAS, Graph, Solve, Maths (AQA 7357),
-Further (MEI H645), Formulae, Settings. Every menu below it is a grid of word
+Further (MEI H645), Notes, Settings. Every menu below it is a grid of word
 tiles that remembers where you were. The status bar shows the screen, a
 yellow S / red A for SHIFT / ALPHA, Rad/Deg, and Busy while something slow runs.
 
@@ -99,6 +110,18 @@ forgotten session can't keep the calculator awake.
 Answers are exact when the maths is exact (`1/2`, `2sqrt(3)`, `pi/4`,
 `2-3i`) and 3 s.f. otherwise; FORMAT shows 10 s.f.
 
+## Notes
+
+Notes > paper > topic > page. Short plain notes of what the formula booklet
+leaves out: definitions, results to learn, method steps, conditions and test
+wording, common traps. `label = formula` lines are typeset as fractions and
+powers when they read exactly as written; set-in grey lines are details. The
+topic menus come from the small `notes_ix.py`, and each `notes_*.py` loads only
+when one of its topics is opened (`python3 tests_notes.py write` regenerates
+the index).
+
+%s
+
 ## Tools: Maths (AQA 7357)
 
 %s
@@ -114,12 +137,13 @@ Runs unmodified under desktop CPython; `casioplot.py` stubs the graphics.
 ```
 python3 tests.py       # engine checks + every tool case
 python3 stress.py      # every tool with odd inputs, must not crash
+python3 tests_notes.py # Notes: line widths, typesetting, index current
 python3 devlint.py     # MicroPython 1.9.4 compliance for the device files
 python3 casioshot.py   # renders screens to shots/*.png
 python3 mkreadme.py    # regenerates this file
 ```
 
 Design and contracts: `docs/superpowers/specs/`.
-''' % (n, device, table(casui.MATHS), papers(casui.FURTHER))
+''' % (n, device, notes(), table(casui.MATHS), papers(casui.FURTHER))
 open('README.md', 'w').write(txt)
 print('README', len(txt), 'bytes,', n, 'tools')

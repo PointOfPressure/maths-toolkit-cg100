@@ -1608,12 +1608,40 @@ def paper_section(title, papers):
         name, code, secs = papers[sel]
         qual_section(name, secs)
 
-def formulae_section():
+# Notes: the AQA formula booklet, then revision notes per paper. Paper names
+# and their modules live here so the first menu needs no import; the topic
+# menus and pages are in notesui.py (with the index notes_ix.py), and a notes
+# module loads only when one of its topics is opened.
+NOTE_PAPERS = (
+    ('Formula booklet', ()),
+    ('Pure 7357', ('notes_mp1', 'notes_mp2', 'notes_mp3')),
+    ('Stats 7357', ('notes_ms',)),
+    ('Mechanics 7357', ('notes_mm',)),
+    ('Core Pure Y420', ('notes_cp1', 'notes_cp2', 'notes_cp3')),
+    ('Stats Y422', ('notes_st1', 'notes_st2')),
+    ('Extra Pure Y435', ('notes_xp',)),
+)
+
+def notes_section():
+    labels = [p[0] for p in NOTE_PAPERS]
+    while True:
+        sel = remembered('Notes', labels)
+        if sel < 0:
+            return
+        name, mods = NOTE_PAPERS[sel]
+        if mods:
+            busy()
+            import notesui
+            notesui.paper(name)
+        else:
+            _booklet(name)
+
+def _booklet(name):
     busy()
     import formulae
-    sel = 0
+    labels = [s[0] for s in formulae.SHEETS]
     while True:
-        sel = menu('Formulae', [s[0] for s in formulae.SHEETS], sel)
+        sel = remembered(name, labels)
         if sel < 0:
             return
         title, lines = formulae.SHEETS[sel]
@@ -1621,7 +1649,7 @@ def formulae_section():
 
 HOME_TILES = [
     ('Calculate', ic_calc), ('CAS', ic_cas), ('Graph', ic_graph), ('Solve', ic_solve),
-    ('Maths', ic_pi), ('Further', ic_argand), ('Formulae', ic_book), ('Settings', ic_angle),
+    ('Maths', ic_pi), ('Further', ic_argand), ('Notes', ic_book), ('Settings', ic_angle),
 ]
 
 def main():
@@ -1644,7 +1672,7 @@ def main():
             elif sel == 5:
                 paper_section('Further', FURTHER)
             elif sel == 6:
-                formulae_section()
+                notes_section()
             elif sel == 7:
                 settings()
         except Home:

@@ -31,6 +31,9 @@ CASES = [
       'Q1 = 12.1   Q3 = 26.9', 'IQR = 14.8', 'modal class 10-20',
       's (n-1) = 9.71']),
     ('L', 'Coding x from y', '100,5,2.4,1.6', ['mean x = 112', 'sd x = 8']),
+    # sum x = 120 + 210 = 330, sum x^2 = 10(4+144) + 15(9+196) = 4555
+    ('L', 'Combine two groups', '10,12,2,15,14,3',
+     ['n = 25', 'mean = 13.2', 'sd (n) = 2.82', '4555', 's (n-1) = 2.88']),
     # Q1 = 3, Q3 = 8, IQR 5 so limits -4.5 and 15.5; mean 9.5, sd 13.7
     ('L', 'Outliers', '1,2,3,4,5,6,7,8,9,50',
      ['1.5 IQR: -4.5 to 15.5', 'out: 50', '2 sd: -17.9 to 36.9']),
@@ -75,6 +78,11 @@ CASES = [
     ('M', 'Tree two stage', '0.3,0.8,0.4',
      ['P(B) = 0.52', "P(B') = 0.48", 'P(A|B) = 0.462', "P(A'|B) = 0.538",
       "P(A|B') = 0.125"]),
+    ('M', 'Venn: find the ?', '0.4,0.5,?,0.7',
+     ['P(A and B) = 1/5', 'independent: yes', 'neither 3/10']),
+    ('M', 'Venn: find the ?', '0.4,0.5,0.1,?', ['P(A or B) = 4/5', 'independent: no']),
+    # independent: 0.6 = 0.3 + p - 0.3p, p = 3/7
+    ('M', 'Venn: find the ?', '0.3,?,?,0.6', ['P(B) = 3/7', 'taken as independent']),
 
     # N statistical distributions
     ('N', 'Binomial P(X=k)', '10,0.3,3', ['P(X = 3) = 0.267', 'nCk = 120']),
@@ -89,6 +97,10 @@ CASES = [
     # B(20, 0.4): P(X<=10) = 0.8725, P(X<=11) = 0.9435
     ('N', 'Binomial least k', '20,0.4,0.9',
      ['k = 11', 'P(X <= 11) = 0.943', 'P(X <= 10) = 0.872']),
+    ('N', 'Binomial least n', '0.05,1,0.9',
+     ['n = 45', 'P(X >= 1) = 0.90056', 'ln(0.1)/ln(0.95) = 44.9']),
+    ('N', 'Binomial least n', '0.3,3,0.95', ['n = 19', 'n = 18: P(X >= 3) = 0.940048']),
+    ('N', 'Binomial least n', '0.5,1,1', ['target must be']),
     ('N', 'Binomial mean var', '10,0.3',
      ['mean = np = 3', 'variance = np(1-p) = 2.1', 'sd = 1.45']),
     ('N', 'Normal P(X<x)', '50,10,65', ['P(X < 65) = 0.933', 'z = 1.5']),
@@ -96,6 +108,20 @@ CASES = [
     ('N', 'Normal P(a<X<b)', '50,10,45,60',
      ['P(a < X < b) = 0.533', 'z(a) = -0.5   z(b) = 1']),
     ('N', 'Inverse Normal', '50,10,0.9', ['x = 62.8', 'z = 1.28']),
+    # N(30, 21): P(24.5 < Y < 35.5) = 2 Phi(1.2002) - 1
+    ('N', 'Normal approx to B', '100,0.3,25,35',
+     ['P(25 <= X <= 35) ~ 0.77', 'Y ~ N(30, 21)', 'P(24.5 < Y < 35.5)']),
+    # B(50, 0.4): z = (15.5 - 20)/sqrt(12) = -1.299; table P(X <= 15) = 0.0955
+    ('N', 'Normal approx to B', '50,0.4,?,15',
+     ['P(X <= 15) ~ 0.097', 'exact binomial = 0.0955', 'P(Y < 15.5)']),
+    ('N', 'Normal approx to B', '20,0.1,?,3', ['approximation is poor']),
+    # P(X > 60)/P(X > 50) = 0.15866/0.5
+    ('N', 'Normal conditional', '50,10,60,?,50,?',
+     ['P(X > 60 | X > 50) = 0.317', 'P(X > 60) = 0.159']),
+    # (Phi(-0.5) - Phi(-1))/(2 Phi(1) - 1) = 0.14988/0.68269
+    ('N', 'Normal conditional', '50,10,?,45,40,60',
+     ['P(X < 45 | 40 < X < 60) = 0.22', 'P(40 < X < 45) = 0.15']),
+    ('N', 'Normal conditional', '50,10,?,30,40,?', ['= 0']),
     ('N', 'Standardise z', '50,10,65', ['z = 1.5', 'P(X < 65) = 0.933']),
     ('N', 'Normal find mu or sd', '?,5,20,0.9', ['mu = 13.6', 'z = 1.28']),
     ('N', 'Normal find mu or sd', '15,?,20,0.9', ['sigma = 3.9']),
@@ -130,6 +156,8 @@ CASES = [
     # se = 10/sqrt(25) = 2, z = -2
     ('O', 'z test mean lower', '50,10,25,46,5',
      ['reject H0 at 5%', 'z = -2', 'p-value = 0.0228', 'critical z = -1.645']),
+    ('O', 'z test mean lower', '50,10,25,48,5', ['CR: xbar <= 46.71']),
+    ('O', 'z test mean two tail', '50,10,25,48,5', ['CR: xbar <= 46.08 or >= 53.92']),
     ('O', 'z test mean upper', '50,10,25,54,5',
      ['reject H0 at 5%', 'z = 2', 'p-value = 0.0228', 'critical z = 1.645']),
     ('O', 'z test mean two tail', '50,10,25,54,5',

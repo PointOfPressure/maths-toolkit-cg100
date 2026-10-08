@@ -3,6 +3,7 @@
 import math
 import caseng
 import cascalc
+import caspoly
 import casutil
 
 _s3 = casutil.sf3
@@ -405,6 +406,149 @@ def t_vecsuvat(r0, u, a, t):
     return ans + [_w('r = r0 + ut + at^2/2'), _w('v = u + at'),
                   _w('angle measured from the x axis')]
 
+def _tscan(tree):
+    # zeros for 0 <= t <= 20 by a coarse scan and bisection
+    out = []
+    n = 100
+    prev = None
+    i = 0
+    while i <= n and len(out) < 3:
+        t = 20.0 * i / n
+        try:
+            v = _tval(tree, t)
+        except ValueError:
+            v = None
+        if isinstance(v, complex):
+            v = None
+        if v is not None and v == 0:
+            out.append(t)
+        elif v is not None and prev is not None and (v < 0) != (prev[1] < 0):
+            a = prev[0]
+            b = t
+            fa = prev[1]
+            k = 0
+            while k < 50:
+                mid = (a + b) / 2.0
+                fm = _tval(tree, mid)
+                if (fm < 0) == (fa < 0):
+                    a = mid
+                    fa = fm
+                else:
+                    b = mid
+                k += 1
+            out.append((a + b) / 2.0)
+        prev = None if v is None else (t, v)
+        i += 1
+    return out
+
+def _troots(tree):
+    # zeros in t: closed form for a polynomial of degree <= 2, else a scan
+    p = caspoly.poly(tree, 't')
+    if p is None or len(p) > 3:
+        return _tscan(tree)
+    c = [q[0] / float(q[1]) for q in p] + [0.0, 0.0, 0.0]
+    if len(p) == 3:
+        D = c[1] * c[1] - 4.0 * c[2] * c[0]
+        if D < 0:
+            return []
+        rt = math.sqrt(D)
+        return sorted([(-c[1] - rt) / (2.0 * c[2]), (-c[1] + rt) / (2.0 * c[2])])
+    if len(p) == 2:
+        return [-c[0] / c[1]]
+    return []
+
+def _zeros(tree, what):
+    out = []
+    for r in _troots(tree):
+        if r >= -1e-6 and len(out) < 3:
+            out.append(_w(what + ' at t = ' + _s3(r if r > 1e-6 else 0.0)))
+    return out
+
+def _vecat(r, v, a, tv):
+    ts = _s3(tv)
+    px = _tval(r[0], tv)
+    py = _tval(r[1], tv)
+    qx = _tval(v[0], tv)
+    qy = _tval(v[1], tv)
+    sp = math.sqrt(qx * qx + qy * qy)
+    out = ['r(' + ts + ') = ' + _v2(px, py) + ' m',
+           'v(' + ts + ') = ' + _v2(qx, qy) + ' m/s',
+           'speed = ' + _s3(sp) + ' m/s',
+           'a(' + ts + ') = ' + _v2(_tval(a[0], tv), _tval(a[1], tv)) + ' m/s^2']
+    if sp > 0:
+        out.append(_w('v at ' + _s3(_dirn(qx, qy)) + ' deg to i'))
+    return out
+
+def t_vrdiff(x, y, tv):
+    _tcheck(x)
+    _tcheck(y)
+    vx = cascalc.tidy(caseng.diff(x, 't'))
+    vy = cascalc.tidy(caseng.diff(y, 't'))
+    ax = cascalc.tidy(caseng.diff(vx, 't'))
+    ay = cascalc.tidy(caseng.diff(vy, 't'))
+    ans = ['v = (' + caseng.tostr(vx) + ')i + (' + caseng.tostr(vy) + ')j',
+           'a = (' + caseng.tostr(ax) + ')i + (' + caseng.tostr(ay) + ')j']
+    if tv is not None:
+        ans += _vecat((x, y), (vx, vy), (ax, ay), tv)
+    return ans + [_w('v = dr/dt, a = dv/dt, each part')] + \
+        _zeros(vy, 'v parallel to i') + _zeros(vx, 'v parallel to j')
+
+def t_vvint(vx, vy, r0, tv):
+    _tcheck(vx)
+    _tcheck(vy)
+    X = cascalc.integ(vx, 't')
+    Y = cascalc.integ(vy, 't')
+    if X is None or Y is None:
+        raise ValueError('no elementary integral for r')
+    x = _shift(X, r0[0], 0.0)
+    y = _shift(Y, r0[1], 0.0)
+    ax = cascalc.tidy(caseng.diff(vx, 't'))
+    ay = cascalc.tidy(caseng.diff(vy, 't'))
+    ans = ['r = (' + caseng.tostr(x) + ')i + (' + caseng.tostr(y) + ')j',
+           'a = (' + caseng.tostr(ax) + ')i + (' + caseng.tostr(ay) + ')j']
+    if tv is not None:
+        ans += _vecat((x, y), (vx, vy), (ax, ay), tv)
+    return ans + [_w('r = int v dt with r(0) = ' + _v2(r0[0], r0[1])),
+                  _w('a = dv/dt')] + \
+        _zeros(vy, 'v parallel to i') + _zeros(vx, 'v parallel to j')
+
+def t_meet2(sA, uA, aA, sB, uB, aB):
+    A = (aA - aB) / 2.0
+    B = uA - uB
+    C = sA - sB
+    ts = []
+    if A == 0:
+        if B == 0:
+            if C == 0:
+                return ['together at all times', _warn('identical motions')]
+            return ['they never meet', _w('same speed, different start')]
+        ts = [-C / B]
+    else:
+        D = B * B - 4.0 * A * C
+        if D >= 0:
+            rt = math.sqrt(D)
+            ts = [(-B - rt) / (2.0 * A), (-B + rt) / (2.0 * A)]
+            if D == 0:
+                ts = ts[:1]
+    ts = [t for t in ts if t >= -1e-12]
+    ts.sort()
+    eq = ''
+    for c, nm in ((A, 't^2'), (B, 't'), (C, '')):
+        if c != 0:
+            eq += _term(c, nm) if abs(c) != 1 or nm == '' else \
+                (' - ' if c < 0 else ' + ') + nm
+    eq = eq[3:] if eq[:3] == ' + ' else '-' + eq[3:]
+    wk = [_w('s = s0 + ut + at^2/2 for each'), _w(eq + ' = 0')]
+    if not ts:
+        return ['they never meet for t >= 0'] + wk
+    out = []
+    for t in ts:
+        t = 0.0 if t < 0 else t
+        out.append('t = ' + _s3(t) + ' s, s = ' +
+                   _s3(sA + uA * t + 0.5 * aA * t * t) + ' m')
+        out.append(_w('vA = ' + _s3(uA + aA * t) + ', vB = ' + _s3(uB + aB * t)))
+    return out + wk
+
 def _proj(u, ang, h, g):
     g = _g(g)
     if u <= 0:
@@ -553,6 +697,29 @@ def t_equil(data):
             'R = ' + _s3(mag) + ' N at ' + _s3(d) + ' deg',
             'balance: ' + _s3(mag) + ' N at ' + _s3(d - 180.0 if d > 0 else d + 180.0) + ' deg'] + wk
 
+def t_two(p, q, data):
+    fs = _pairs(data, 'need force,angle pairs') if data else []
+    sx = 0.0
+    sy = 0.0
+    for f, ang in fs:
+        sx += f * math.cos(_rad(ang))
+        sy += f * math.sin(_rad(ang))
+    eps = 1e-9 * (1.0 + abs(sx) + abs(sy))
+    sx = 0.0 if abs(sx) < eps else sx
+    sy = 0.0 if abs(sy) < eps else sy
+    det = math.sin(_rad(q - p))
+    if abs(det) < 1e-12:
+        raise ValueError('P and Q are parallel')
+    P = (-sx * math.sin(_rad(q)) + sy * math.cos(_rad(q))) / det
+    Q = (-sy * math.cos(_rad(p)) + sx * math.sin(_rad(p))) / det
+    out = ['P = ' + _s3(P) + ' N', 'Q = ' + _s3(Q) + ' N',
+           _w('known forces sum to ' + _v2(sx, sy)),
+           _w('P cos p + Q cos q = ' + _s3(-sx)),
+           _w('P sin p + Q sin q = ' + _s3(-sy))]
+    if P < 0 or Q < 0:
+        out.append(_warn('negative: that force points the other way'))
+    return out
+
 def t_fma(f, m, a):
     n = 0
     for q in (f, m, a):
@@ -674,6 +841,16 @@ def t_slope(m, ang, mu, f, g):
     down = m * g * math.sin(ra)
     rn = m * g * math.cos(ra)
     fmax = mu * rn
+    if f is None:
+        lo = down - fmax
+        return ['at rest for ' + _s3(lo if lo > 0 else 0.0) + ' <= F <= ' +
+                _s3(down + fmax) + ' N',
+                _w('R = mg cos a = ' + _s3(rn)),
+                _w('F max = mu R = ' + _s3(fmax)),
+                _w('about to slip down: F = mg sin a - mu R'),
+                _w('about to slip up: F = mg sin a + mu R'),
+                _w('F acts up the slope, parallel to it')] + \
+            ([_warn('mu >= tan a: rests with no F')] if lo <= 0 else [])
     drive = f - down
     wk = [_w('R = mg cos a = ' + _s3(rn)),
           _w('mg sin a = ' + _s3(down)),
@@ -712,6 +889,38 @@ def t_tablepulley(m1, m2, mu, g):
             'T = ' + _s3(m2 * (g - acc)) + ' N'] + wk + \
            [_w('a = (m2 g - mu m1 g)/(m1+m2)'), _w('m2: m2 g - T = m2 a')]
 
+def t_slopepulley(m1, ang, mu, m2, g):
+    g = _g(g)
+    if m1 <= 0 or m2 <= 0:
+        raise ValueError('masses must be > 0')
+    if mu < 0:
+        raise ValueError('mu must be >= 0')
+    if ang < 0 or ang >= 90:
+        raise ValueError('angle must be 0 to 90')
+    ra = _rad(ang)
+    down = m1 * g * math.sin(ra)
+    rn = m1 * g * math.cos(ra)
+    fmax = mu * rn
+    pull = m2 * g
+    wk = [_w('R = m1 g cos a = ' + _s3(rn)),
+          _w('F max = mu R = ' + _s3(fmax)),
+          _w('m1 g sin a = ' + _s3(down) + ', m2 g = ' + _s3(pull))]
+    net = pull - down
+    if abs(net) <= fmax:
+        return ['stays at rest', 'T = ' + _s3(pull) + ' N',
+                'friction = ' + _s3(abs(net)) + ' N ' +
+                ('down' if net > 0 else 'up') + ' the slope'] + wk
+    acc = (abs(net) - fmax) / (m1 + m2)
+    if net > 0:
+        tn = m2 * (g - acc)
+        how = 'm2 falls, m1 moves up the slope'
+    else:
+        tn = m2 * (g + acc)
+        how = 'm2 rises, m1 slides down the slope'
+    return ['a = ' + _s3(acc) + ' m/s^2', 'T = ' + _s3(tn) + ' N', how,
+            'friction = ' + _s3(fmax) + ' N'] + wk + \
+        [_w('whole system: |m2 g - m1 g sin a| - mu R = (m1+m2)a')]
+
 # ---- S  Moments -------------------------------------------------------------
 
 def t_moments(data):
@@ -735,6 +944,43 @@ def t_moments(data):
         ans.append(('anticlockwise' if tot > 0 else 'clockwise') + ' overall')
     return ans + wk + [_w('moment = force x perpendicular dist'),
                        _w('signs: anticlockwise positive')]
+
+def t_ladder(L, W, ang, mu, Wp, x):
+    if L <= 0 or W < 0:
+        raise ValueError('need L > 0, W >= 0')
+    if ang <= 0 or ang >= 90:
+        raise ValueError('angle is 0 to 90 exclusive')
+    Wp = 0.0 if Wp is None else Wp
+    if Wp < 0:
+        raise ValueError('Wp must be >= 0')
+    tn = math.tan(_rad(ang))
+    R = W + Wp
+    if R <= 0:
+        raise ValueError('total weight must be > 0')
+    wk = [_w('R = W + Wp = ' + _s3(R) + ' N'),
+          _w('about the foot: S L sin a = W (L/2) cos a + Wp x cos a'),
+          _w('F = S, smooth wall, angle a to the ground')]
+    if x is None:
+        if mu is None or Wp == 0:
+            x = 0.0
+        else:
+            xm = (mu * R * L * tn - W * L / 2.0) / Wp
+            if xm < 0:
+                return ['slips even with no climber'] + wk
+            if xm >= L:
+                return ['can climb to the top'] + wk
+            return ['can climb x = ' + _s3(xm) + ' m',
+                    _w('at the limit S = F = mu R = ' + _s3(mu * R))] + wk
+    if x < 0 or x > L:
+        raise ValueError('x is 0 to L along the ladder')
+    S = (W * L / 2.0 + Wp * x) / (L * tn)
+    out = ['S = ' + _s3(S) + ' N (wall)', 'R = ' + _s3(R) + ' N (ground)',
+           'F = ' + _s3(S) + ' N', 'mu needed = ' + _s3(S / R)]
+    if mu is not None:
+        out.append('it slips' if S > mu * R + 1e-12 else 'it stays put')
+        amin = _deg(math.atan((W * L / 2.0 + Wp * x) / (mu * R * L))) if mu > 0 else 90.0
+        out.append(_w('least angle = ' + _s3(amin) + ' deg'))
+    return out + wk
 
 def t_beam(l, mm, a, b, loads):
     if l <= 0:
@@ -809,6 +1055,9 @@ SECTIONS = [
         ('a(t) to v and s', 'a(t),v0?,s0?,t?', t_avs),
         ('Distance from v(t)', 'v(t),t0,t1', t_dist),
         ('Vector SUVAT', 'r0[2],u[2],a[2],t', t_vecsuvat),
+        ('Vector r(t) to v, a', 'x(t),y(t),t?', t_vrdiff),
+        ('Vector v(t) to r, a', 'vx(t),vy(t),r0[2],t?', t_vvint),
+        ('Two particles meet', 'sA,uA,aA,sB,uB,aB', t_meet2),
         ('Projectile launch', 'u,angle,h?,g?', t_proj),
         ('Projectile at time t', 'u,angle,t,h?,g?', t_projat),
         ('Projectile angle', 'u,range,g?', t_projang),
@@ -818,6 +1067,7 @@ SECTIONS = [
         ('Resolve a force', 'F,angle', t_resolve),
         ('Resultant of forces', 'F angle pairs*', t_resultant),
         ('Equilibrium check', 'F angle pairs*', t_equil),
+        ('Two unknown forces', 'p,q,F angle pairs*', t_two),
         ('Newton II F = ma', 'F,m,a', t_fma),
         ('Plane dynamics', 'm,F angle pairs*', t_dynplane),
         ('Pulley over a peg', 'm1,m2,g?', t_pulley),
@@ -826,10 +1076,12 @@ SECTIONS = [
         ('Friction horizontal', 'm,mu,P,angle?,g?', t_frich),
         ('Rough slope', 'm,angle,mu,F,g?', t_slope),
         ('Mass on rough table', 'm1,m2,mu,g?', t_tablepulley),
+        ('Slope and pulley', 'm1,angle,mu,m2,g?', t_slopepulley),
     ]),
     ('S', 'Moments', [
         ('Moments about a point', 'F d pairs*', t_moments),
         ('Beam on two supports', 'L,M,a,b,pos mass pairs*', t_beam),
         ('Tilting point', 'L,M,a,b,m', t_tilt),
+        ('Ladder, smooth wall', 'L,W,angle,mu?,Wp?,x?', t_ladder),
     ]),
 ]

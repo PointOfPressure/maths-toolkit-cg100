@@ -20,6 +20,15 @@ CASES = [
     ('G', 'Parametric dy/dx', 'cos(t),sin(t),?', ['dx/dt = -sin(t)']),
     ('G', 'Implicit dy/dx', 'x^2+y^2-25,3,4', ['-x/y', 'dy/dx = -3/4']),
     ('G', 'Implicit dy/dx', 'x^2+y^2-25,1,1', ['not on the curve']),
+    # 2x + y = 0 on the curve: 3x^2 = 12
+    ('G', 'Implicit dy/dx = 0', 'x^2+x*y+y^2-12',
+     ['dy/dx = 0 at (-2, 4)', 'dy/dx = 0 at (2, -4)', 'vertical tangent at (4, -2)']),
+    # circle centre (2, -3) radius 5
+    ('G', 'Implicit dy/dx = 0', 'x^2+y^2-4x+6y-12',
+     ['dy/dx = 0 at (2, -8)', 'dy/dx = 0 at (2, 2)', 'vertical tangent at (7, -3)']),
+    # x = -1, y^2 = 2
+    ('G', 'Implicit dy/dx = 0', 'y^2-x^3+3x', ['dy/dx = 0 at (-1, sqrt(2))']),
+    ('G', 'Implicit dy/dx = 0', 'x*y-4', ['no point with dy/dx = 0 found']),
     ('G', 'Connected rates', 'x^2,3,2', ['dy/dt = 12', '6 * 2 = 12']),
     ('G', 'Inverse derivative', 'x^3,2', ["(f^-1)'(8) = 1/12", "f'(2) = 12"]),
     ('G', "f, f' and f'' at a", 'x^3,2', ['f(2) = 8', "f'(2) = 12", "f''(2) = 12"]),

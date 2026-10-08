@@ -21,6 +21,8 @@ T = (
         ('Identify group (n<=10)', 'n,table*'),
         ('Z_n under + mod n', 'n'),
         ('Units under x mod n', 'n'),
+        ('Set under x mod n', 'n,elements*'),
+        ('Set under + mod n', 'n,elements*'),
         ('Symmetries of n-gon', 'n'),
     )),
     ('M', 'Matrices: eigenvalues', (

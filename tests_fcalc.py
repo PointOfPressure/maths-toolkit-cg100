@@ -14,6 +14,11 @@ CASES = [
     ('C', 'Singular endpoint int', '1/x,0,1', ['diverges']),
     ('C', 'Volume about x-axis', 'x,0,1', ['V = pi/3', '= 1.05']),
     ('C', 'Volume about x-axis', 'x^2,0,2', ['V = 32pi/5', 'int y^2 dx = 6.4']),
+    # pi int (x^2 - x^4) on [0,1] = pi(1/3 - 1/5)
+    ('C', 'Volume between curves', 'x,x^2,0,1', ['V = 2pi/15', '= 0.419']),
+    # pi int ((x+2)^2 - x^4) on [-1,2] = pi(21 - 33/5)
+    ('C', 'Volume between curves', 'x+2,x^2,-1,2', ['V = 72pi/5']),
+    ('C', 'Volume between curves', 'x^2,x,0,1', ['V = 2pi/15', 'check which is outer']),
     ('C', 'Volume about y-axis', 'y^2,0,1', ['V = pi/5']),
     ('C', 'Mean value of f', 'x^2,0,3', ['mean = 3', 'f = mean at x = 1.73']),
     ('C', 'Mean value of f', 'sin(x),0,pi', ['mean = 0.637', 'int f dx = 2']),

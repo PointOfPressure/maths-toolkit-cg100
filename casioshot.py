@@ -189,6 +189,12 @@ def _scenes():
         ("result-working", lambda: result_scene(1)),
         ("cas-int", lambda: casui.result('integrate', 'f(x) = x*e^x', casui._cas_op(2, caslex.parse('x*e^x'), 'x*e^x'))),
         ("flash", lambda: casui.flash('b: unknown x')),
+        ("notes", lambda: casui.notes_section()),
+        # Pure 7357 > Geometric series (typeset lines), then Core Pure > first topic
+        ("notes-page", lambda: (casui._SEL.clear(), press(25, 24, 34, 34, 34, 34, 34, 24),
+                                casui.notes_section())),
+        ("notes-detail", lambda: (casui._SEL.clear(), press(34, 25, 24, 34, 34, 24, 34, 34),
+                                  casui.notes_section())),
         ("plot-cubic", lambda: plot.run([caslex.parse('x^3-3x')], -4, 4, 'y', 'y = x^3-3x')),
     ]
 

@@ -9,6 +9,7 @@ T = (
         ('First principles', 'f(x),a'),
         ('Parametric dy/dx', 'x(t),y(t),t?'),
         ('Implicit dy/dx', 'F(xy),x?,y?'),
+        ('Implicit dy/dx = 0', 'F(xy)'),
         ('Connected rates', 'y(x),x,dx/dt'),
         ('Inverse derivative', 'f(x),a'),
         ("f, f' and f'' at a", 'f(x),a'),

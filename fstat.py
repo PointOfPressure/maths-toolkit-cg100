@@ -7,6 +7,7 @@ import casutil
 import tables
 import caseng
 import cascalc
+import caspoly
 
 fmt = casutil.fmt
 sf3 = casutil.sf3
@@ -539,6 +540,116 @@ def t_binom(n, p, k):
             w('P(X=k) = nCk p^k (1-p)^(n-k)'),
             w('fixed n, independent trials, constant p')]
 
+def _bge_n(n, p, k):
+    # P(X >= k) for X ~ B(n, p), summing the k lower terms in logs
+    if k <= 0:
+        return 1.0
+    if k > n:
+        return 0.0
+    lq = math.log(1.0 - p)
+    lr = math.log(p) - lq
+    lt = n * lq
+    s = 0.0
+    j = 0
+    while j < k:
+        s += math.exp(lt)
+        lt += math.log((n - j) / (j + 1.0)) + lr
+        j += 1
+    v = 1.0 - s
+    return v if v > 0.0 else 0.0
+
+def _leastn(p, k, target):
+    # least n with P(X >= k) > target; P(X >= k) grows with n
+    if p <= 0.0 or p >= 1.0:
+        raise ValueError('p must be strictly between 0 and 1')
+    if k != int(k) or k < 1 or k > 50:
+        raise ValueError('k must be a whole number 1 to 50')
+    k = int(k)
+    if target <= 0.0 or target >= 1.0:
+        raise ValueError('target must be strictly between 0 and 1')
+    hi = k
+    while _bge_n(hi, p, k) <= target:
+        hi *= 2
+        if hi > 10000000:
+            raise ValueError('n would be over 10^7')
+    lo = k - 1
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if _bge_n(mid, p, k) > target:
+            hi = mid
+        else:
+            lo = mid
+    return (hi, _bge_n(hi, p, k), _bge_n(hi - 1, p, k))
+
+
+def t_bleastn(p, k, target):
+    n, pn, pm = _leastn(p, k, target)
+    k = int(k)
+    out = ['n = ' + fmt(n),
+           'P(X>=' + fmt(k) + ') = ' + fmt(pn, 6) + ' at n = ' + fmt(n),
+           w('n = ' + fmt(n - 1) + ': P(X>=' + fmt(k) + ') = ' + fmt(pm, 6)),
+           w('X ~ B(n, ' + sf3(p) + '), need P(X>=' + fmt(k) + ') > ' + sf3(target))]
+    if k == 1:
+        out.append(w('1 - (1-p)^n > ' + sf3(target) + ': n > ' +
+                     sf3(math.log(1.0 - target) / math.log(1.0 - p))))
+    return out
+
+def _poismu(F, p, lo, hi):
+    # bisection for F(mu) = p on [lo, hi]; F changes sign across p
+    flo = F(lo) - p
+    i = 0
+    while i < 80:
+        mid = 0.5 * (lo + hi)
+        fm = F(mid) - p
+        if (fm < 0) == (flo < 0):
+            lo = mid
+            flo = fm
+        else:
+            hi = mid
+        i += 1
+    return 0.5 * (lo + hi)
+
+def t_poismu_eq(k, p):
+    k = _whole(k, 'k', 0, 200)
+    if p <= 0 or p >= 1:
+        raise ValueError('p must be 0 to 1')
+    F = lambda m: casutil.poisson_pmf(m, k)
+    if k == 0:
+        mu = -math.log(p)
+        return ['mu = ' + fmt(mu), w('P(X=0) = e^-mu = ' + sf3(p)),
+                w('mu = -ln(' + sf3(p) + ') = ' + sf3(mu))]
+    top = F(float(k))
+    out = []
+    if p > top + 1e-15:
+        return ['no mu: P(X=' + fmt(k) + ') is at most ' + sf3(top),
+                w('largest when mu = ' + fmt(k))]
+    m1 = _poismu(F, p, 1e-9, float(k))
+    hi = 2.0 * k + 10.0
+    while F(hi) > p:
+        hi *= 2.0
+    m2 = _poismu(F, p, float(k), hi)
+    out.append('mu = ' + sf3(m1))
+    if abs(m2 - m1) > 1e-6:
+        out.append('mu = ' + sf3(m2))
+    out.append(w('e^-mu mu^' + fmt(k) + '/' + fmt(k) + '! = ' + sf3(p)))
+    out.append(w('P(X=' + fmt(k) + ') rises to ' + sf3(top) + ' at mu = ' + fmt(k) +
+                 ', then falls'))
+    return out
+
+def t_poismu_le(k, p):
+    k = _whole(k, 'k', 0, 200)
+    if p <= 0 or p >= 1:
+        raise ValueError('p must be 0 to 1')
+    F = lambda m: casutil.poisson_cdf(m, k)
+    hi = k + 10.0
+    while F(hi) > p:
+        hi *= 2.0
+    mu = -math.log(p) if k == 0 else _poismu(F, p, 1e-9, hi)
+    return ['mu = ' + (fmt(mu) if k == 0 else sf3(mu)),
+            w('P(X<=' + fmt(k) + ') = ' + sf3(p) + ', falls as mu grows'),
+            w('so P(X>=' + fmt(k + 1) + ') = ' + sf3(1.0 - p)),
+            w('check P(X<=' + fmt(k) + ') = ' + sf3(F(mu)))]
+
 def t_papprox(n, p, k):
     n = _bin_n(n)
     _prob(p, 'p')
@@ -794,6 +905,69 @@ def t_pdf(f, a, b):
     out.append(w('Var = E(X^2)-E(X)^2 = ' + fmt(var)))
     import plot
     plot.run([f], float(a), float(b), 'y', 'pdf f(x)')
+    return out
+
+def _simpson(f, a, b, n):
+    h = (b - a) / float(n)
+    tot = 0.0
+    for i in range(n + 1):
+        v = casutil.evx(f, a + h * i)
+        if v is None:
+            return None
+        tot += v * (1 if i == 0 or i == n else (4 if i % 2 else 2))
+    return tot * h / 3.0
+
+def _pmom(p, m, a, b):
+    # int x^m p(x) dx over [a, b] for a rational polynomial p
+    v = 0.0
+    for i in range(len(p)):
+        e = i + m + 1
+        v += p[i][0] / float(p[i][1]) * (math.pow(b, e) - math.pow(a, e)) / e
+    return v
+
+def _pint(p):
+    # antiderivative tree of p, for the cdf
+    q = [caspoly.R0] + [caspoly.rmul(p[i], (1, i + 1)) for i in range(len(p))]
+    return caspoly.ptree(caspoly.ptrim(q), 'x')
+
+def t_pdfk(g, a, b):
+    pp = caspoly.poly(g, 'x')
+    if pp is not None:
+        if b <= a:
+            raise ValueError('need upper > lower')
+        pieces = [(g, float(a), float(b), _pint(pp))]
+        tot = _pmom(pp, 0, a, b)
+        exact = True
+    else:
+        pieces = [_piece(g, a, b)]
+        tot, exact = _moment(pieces, 0)
+    if tot is None:
+        raise ValueError('cannot integrate g(x)')
+    if abs(tot) < 1e-12:
+        raise ValueError('int g dx = 0: no k')
+    k = 1.0 / tot
+    pp = caspoly.poly(g, 'x')
+    if pp is not None:
+        m1 = _pmom(pp, 1, a, b)
+        m2 = _pmom(pp, 2, a, b)
+    else:
+        m1, x1 = _moment(pieces, 1)
+        m2 = _simpson(_xpow(g, 2), a, b, 48)
+    if m1 is None or m2 is None:
+        raise ValueError('cannot integrate x g(x)')
+    e1 = k * m1
+    e2 = k * m2
+    var = e2 - e1 * e1
+    out = ['k = ' + fmt(k), 'E(X) = ' + fmt(e1), 'E(X^2) = ' + fmt(e2),
+           'Var(X) = ' + fmt(var), 'SD = ' + sf3(_sqrt(var))]
+    md = _quantile(pieces, 0.5 * tot) if tot > 0 else None
+    if md is not None:
+        out.append('median = ' + sf3(md))
+    out.append(w('k int g dx = 1, int g dx = ' + fmt(tot) +
+                 (' (exact)' if exact else ' (Simpson)')))
+    mn, mx = _fmin(pieces, 60)
+    if mn is not None and mn * k < -1e-9:
+        out.append(warn('f < 0 at x = ' + sf3(mx) + ': not a pdf'))
     return out
 
 def t_pdfq(f, a, b):
@@ -2518,10 +2692,13 @@ SECTIONS = [
         ('Poisson P(X=k)', 'mu,k', t_pois),
         ('Poisson a<=X<=b', 'mu,a,b', t_poisrange),
         ('Poisson least k', 'mu,p', t_poisinv),
+        ('Poisson mu, P(X=k)', 'k,p', t_poismu_eq),
+        ('Poisson mu, P(X<=k)', 'k,p', t_poismu_le),
         ('Sum of Poissons', 'k,mu*', t_poissum),
         ('Poisson approx to B', 'n,p,k', t_papprox),
         ('Poisson model check', 'data*', t_poischeck),
         ('Binomial P(X=k)', 'n,p,k', t_binom),
+        ('Binomial least n', 'p,k,target', t_bleastn),
     ]),
     ('G', 'Geometric distribution', [
         ('Geometric P(X=r)', 'p,r', t_geom),
@@ -2530,6 +2707,7 @@ SECTIONS = [
     ]),
     ('C', 'Continuous random vars', [
         ('pdf E Var and check', 'f(x),a,b', t_pdf),
+        ('pdf find k', 'g(x),a,b', t_pdfk),
         ('pdf median quartiles', 'f(x),a,b', t_pdfq),
         ('Mode of a pdf', 'f(x),a,b', t_pdfmode),
         ('cdf F(x) from a pdf', 'f(x),a,b,t', t_cdf),

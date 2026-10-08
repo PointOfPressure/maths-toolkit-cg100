@@ -43,6 +43,13 @@ CASES = [
     # Po(4): P(X<=6) = 0.889, P(X<=7) = 0.949, so k = 7
     ('B', 'Poisson least k', '4,0.9',
      ['k = 7', 'P(X<=k) = 0.949', 'P(X<=k-1) = 0.889']),
+    ('B', 'Poisson mu, P(X=k)', '0,0.1', ['mu = 2.3', 'mu = -ln(0.1)']),
+    # e^-mu mu^2/2 = 0.2 has two roots either side of mu = 2
+    ('B', 'Poisson mu, P(X=k)', '2,0.2', ['mu = 1.09', 'mu = 3.31']),
+    ('B', 'Poisson mu, P(X=k)', '2,0.3', ['no mu: P(X=2) is at most 0.271']),
+    # e^-mu (1 + mu) = 0.3
+    ('B', 'Poisson mu, P(X<=k)', '1,0.3', ['mu = 2.44', 'P(X>=2) = 0.7']),
+    ('B', 'Poisson mu, P(X<=k)', '0,0.1', ['mu = 2.3']),
     # Po(2) + Po(3) = Po(5): P(Y=5) = 0.175, P(Y<=5) = 0.616
     ('B', 'Sum of Poissons', '5,2,3',
      ['Po(5)', 'P(Y=k) = 0.175', 'P(Y<=k) = 0.616']),
@@ -61,6 +68,10 @@ CASES = [
     ('B', 'Binomial P(X=k)', '10,0.3,3',
      ['P(X=k) = 0.267', 'P(X<=k) = 0.65', 'mean np = 3',
       'var np(1-p) = 2.1']),
+    # 1 - 0.95^n > 0.9: n > ln 0.1/ln 0.95 = 44.9
+    ('B', 'Binomial least n', '0.05,1,0.9', ['n = 45', 'n > 44.9']),
+    # B(19, 0.3): P(X <= 2) = 0.0462; B(18, 0.3): 0.0600
+    ('B', 'Binomial least n', '0.3,3,0.95', ['n = 19', 'P(X>=3) = 0.953776']),
 
     # --- G geometric --------------------------------------------------------
     # p = 0.2: P(X=3) = 0.8^2*0.2 = 0.128, P(X>3) = 0.512
@@ -80,6 +91,11 @@ CASES = [
      ['E(X) = 3/4', 'E(X^2) = 3/5', 'Var(X) = 0.0375', 'valid pdf: yes']),
     ('C', 'pdf E Var and check', 'x^2,0,1',
      ['valid pdf: no', 'not a pdf: int f = 0.333']),
+    # int x(4-x) on [0,4] = 32/3, symmetric so E = median = 2, Var = 4/5
+    ('C', 'pdf find k', 'x(4-x),0,4',
+     ['k = 3/32', 'E(X) = 2', 'Var(X) = 4/5', 'median = 2']),
+    # k = 1/9, E = 9/4, median 3 (1/2)^(1/3)
+    ('C', 'pdf find k', 'x^2,0,3', ['k = 1/9', 'E(X) = 9/4', 'median = 2.38']),
     # F(x) = x^3, so m = 0.5^(1/3) = 0.794, Q1 = 0.630, Q3 = 0.909
     ('C', 'pdf median quartiles', '3x^2,0,1',
      ['median m = 0.794', 'Q1 = 0.63', 'Q3 = 0.909']),

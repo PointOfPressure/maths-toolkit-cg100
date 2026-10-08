@@ -11,6 +11,7 @@ T = (
     )),
     ('J', 'Complex numbers', (
         ('Arithmetic z, w', 'z,w'),
+        ('Solve az + bz* = c', 'za,zb,zc'),
         ('Argand sum/product', 'z,w'),
         ('Modulus-argument', 'z'),
         ('From mod-arg form', 'r,theta'),
@@ -46,6 +47,7 @@ T = (
         ('Stretch or enlarge 2D', 'p,q'),
         ('Shear 2D', 'k,axis'),
         ('Describe a 2x2', 'A[2x2]'),
+        ('2x2 from 2 images', 'p[2],P[2],q[2],Q[2]'),
         ('A then B (2x2)', 'A[2x2],B[2x2]'),
         ('Rotation 3D (axis)', 'axis,theta'),
         ('Reflect 3D in plane', 'plane'),
@@ -69,6 +71,7 @@ T = (
         ('Angle between lines', 'd1[3],d2[3]'),
         ('Angle line and plane', 'd[3],n[3]'),
         ('Angle between planes', 'n1[3],n2[3]'),
+        ('Two planes meet', 'n1[3],d1,n2[3],d2'),
         ('Intersect two lines', 'a1[3],d1[3],a2[3],d2[3]'),
         ('Distance two lines', 'a1[3],d1[3],a2[3],d2[3]'),
         ('Line meets plane', 'a[3],d[3],n[3],k'),
@@ -81,6 +84,9 @@ T = (
         ('Roots p a + q', 'p,q,coeffs*'),
         ('Roots 1/a', 'coeffs*'),
         ('Roots a^2', 'coeffs*'),
+        ('Cubic roots in AP', 'a,b,c,d'),
+        ('Cubic roots in GP', 'a,b,c,d'),
+        ('One root twice another', 'a,b,c,d'),
     )),
     ('S', 'Series, Maclaurin', (
         ('Sum r, r^2, r^3', 'n'),

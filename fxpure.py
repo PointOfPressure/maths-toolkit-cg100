@@ -1605,6 +1605,61 @@ def t_zmul(n):
         _rows(T, U, out)
     return out
 
+def _modset(n, elems, op):
+    n = _iv(n, 'n', 2, 99)
+    S = []
+    for v in elems:
+        k = _iv(v, 'element', -9999, 9999) % n
+        if k not in S:
+            S.append(k)
+    S.sort()
+    if len(S) > 12:
+        raise ValueError('at most 12 elements')
+    sym = '+' if op == 0 else 'x'
+    head = '{' + ','.join([str(k) for k in S]) + '} under ' + sym + ' mod ' + str(n)
+    T = []
+    for a in S:
+        row = []
+        for b in S:
+            c = (a + b) % n if op == 0 else (a * b) % n
+            if c not in S:
+                return [head, 'not closed: ' + str(a) + sym + str(b) + ' = ' + str(c),
+                        'not a group']
+            row.append(S.index(c))
+        T.append(row)
+    e, inv, err = _gcheck(T, S)
+    out = [head]
+    if err:
+        out.append('not a group: ' + err)
+        if e >= 0:
+            out.append(_w('identity e = ' + str(S[e])))
+        _rows(T, S, out)
+        return out
+    m = len(S)
+    od = _orders(T, e)
+    out.append('a group of order ' + str(m) + ', identity ' + str(S[e]))
+    gens = [str(S[i]) for i in range(m) if od[i] == m]
+    out.append('cyclic, generators ' + ', '.join(gens) if gens else 'not cyclic')
+    s = ''
+    for i in range(m):
+        piece = 'ord(' + str(S[i]) + ')=' + str(od[i])
+        if s and len(s) + len(piece) > 33:
+            out.append(s)
+            s = ''
+        s += ('' if s == '' else ' ') + piece
+    out.append(s)
+    out.append(_w('inverses: ' + ' '.join([str(S[i]) + '>' + str(S[inv[i]])
+                                           for i in range(m)])))
+    out.append(_w('closed, associative (mod arithmetic)'))
+    _rows(T, S, out)
+    return out
+
+def t_setmul(n, elems):
+    return _modset(n, elems, 1)
+
+def t_setadd(n, elems):
+    return _modset(n, elems, 0)
+
 def t_dihedral(m):
     m = _iv(m, 'n', 3, 6)
     T = _dih(m)
@@ -2528,6 +2583,8 @@ SECTIONS = [
         ('Identify group (n<=10)', 'n,table*', t_gident),
         ('Z_n under + mod n', 'n', t_zadd),
         ('Units under x mod n', 'n', t_zmul),
+        ('Set under x mod n', 'n,elements*', t_setmul),
+        ('Set under + mod n', 'n,elements*', t_setadd),
         ('Symmetries of n-gon', 'n', t_dihedral),
     ]),
     ('M', 'Matrices: eigenvalues', [

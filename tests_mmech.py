@@ -39,6 +39,15 @@ CASES = [
     ('Q', 'Vector SUVAT', '0,0,3,4,0,-2,2',
      ['r = (6, 4) m', 'v = (3, 0) m/s', 'speed = 3 m/s',
       'direction = 0 deg']),
+    ('Q', 'Vector r(t) to v, a', 't^3-6t,4t^2+1,2',
+     ['r(2) = (-4, 17) m', 'v(2) = (6, 16) m/s', 'speed = 17.1 m/s',
+      'a(2) = (12, 8)', 'v parallel to i at t = 0', 'v parallel to j at t = 1.41']),
+    ('Q', 'Vector v(t) to r, a', '3t^2-12,2t,1,4,1',
+     ['r(1) = (-10, 5) m', 'v(1) = (-9, 2) m/s', 'v parallel to j at t = 2']),
+    # A from rest at 2 m/s^2, B at a steady 10 m/s: t^2 = 10t
+    ('Q', 'Two particles meet', '0,0,2,0,10,0',
+     ['t = 10 s, s = 100 m', 't^2 - 10t = 0']),
+    ('Q', 'Two particles meet', '0,4,-0.5,100,-2,0', ['they never meet']),
     ('Q', 'Projectile launch', '20,30',
      ['time of flight = 2.04 s', 'range = 35.3 m', 'max height = 5.1 m',
       'y = 0 + 0.577x - 0.0163x^2']),
@@ -81,10 +90,20 @@ CASES = [
      ['a = 3.2 m/s^2', 'moves down the slope']),
     ('R', 'Rough slope', '5,30,0.8,0',
      ['stays at rest', 'friction = 24.5 N', 'friction acts up the slope']),
+    # mg sin 30 = 9.8, mu R = 0.3 x 16.97 = 5.09
+    ('R', 'Rough slope', '2,30,0.3,?', ['at rest for 4.71 <= F <= 14.9 N']),
+    ('R', 'Two unknown forces', '30,150,49,270', ['P = 49 N', 'Q = 49 N']),
+    ('R', 'Two unknown forces', '0,90,10,225',
+     ['P = 7.07 N', 'Q = 7.07 N']),
     ('R', 'Mass on rough table', '4,3,0.2',
      ['a = 3.08 m/s^2', 'T = 20.2 N']),
     ('R', 'Mass on rough table', '4,3,0.9',
      ['stays at rest', 'T = 29.4 N']),
+    # R = 33.9, mu R = 6.79, net 29.4 - 19.6 - 6.79 = 3.01 over 7 kg
+    ('R', 'Slope and pulley', '4,30,0.2,3',
+     ['a = 0.43 m/s^2', 'T = 28.1 N', 'm2 falls']),
+    ('R', 'Slope and pulley', '4,30,0.5,1',
+     ['stays at rest', 'T = 9.8 N', 'friction = 9.8 N up the slope']),
 
     # ---- S  Moments ----
     ('S', 'Moments about a point', '20,3,-50,1',
@@ -93,4 +112,10 @@ CASES = [
      ['R at 0 m = 147 N', 'R at 4 m = 245 N']),
     ('S', 'Tilting point', '4,20,1,3,30',
      ['tilts about B if x > 3.67 m', 'tilts about A if x < 0.333 m']),
+    # S = 100/tan 60 = 57.7
+    ('S', 'Ladder, smooth wall', '4,200,60',
+     ['S = 57.7 N (wall)', 'R = 200 N (ground)', 'mu needed = 0.289']),
+    ('S', 'Ladder, smooth wall', '4,200,60,0.25', ['it slips']),
+    # 0.4 x 900 x 4 tan 60 = 400 + 700 x
+    ('S', 'Ladder, smooth wall', '4,200,60,0.4,700,?', ['can climb x = 2.99 m']),
 ]

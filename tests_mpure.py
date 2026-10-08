@@ -49,6 +49,29 @@ CASES = [
      ['f > 0: x < 1 or x > 2', 'f < 0: 1 < x < 2']),
     ('B', 'Quadratic inequality', '1,0,1',
      ['f > 0: every x', 'f < 0: no x', 'no real roots']),
+    ('B', 'Inequality f(x) > g(x)', 'x^2-4x,5',
+     ['f > g: x < -1 or x > 5', 'f < g: -1 < x < 5', 'f = g at x = -1, 5']),
+    # (x+1)/(x-2) - 3 = (7-2x)/(x-2): positive between 2 and 7/2
+    ('B', 'Inequality f(x) > g(x)', '(x+1)/(x-2),3',
+     ['f > g: 2 < x < 7/2', 'f < g: x < 2 or x > 7/2', 'undefined at x = 2']),
+    ('B', 'Inequality f(x) > g(x)', 'x^3,4x',
+     ['f > g: -2 < x < 0 or x > 2', 'f < g: x < -2 or 0 < x < 2']),
+    ('B', 'Inequality f(x) > g(x)', 'sqrt(x-1),2', ['f > g: x > 5', 'f < g: 1 < x < 5']),
+    # x^2 + kx + 4: D = k^2 - 16
+    ('B', 'Discriminant in k', '1,k,4',
+     ['equal roots: k = -4, 4', 'real roots: k <= -4 or k >= 4',
+      'distinct: k < -4 or k > 4', 'no real roots: -4 < k < 4', '(k+4)*(k-4)']),
+    # (k-1)x^2 + 4x + (k+2): D = 16 - 4(k-1)(k+2) = -4(k+3)(k-2)
+    ('B', 'Discriminant in k', 'k-1,4,k+2',
+     ['equal roots: k = -3, 2', 'distinct: -3 < k < 2',
+      'no real roots: k < -3 or k > 2', 'k = 1 makes a = 0']),
+    # 2x^2 + (k-3)x + k: D = k^2 - 14k + 9, k = 7 +- 2 sqrt 10
+    ('B', 'Discriminant in k', '2,k-3,k',
+     ['equal roots: k = 7-2*sqrt(10), 2*sqrt(10)+7', 'k = 0.675, 13.3']),
+    # kx^2 + (k+3)x + 1: D = k^2 + 2k + 9 > 0 always
+    ('B', 'Discriminant in k', 'k,k+3,1',
+     ['equal roots: no k', 'distinct: every k', 'no real roots: no k']),
+    ('B', 'Discriminant in k', '1,2,3', ['no real roots for any k']),
     ('B', 'Expand', '(2x-1)(x+3)', ['2*x^2+5*x-3']),
     ('B', 'Factorise', 'x^2-5x+6', ['(x-2)*(x-3)']),
     ('B', 'Factorise', 'x^2+1', ['no rational factorisation']),
@@ -68,6 +91,12 @@ CASES = [
      ['2*x^2+1', '4*x^2+4*x+1', 'fg(3) = 19', 'gf(3) = 49']),
     ('B', 'Inverse function', '2x+3', ['f-1(x) = (x-3)/2']),
     ('B', 'Inverse function', 'x^2+x', ['no inverse formula found']),
+    # (x-3)^2 + 1: least 1 at x = 3
+    ('B', 'Range of f on [a,b]', 'x^2-6x+10,0,5', ['range: 1 <= f(x) <= 10', "f' = 0 at x = 3"]),
+    ('B', 'Range of f on [a,b]', 'x^2-6x+10,4,?', ['range: f(x) >= 2']),
+    ('B', 'Range of f on [a,b]', 'e^(-x)+2,0,?', ['range: 2 < f(x) <= 3']),
+    ('B', 'Range of f on [a,b]', 'x^3-3x,?,?', ['range: all real values']),
+    ('B', 'Range of f on [a,b]', '1/x,-1,1', ['undefined somewhere']),
     ('B', 'Transform af(bx+c)+d', 'x^2,2,1,0,3', ['2*x^2+3']),
     ('B', 'Solve |ax+b|=cx+d', '1,-2,0,4', ['x = -2', 'x = 6']),
     ('B', 'Solve |ax+b|=cx+d', '1,0,0,-1', ['no solution']),
@@ -87,6 +116,11 @@ CASES = [
      ['y = -(1/2)x + 3', 'x + 2y - 6 = 0']),
     ('C', 'Intersect y=mx+c', '2,1,-1,4', ['(1, 3)']),
     ('C', 'Intersect y=mx+c', '2,1,2,4', ['no intersection', 'parallel']),
+    ('C', 'Triangle 3 vertices', '0,0,4,0,0,3',
+     ['area = 6', 'AB = 4, BC = 5, CA = 3', 'right angle at A', 'B = 36.9']),
+    # shoelace |1(8-1) + 5(1-2) + 7(2-8)|/2 = 20
+    ('C', 'Triangle 3 vertices', '1,2,5,8,7,1',
+     ['area = 20', 'AB = 2sqrt(13)', 'AB^2 = 52, BC^2 = 53, CA^2 = 37']),
     ('C', 'Circle from general', '-2,4,-4',
      ['centre (1, -2)', 'radius = 3', '(x - 1)^2 + (y + 2)^2 = 9']),
     ('C', 'Circle from general', '0,0,4', ['not a real circle']),
@@ -116,6 +150,14 @@ CASES = [
     ('D', 'AP: n for Sn > k', '3,5,100', ['n = 7', 'S(7) = 126']),
     ('D', 'GP: n for Sn > k', '2,3,100', ['n = 5', 'S(5) = 242']),
     ('D', 'GP: n for Sn > k', '4,1/2,20', ['no such n', 'S(inf) = 8']),
+    # u5 = 18, u12 = 46: 7d = 28
+    ('D', 'AP from 2 terms', '5,18,12,46',
+     ['a = 2', 'd = 4', 'u(n) = 4n - 2', 'S(n) = 2n^2']),
+    # a + 4d = 18, 10a + 45d = 175 -> d = -1, a = 22
+    ('D', 'AP from term and sum', '5,18,10,175', ['a = 22', 'd = -1', 'u(n) = -n + 23']),
+    ('D', 'GP from 2 terms', '3,12,6,96', ['r = 2, a = 3', 'r^3 = 8']),
+    ('D', 'GP from 2 terms', '2,6,4,1.5',
+     ['r = 1/2, a = 12, S(inf) = 24', 'r = -1/2, a = -12, S(inf) = -8']),
     ('D', 'Binomial (a+bx)^n', '2,3,4',
      ['x^0: 16', 'x^1: 96', 'x^2: 216', 'x^4: 81']),
     ('D', 'Binomial (a+bx)^n', '1,-1,3', ['x^1: -3', 'x^3: -1']),
@@ -127,6 +169,14 @@ CASES = [
     ('D', 'Recurrence u(n+1)', 'u^2-1,2,5',
      ['u(2) = 3', 'u(4) = 63', 'increasing']),
     ('D', 'Recurrence u(n+1)', '1/u,2,6', ['periodic, period 2']),
+    # 2, -3, -1/2, 1/3 repeat: 25 cycles of -7/6 then u(1) = 2
+    ('D', 'Recurrence sum to N', '(1+u)/(1-u),2,101',
+     ['sum u(1..101) = -163/6', 'period 4', '101 = 25 x 4 + 1']),
+    ('D', 'Recurrence sum to N', '-1/u,2,100', ['sum u(1..100) = 75']),
+    # u(n) = 2^n + 1, sum = 2^11 - 2 + 10
+    ('D', 'Recurrence sum to N', '2u-1,3,10', ['sum u(1..10) = 2056']),
+    # u(n) = 2 + 2(1/2)^(n-1): sum 300 + 4(1 - 2^-150)
+    ('D', 'Recurrence sum to N', '0.5u+1,4,150', ['sum u(1..150) = 304']),
     ('D', 'Terms of u(n)', '3n-1,1,5',
      ['u(1) = 2', 'u(5) = 14', 'increasing']),
     ('D', 'nCr and nPr', '5,2', ['nCr = 10', 'nPr = 20', 'n! = 120']),
