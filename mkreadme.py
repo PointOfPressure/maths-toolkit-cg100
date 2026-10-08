@@ -114,11 +114,17 @@ Answers are exact when the maths is exact (`1/2`, `2sqrt(3)`, `pi/4`,
 
 Notes > paper > topic > page. Short plain notes of what the formula booklet
 leaves out: definitions, results to learn, method steps, conditions and test
-wording, common traps. `label = formula` lines are typeset as fractions and
-powers when they read exactly as written; set-in grey lines are details. The
-topic menus come from the small `notes_ix.py`, and each `notes_*.py` loads only
-when one of its topics is opened (`python3 tests_notes.py write` regenerates
-the index).
+wording, common traps. Every line is typeset (fractions, powers, subscripts,
+roots, Greek letters and symbols, matrices) and set-in grey lines are details.
+The notes are written in plain calculator notation in `notes_*.py` and
+`formulae.py`; `mknotes.py` typesets them on the PC into the display lists in
+`tn_*.py`, which is what the calculator loads, one module when one of its
+topics is opened. The topic menus come from the small `notes_ix.py`
+(`python3 tests_notes.py write` regenerates the index and the `tn_*.py`).
+
+Result screens typeset every answer and working line the same way at run time
+(`tex.py`, glyphs for Greek letters and symbols in `texg.py` from
+`mkglyph.py`), and break long lines at spaces, before + - = and after commas.
 
 %s
 

@@ -176,7 +176,7 @@ def screen():
 # ---- 3 loading -------------------------------------------------------------------
 
 MODS = ('caslex', 'caseng', 'casutil', 'casrender', 'cascalc', 'caspoly',
-        'casalg', 'cassolve', 'nat', 'casui', 'plot', 'formulae', 'tables',
+        'casalg', 'cassolve', 'nat', 'casui', 'plot', 'tex', 'texg', 'tn_fb', 'tables',
         'mpure', 'mcalc', 'mstat', 'mmech', 'fcore', 'fcalc', 'fmech',
         'fstat', 'falgo', 'fnum', 'fxpure', 'ffpt')
 

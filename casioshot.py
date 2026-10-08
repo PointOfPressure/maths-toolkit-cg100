@@ -56,9 +56,15 @@ class Screen(object):
         import casrender
         pen = x
         f = self.fonts.get(size, self.fonts["medium"])
+        # put the stand-in font's baseline where casrender expects the device's
+        dy = casrender.ASC[size] - f.getmetrics()[0]
         for ch in str(s):
-            self.draw.text((pen, y), ch, font=f, fill=col)
-            pen += casrender.cw(ch, size)
+            adv = casrender.cw(ch, size)
+            # centred in the device advance, as a fixed-cell font draws it
+            x0, y0, x1, y1 = f.getbbox(ch)
+            off = (adv - (x1 - x0)) // 2 - x0 if ch != ' ' else 0
+            self.draw.text((pen + off, y + dy), ch, font=f, fill=col)
+            pen += adv
         if pen > W:
             self.overflow.append((len(self.frames), y, str(s), pen - W))
 
@@ -163,7 +169,46 @@ def _scenes():
         press(*keys)
         casui.input_line('Quadratic', 'a,b,c', '')
 
+    def tool(mod, label, text, *keys):
+        # a tool's result screen; keys: 94 cycles the form, 26 pages down
+        import casutil
+        m = __import__(mod)
+        for code, title, tools in m.SECTIONS:
+            for t in tools:
+                if t[0] == label:
+                    vals = casutil.convert(t[1], text)
+                    press(*keys)
+                    casui.result(label, text, lambda: casutil.call_tool(t[2], vals))
+                    return
+
+    def notes(mod, i, *keys):
+        import notesui
+        press(*keys)
+        notesui.show(__import__(mod).NOTES[i][0], __import__('tn' + mod[5:]).N[i])
+
+    def booklet(i, *keys):
+        import notesui
+        import tn_fb
+        press(*keys)
+        notesui.show(tn_fb.T[i], tn_fb.N[i])
+
     return [
+        ("tex-expand", lambda: tool('mpure', 'Expand', '(x+1)^8', 94)),
+        ("tex-maclaurin", lambda: tool('fcore', 'Maclaurin series', 'ln(1+x),6', 94)),
+        ("tex-partial", lambda: tool('mpure', 'Partial fractions', '3x+5,(x+1)(x+3)', 94)),
+        ("tex-byparts", lambda: tool('mcalc', 'Integration by parts', 'x,e^x', 94)),
+        ("tex-defint", lambda: tool('mcalc', 'Definite integral', 'x*e^x,0,1', 94)),
+        ("tex-inverse", lambda: tool('fcore', 'Inverse 3x3', '2,0,1,1,3,2,1,1,2', 94)),
+        ("tex-normal", lambda: tool('mstat', 'Normal P(a<X<b)', '50,10,45,62', 94)),
+        ("tex-binomial", lambda: tool('mpure', 'Binomial (a+bx)^n', '2,3,5', 94, 26)),
+        ("tex-notes-geo", lambda: notes('notes_mp2', 3, 34)),
+        ("tex-notes-trig", lambda: notes('notes_mp2', 9, 26)),
+        ("tex-notes-complex", lambda: notes('notes_cp1', 2)),
+        ("tex-notes-stats", lambda: notes('notes_ms', 8)),
+        ("tex-notes-matrix", lambda: notes('notes_cp2', 0)),
+        ("tex-booklet-binom", lambda: booklet(0)),
+        ("tex-booklet-maclaurin", lambda: booklet(14, 26)),
+        ("tex-booklet-diff", lambda: booklet(5)),
         ("home", lambda: casui.main()),
         ("home-sel", lambda: (press(25, 25, 34), casui.main())),
         ("maths", lambda: casui.qual_section('Maths  AQA 7357', casui.MATHS)),

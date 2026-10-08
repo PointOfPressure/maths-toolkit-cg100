@@ -96,7 +96,7 @@ NOTES = [
         '  mg sin alpha down the slope,',
         '  mg cos alpha into the slope',
         'Equilibrium: resolve two',
-        '  perpendicular ways, each sum 0',
+        '  perpendicular ways, each sums to 0',
         'Vector forces: add components,',
         '  sum F = ma as vectors',
         'Draw a force diagram first',
@@ -136,7 +136,7 @@ NOTES = [
         '  > mu R, it moves',
     ]),
     ('Moments', [
-        'Moment = force x perpendicular',
+        'Moment = force * perpendicular',
         '  distance from the pivot (N m)',
         'Equilibrium of a rigid body:',
         '  resultant force = 0 and',

@@ -20,7 +20,7 @@ It precompiles every module to `.mpy` with MicroPython 1.9.4's `mpy-cross`
 default `~/dev/cg100/bin/mpy-cross-1.9.4`), deletes every other `.py`/`.mpy`
 in the storage root, copies the launchers `maths.py` and `module.py` and the
 modules in, and checks each file byte for byte. Device files:
-`maths.py`, `module.py`, `font.py`, `casui.py`, `nat.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `casalg.py`, `cassolve.py`, `plot.py`, `formulae.py`, `notesui.py`, `notes_ix.py`, `notes_mp1.py`, `notes_mp2.py`, `notes_mp3.py`, `notes_ms.py`, `notes_mm.py`, `notes_cp1.py`, `notes_cp2.py`, `notes_cp3.py`, `notes_st1.py`, `notes_st2.py`, `notes_xp.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`, `falgo.py`, `fnum.py`, `fxpure.py`, `ffpt.py`, `ix_mpure.py`, `ix_mcalc.py`, `ix_mstat.py`, `ix_mmech.py`, `ix_fcore.py`, `ix_fcalc.py`, `ix_fmech.py`, `ix_fstat.py`, `ix_falgo.py`, `ix_fnum.py`, `ix_fxpure.py`, `ix_ffpt.py`.
+`maths.py`, `module.py`, `font.py`, `casui.py`, `nat.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `casalg.py`, `cassolve.py`, `plot.py`, `tex.py`, `texg.py`, `notesui.py`, `notes_ix.py`, `tn_fb.py`, `tn_mp1.py`, `tn_mp2.py`, `tn_mp3.py`, `tn_ms.py`, `tn_mm.py`, `tn_cp1.py`, `tn_cp2.py`, `tn_cp3.py`, `tn_st1.py`, `tn_st2.py`, `tn_xp.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`, `falgo.py`, `fnum.py`, `fxpure.py`, `ffpt.py`, `ix_mpure.py`, `ix_mcalc.py`, `ix_mstat.py`, `ix_mmech.py`, `ix_fcore.py`, `ix_fcalc.py`, `ix_fmech.py`, `ix_fstat.py`, `ix_falgo.py`, `ix_fnum.py`, `ix_fxpure.py`, `ix_ffpt.py`.
 
 Then on the calculator: Python app > `maths.py` (or `module.py`) > Run.
 
@@ -83,11 +83,17 @@ Answers are exact when the maths is exact (`1/2`, `2sqrt(3)`, `pi/4`,
 
 Notes > paper > topic > page. Short plain notes of what the formula booklet
 leaves out: definitions, results to learn, method steps, conditions and test
-wording, common traps. `label = formula` lines are typeset as fractions and
-powers when they read exactly as written; set-in grey lines are details. The
-topic menus come from the small `notes_ix.py`, and each `notes_*.py` loads only
-when one of its topics is opened (`python3 tests_notes.py write` regenerates
-the index).
+wording, common traps. Every line is typeset (fractions, powers, subscripts,
+roots, Greek letters and symbols, matrices) and set-in grey lines are details.
+The notes are written in plain calculator notation in `notes_*.py` and
+`formulae.py`; `mknotes.py` typesets them on the PC into the display lists in
+`tn_*.py`, which is what the calculator loads, one module when one of its
+topics is opened. The topic menus come from the small `notes_ix.py`
+(`python3 tests_notes.py write` regenerates the index and the `tn_*.py`).
+
+Result screens typeset every answer and working line the same way at run time
+(`tex.py`, glyphs for Greek letters and symbols in `texg.py` from
+`mkglyph.py`), and break long lines at spaces, before + - = and after commas.
 
 | Paper | Topics |
 | --- | --- |

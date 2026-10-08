@@ -85,8 +85,7 @@ NOTES = [
     ('Chi-sq association', [
         'H0: no association between A and',
         '  B; H1: some association',
-        'E = row total x column total',
-        '  / grand total',
+        'E = row total * column total / grand total',
         'X^2 = sum (O - E)^2/E',
         'df = (rows - 1)(columns - 1)',
         'All E >= 5: else merge rows or',
@@ -101,7 +100,7 @@ NOTES = [
     ('Goodness of fit', [
         'H0: the model fits (e.g.',
         '  X ~ Po(lambda)); H1: it does not',
-        'E = total x model probability',
+        'E = total * model probability',
         'Merge cells with E < 5',
         'df = cells - 1 - parameters',
         '  estimated from the data',

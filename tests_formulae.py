@@ -13,7 +13,7 @@ SPOT = [
     'R cos(theta - alpha)',
     'sin(A+B) = sin A cos B + cos A sin B',
     'trapezium rule',
-    '(1/2) h ((y0 + yn)',
+    '(1/2) h ((y_0 + y_n)',
     "x_(n+1) = x_n - f(x_n) / f'(x_n)",
     'a(1 - r^n) / (1 - r)',
     'for |x| < 1',

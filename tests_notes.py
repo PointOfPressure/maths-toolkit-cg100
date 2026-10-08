@@ -1,6 +1,7 @@
-# Checks for the Notes screens (casui.NOTE_PAPERS, notes_*.py, notes_ix.py).
+# Checks for the Notes screens (casui.NOTE_PAPERS, notes_*.py, notes_ix.py,
+# and the typeset pages tn_*.py that mknotes.py builds from them).
 #   python3 tests_notes.py         run the checks
-#   python3 tests_notes.py write   regenerate notes_ix.py (the topic index)
+#   python3 tests_notes.py write   regenerate notes_ix.py and tn_*.py
 # tests.py-style entry point: run(check).
 import os
 import sys
@@ -10,10 +11,10 @@ sys.path.insert(0, HERE)
 
 import casui
 import notesui
-import caslex
 import casrender
 import devlint
 import font
+import mknotes
 
 LINE = 368      # usable width of a result line ('a' kind, x = 8)
 DETAIL = 360    # indented detail line ('w' kind, x = 16)
@@ -52,10 +53,24 @@ def index_source():
     return '\n'.join(out) + '\n'
 
 
-def _width_ok(item):
-    if isinstance(item, tuple):
-        return font.strw(item[1], 'medium') <= DETAIL
-    return font.strw(item, 'medium') <= LINE
+def page_ok(check, where, page):
+    # every display line of a typeset page stays on the screen
+    for kind, blk in notesui.lines(page):
+        notesui.unpack(blk)
+        k, strs, runs, h, ops, src = blk
+        right = 0
+        for x, y, text, size in strs:
+            right = max(right, x + font.strw(text, size))
+            check('notes: text inside its line: ' + where, 0 <= y and y + 13 <= h + 3, (y, h, text))
+        for x, y in mknotes.runs_of(ops):
+            right = max(right, x + 1)
+            check('notes: pixels inside their line: ' + where, 0 <= y <= h + 1, (y, h))
+        check('notes: line fits ' + str(LINE) + ' px: ' + where + ': ' + repr([s[2] for s in strs])[:60],
+              right <= LINE + 8, right)
+
+
+def page_of(m, i):
+    return __import__(mknotes.module_name(m)).N[i]
 
 
 def run(check):
@@ -72,13 +87,24 @@ def run(check):
         for m in ms:
             check('notes: module listed once: ' + m, m not in mods)
             mods.append(m)
-    for m in mods + ['notes_ix', 'notesui']:
+    for m in mods:
+        check('notes: ' + m + ' source not shipped', m + '.py' not in devlint.DEVICE_FILES)
+        tn = mknotes.module_name(m)
+        check('notes: ' + tn + ' shipped (devlint.DEVICE_FILES)', tn + '.py' in devlint.DEVICE_FILES)
+    for m in ['notes_ix', 'notesui', 'tex', 'texg', mknotes.BOOK]:
         check('notes: ' + m + ' shipped (devlint.DEVICE_FILES)', m + '.py' in devlint.DEVICE_FILES)
     try:
         cur = open(os.path.join(HERE, 'notes_ix.py')).read()
     except IOError:
         cur = ''
     check('notes: notes_ix.py is current (python3 tests_notes.py write)', cur == index_source())
+    src = mknotes.sources()
+    for m in sorted(src):
+        try:
+            cur = open(os.path.join(HERE, m + '.py')).read()
+        except IOError:
+            cur = ''
+        check('notes: ' + m + '.py is current (python3 tests_notes.py write)', cur == src[m])
     import notes_ix
     check('notes: index papers match casui',
           [p for p, t in notes_ix.T] == [n for n, ms in papers if ms])
@@ -95,7 +121,8 @@ def run(check):
                 check('notes: ' + m + ' imports', False, repr(e))
                 continue
             check('notes: ' + m + ' has topics', len(notes) > 0)
-            for topic, lines in notes:
+            for ti in range(len(notes)):
+                topic, lines = notes[ti]
                 where = name + ' / ' + topic
                 titles.append(topic)
                 check('notes: topic name short: ' + where, 0 < len(topic) <= 24)
@@ -104,7 +131,6 @@ def run(check):
                 check('notes: topic tile fits: ' + where, len(tl) <= 2 and not long_word, tl)
                 check('notes: page not empty: ' + where, len(lines) > 0)
                 check('notes: page short enough: ' + where, len(lines) <= MAXLINES, len(lines))
-                shown = notesui.lines(lines)
                 blob.extend(lines)
                 for k in range(len(lines)):
                     ln = lines[k]
@@ -114,21 +140,15 @@ def run(check):
                     bad = [c for c in ln if ord(c) > 126 or ord(c) < 32]
                     check('notes: ASCII only: ' + tag, not bad)
                     check('notes: no trailing space: ' + tag, ln == ln.rstrip() and ln.strip() != '')
-                    item = shown[k]
-                    check('notes: line fits ' + str(LINE) + ' px: ' + tag, _width_ok(item),
-                          font.strw(ln.strip(), 'medium'))
-                    blocks = casui._blocks([item], 1)
-                    check('notes: line does not wrap: ' + tag, len(blocks) == 1, len(blocks))
-                    if not isinstance(item, tuple):
-                        b = casui._typeset(item)
-                        if b is not None:
-                            w = casrender.measure(b)[0]
-                            check('notes: typeset line fits: ' + tag, w <= LINE, w)
-                            check('notes: typeset reads as written: ' + tag,
-                                  notesui.as_written(item[item.find(' = ') + 3:]))
+                page_ok(check, where, page_of(m, ti))
         check('notes: topic names unique in ' + name, len(set(titles)) == len(titles))
         check('notes: index lists every topic of ' + name,
               [x[0] for x in notesui.topics(name)] == titles)
+    import tn_fb
+    import formulae
+    check('notes: booklet titles', list(tn_fb.T) == [t for t, ls in formulae.SHEETS])
+    for i in range(len(tn_fb.N)):
+        page_ok(check, 'booklet / ' + tn_fb.T[i], tn_fb.N[i])
     check('notes: some content', total > 500, total)
     blob = '\n'.join(blob)
     for nd in SPOT:
@@ -139,7 +159,10 @@ def run(check):
 if __name__ == '__main__':
     if sys.argv[1:] == ['write']:
         open(os.path.join(HERE, 'notes_ix.py'), 'w').write(index_source())
-        print('wrote notes_ix.py')
+        src = mknotes.sources()
+        for m in sorted(src):
+            open(os.path.join(HERE, m + '.py'), 'w').write(src[m])
+        print('wrote notes_ix.py and ' + ', '.join(sorted(src)))
         sys.exit(0)
     fails = []
     count = [0]

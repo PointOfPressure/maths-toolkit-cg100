@@ -163,6 +163,8 @@ def cas_engine():
     tests_nat.run(check)
     import tests_notes
     tests_notes.run(check)
+    import tests_tex
+    tests_tex.run(check)
     _depth_check()
 
 def _depth_check():

@@ -1,77 +1,8 @@
 # Notes screens below the paper menu (casui.notes_section): a paper's topic
-# grid from the small index notes_ix.py, then a page. A notes module is
-# imported only when one of its topics is opened.
+# grid from the small index notes_ix.py, then a page. Pages come typeset and
+# line-broken from tn_*.py (mknotes.py builds them from notes_*.py); a
+# module is imported only when one of its topics is opened.
 from casui import remembered, show_lines, busy
-
-_PLAIN = 'abcdefghijklmnopqrstuvwxyz0123456789+-*/^().! '
-_WORDS = ('sum', 'int', 'mu', 'nu', 'phi', 'var', 'and', 'nth')
-
-def as_written(rhs):
-    # typeset 'label = b' only when caslex reads b as written: lower case,
-    # letters as products (ut, 2as), function names with a bracket, nothing
-    # it would drop, and no f(x) or a(2x) that would print without a bracket
-    for ch in rhs:
-        if ch not in _PLAIN:
-            return False
-    s = rhs.replace(' ', '')
-    if '+-' in s or '-+' in s or '--' in s:
-        return False
-    import caslex
-    n = len(s)
-    i = 0
-    while i < n:
-        c = s[i]
-        if 'a' <= c <= 'z':
-            j = i
-            while j < n and 'a' <= s[j] <= 'z':
-                j += 1
-            w = s[i:j]
-            if w in caslex.FUNCS or w in caslex.ALIAS:
-                if j == n or s[j] != '(':
-                    return False
-                i = j + 1
-                continue
-            if len(w) > 1 and w != 'pi':
-                # a short product of letters, never a word or dx after '/'
-                if len(w) > 3 or w in _WORDS or w[0] == 'd' or (i and s[i - 1] == '/'):
-                    return False
-            i = j
-            continue
-        if c == '(' and i and s[i - 1] not in '+-*/^(':
-            # a bracket after a factor prints only round a sum
-            d = 0
-            k = i
-            sign = False
-            while k < n:
-                if s[k] == '(':
-                    d += 1
-                elif s[k] == ')':
-                    d -= 1
-                    if d == 0:
-                        break
-                elif d == 1 and (s[k] == '+' or s[k] == '-'):
-                    sign = True
-                k += 1
-            if not sign:
-                return False
-        i += 1
-    return True
-
-def lines(raw):
-    # an indented line is a detail: grey, set in. 'label = b' is typeset by
-    # show_lines when the label is plain words and b reads as written
-    out = []
-    for ln in raw:
-        if ln[:2] == '  ':
-            out.append(('w', ln.strip()))
-            continue
-        j = ln.find(' = ')
-        if j >= 0:
-            lhs = ln[:j]
-            if '^' in lhs or '/' in lhs or 'sqrt' in lhs or not as_written(ln[j + 3:]):
-                ln = ('a', ln)
-        out.append(ln)
-    return out
 
 def topics(name):
     # [(topic, module, index in its NOTES)] for one paper
@@ -84,6 +15,62 @@ def topics(name):
                     out.append((ts[i], m, i))
     return out
 
+def lines(page):
+    # a page of mknotes.py display lines -> ('d', block) lines for
+    # show_lines; a block is unpacked only when it is first drawn
+    out = []
+    for s in page.split('\n'):
+        out.append(('d', [s[0], None, (), ord(s[1]) - 32, None, s]))
+    return out
+
+def unpack(blk):
+    # fill in a block's strings and pixel ops from its display line:
+    # \x01 x y size length text, or \x02 and an op (see mknotes.encode);
+    # numbers are two characters, base 90 from 32
+    s = blk[5]
+    strs = []
+    ops = []
+    n = len(s)
+    i = 2
+    while i < n:
+        c = s[i]
+        x = (ord(s[i + 2]) - 32) * 90 + ord(s[i + 3]) - 32
+        if c == '\x01':
+            x = (ord(s[i + 1]) - 32) * 90 + ord(s[i + 2]) - 32
+            k = i + 6 + ord(s[i + 5]) - 32
+            strs.append((x, ord(s[i + 3]) - 32, s[i + 6:k], 'medium' if s[i + 4] == 'm' else 'small'))
+            i = k
+            continue
+        k = s[i + 1]
+        if k == '3':
+            ops.append((3, s[i + 2], 'medium' if s[i + 3] == 'm' else 'small',
+                        (ord(s[i + 4]) - 32) * 90 + ord(s[i + 5]) - 32, (ord(s[i + 6]) - 32) * 90 + ord(s[i + 7]) - 32))
+            i += 8
+            continue
+        if k == '4':
+            m = ord(s[i + 2]) - 32
+            i += 3
+            p = []
+            while m > 0:
+                p.append((ord(s[i]) - 32) * 90 + ord(s[i + 1]) - 32)
+                i += 2
+                m -= 1
+            ops.append((4, p))
+            continue
+        y = (ord(s[i + 4]) - 32) * 90 + ord(s[i + 5]) - 32
+        z = (ord(s[i + 6]) - 32) * 90 + ord(s[i + 7]) - 32
+        if k == '2':
+            ops.append((2, x, y, z, (ord(s[i + 8]) - 32) * 90 + ord(s[i + 9]) - 32))
+            i += 10
+        else:
+            ops.append((ord(k) - 48, x, y, z))
+            i += 8
+    blk[1] = strs
+    blk[4] = ops
+
+def show(title, page):
+    show_lines(title, lines(page))
+
 def paper(name):
     tops = topics(name)
     labels = [t[0] for t in tops]
@@ -93,4 +80,4 @@ def paper(name):
             return
         title, mod, i = tops[sel]
         busy()
-        show_lines(title, lines(__import__(mod).NOTES[i][1]))
+        show(title, __import__('tn' + mod[5:]).N[i])

@@ -768,84 +768,135 @@ def input_line(label, spec, last=''):
 # ---- result screen -------------------------------------------------------------------
 
 def _blocks(lines, mode):
+    # each line typeset (tex.py), broken to the screen width and drawn once
+    # into a display list (block below).
+    # ('d', block) lines come ready made (the notes, see notesui).
+    import tex
     import casrender
-    import caseng
     out = []
-    for ln in lines:
+    for ln in _matrows(lines):
         if isinstance(ln, tuple):
             kind = ln[0]
             if (kind == 'w' or kind == 'mw') and mode == 0:
                 continue
+            if kind == 'd':
+                out.append(ln[1])
+                continue
             if kind == 'm' or kind == 'mw':
-                b = casrender.build(ln[1], 0)
-                bw, ba, bd = casrender.measure(b)
-                if bw <= 368:
-                    out.append((kind, b, ba + bd + 6))
-                    continue
+                b = casrender.flat(casrender.build(ln[1], 0))
                 kind = 'a' if kind == 'm' else 'w'
-                text = caseng.tostr(ln[1])
             else:
-                text = ln[1]
+                b = tex.row(ln[1])
         else:
             kind = 'a'
-            text = ln
-            b = _typeset(text)
-            if b is not None:
-                bw, ba, bd = casrender.measure(b)
-                if bw <= 368:
-                    out.append(('m', b, ba + bd + 6))
-                    continue
-        for part in wrap(text, 368 if kind != 'w' else 360, 'medium'):
-            out.append((kind, part, 20))
+            b = tex.row(ln)
+        x = 16 if kind == 'w' else 8
+        for r, dx in tex.lines(b, 376 - x):
+            out.append(block(kind, r, x + dx))
     return out
 
-_MATHY = ('/', '^', 'sqrt(')
-
-def _typeset(text):
-    # 'x = 1/2 + i*sqrt(3)/2' -> 'x = ' then the expression as a fraction / root
-    j = text.find(' = ')
-    if j < 0 or j > 24 or '=' in text[j + 3:] or '  ' in text:
-        return None
-    rhs = text[j + 3:]
-    hit = False
-    for m in _MATHY:
-        if m in rhs:
-            hit = True
-    if not hit:
-        return None
-    import caslex
+def block(kind, b, x):
+    # (kind, strings, pixel runs, height, pixel ops): b drawn once into a
+    # display list, so a redraw costs only the drawing
     import casrender
-    try:
-        t = caslex.parse(rhs)
-    except Exception:
-        return None
-    if t is None:
-        return None
-    return ('row', [('atom', text[:j + 3], 'medium'), casrender.build(t, 0)])
+    if b[0] == 'atom':
+        return (kind, [(x, 1, b[1], b[2])], (), 20, None)
+    w, a, d = casrender.measure(b)
+    if a < 13:
+        a = 13
+    if d < 4:
+        d = 4
+    strs, ops = casrender.record(b, x, a + 1)
+    return (kind, merge(strs), (), a + d + 3, ops)
+
+def merge(strs):
+    # strings on one baseline in one size become one, the gaps filled with
+    # spaces (moving the later text by at most 2 px): draw_string costs ~4 ms
+    # however long the text, and it draws no background
+    if len(strs) < 2:
+        return strs
+    out = []
+    end = []
+    last = {}
+    for s in strs:
+        k = s[1] * 2 + (s[3] == 'small')
+        j = last.get(k)
+        w = text_w(s[2], s[3])
+        if j is not None:
+            p = out[j]
+            g = s[0] - end[j]
+            sw = 4 if p[3] != 'small' else 6
+            n = (g + sw - 2) // sw
+            if n >= 0 and -1 <= n * sw - g <= 2:
+                out[j] = (p[0], p[1], p[2] + ' ' * n + s[2], p[3])
+                end[j] += n * sw + w
+                continue
+        last[k] = len(out)
+        out.append(s)
+        end.append(s[0] + w)
+    return out
+
+def play(blk, x, y, color):
+    # draw a block at x, y: strings, then pixel runs (precompiled notes:
+    # x, y, down, length...) or pixel ops (casrender.record)
+    if blk[1] is None:
+        import notesui
+        notesui.unpack(blk)
+    strs = blk[1]
+    runs = blk[2]
+    if blk[4]:
+        import casrender
+        casrender.play(blk[4], x, y, color)
+    ds = draw_string
+    for s in strs:
+        ds(x + s[0], y + s[1], s[2], color, s[3])
+    sp = set_pixel
+    n = len(runs)
+    i = 0
+    while i < n:
+        px = x + runs[i]
+        py = y + runs[i + 1]
+        k = runs[i + 3]
+        if runs[i + 2]:
+            for j in range(py, py + k):
+                sp(px, j, color)
+        else:
+            for j in range(px, px + k):
+                sp(j, py, color)
+        i += 4
+
+def _matrows(lines):
+    # 'A = [1 2]' and then '    [3 4]' (casutil.fmtm) become one line
+    # 'A = [1 2; 3 4]' that typesets as a matrix
+    out = []
+    for ln in lines:
+        s = ln if isinstance(ln, str) else ln[1]
+        if out and isinstance(s, str) and s[:1] == ' ' and s[-1:] == ']' and s.lstrip()[:1] == '[':
+            p = out[-1]
+            ps = p if isinstance(p, str) else p[1]
+            if isinstance(ps, str) and ps[-1:] == ']' and '[' in ps and \
+                    isinstance(p, str) == isinstance(ln, str) and (isinstance(p, str) or p[0] == ln[0]):
+                m = ps[:-1] + '; ' + s.strip()[1:]
+                out[-1] = m if isinstance(p, str) else (p[0], m)
+                continue
+        out.append(ln)
+    return out
 
 MODES = (None, 'working', 'full')
 
 def _draw_result(title, sub, blocks, top, mode, more):
-    import casrender
     clear_screen()
     status(title, False, False, MODES[mode] if more else '')
     y = TOP + 3
     i = top
     n = len(blocks)
     while i < n:
-        kind, payload, h = blocks[i]
+        blk = blocks[i]
+        kind = blk[0]
+        h = blk[3]
         if y + h > BOT + 2:
             break
-        if kind == 'a':
-            draw_string(8, y, payload, INK, 'medium')
-        elif kind == 'w':
-            draw_string(16, y, payload, GREY, 'medium')
-        elif kind == '!':
-            draw_string(8, y, payload, RED, 'medium')
-        else:
-            bw, ba, bd = casrender.measure(payload)
-            casrender.COLOR = INK if kind == 'm' else GREY
-            casrender.draw(payload, 8 if kind == 'm' else 16, y + 3 + ba)
+        play(blk, 0, y, INK if kind == 'a' else (GREY if kind == 'w' else RED))
         y += h
         i += 1
     if top > 0 or i < n:
@@ -880,7 +931,7 @@ def result(label, text, lines_fn):
                     raw[full] = lines_fn if not more else lines_fn()
                 blocks = _blocks(raw[full], mode if more else 1)
                 if not blocks:
-                    blocks = [('!', 'nothing to show', 20)]
+                    blocks = [('!', [(8, 1, 'nothing to show', 'medium')], (), 20, None)]
             if top >= len(blocks):
                 top = len(blocks) - 1
             end = _draw_result(label, text, blocks, top, mode, more)
@@ -1638,14 +1689,13 @@ def notes_section():
 
 def _booklet(name):
     busy()
-    import formulae
-    labels = [s[0] for s in formulae.SHEETS]
+    import tn_fb
+    import notesui
     while True:
-        sel = remembered(name, labels)
+        sel = remembered(name, tn_fb.T)
         if sel < 0:
             return
-        title, lines = formulae.SHEETS[sel]
-        show_lines(title, [('a', ln) for ln in lines])
+        notesui.show(tn_fb.T[sel], tn_fb.N[sel])
 
 HOME_TILES = [
     ('Calculate', ic_calc), ('CAS', ic_cas), ('Graph', ic_graph), ('Solve', ic_solve),

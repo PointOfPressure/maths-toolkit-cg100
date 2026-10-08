@@ -74,7 +74,7 @@ NOTES = [
     ]),
     ('Continuous RVs', [
         'pdf f(x) >= 0, int f(x) dx = 1',
-        'P(a < X < b) = int from a to b f',
+        'P(a < X < b) = int_a^b f(x) dx',
         'P(X = a) = 0',
         'E(X) = int x f(x) dx',
         'E(X^2) = int x^2 f(x) dx',
@@ -89,7 +89,7 @@ NOTES = [
     ]),
     ('Cumulative distribution', [
         'F(x) = P(X <= x)',
-        '  = int from lower end to x of f(t) dt',
+        '  = int f(t) dt from the lower end to x',
         'f(x) = F\'(x)',
         'F = 0 below the range, 1 above',
         'F continuous; piecewise: add the',
@@ -119,7 +119,7 @@ NOTES = [
         '  sigma1^2 + sigma2^2)',
         '  aX + bY: mean a mu1 + b mu2,',
         '  var a^2 s1^2 + b^2 s2^2',
-        'X1 + ... + Xn (independent):',
+        'X_1 + ... + X_n (independent):',
         '  N(n mu, n sigma^2)',
         'nX (one value times n):',
         '  N(n mu, n^2 sigma^2)',
