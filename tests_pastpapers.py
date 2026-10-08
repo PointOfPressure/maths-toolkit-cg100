@@ -514,6 +514,13 @@ CASES += [
     ('y420-jun25', '17b(i)', 'fcalc', 'PI polynomial RHS', '1,0.3,0.02,0.4', 'A*e^(-x/10)+B*e^(-x/5)+20'),
     # partial fractions over integer factors
     ('y420-nov21', '1a', 'CAS', 'partial fractions', '1/((2x-1)(2x+1))', '1/(2*(2*x-1))'),
+    # matrices and planes with a letter
+    ('y420-jun23', '14b', 'fcore', 'Three planes in k', 'k,0,-1,2,-1,k,2,1,2k,2,3,0', '(-4*k^2-2*k-4)/(5*k^2-4*k+2)'),
+    ('y420-nov20', '9a', 'fcore', 'Matrix 2x2 in terms of k', '1,-2,m,3', 'no invariant line y = gx when m > 1/2'),
+    ('y420-nov20', '9b', 'fcore', 'Det 2x2 in terms of k', '1,-2,m,3,-5', 'det = -5 when m = -4'),
+    ('y420-jun19', '14a(i)', 'fcore', 'Det 3x3 in terms of k', '-1,a,0,2,3,1,1,b,1', '-a+b-3'),
+    ('y420-jun22', '4b', 'fcore', 'Det 2x2 in terms of k', 'k,1,-3,4', '4*k+3'),
+    ('y435-jun23', '5a', 'fcore', 'Matrix 2x2 in terms of k', 'a,0,2,3', 'lambda = a, v = (a-3, 2)'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

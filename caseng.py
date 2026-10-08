@@ -1001,6 +1001,18 @@ def _contentpull(coef, out):
 
 def _mulf(items):
     coef, fl, cxc, out = _termparts(items)
+    if coef[0] < 0 and fl is None and cxc is None:
+        # -(-x-1) -> x+1: a negative factor and a sum that leads with a minus
+        i = 0
+        while i < len(out):
+            b, e = out[i]
+            if (b[0] == '+' or b[0] == '-') and _ratval(e) == (1, 1) and _isneg(b):
+                raw = []
+                _flatadd(b, 1, raw)
+                out[i] = [_addf([(t, -sg) for t, sg in raw]), e]
+                coef = (-coef[0], coef[1])
+                break
+            i += 1
     coef, out = _pairs(coef, out)
     coef, out = _contentpull(coef, out)
     out = _surdmerge(out)

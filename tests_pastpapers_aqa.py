@@ -201,7 +201,7 @@ CASES = [
     ('73571-jun25', '15b', 'casui:CAS', 'simplify', 'x-(2x^3-4x-3)/(6x^2-4)', '(2*x^3+3/2)/(3*x^2-2)', None, False, False),
     ('73571-jun25', '15c', 'mcalc:I', 'Newton-Raphson', '2x^3-4x-3,3,3', 'x3 = 1.709452', None, False, False),
     ('73571-jun25', '15d', 'mcalc:J', 'Distance A to B', '1.709,1.709^2,0,3,2.5,0', '1.36', None, False, False),
-    ('73571-jun25', '16bi', 'casui:CAS', 'expand trig / log', 'sin(2pi/3-x)/sin(x)', '-(-cot(x)*sqrt(3)/2-1/2)', None, False, False),
+    ('73571-jun25', '16bi', 'casui:CAS', 'expand trig / log', 'sin(2pi/3-x)/sin(x)', 'cot(x)*sqrt(3)/2+1/2', None, False, False),
     ('73571-jun25', '16bii', 'mpure:E', 'Solve trig eqn (rad)', '(sqrt(3)/tan(x)+1)/2-(sqrt(3)+1)/2,0,2pi/3', 'pi/4', None, False, False),
     ('73571-jun25', '17a', 'casui:CAS', 'integrate', 'e^(2x)/(e^x+1)', 'e^(x)-ln(|e^(x)+1|)', None, False, False),
     ('73571-jun25', '17b', 'mcalc:H', 'Separable DE at point', 'e^(2x)/(e^x+1),cos(y)^2,0,pi', 'tan(y) = e^(x)-ln(|e^(x)+1|) - 0.307', None, False, False),

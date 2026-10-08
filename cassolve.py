@@ -151,6 +151,10 @@ def solve_sym(tree, var):
     co = pcoeffs(tree, var)
     if co is None or len(co) < 2:
         return None
+    return roots_co(co, var)
+
+def roots_co(co, var):
+    # roots from coefficient trees [c0, c1, c2]; var is only for _sqrt_sym
     out = []
     while len(co) > 1 and _iszero(co[0]):
         if _num(0) not in out:
@@ -179,6 +183,11 @@ def solve_sym(tree, var):
 def _sqrt_sym(d, var):
     # sqrt of a letter expression: (a+b)^2 - 4ab -> a - b, 4k^2 - 4k -> 2sqrt(k^2-k)
     half = ('/', _num(1), _num(2))
+    vs = [v for v in caseng.vars_in(d) if v not in ('pi', 'e', var)]
+    if len(vs) == 1:
+        P = caspoly.poly(d, vs[0])
+        if P is not None:
+            return _sqrt_poly(caspoly.ptrim(P), vs[0])
     d = _S(caspoly.expand(d))
     for L in caseng.vars_in(d):
         if L == var or L in ('pi', 'e'):
@@ -213,6 +222,30 @@ def _sqrt_sym(d, var):
             inner = _S(caspoly.expand(_prod([(d, 1), (_num(a * a), -1)])))
             return _S(_prod([(_num(a), 1), (caseng._pow(inner, half), 1)]))
     return caseng._pow(d, half)
+
+def _sqrt_poly(P, L):
+    # sqrt of a rational polynomial in one letter: a perfect square of a
+    # linear, or the square part of the content pulled out
+    half = ('/', _num(1), _num(2))
+    if len(P) == 3 and P[2][0] > 0:
+        s2 = caseng._pow(caspoly.ratnode(P[2]), half)
+        r2 = caseng._ratval(s2)
+        if r2 is not None:
+            # (s2 L + c)^2 with c = P1/(2 s2) must give P0 = c^2
+            c = caspoly.rdiv(P[1], caspoly.rmul((2, 1), r2))
+            if c is not None and caspoly.rmul(c, c) == P[0]:
+                return _S(caspoly.ptree([c, r2], L))
+    g = 0
+    den = 1
+    for c in P:
+        g = caseng.gcd(g, c[0])
+        den = den * c[1] // caseng.gcd(den, c[1])
+    if g > 1:
+        a, b = caseng._sqrt_split(g)
+        if a > 1:
+            Q = [caspoly.rdiv(c, (a * a, 1)) for c in P]
+            return _S(_prod([(_num(a), 1), (caseng._pow(_S(caspoly.ptree(Q, L)), half), 1)]))
+    return caseng._pow(_S(caspoly.ptree(P, L)), half)
 
 def _surdfree(n):
     if n[0] == 'sqrt':

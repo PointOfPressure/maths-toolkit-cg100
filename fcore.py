@@ -1827,8 +1827,13 @@ def t_detk(a, b, c, d, e, f, g, h, i):
             for v in caseng.vars_in(t):
                 if v not in vs:
                     vs.append(v)
-    if len(vs) > 1:
-        raise ValueError('use one letter, e.g. k')
+    if len(vs) > 2:
+        raise ValueError('use at most two letters')
+    if len(vs) == 2:
+        D = _sdet(M)
+        out = ['det =', _m(D), _w('det = 0 where M is singular')]
+        out += _sadjlines(M, D)
+        return out
     var = vs[0] if vs else 'k'
 
     def minor(p, q, r, s):
@@ -1920,6 +1925,389 @@ def t_detk(a, b, c, d, e, f, g, h, i):
     while r < 3:
         out.append(_w('adj r' + str(r + 1) + ': [' + ', '.join(adj[r]) + ']'))
         r += 1
+    return out
+
+# ---- matrices, planes with letters ------------------------------------------
+# Entries are trees; results are multiplied out and, with one letter, factorised.
+
+def _lets(ts):
+    vs = []
+    for t in ts:
+        for v in caseng.vars_in(t):
+            if v not in vs and v not in ('pi', 'e'):
+                vs.append(v)
+    return vs
+
+def _sx(t):
+    return caseng.simplify(caspoly.expand(caseng.simplify(t)))
+
+def _sfac(t):
+    # factorised when it is a polynomial in one letter, else multiplied out
+    t = _sx(t)
+    vs = _lets([t])
+    if len(vs) == 1:
+        try:
+            f = caspoly.factor(t, vs[0])
+        except Exception:
+            f = None
+        if f is not None:
+            return f
+    return t
+
+def _pdet(M):
+    r = _pdetp(M)
+    return None if r is None else caseng.simplify(caspoly.ptree(r[0], r[1]))
+
+def _pdetp(M):
+    # det by rational-coefficient polynomial arithmetic when every entry is a
+    # polynomial in at most one letter: far quicker than expanding trees
+    vs = _lets([e for r in M for e in r])
+    if len(vs) > 1:
+        return None
+    v = vs[0] if vs else 'k'
+    P = []
+    for r in M:
+        row = []
+        for e in r:
+            q = caspoly.poly(e, v)
+            if q is None:
+                q = caspoly.poly(caseng.simplify(e), v)
+            if q is None:
+                return None
+            row.append(q)
+        P.append(row)
+    pm = caspoly.pmul
+    if len(P) == 2:
+        D = caspoly.psub(pm(P[0][0], P[1][1]), pm(P[0][1], P[1][0]))
+    else:
+        D = []
+        j = 0
+        while j < 3:
+            cs = [c for c in (0, 1, 2) if c != j]
+            mn = caspoly.psub(pm(P[1][cs[0]], P[2][cs[1]]), pm(P[1][cs[1]], P[2][cs[0]]))
+            t = pm(P[0][j], mn)
+            D = caspoly.psub(D, t) if j == 1 else caspoly.padd(D, t)
+            j += 1
+    return (caspoly.ptrim(D), v)
+
+def _proots(P):
+    # real exact roots of a rational polynomial
+    import cassolve
+    out = []
+    for r in cassolve.poly_roots(P):
+        try:
+            v = caseng.evalf(r, 0.0)
+        except Exception:
+            continue
+        if not isinstance(v, complex) or abs(v.imag) < 1e-12:
+            out.append(r)
+    return out
+
+def _pfac(P, v):
+    t = caseng.simplify(caspoly.ptree(P, v))
+    if len(P) > 2:
+        try:
+            f = caspoly.factor(t, v)
+        except Exception:
+            f = None
+        if f is not None:
+            return f
+    return t
+
+def _sdet(M):
+    r = _pdet(M)
+    if r is not None:
+        return r
+    if len(M) == 2:
+        return _sx(('-', ('*', M[0][0], M[1][1]), ('*', M[0][1], M[1][0])))
+    T = None
+    j = 0
+    while j < 3:
+        cs = [c for c in (0, 1, 2) if c != j]
+        mn = ('-', ('*', M[1][cs[0]], M[2][cs[1]]), ('*', M[1][cs[1]], M[2][cs[0]]))
+        term = ('*', M[0][j], mn)
+        T = term if T is None else (('-', T, term) if j == 1 else ('+', T, term))
+        j += 1
+    return _sx(T)
+
+def _sadj(M):
+    n = len(M)
+    if n == 2:
+        return [[M[1][1], _sx(('neg', M[0][1]))], [_sx(('neg', M[1][0])), M[0][0]]]
+    adj = []
+    r = 0
+    while r < 3:
+        row = []
+        c = 0
+        while c < 3:
+            rs = [i for i in (0, 1, 2) if i != c]
+            cs = [i for i in (0, 1, 2) if i != r]
+            t = ('-', ('*', M[rs[0]][cs[0]], M[rs[1]][cs[1]]),
+                 ('*', M[rs[0]][cs[1]], M[rs[1]][cs[0]]))
+            if (r + c) % 2:
+                t = ('neg', t)
+            row.append(_sx(t))
+            c += 1
+        adj.append(row)
+        r += 1
+    return adj
+
+def _smlines(name, M):
+    out = []
+    i = 0
+    while i < len(M):
+        row = '[' + ' '.join([caseng.tostr(caseng.simplify(e)) for e in M[i]]) + ']'
+        out.append((name + ' = ' if i == 0 else ' ' * (len(name) + 3)) + row)
+        i += 1
+    return out
+
+def _sadjlines(M, D):
+    out = _smlines('adj', _sadj(M))
+    out.append(_w('inverse = adj / det, where det != 0'))
+    return out
+
+def _letroots(T, var, value=None):
+    # exact values of var with T = value
+    import cassolve
+    f = T if value is None else _sx(('-', T, _nn(value)))
+    try:
+        rs = cassolve.solve_exact(f, var)
+    except Exception:
+        return []
+    out = []
+    for r in rs:
+        try:
+            v = caseng.evalf(r, 0.0)
+        except Exception:
+            out.append(r)
+            continue
+        if not isinstance(v, complex) or abs(v.imag) < 1e-12:
+            out.append(r)
+    return out
+
+def _rootstr(rs):
+    return ', '.join([caseng.tostr(r) for r in rs])
+
+def _nn(v):
+    return caseng._sconst(v) if not isinstance(v, tuple) else v
+
+def t_det2k(a, b, c, d, D):
+    M = [[a, b], [c, d]]
+    vs = _lets([a, b, c, d])
+    det = _sdet(M)
+    out = ['det =', _m(_sfac(det))]
+    if len(vs) == 1:
+        v = vs[0]
+        rs = _letroots(det, v)
+        out.append('singular when ' + v + ' = ' + _rootstr(rs) if rs else 'no real ' + v + ' makes it singular')
+        if D is not None:
+            rs = _letroots(det, v, D)
+            out.append('det = ' + _f(D) + ' when ' + v + ' = ' + (_rootstr(rs) if rs else 'none'))
+    out.append(_w('det = ad - bc'))
+    return out
+
+def _eigvec2(M, L):
+    a, b = M[0]
+    c, d = M[1]
+    if b != ('n', 0):
+        return [b, caseng.simplify(('-', L, a))]
+    if c != ('n', 0):
+        return [caseng.simplify(('-', L, d)), c]
+    return None
+
+def _polystr(t, var):
+    # a polynomial in var with letter coefficients, highest power first:
+    # lambda^2-(a+3)*lambda+3*a
+    import cassolve
+    co = t if isinstance(t, list) else cassolve.pcoeffs(t, var)
+    if co is None:
+        return caseng.tostr(t)
+    top = caseng._ratval(co[len(co) - 1])
+    if top is not None and top[0] < 0:
+        co = [caseng.simplify(('neg', c)) for c in co]
+    s = ''
+    k = len(co) - 1
+    while k >= 0:
+        c = co[k]
+        k0 = k
+        k -= 1
+        if c == ('n', 0):
+            continue
+        pw = '' if k0 == 0 else (var if k0 == 1 else var + '^' + str(k0))
+        cs = caseng.tostr(c)
+        sm = c[0] in ('+', '-')
+        if sm and caseng._isneg(c):
+            neg = True
+            cs = caseng.tostr(caseng.simplify(('neg', c)))
+        else:
+            neg = cs[:1] == '-' and not sm
+            if neg:
+                cs = cs[1:]
+        if sm and pw:
+            cs = '(' + cs + ')'
+        if pw and cs == '1':
+            body = pw
+        else:
+            body = cs + ('*' + pw if pw else '')
+        if not s:
+            s = ('-' if neg else '') + body
+        else:
+            s += ('-' if neg else '+') + body
+    return s or '0'
+
+def t_mat2k(a, b, c, d):
+    import cassolve
+    M = [[caseng.simplify(a), caseng.simplify(b)], [caseng.simplify(c), caseng.simplify(d)]]
+    vs = _lets([a, b, c, d])
+    if len(vs) > 2:
+        raise ValueError('use at most two letters')
+    det = _sdet(M)
+    tr = _sx(('+', M[0][0], M[1][1]))
+    out = ['det = ' + caseng.tostr(_sfac(det))]
+    out.append('inverse = 1/(' + caseng.tostr(det) + ') x')
+    out += _smlines('adj', _sadj(M))
+    if len(vs) == 1:
+        rs = _letroots(det, vs[0])
+        if rs:
+            out.append('singular when ' + vs[0] + ' = ' + _rootstr(rs))
+    ch = [det, _sx(('neg', tr)), ('n', 1)]
+    out.append('char eq: ' + _polystr(ch, 'lambda') + ' = 0')
+    ls = cassolve.roots_co(ch, 'lambda') or []
+    for lv in ls[:2]:
+        v = _eigvec2(M, lv)
+        out.append('lambda = ' + caseng.tostr(lv) +
+                   ('' if v is None else ', v = (' + caseng.tostr(v[0]) + ', ' + caseng.tostr(v[1]) + ')'))
+    # invariant lines y = m x: b m^2 + (a - d) m - c = 0
+    m = ('v', 'm') if 'm' not in vs else ('v', 'g')
+    q = [_sx(('neg', M[1][0])), _sx(('-', M[0][0], M[1][1])), M[0][1]]
+    disc = _sx(('+', ('^', ('-', M[0][0], M[1][1]), ('n', 2)), ('*', ('n', 4), ('*', M[0][1], M[1][0]))))
+    out.append('lines y = ' + m[1] + 'x: ' + _polystr(q, m[1]) + ' = 0')
+    out.append('discriminant ' + caseng.tostr(_sfac(disc)))
+    if len(vs) == 1 and M[0][1] != ('n', 0):
+        try:
+            ivs = cassolve.solve_ineq(disc, '<', vs[0])
+            out.append('no invariant line y = ' + m[1] + 'x when ' + cassolve.ineq_str(ivs, vs[0]))
+        except Exception:
+            pass
+    out.append(_w('char eq: lambda^2 - (a+d) lambda + det = 0'))
+    out.append(_w('(A - lambda I)v = 0 gives v = (b, lambda - a)'))
+    out.append(_w('line y = mx invariant: c + dm = m(a + bm)'))
+    return out
+
+def t_inv3k(a, b, c, d, e, f, g, h, i):
+    M = [[a, b, c], [d, e, f], [g, h, i]]
+    M = [[caseng.simplify(x) for x in r] for r in M]
+    if len(_lets([a, b, c, d, e, f, g, h, i])) > 2:
+        raise ValueError('use at most two letters')
+    det = _sdet(M)
+    out = ['det = ' + caseng.tostr(_sfac(det)), 'inverse = 1/(' + caseng.tostr(det) + ') x']
+    out += _smlines('adj', _sadj(M))
+    vs = _lets([det])
+    if len(vs) == 1:
+        rs = _letroots(det, vs[0])
+        out.append('singular when ' + vs[0] + ' = ' + _rootstr(rs) if rs else
+                   'no real ' + vs[0] + ' makes it singular')
+    out.append(_w('adj = transpose of the cofactors'))
+    return out
+
+def t_planes3k(a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3):
+    # Cramer's rule with letters: x = det(M with b in column 1)/det M, ...
+    M = [[a1, b1, c1], [a2, b2, c2], [a3, b3, c3]]
+    M = [[caseng.simplify(x) for x in r] for r in M]
+    rhs = [caseng.simplify(d1), caseng.simplify(d2), caseng.simplify(d3)]
+    if len(_lets([x for r in M for x in r] + rhs)) > 2:
+        raise ValueError('use at most two letters')
+    fast = _planes_poly(M, rhs)
+    if fast is not None:
+        return fast
+    det = _sdet(M)
+    if det == ('n', 0):
+        raise ValueError('det = 0 for every value: no single point')
+    out = ['det = ' + caseng.tostr(_sfac(det))]
+    pt = []
+    j = 0
+    while j < 3:
+        Mj = [[(rhs[r] if c == j else M[r][c]) for c in range(3)] for r in range(3)]
+        num = _sdet(Mj)
+        pt.append(caseng.simplify(('/', _sfac(num), _sfac(det))))
+        j += 1
+    out.append('point (' + ', '.join([caseng.tostr(p) for p in pt]) + ')')
+    vs = _lets([det])
+    if len(vs) == 1:
+        rs = _letroots(det, vs[0])
+        out.append('no single point when ' + vs[0] + ' = ' + _rootstr(rs) if rs else
+                   'one point for every real ' + vs[0])
+    out.append(_w("Cramer: x = det(M_x)/det M, M_x has d in column 1"))
+    return out
+
+def _planes_poly(M, rhs):
+    # one letter: Cramer in polynomial arithmetic, common factors cancelled
+    dp = _pdetp(M)
+    if dp is None:
+        return None
+    D, v = dp
+    if not D:
+        raise ValueError('det = 0 for every value: no single point')
+    out = ['det = ' + caseng.tostr(_pfac(D, v))]
+    pt = []
+    j = 0
+    while j < 3:
+        Mj = [[(rhs[r] if c == j else M[r][c]) for c in range(3)] for r in range(3)]
+        npv = _pdetp(Mj)
+        if npv is None or (npv[1] != v and _lets([e for r in Mj for e in r])):
+            return None
+        N = npv[0]
+        Dj = D
+        if not N:
+            pt.append(('n', 0))
+            j += 1
+            continue
+        g = caspoly.pgcd(N, Dj)
+        if g is not None and len(g) > 1:
+            N = caspoly.ptrim(caspoly.pdivmod(N, g)[0])
+            Dj = caspoly.ptrim(caspoly.pdivmod(Dj, g)[0])
+        if len(Dj) == 1:
+            pt.append(caseng.simplify(caspoly.ptree([caspoly.rdiv(c, Dj[0]) for c in N], v)))
+        else:
+            pt.append(('/', _pfac(N, v), _pfac(Dj, v)))
+        j += 1
+    out.append('point (' + ', '.join([caseng.tostr(p) for p in pt]) + ')')
+    if len(D) > 1:
+        rs = _proots(D)
+        out.append('no single point when ' + v + ' = ' + _rootstr(rs) if rs else
+                   'one point for every real ' + v)
+    out.append(_w("Cramer: x = det(M_x)/det M, M_x has d in column 1"))
+    return out
+
+def t_abk(a, b, c, d, p, q, r, s):
+    A = [[a, b], [c, d]]
+    B = [[p, q], [r, s]]
+
+    def mul(X, Y):
+        return [[_sx(('+', ('*', X[i][0], Y[0][j]), ('*', X[i][1], Y[1][j]))) for j in range(2)]
+                for i in range(2)]
+    AB = mul(A, B)
+    BA = mul(B, A)
+    vs = _lets([a, b, c, d, p, q, r, s])
+    if len(vs) > 2:
+        raise ValueError('use at most two letters')
+    out = _smlines('AB', AB) + _smlines('BA', BA)
+    if len(vs) == 1:
+        common = None
+        for i in range(2):
+            for j in range(2):
+                dif = _sx(('-', AB[i][j], BA[i][j]))
+                if dif == ('n', 0):
+                    continue
+                rs = [caseng.tostr(x) for x in _letroots(dif, vs[0])]
+                common = rs if common is None else [x for x in common if x in rs]
+        if common is None:
+            out.append('AB = BA for every ' + vs[0])
+        elif common:
+            out.append('AB = BA when ' + vs[0] + ' = ' + ', '.join(common))
+        else:
+            out.append('AB != BA for every ' + vs[0])
+    out.append(_w('entry (i, j) = row i of the first . column j of the second'))
     return out
 
 def _addroot(lst, r):
@@ -3310,6 +3698,10 @@ SECTIONS = [
         ('Determinant 2x2', 'A[2x2]', t_det2),
         ('Determinant 3x3', 'A[3x3]', t_det3),
         ('Det 3x3 in terms of k', 'a(k),b(k),c(k),d(k),e(k),f(k),g(k),h(k),i(k)', t_detk),
+        ('Det 2x2 in terms of k', 'a(k),b(k),c(k),d(k),D?', t_det2k),
+        ('Matrix 2x2 in terms of k', 'a(k),b(k),c(k),d(k)', t_mat2k),
+        ('Inverse 3x3 in k', 'a(k),b(k),c(k),d(k),e(k),f(k),g(k),h(k),i(k)', t_inv3k),
+        ('AB and BA in k (2x2)', 'a(k),b(k),c(k),d(k),p(k),q(k),r(k),s(k)', t_abk),
         ('Inverse 2x2', 'A[2x2]', t_inv2),
         ('Inverse 3x3', 'A[3x3]', t_inv3),
         ('Solve 3 eqns by A^-1', 'A[3x3],b[3]', t_solve3),
@@ -3340,6 +3732,7 @@ SECTIONS = [
         ('Plane pt + 2 dirs', 'a[3],b[3],c[3]', t_plane_2dirs),
         ('Plane cartesian->vec', 'n[3],d', t_plane_to_vec),
         ('Three planes', 'n1[3],d1,n2[3],d2,n3[3],d3', t_planes3),
+        ('Three planes in k', 'a1(k),b1(k),c1(k),d1(k),a2(k),b2(k),c2(k),d2(k),a3(k),b3(k),c3(k),d3(k)', t_planes3k),
         ('Angle between lines', 'd1[3],d2[3]', t_angle_lines),
         ('Angle line and plane', 'd[3],n[3]', t_angle_lp),
         ('Angle between planes', 'n1[3],n2[3]', t_angle_planes),
