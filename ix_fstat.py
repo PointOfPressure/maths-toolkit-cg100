@@ -8,6 +8,8 @@ T = (
         ('E and Var of a+bX', 'a,b,mean,var'),
         ('E and Var of X+-Y', 'mx,vx,my,vy'),
         ('Discrete uniform', 'a,b,c?,d?'),
+        ('Discrete uniform in n', 'a(n),b(n),m?'),
+        ('DRV table in p', 'x p pairs$*'),
     )),
     ('B', 'Binomial and Poisson', (
         ('Poisson P(X=k)', 'mu,k'),
@@ -38,6 +40,8 @@ T = (
         ('E of g(X) from a pdf', 'g(x),f(x),a,b'),
         ('Piecewise pdf', 'f(x),g(x),a,b,c'),
         ('Rectangular U(a,b)', 'a,b,c?,d?'),
+        ('pdf in terms of a', 'f(x),lo(a),hi(a)'),
+        ('cdf in terms of a', 'F(x),lo(a),hi(a)'),
     )),
     ('N', 'Normal distribution', (
         ('Normal P(a<X<b)', 'mu,sigma,a,b'),

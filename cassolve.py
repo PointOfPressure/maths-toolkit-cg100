@@ -113,7 +113,33 @@ MAXSYMDEG = 6       # symbolic-coefficient polynomials read up to this degree
 def pcoeffs(tree, var):
     # [c0, c1, ..] with ci trees free of var, for a polynomial in var whose
     # coefficients may hold other letters; None otherwise
-    g = caspoly.expand(_S(tree))
+    g0 = _S(tree)
+    ts = _terms(g0)
+    if len(ts) > 1:
+        hit = False
+        for t, sg in ts:
+            if t[0] == '/' and not _has(t[2], var) and _has(t[1], var):
+                hit = True
+        if hit:
+            # a sum with a fraction over a letter: term by term
+            acc = []
+            for t, sg in ts:
+                co = _pc1(t, var)
+                if co is None:
+                    return None
+                while len(acc) < len(co):
+                    acc.append([])
+                for i in range(len(co)):
+                    acc[i].append((co[i], sg))
+            return [_S(_sum(a)) if a else _num(0) for a in acc]
+    return _pc1(g0, var)
+
+def _pc1(g0, var):
+    if g0[0] == '/' and not _has(g0[2], var) and _has(g0[1], var):
+        # (2ax - x^2)/a^2: the numerator's coefficients over the denominator
+        co = pcoeffs(g0[1], var)
+        return None if co is None else [_S(_prod([(c, 1), (g0[2], -1)])) for c in co]
+    g = caspoly.expand(g0)
     co = {}
     top = 0
     for t, s in _terms(g):
@@ -184,6 +210,9 @@ def _sqrt_sym(d, var):
     # sqrt of a letter expression: (a+b)^2 - 4ab -> a - b, 4k^2 - 4k -> 2sqrt(k^2-k)
     half = ('/', _num(1), _num(2))
     vs = [v for v in caseng.vars_in(d) if v not in ('pi', 'e', var)]
+    m = _sqrt_mono(d)
+    if m is not None:
+        return m
     if len(vs) == 1:
         P = caspoly.poly(d, vs[0])
         if P is not None:
@@ -222,6 +251,21 @@ def _sqrt_sym(d, var):
             inner = _S(caspoly.expand(_prod([(d, 1), (_num(a * a), -1)])))
             return _S(_prod([(_num(a), 1), (caseng._pow(inner, half), 1)]))
     return caseng._pow(d, half)
+
+def _sqrt_mono(d):
+    # c a^2k b^2j -> sqrt(c) a^k b^j: either sign of the root serves in +-
+    r = caspoly.term_of(_S(d))
+    if r is None or not r[1]:
+        return None
+    c, facs = r
+    if c[0] <= 0:
+        return None
+    items = [(caseng._pow(caspoly.ratnode(c), ('/', _num(1), _num(2))), 1)]
+    for key, base, e in facs:
+        if e % 2:
+            return None
+        items.append((caseng._pow(base, _num(e // 2)), 1))
+    return _S(_prod(items))
 
 def _sqrt_poly(P, L):
     # sqrt of a rational polynomial in one letter: a perfect square of a

@@ -4,6 +4,7 @@
 # The Minor paper is a subset of the Major, so one module serves both.
 import math
 import casutil
+import caslex
 import tables
 import caseng
 import cascalc
@@ -1365,6 +1366,238 @@ def t_cltmean(mu, var, n, k, step):
 
 def t_cltsum(mu, var, n, k, step):
     return _clt(mu, var, n, k, step, False)
+
+# ---- distributions with a letter (symbolic) ----------------------------------
+
+def _S(t):
+    return caseng.simplify(t)
+
+def _sxp(t):
+    return caseng.simplify(caspoly.expand(caseng.simplify(t)))
+
+def _plets(ts):
+    vs = []
+    for t in ts:
+        for v in caseng.vars_in(t):
+            if v not in vs and v not in ('x', 'pi', 'e'):
+                vs.append(v)
+    return vs
+
+def _sint(f, var='x'):
+    # antiderivative of f in var, term by term when f is a polynomial in var
+    import cassolve
+    co = cassolve.pcoeffs(f, var)
+    if co is not None:
+        items = []
+        i = 0
+        while i < len(co):
+            if co[i] != ('n', 0):
+                items.append(('*', ('/', co[i], ('n', i + 1)), ('^', ('v', var), ('n', i + 1))))
+            i += 1
+        t = ('n', 0)
+        for it in items:
+            t = ('+', t, it)
+        return _sxp(t)
+    F = cascalc.integ(f, var)
+    if F is None:
+        raise ValueError('cannot integrate f(x) with letters')
+    return _sxp(cascalc.tidy(F))
+
+def _sdef(f, lo, hi, var='x'):
+    F = _sint(f, var)
+    return _sxp(('-', caseng.subst(F, var, hi), caseng.subst(F, var, lo)))
+
+def _ts(t):
+    return caseng.tostr(t)
+
+def _pick_root(rs, lo, hi, env):
+    # the root lying in [lo, hi] for sample letter values
+    for r in rs:
+        try:
+            v = caseng.evalf(r, 0.0, False, env)
+            a = caseng.evalf(lo, 0.0, False, env)
+            b = caseng.evalf(hi, 0.0, False, env)
+        except Exception:
+            continue
+        if isinstance(v, complex):
+            continue
+        if min(a, b) - 1e-9 <= v <= max(a, b) + 1e-9:
+            return r
+    return None
+
+def _sample_env(ts):
+    env = {}
+    k = 0
+    for v in _plets(ts):
+        env[v] = 2.3 + 1.1 * k
+        k += 1
+    return env
+
+def _cdf_quantiles(F, lo, hi, out, env):
+    # the median in the letters (quartiles: use the numeric tool)
+    import cassolve
+    half = ('/', ('n', 1), ('n', 2))
+    co = cassolve.pcoeffs(F, 'x')
+    try:
+        if co is not None and 2 <= len(co) <= 3:
+            co = [_sxp(('-', co[0], half))] + co[1:]
+            rs = cassolve.roots_co(co, 'x')
+        else:
+            rs = cassolve.solve_exact(_sxp(('-', F, half)), 'x')
+    except Exception:
+        rs = []
+    r = _pick_root(rs or [], lo, hi, env)
+    if r is not None:
+        r2 = _sxp(r)
+        out.append('median = ' + _ts(r2 if len(_ts(r2)) <= len(_ts(r)) else r))
+
+def _spmom(co, lo, hi, m):
+    # int x^m f dx over [lo, hi] for f = sum co[i] x^i, as one tree
+    t = ('n', 0)
+    i = 0
+    while i < len(co):
+        if co[i] != ('n', 0):
+            p = ('n', i + m + 1)
+            t = ('+', t, ('*', ('/', co[i], p), ('-', ('^', hi, p), ('^', lo, p))))
+        i += 1
+    return t
+
+def _pdfa_poly(f, lo, hi, co):
+    import cassolve
+    out = []
+    if 'k' in caseng.vars_in(f):
+        tot = _sxp(_spmom(co, lo, hi, 0))
+        ks = cassolve.solve_exact(_sxp(('-', tot, ('n', 1))), 'k')
+        if not ks:
+            raise ValueError('no k makes the total 1')
+        out.append('k = ' + _ts(ks[0]))
+        out.append(w('total int f dx = ' + _ts(tot) + ' = 1'))
+        co = [_S(caseng.subst(c, 'k', ks[0])) for c in co]
+    X = ('v', 'x')
+    F = ('n', 0)
+    i = 0
+    while i < len(co):
+        if co[i] != ('n', 0):
+            p = ('n', i + 1)
+            F = ('+', F, ('*', ('/', co[i], p), ('-', ('^', X, p), ('^', lo, p))))
+        i += 1
+    F = _sxp(F)
+    e1 = _sxp(_spmom(co, lo, hi, 1))
+    e2 = _sxp(_spmom(co, lo, hi, 2))
+    out.append('F(x) = ' + _ts(F))
+    out.append('E(X) = ' + _ts(e1))
+    out.append('Var(X) = ' + _ts(_sxp(('-', e2, ('^', e1, ('n', 2))))))
+    _cdf_quantiles(F, lo, hi, out, _sample_env([F, lo, hi]))
+    out.append(w('E(X^2) = ' + _ts(e2)))
+    out.append(w('F(x) = int f(t) dt from ' + _ts(lo) + ' to x'))
+    return out
+
+def t_pdfa(f, lo, hi):
+    # a pdf on [lo, hi] with letters: k from total 1, F(x), E(X), Var(X)
+    import cassolve
+    lets = _plets([f, lo, hi])
+    if not lets:
+        raise ValueError('no letter: use pdf E Var and check')
+    co = cassolve.pcoeffs(f, 'x')
+    if co is not None and len(co) <= 6:
+        return _pdfa_poly(f, lo, hi, co)
+    out = []
+    if 'k' in caseng.vars_in(f):
+        tot = _sdef(f, lo, hi)
+        ks = cassolve.solve_exact(_sxp(('-', tot, ('n', 1))), 'k')
+        if not ks:
+            raise ValueError('no k makes the total 1')
+        out.append('k = ' + _ts(ks[0]))
+        f = _sxp(caseng.subst(f, 'k', ks[0]))
+        out.append(w('total int f dx = ' + _ts(tot) + ' = 1'))
+    env = _sample_env([f, lo, hi])
+    F = _sxp(('-', _sint(f), caseng.subst(_sint(f), 'x', lo)))
+    out.append('F(x) = ' + _ts(F))
+    e1 = _sdef(('*', ('v', 'x'), f), lo, hi)
+    e2 = _sdef(('*', ('^', ('v', 'x'), ('n', 2)), f), lo, hi)
+    var = _sxp(('-', e2, ('^', e1, ('n', 2))))
+    out.append('E(X) = ' + _ts(e1))
+    out.append('Var(X) = ' + _ts(var))
+    _cdf_quantiles(F, lo, hi, out, env)
+    out.append(w('E(X^2) = ' + _ts(e2)))
+    out.append(w('F(x) = int f(t) dt from ' + _ts(lo) + ' to x'))
+    return out
+
+def t_cdfa(F, lo, hi):
+    lets = _plets([F, lo, hi])
+    if not lets:
+        raise ValueError('no letter: use cdf median quartiles')
+    import cassolve
+    out = []
+    if 'k' in caseng.vars_in(F):
+        top = _sxp(('-', caseng.subst(F, 'x', hi), caseng.subst(F, 'x', lo)))
+        ks = cassolve.solve_exact(_sxp(('-', top, ('n', 1))), 'k')
+        if not ks:
+            raise ValueError('no k gives F(hi) - F(lo) = 1')
+        out.append('k = ' + _ts(ks[0]))
+        F = _sxp(caseng.subst(F, 'k', ks[0]))
+        out.append('F(x) = ' + _ts(F))
+    env = _sample_env([F, lo, hi])
+    f = _sxp(cascalc.tidy(caseng.diff(F, 'x')))
+    out.append('f(x) = ' + _ts(f))
+    _cdf_quantiles(_sxp(F), lo, hi, out, env)
+    out.append(w('f = dF/dx on ' + _ts(lo) + ' <= x <= ' + _ts(hi)))
+    return out
+
+def t_dunifa(a, b, m):
+    # X uniform on the whole numbers a..b with letters; sum and mean of m
+    n = _sxp(('+', ('-', b, a), ('n', 1)))
+    e1 = _sxp(('/', ('+', a, b), ('n', 2)))
+    var = _sxp(('/', ('-', ('^', n, ('n', 2)), ('n', 1)), ('n', 12)))
+    out = ['E(X) = ' + _ts(e1), 'Var(X) = ' + _ts(var)]
+    if m is not None:
+        m = _whole(m, 'm', 1, 10 ** 6)
+        out.append('Var(sum of ' + fmt(m) + ') = ' + _ts(_sxp(('*', ('n', m), var))))
+        out.append('Var(mean of ' + fmt(m) + ') = ' + _ts(_sxp(('/', var, ('n', m)))))
+    out.append(w(_ts(n) + ' values, each P = 1/(' + _ts(n) + ')'))
+    out.append(w('Var = (n^2-1)/12'))
+    return out
+
+def t_drva(pairs):
+    # x, P(X=x) pairs with a letter in the probabilities
+    if len(pairs) < 4 or len(pairs) % 2:
+        raise ValueError('give x,P pairs')
+    xs = []
+    ps = []
+    i = 0
+    while i < len(pairs):
+        tx = caslex.parse(pairs[i])
+        tp = caslex.parse(pairs[i + 1])
+        if tx is None or tp is None:
+            raise ValueError('cannot read the table')
+        xs.append(tx)
+        ps.append(tp)
+        i += 2
+    tot = _sxp(_sumt(ps))
+    e1 = _sxp(_sumt([('*', xs[j], ps[j]) for j in range(len(xs))]))
+    e2 = _sxp(_sumt([('*', ('^', xs[j], ('n', 2)), ps[j]) for j in range(len(xs))]))
+    var = _sxp(('-', e2, ('^', e1, ('n', 2))))
+    out = ['E(X) = ' + _ts(e1), 'Var(X) = ' + _ts(_vfac(var)), w('E(X^2) = ' + _ts(e2))]
+    if tot != ('n', 1):
+        out.append(w('sum P = ' + _ts(tot) + ' (should be 1)'))
+    return out
+
+def _sumt(ts):
+    t = ('n', 0)
+    for u in ts:
+        t = ('+', t, u)
+    return t
+
+def _vfac(t):
+    vs = _plets([t])
+    if len(vs) == 1:
+        try:
+            f = caspoly.factor(t, vs[0])
+            if f is not None:
+                return f
+        except Exception:
+            pass
+    return t
 
 def t_normsum(k, terms):
     # W = sum of coef * (X1 + ... + Xcount), every copy independent
@@ -2888,6 +3121,8 @@ SECTIONS = [
         ('E and Var of a+bX', 'a,b,mean,var', t_linear),
         ('E and Var of X+-Y', 'mx,vx,my,vy', t_sumxy),
         ('Discrete uniform', 'a,b,c?,d?', t_dunif),
+        ('Discrete uniform in n', 'a(n),b(n),m?', t_dunifa),
+        ('DRV table in p', 'x p pairs$*', t_drva),
     ]),
     ('B', 'Binomial and Poisson', [
         ('Poisson P(X=k)', 'mu,k', t_pois),
@@ -2918,6 +3153,8 @@ SECTIONS = [
         ('E of g(X) from a pdf', 'g(x),f(x),a,b', t_pdfg),
         ('Piecewise pdf', 'f(x),g(x),a,b,c', t_pdfpw),
         ('Rectangular U(a,b)', 'a,b,c?,d?', t_rect),
+        ('pdf in terms of a', 'f(x),lo(a),hi(a)', t_pdfa),
+        ('cdf in terms of a', 'F(x),lo(a),hi(a)', t_cdfa),
     ]),
     ('N', 'Normal distribution', [
         ('Normal P(a<X<b)', 'mu,sigma,a,b', t_normal),
