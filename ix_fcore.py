@@ -59,6 +59,7 @@ T = (
         ('Describe a 3x3', 'A[3x3]'),
         ('A then B (3x3)', 'A[3x3],B[3x3]'),
         ('Invariant points/lines', 'A[2x2]'),
+        ('Image of points', 'A[2x2],points*?'),
     )),
     ('V', 'Vectors and 3-D', (
         ('Scalar product, angle', 'a[3],b[3]'),

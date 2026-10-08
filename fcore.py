@@ -2503,6 +2503,34 @@ def _common(eqs, v):
         vals = got if vals is None else [x for x in vals if x in got]
     return vals
 
+def t_image(A, pts):
+    # images of points (default the unit square) under a 2x2 matrix
+    if not pts:
+        pts = [0, 0, 1, 0, 1, 1, 0, 1]
+    if len(pts) % 2:
+        raise ValueError('points come in pairs x,y')
+    out = []
+    i = 0
+    imgs = []
+    while i < len(pts):
+        x, y = pts[i], pts[i + 1]
+        X = A[0][0] * x + A[0][1] * y
+        Y = A[1][0] * x + A[1][1] * y
+        imgs.append((X, Y))
+        out.append('(' + _f(x) + ', ' + _f(y) + ') -> (' + _f(casutil.clean(_snap(X))) + ', ' +
+                   _f(casutil.clean(_snap(Y))) + ')')
+        i += 2
+    d = _det2(A)
+    out.append('area scale |det| = ' + _f(abs(d)))
+    out.append('orientation ' + ('kept' if d > 0 else ('reversed' if d < 0 else 'collapsed: det = 0')))
+    if len(imgs) == 4 and pts == [0, 0, 1, 0, 1, 1, 0, 1]:
+        a = math.sqrt(imgs[1][0] ** 2 + imgs[1][1] ** 2)
+        b = math.sqrt(imgs[3][0] ** 2 + imgs[3][1] ** 2)
+        out.append(_w('sides from O: ' + _f(a) + ' and ' + _f(b) +
+                      (' (equal: a rhombus)' if abs(a - b) < 1e-9 else '')))
+    out.append(_w('image = A (x, y); columns of A are the images of i, j'))
+    return out
+
 def t_vecsk(a1, a2, a3, b1, b2, b3):
     # a.b and a x b with a letter: perpendicular and parallel values
     a = _svec([a1, a2, a3])
@@ -4337,6 +4365,7 @@ SECTIONS = [
         ('Describe a 3x3', 'A[3x3]', t_describe3),
         ('A then B (3x3)', 'A[3x3],B[3x3]', t_then3),
         ('Invariant points/lines', 'A[2x2]', t_invar),
+        ('Image of points', 'A[2x2],points*?', t_image),
     ]),
     # Pv1 v2-v6 Pv7 v8-v13 Pv14 v15-v17
     ('V', 'Vectors and 3-D', [
