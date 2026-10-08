@@ -754,6 +754,53 @@ def _rec2(a, b, f, u0, u1, n0, hom):
     out.append(_w(_termline(u, n0, 8)))
     return out
 
+def _sx(t):
+    return caseng.simplify(caspoly.expand(caseng.simplify(t)))
+
+def t_rec1k(a, b, u0):
+    # u(n+1) = a u(n) + b with letters: A a^n + b/(1-a)
+    a = caseng.simplify(a)
+    b = caseng.simplify(b)
+    N = ('v', 'n')
+    if a == ('n', 1):
+        out = ['u(n) = A + ' + caseng.tostr(b) + 'n']
+        if u0 is not None:
+            out.append('u(n) = ' + caseng.tostr(_sx(('+', u0, ('*', b, N)))))
+        out.append(_w('a = 1: the terms go up by b each time'))
+        return out
+    p = caseng.simplify(('/', b, ('-', ('n', 1), a)))
+    out = ['u(n) = A' + '*(' + caseng.tostr(a) + ')^n + ' + caseng.tostr(p)]
+    if u0 is not None:
+        A = caseng.simplify(('-', u0, p))
+        out.append('A = ' + caseng.tostr(A))
+        out.append('u(n) = ' + caseng.tostr(caseng.simplify(('+', ('*', A, ('^', a, N)), p))))
+    out.append(_w('CF: A a^n; constant PI k = ak + b, k = b/(1-a)'))
+    return out
+
+def t_rec2k(a, b, c):
+    # u(n+2) = a u(n+1) + b u(n) + c, letters allowed in c (and a, b)
+    import cassolve
+    A = caseng.simplify(a)
+    B = caseng.simplify(b)
+    C = caseng.simplify(c)
+    rs = cassolve.roots_co([_sx(('neg', B)), _sx(('neg', A)), ('n', 1)], 'lambda') or []
+    N = ('v', 'n')
+    den = _sx(('-', ('-', ('n', 1), A), B))
+    if den == ('n', 0):
+        raise ValueError('1 is a root: try k n for the PI')
+    p = caseng.simplify(('/', C, den))
+    if len(rs) == 2 and caseng.tostr(rs[0]) != caseng.tostr(rs[1]):
+        cf = ('+', ('*', ('v', 'A'), ('^', rs[0], N)), ('*', ('v', 'B'), ('^', rs[1], N)))
+    elif rs:
+        cf = ('*', ('+', ('v', 'A'), ('*', ('v', 'B'), N)), ('^', rs[0], N))
+    else:
+        raise ValueError('cannot solve the auxiliary equation')
+    out = ['u(n) =', casutil.m(caseng.simplify(('+', cf, p)))]
+    out.append(_w('aux: x^2 = ' + caseng.tostr(A) + ' x + ' + caseng.tostr(B) + ', roots ' +
+                  ', '.join([caseng.tostr(r) for r in rs])))
+    out.append(_w('constant PI k = c/(1 - a - b) = ' + caseng.tostr(p)))
+    return out
+
 def t_rec2h(a, b, u0, u1):
     return _rec2(a, b, ('n', 0), u0, u1, 0, True)
 
@@ -2687,6 +2734,8 @@ SECTIONS = [
         ('1st order a u + f(n)', 'a,f(n),u0,n0?', t_rec1),
         ('2nd order homogeneous', 'a,b,u0,u1', t_rec2h),
         ('2nd order + f(n)', 'a,b,f(n),u0,u1,n0?', t_rec2),
+        ('1st order in letters', 'a(k),b(k),u0(k)?', t_rec1k),
+        ('2nd order + c in letters', 'a(k),b(k),c(k)', t_rec2k),
         ('Verify u(n+1)=F(n,u)', 'F(n,u),u(n)', t_verify1),
         ('Verify u(n+2)=F(n,u,v)', 'F(n,u,v),u(n)', t_verify2),
         ('Behaviour u(n+1)=F', 'F(n,u),u0', t_behave),

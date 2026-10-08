@@ -629,6 +629,9 @@ CASES += [
     ('y420-nov21', '14b(i)', 'fcalc', 'Polar eqn to cartesian', 'a*(cos(x)+2sin(x))', '(x - a/2)^2 + (y - a)^2 = 5*a^2/4'),
     ('y420-spec', '3(i)', 'fcore', 'Image of points', '2,3,1,4', '(1, 1) -> (5, 5)'),
     ('y420-nov20', '13b', 'CAS', 'd2/dx2', 'sinh(x)^2', '2*cosh(2*x)'),
+    # recurrences with letters
+    ('y435-jun19', '5b', 'fxpure', '1st order in letters', 'a,b,c', 'u(n) = A*(a)^n + b/(-a+1)'),
+    ('y435-jun25', '2a', 'fxpure', '2nd order + c in letters', '35/25,-12/25,c/25', '(3/5)^n*B+(4/5)^n*A+c/2'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

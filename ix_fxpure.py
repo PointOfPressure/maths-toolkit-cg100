@@ -5,6 +5,8 @@ T = (
         ('1st order a u + f(n)', 'a,f(n),u0,n0?'),
         ('2nd order homogeneous', 'a,b,u0,u1'),
         ('2nd order + f(n)', 'a,b,f(n),u0,u1,n0?'),
+        ('1st order in letters', 'a(k),b(k),u0(k)?'),
+        ('2nd order + c in letters', 'a(k),b(k),c(k)'),
         ('Verify u(n+1)=F(n,u)', 'F(n,u),u(n)'),
         ('Verify u(n+2)=F(n,u,v)', 'F(n,u,v),u(n)'),
         ('Behaviour u(n+1)=F', 'F(n,u),u0'),
