@@ -501,16 +501,40 @@ def pcontent(p):
         return R1
     return rmake(num, den)
 
+MAXDIVTRIAL = 10000  # trial division bound when listing divisors ...
+MAXDIVS = 2000       # ... and at most this many divisors
+
 def _divisors(n):
+    # all divisors from the prime factors found by trial division up to
+    # MAXDIVTRIAL; a larger leftover counts as prime (n = 4e18 took minutes)
     n = abs(n)
-    out = []
-    d = 1
-    while d * d <= n:
+    if n == 0:
+        return []
+    ps = []
+    d = 2
+    while d <= MAXDIVTRIAL and d * d <= n:
         if n % d == 0:
-            out.append(d)
-            if d != n // d:
-                out.append(n // d)
-        d += 1
+            k = 0
+            while n % d == 0:
+                n //= d
+                k += 1
+            ps.append((d, k))
+        d += 1 if d == 2 else 2
+    if n > 1:
+        ps.append((n, 1))
+    out = [1]
+    for p, k in ps:
+        nxt = []
+        for q in out:
+            m = q
+            j = 0
+            while j <= k:
+                nxt.append(m)
+                m *= p
+                j += 1
+        out = nxt
+        if len(out) > MAXDIVS:
+            break
     out.sort()
     return out
 

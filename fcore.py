@@ -809,6 +809,9 @@ def t_frommodarg(r, theta):
             _w('theta = ' + _f(theta * 180.0 / PI) + ' deg')]
 
 def _princ(th):
+    # into (-pi, pi]: one fmod first (theta = 1e9 looped 10^8 times)
+    if th > 4.0 * PI or th < -4.0 * PI:
+        th = math.fmod(th, 2.0 * PI)
     while th > PI + 1e-12:
         th -= 2.0 * PI
     while th <= -PI - 1e-12:
