@@ -616,6 +616,10 @@ CASES += [
     ('y422-nov21', '3d', 'fstat', 'r-th success on trial n', '0.04,3', 'E(trials) = r/p = 75'),
     ('y422-jun23', '3d', 'fstat', 'r-th success on trial n', '0.55,5,10', 'P = 0.117'),
     ('y422-jun25', '4d', 'fstat', 'r-th success on trial n', '0.4,5,20', 'P = 0.01866'),
+    # exact solving: sinh^2 next to cosh, a common factor x
+    ('y420-jun22', '3', 'CAS', 'solve exact f(x)=0', '3cosh(x)-2sinh(x)^2', 'x = ln(sqrt(3)+2)'),
+    ('y420-jun22', '3', 'CAS', 'solve exact f(x)=0', '3cosh(x)-2sinh(x)^2', 'x = -ln(sqrt(3)+2)'),
+    ('y420-jun25', '13b', 'CAS', 'solve exact f(x)=0', '2x*ln(x)+3x', 'x = 1/(e*sqrt(e))'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
@@ -694,6 +698,7 @@ def _output(module, label, inputs, ask):
     return _flat(casutil.call_tool(t[1], vals))
 
 NOT = [
+    ('y420-jun25', '13b', 'CAS', 'solve exact f(x)=0', '2x*ln(x)+3x', 'x = 0'),
     # outputs that must not appear
     ('y435-jun19', '5d(ii)', 'CALC', 'Calculate', '21*3000+(37500-7500*1.08^21)', 'sqrt'),
     ('y422-jun19', '3c', 'fstat', 'aX+bY+c', '2,20,0,133.25,51.1225,22.5,7.29,700', 'sqrt'),

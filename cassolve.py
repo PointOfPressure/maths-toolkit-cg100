@@ -67,6 +67,14 @@ def check(f, var, r):
     # does r really satisfy f = 0 (domain and extraneous roots included)?
     # other letters get sample values; if that fails the root is kept
     env = _letters(f, var)
+    if not env:
+        # f itself must be defined there: x = 0 is no root of 2x ln x + 3x
+        try:
+            caseng.evalf(f, caseng.evalf(r, 0.0), False, {var: caseng.evalf(r, 0.0)})
+        except (ValueError, ZeroDivisionError):
+            return False
+        except Exception:
+            pass
     try:
         if env:
             env[var] = caseng.evalf(r, 0.0, False, env)
@@ -715,6 +723,26 @@ def roots(f, var, depth=0):
         r = solve_sym(g2, var)
         if r:
             return r
+    # a product: each factor in turn (x(2 ln x + 3) = 0); check() drops the
+    # roots outside the domain
+    raw = []
+    gf = _xfactor(g, var) if g[0] in ('+', '-') else g
+    caseng._flatmul(gf, 1, raw)
+    facs = [x for x, sg in raw if sg > 0 and _has(x, var)]
+    if len(facs) >= 2:
+        out = []
+        for f in facs:
+            out.extend(roots(f, var, depth + 1))
+        if out:
+            return out
+    hy = _hypsq(g)
+    if hy is not None:
+        u, co = hy[1]
+        out = []
+        for v in poly_roots(co):
+            out.extend(invert_eq(u, v, var, depth + 1))
+        if out:
+            return out
     if _find(g, ('sinh', 'cosh', 'tanh'), []):
         g = _S(casalg.to_exp(g))
     for fn in (_expsolve, _logsolve, _surdsolve, _abssolve):
@@ -737,6 +765,45 @@ def roots(f, var, depth=0):
         if inv is not None:
             return [_S(caseng.subst(inv, '_y', _num(0)))]
     return []
+
+def _xfactor(g, var):
+    # x^m out of a sum whose every term has it: 2x ln x + 3x -> x(2ln x + 3)
+    m = None
+    for t, sg in _terms(g):
+        coef, fl, cxc, out = caseng._termparts([(t, 1)])
+        e = None
+        for b, ex in out:
+            if b == ('v', var):
+                r = caseng._ratval(ex)
+                if r is not None and r[1] == 1 and r[0] > 0:
+                    e = r[0]
+        if e is None:
+            return g
+        m = e if m is None or e < m else m
+    X = caseng._pow(('v', var), _num(m))
+    rest = _sum([(_prod([(t, 1), (X, -1)]), sg) for t, sg in _terms(g)])
+    return ('*', X, _S(rest))
+
+def _hypsq(g):
+    # sinh(u)^2 next to cosh(u) -> cosh(u)^2 - 1 (and cosh^2 next to sinh),
+    # leaving a polynomial in one function: 3cosh x = 2sinh^2 x
+    sq = _find(g, ('^',), [])
+    for n in sq:
+        if n[2] != _num(2) or n[1][0] not in ('sinh', 'cosh'):
+            continue
+        f, u = n[1][0], n[1][1]
+        other = 'cosh' if f == 'sinh' else 'sinh'
+        if (other, u) not in _find(g, (other,), []):
+            continue
+        sgn = -1 if f == 'sinh' else 1
+        rep = _sum([(('^', (other, u), _num(2)), 1), (_num(1), sgn)])
+        # into the polynomial-in-one-function solver directly: simplify would
+        # fold sinh^2 + 1 back into cosh^2
+        h = caseng.subst_tree(g, n, rep)
+        sub = casalg._polyin(caspoly.expand(h), 1)
+        if sub is not None:
+            return ('poly', sub)
+    return None
 
 def solve_exact(tree, var='x'):
     # exact solutions of tree = 0, extraneous and out-of-domain ones removed
