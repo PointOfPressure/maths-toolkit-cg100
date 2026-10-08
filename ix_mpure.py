@@ -11,7 +11,7 @@ T = (
         ('Simplify sqrt(n)', 'n'),
         ('Simplify surd expr', 'f(x)'),
         ('Rationalise', 'a,b,c,d,e,f'),
-        ('Quadratic', 'a,b,c'),
+        ('Quadratic', 'a(k),b(k),c(k)'),
         ('Quadratic in f(x)', 'a,b,c,f(x)'),
         ('Simultaneous 2 linear', 'a1,b1,c1,a2,b2,c2'),
         ('Simultaneous non-linear', 'f(x,y),g(x,y)'),

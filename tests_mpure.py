@@ -43,6 +43,9 @@ CASES = [
     ('B', 'Quadratic', '1,-4,4', ['x = 2 (repeated)', 'disc = 0']),
     ('B', 'Quadratic', '2,3,1', ['x = -1', 'x = -1/2', 'vertex (-3/4, -1/8)']),
     ('B', 'Quadratic', '0,2,-6', ['x = 3', 'this is linear']),
+    # param-letters: 7357/2 Jun19 Q7bi 3x^2 + 6px = 0
+    ('B', 'Quadratic', '3,6p,0', ['x = 0', 'x = -2*p', 'disc = 36*p^2']),
+    ('B', 'Quadratic', '1,2k,k^2-1', ['x = -k-1', 'x = -k+1', 'disc = 4']),
     ('B', 'Quadratic in f(x)', '1,-5,4,x^2',
      ['u = f(x) = 1', 'u = f(x) = 4', 'x = -2', 'x = 2']),
     ('B', 'Simultaneous 2 linear', '2,3,8,1,-1,1', ['x = 11/5', 'y = 6/5']),

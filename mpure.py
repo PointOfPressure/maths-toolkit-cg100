@@ -1204,6 +1204,34 @@ def _csq_tree(a, b, c):
 
 
 def t_quadratic(a, b, c):
+    nums = _consts((a, b, c), ('a', 'b', 'c'))
+    if nums is None:
+        return _quad_sym(a, b, c)
+    return _quadratic(nums[0], nums[1], nums[2])
+
+
+def _quad_sym(a, b, c):
+    # a x^2 + b x + c with letters: exact roots when the discriminant
+    # is a perfect square in the letters
+    S = caseng.simplify
+    X = ('v', 'x')
+    D = S(caspoly.expand(('-', ('^', b, ('n', 2)), ('*', ('n', 4), ('*', a, c)))))
+    lines = []
+    rs = _symroots(('+', ('+', ('*', a, ('^', X, ('n', 2))), ('*', b, X)), c))
+    if rs:
+        for r in rs:
+            lines.append('x = ' + caseng.tostr(r))
+    else:
+        lines.append('x = (-b +- sqrt(D))/2a')
+    lines.append('disc = ' + caseng.tostr(D))
+    vx = S(('/', ('neg', b), ('*', ('n', 2), a)))
+    vy = S(('-', c, ('/', ('^', b, ('n', 2)), ('*', ('n', 4), a))))
+    lines.append('vertex (' + caseng.tostr(vx) + ', ' + caseng.tostr(vy) + ')')
+    lines.append(w('letters are constants, taken as positive'))
+    return lines
+
+
+def _quadratic(a, b, c):
     if a == 0:
         if b == 0:
             raise ValueError('a and b are both 0')
@@ -2134,7 +2162,8 @@ def _symroots(f, var='x'):
     C, B, A = co
     if C == ('n', 0):
         return [('n', 0), caseng.simplify(('neg', ('/', B, A)))]
-    D = caseng.simplify(('-', ('^', B, ('n', 2)), ('*', ('n', 4), ('*', A, C))))
+    D = caseng.simplify(caspoly.expand(
+        ('-', ('^', B, ('n', 2)), ('*', ('n', 4), ('*', A, C)))))
     if B == ('n', 0):
         q = caseng.simplify(('neg', ('/', C, A)))
         if caseng._isneg(q):
@@ -3707,11 +3736,16 @@ def t_geo(a, r, n):
                       ('-', ('n', 1), R)), sn)
     lines = ['u(' + str(ni) + ') = ' + fmt(un),
              'S(' + str(ni) + ') = ' + st]
+    if st != fmt(sn):
+        lines.append(w('S(' + str(ni) + ') = ' + sf3(sn)))
     ar = r if r >= 0 else -r
     if ar < 1:
         si = a / (1.0 - r)
-        lines.append('S(inf) = ' + (fmt(si) if fmt(si).find('.') < 0 else
-                                    _exsurd(('/', A, ('-', ('n', 1), R)), si)))
+        sit = fmt(si) if fmt(si).find('.') < 0 else \
+            _exsurd(('/', A, ('-', ('n', 1), R)), si)
+        lines.append('S(inf) = ' + sit)
+        if sit != fmt(si):
+            lines.append(w('S(inf) = ' + sf3(si)))
         lines.append(w('|r| < 1 so it converges to a/(1-r)'))
     else:
         lines.append(warn('|r| >= 1: no sum to infinity'))
@@ -5133,7 +5167,7 @@ SECTIONS = [
         ('Simplify sqrt(n)', 'n', t_surd),
         ('Simplify surd expr', 'f(x)', t_surdexpr),
         ('Rationalise', 'a,b,c,d,e,f', t_rationalise),
-        ('Quadratic', 'a,b,c', t_quadratic),
+        ('Quadratic', 'a(k),b(k),c(k)', t_quadratic),
         ('Quadratic in f(x)', 'a,b,c,f(x)', t_quad_in),
         ('Simultaneous 2 linear', 'a1,b1,c1,a2,b2,c2', t_simul2),
         ('Simultaneous non-linear', 'f(x,y),g(x,y)', t_simulnl),
