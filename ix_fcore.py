@@ -92,6 +92,7 @@ T = (
         ('Cubic roots in AP', 'a,b,c,d'),
         ('Cubic roots in GP', 'a,b,c,d'),
         ('One root twice another', 'a,b,c,d'),
+        ('Roots with a relation', 'roots$,coeffs$*'),
     )),
     ('S', 'Series, Maclaurin', (
         ('Sum r, r^2, r^3', 'n'),

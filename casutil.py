@@ -168,7 +168,13 @@ def fields_of(spec):
         opt = name.endswith('?')
         if opt:
             name = name[:-1]
-        if name.endswith('*'):
+        if name.endswith('$*'):
+            # the rest of the row as raw strings ('?' allowed), for the tool
+            out.append((name[:-2], 'L', 0, opt))
+        elif name.endswith('$'):
+            # one raw part, e.g. a bracketed list (a,1/a,b)
+            out.append((name[:-1], 's', 0, opt))
+        elif name.endswith('*'):
             out.append((name[:-1], 'l', 0, opt))
         elif '[' in name:
             base = name[:name.index('[')]
@@ -230,6 +236,12 @@ def convert(spec, text):
                 raise ValueError('cannot read ' + name)
             vals.append(t)
             i += 1
+        elif kind == 's':
+            vals.append(parts[i])
+            i += 1
+        elif kind == 'L':
+            vals.append(parts[i:])
+            i = len(parts)
         elif kind == 'l':
             lst = [_realnum(p, name) for p in parts[i:]]
             i = len(parts)

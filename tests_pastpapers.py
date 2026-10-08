@@ -541,6 +541,14 @@ CASES += [
     ('y420-jun24', '12a(i)', 'fcalc', 'Solve a cosh+b sinh=c', '1,-2,0', 'x = ln(3)/2'),
     ('y420-jun24', '16', 'fcalc', 'Int 1/sqrt(x2+a2)', 'sqrt(3)/2,1/2,3/2', 'integral = ln(2*sqrt(3)/3+1)'),
     ('y420-jun19', '15', 'fcalc', 'Int 1/sqrt(x2+a2)', '1,1/2,2', 'integral = ln(sqrt(5)/2+3/2)'),
+    # roots with a given relation (reverse Vieta)
+    ('y420-jun19', '8', 'fcore', 'Roots with a relation', '(a,1/a,b),1,-1,?,-2', 'coeff of x^1 = -1'),
+    ('y420-jun19', '8', 'fcore', 'Roots with a relation', '(a,1/a,b),1,-1,?,-2', 'z2 = -1/2+sqrt(3)i/2'),
+    ('y420-nov21', '8', 'fcore', 'Roots with a relation', '(a,-a,b,1/b),4,-4,?,?,-9', 'coeff of x^2 = -5'),
+    ('y420-nov21', '8', 'fcore', 'Roots with a relation', '(a,-a,b,1/b),4,-4,?,?,-9', 'coeff of x^1 = 9'),
+    ('y420-jun25', '12', 'fcore', 'Roots with a relation', '(a,2/a,b,-b),1,-1,?,?,18', 'coeff of x^2 = 11'),
+    ('y420-jun25', '12', 'fcore', 'Roots with a relation', '(a,2/a,b,-b),1,-1,?,?,18', 'coeff of x^1 = -9'),
+    ('y420-jun23', '10a', 'fcore', 'Roots with a relation', '(a,b,a+b),1,-4,?,-6', 'z2 = 1+sqrt(2)i'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

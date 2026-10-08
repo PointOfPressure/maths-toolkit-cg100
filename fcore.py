@@ -2845,6 +2845,196 @@ def _elem(co):
         i += 1
     return out
 
+# ---- roots with a given relation ---------------------------------------------
+
+RRSTART = (complex(0.6, 0.8), complex(-1.1, 0.4), complex(1.7, -0.5), complex(0.3, -1.2))
+
+def _rr_roots(text):
+    t = text.strip()
+    if t[:1] == '(' and t[-1:] == ')':
+        t = t[1:-1]
+    out = []
+    for part in t.replace(';', ',').split(','):
+        tr = caslex.parse(part.strip()) if part.strip() else None
+        if tr is None:
+            raise ValueError('roots: type them as (a,1/a,b)')
+        out.append(caseng.simplify(tr))
+    return out
+
+def _rr_coeffs(parts):
+    out = []
+    for p in parts:
+        if p.strip() == '?':
+            out.append(None)
+            continue
+        out.append(casutil._realnum(p, 'coeffs'))
+    return out
+
+def _rr_val(t, env):
+    try:
+        return caseng.evalf(t, 0.0, False, env)
+    except Exception:
+        return None
+
+def _rr_e(rs, lets, lead, n, ps):
+    # lead (-1)^k e_k for k = 0..n at parameter values ps (complex)
+    env = {}
+    i = 0
+    while i < len(lets):
+        env[lets[i]] = ps[i]
+        i += 1
+    e = [complex(1, 0)] + [complex(0, 0)] * n
+    for r in rs:
+        z = complex(caseng.evalf(r, 0.0, False, env))
+        k = n
+        while k >= 1:
+            e[k] = e[k] + z * e[k - 1]
+            k -= 1
+    return [lead * (-1) ** k * e[k] for k in range(n + 1)]
+
+def _rr_newton(rs, lets, co, n, known, ps):
+    # complex Newton on the first len(lets) known-coefficient equations
+    m = len(lets)
+    eqk = known[:m]
+    it = 0
+    while it < 40:
+        E = _rr_e(rs, lets, co[0], n, ps)
+        F = [E[k] - co[k] for k in eqk]
+        if max([abs(f) for f in F]) < 1e-12:
+            return ps
+        J = []
+        for j in range(m):
+            q = list(ps)
+            h = 1e-6 * (1 + abs(q[j]))
+            q[j] = q[j] + h
+            E2 = _rr_e(rs, lets, co[0], n, q)
+            J.append([(E2[k] - E[k]) / h for k in eqk])
+        # J[j][i] = dF_i/dp_j; solve J^T d = -F (m <= 3)
+        A = [[J[j][i] for j in range(m)] for i in range(m)]
+        d = _rr_lin(A, [-f for f in F])
+        if d is None:
+            return None
+        ps = [ps[i] + d[i] for i in range(m)]
+        if max([abs(p) for p in ps]) > 1e6:
+            return None
+        it += 1
+    return None
+
+def _rr_lin(A, b):
+    m = len(b)
+    A = [list(r) + [b[i]] for i, r in enumerate(A)]
+    for c in range(m):
+        piv = max(range(c, m), key=lambda r: abs(A[r][c]))
+        if abs(A[piv][c]) < 1e-14:
+            return None
+        A[c], A[piv] = A[piv], A[c]
+        for r in range(m):
+            if r != c:
+                f = A[r][c] / A[c][c]
+                for k in range(c, m + 1):
+                    A[r][k] -= f * A[c][k]
+    return [A[i][m] / A[i][i] for i in range(m)]
+
+def t_rootrel(roots, coeffs):
+    # f4: roots with a relation and unknown coefficients (reverse Vieta)
+    try:
+        return _rootrel(roots, coeffs)
+    except ValueError:
+        raise
+    except Exception:
+        raise ValueError('cannot solve for those roots')
+
+def _rootrel(roots, coeffs):
+    rs = _rr_roots(roots)
+    co = _rr_coeffs(coeffs)
+    n = len(co) - 1
+    if n < 2 or n > 4:
+        raise ValueError('degree 2 to 4')
+    if len(rs) != n:
+        raise ValueError('give ' + str(n) + ' roots for degree ' + str(n))
+    if co[0] is None or co[0] == 0:
+        raise ValueError('the leading coefficient must be known and non-zero')
+    lets = _lets(rs)
+    known = [k for k in range(1, n + 1) if co[k] is not None]
+    if not lets or len(lets) > 3:
+        raise ValueError('use one to three letters in the roots')
+    if len(known) < len(lets):
+        raise ValueError('need a known coefficient for each letter')
+    starts = []
+    i = 0
+    while i < len(RRSTART):
+        starts.append([RRSTART[(i + j) % 4] * (1 + 0.5 * j) for j in range(len(lets))])
+        i += 1
+    if len(lets) == 1:
+        starts += [[complex(2.3, 0.1)], [complex(-2.6, -0.2)]]
+    out = []
+    seen = []
+    for ps in starts:
+        try:
+            ps = _rr_newton(rs, lets, co, n, known, ps)
+            E = None if ps is None else _rr_e(rs, lets, co[0], n, ps)
+        except Exception:
+            E = None
+        if E is None:
+            continue
+        ok = True
+        for k in known:
+            if abs(E[k] - co[k]) > 1e-8 * (1 + abs(co[k])):
+                ok = False
+        full = list(co)
+        for k in range(1, n + 1):
+            if co[k] is None:
+                if abs(E[k].imag) > 1e-7 * (1 + abs(E[k].real)):
+                    ok = False
+                full[k] = _snap(E[k].real)
+        key = ' '.join([_f(c) for c in full])
+        if not ok or key in seen:
+            continue
+        seen.append(key)
+        if len(seen) > 1:
+            out.append(_w('or:'))
+        for k in range(1, n + 1):
+            if co[k] is None:
+                out.append('coeff of x^' + str(n - k) + ' = ' + _f(full[k]))
+        rv, lines = _rootlines(full, 'z')
+        out += lines
+        out.append(_w(', '.join([lets[j] + ' = ' + _f(casutil.clean(_rr_c(ps[j])))
+                                 for j in range(len(lets))])))
+    if not out:
+        return ['no roots of that form found', _w('from the known coefficients')]
+    out.append(_w('coeff of x^(n-k) = lead (-1)^k e_k'))
+    out.append(_w('e_k = sum of products of k roots'))
+    return out
+
+def _rr_c(z):
+    return complex(_snap(z.real), _snap(z.imag))
+
+def _rr_tidy(t):
+    # a root or coefficient as short as it goes: multiplied out, or the
+    # exact number its value is
+    t = caseng.simplify(t)
+    try:
+        e = caseng.simplify(caspoly.expand(t))
+        if len(caseng.tostr(e)) < len(caseng.tostr(t)):
+            t = e
+    except Exception:
+        pass
+    return t
+
+def _rr_str(t):
+    # the exact number a value is (-1/2+sqrt(3)i/2), else the tree
+    v = _rr_val(t, {})
+    if v is not None:
+        s = _f(v)
+        if '.' not in s and 'e' not in s:
+            return s
+    return caseng.tostr(t)
+
+def _subst_all(t, sub):
+    for k in sub:
+        t = caseng.subst(t, k, sub[k])
+    return t
+
 def t_vieta(coeffs):
     co, n = _coeffs(coeffs, 2, 4)
     e = _elem(co)
@@ -3753,6 +3943,7 @@ SECTIONS = [
         ('Cubic roots in AP', 'a,b,c,d', t_rootsap),
         ('Cubic roots in GP', 'a,b,c,d', t_rootsgp),
         ('One root twice another', 'a,b,c,d', t_rootsdbl),
+        ('Roots with a relation', 'roots$,coeffs$*', t_rootrel),
     ]),
     # Ps1 Ps2 s3 s4 s5
     ('S', 'Series, Maclaurin', [
