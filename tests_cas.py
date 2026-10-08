@@ -151,6 +151,10 @@ DIFF = [
 ]
 
 INTEG = [
+    # polynomial over the square root of a quadratic: complete the square
+    ('1/sqrt(4x^2-4x+2)', 'asinh(2*(x-1/2))/2'), ('(x+3)/sqrt(x^2+9)', '3*asinh(x/3)+sqrt(x^2+9)'),
+    ('x^2/sqrt(4+x^2)', '(sqrt(x^2+4)*x-4*asinh(x/2))/2'),
+    ('1/sqrt(1+2x-x^2)', 'asin(sqrt(2)*(x-1)/2)'),
     # forms the rules match only after simplify/expand/x^k rewriting
     ('(x-1)e^x', 'e^(x)*x-2*e^(x)'), ('ln(x)/x^2', '-ln(x)/x-1/x'),
     ('sqrt(16x^3)', '8*sqrt(x)*x^2/5'), ('x/e^x', '-e^(-x)*x-e^(-x)'),

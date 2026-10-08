@@ -1294,6 +1294,8 @@ def _cas_op(op, tree, s):
             try:
                 d = casutil.ev(ex)
                 if not isinstance(d, complex):
+                    if casutil.fmt(d) == caseng.tostr(ex).replace('*', ''):
+                        out.append(('w', 'integral = ' + casutil.fmt(d)))
                     out.append('integral = ' + casutil.sf3(d))
             except ValueError:
                 pass

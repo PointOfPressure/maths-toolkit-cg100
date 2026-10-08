@@ -589,6 +589,10 @@ CASES += [
     ('y420-jun22', '14b', 'fcore', 'C + iS series', '1,1/3,2,1', 'S = (6*sin(theta))/(-3*cos(2*theta)+5)'),
     ('y420-jun24', '13b(ii)', 'fcore', 'C + iS series', '1/3,1/3,1,1', 'S = (3*sin(theta))/(-6*cos(theta)+10)'),
     ('y420-jun25', '15b', 'fcore', 'C + iS series', '1,1/3,4,1', 'C = (-3*cos(3*theta)+9*cos(theta))/(-6*cos(4*theta)+10)'),
+    # integrals of P(x)/sqrt(quadratic)
+    ('y420-jun19', '15', 'CAS', 'definite integral a..b', '1/sqrt(4x^2-4x+2) ; 3/4,3/2', 'ln(sqrt(5)/2+3/2)/2'),
+    ('y420-nov21', '16b', 'CAS', 'definite integral a..b', 'x^2/sqrt(4+x^2) ; 0,2', '-2*ln(sqrt(2)+1)+2*sqrt(2)'),
+    ('y420-jun25', '16a', 'CAS', 'definite integral a..b', '(x+3)/sqrt(x^2+9) ; 0,4', '3*ln(3)+2'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

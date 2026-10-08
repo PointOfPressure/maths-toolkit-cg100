@@ -355,6 +355,79 @@ def _alts(n, var):
             out.append(g)
     return out
 
+def _quadsurd(n, var):
+    # P(x)/sqrt(A x^2 + B x + C) (P of degree <= 2) and sqrt(A x^2 + B x + C):
+    # complete the square, u = x + B/2A, and use
+    #   int 1/sqrt(q) = arsinh / arcosh / arcsin,  int u/sqrt(q) = sqrt(q)/A,
+    #   int u^2/sqrt(q) = (u sqrt(q) - K int 1/sqrt(q))/(2A),
+    #   int sqrt(q) = (u sqrt(q) + K int 1/sqrt(q))/2,  q = A u^2 + K
+    t = caseng.simplify(n)
+    coef, fl, cxc, out = caseng._termparts([(t, 1)])
+    if fl is not None or cxc is not None:
+        return None
+    q = None
+    pw = None
+    rest = []
+    for b, e in out:
+        r = caseng._ratval(e)
+        if b[0] == 'sqrt' and has_var(b, var):
+            if q is not None or r is None or r[1] != 1 or abs(r[0]) != 1:
+                return None
+            q = b[1]
+            pw = r[0]
+        elif r is not None and r[1] == 2 and abs(r[0]) == 1 and has_var(b, var):
+            if q is not None:
+                return None
+            q = b
+            pw = r[0]
+        else:
+            rest.append([b, e])
+    if q is None:
+        return None
+    Q = caspoly.poly(caseng.simplify(q), var)
+    if Q is None or len(Q) != 3:
+        return None
+    Pt = caseng._termnode(coef, None, None, rest)
+    P = caspoly.poly(Pt, var)
+    if P is None or len(P) > 3 or (pw > 0 and len(P) > 1):
+        return None
+    C, B, A = Q
+    rm = caspoly.rmul
+    h = caspoly.rdiv(B, rm((2, 1), A))
+    K = caspoly.rsub(C, rm(rm(h, h), A))
+    if caspoly.rzero(K):
+        return None
+    x = ('v', var)
+    u = ('+', x, caspoly.ratnode(h)) if not caspoly.rzero(h) else x
+    sq = ('sqrt', q)
+    root = lambda r: caseng._pow(caspoly.ratnode(r), ('/', ('n', 1), ('n', 2)))
+    # I0 = int 1/sqrt(q) du
+    if A[0] > 0 and K[0] > 0:
+        I0 = ('/', ('asinh', ('*', u, root(caspoly.rdiv(A, K)))), root(A))
+    elif A[0] > 0:
+        I0 = ('/', ('acosh', ('*', u, root(caspoly.rdiv(A, caspoly.rneg(K))))), root(A))
+    elif K[0] > 0:
+        I0 = ('/', ('asin', ('*', u, root(caspoly.rdiv(caspoly.rneg(A), K)))), root(caspoly.rneg(A)))
+    else:
+        return None
+    Kn = caspoly.ratnode(K)
+    An = caspoly.ratnode(A)
+    if pw > 0:
+        c0 = caspoly.ratnode(P[0]) if P else ('n', 0)
+        F = ('*', c0, ('/', ('+', ('*', u, sq), ('*', Kn, I0)), ('n', 2)))
+        return caseng.simplify(F)
+    # P(x) in powers of u: x = u - h
+    while len(P) < 3:
+        P = P + [caspoly.R0]
+    p2 = P[2]
+    p1 = caspoly.rsub(P[1], rm((2, 1), rm(P[2], h)))
+    p0 = caspoly.radd(caspoly.rsub(P[0], rm(P[1], h)), rm(P[2], rm(h, h)))
+    I1 = ('/', sq, An)
+    I2 = ('/', ('-', ('*', u, sq), ('*', Kn, I0)), ('*', ('n', 2), An))
+    F = ('+', ('+', ('*', caspoly.ratnode(p0), I0), ('*', caspoly.ratnode(p1), I1)),
+         ('*', caspoly.ratnode(p2), I2))
+    return caseng.simplify(F)
+
 _ALT = [False]     # only the outermost integ() tries the other forms
 
 def _sumfactor(n, var):
@@ -384,6 +457,12 @@ def integ(n, var='x', depth=0):
             if r is not None:
                 return r
         r = _integ(n, var, depth)
+        if r is not None:
+            return r
+        try:
+            r = _quadsurd(n, var)
+        except Exception:
+            r = None
         if r is not None:
             return r
         for f in _alts(n, var):
