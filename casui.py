@@ -589,7 +589,7 @@ def _fields(spec):
     import casutil
     names = []
     for name, kind, cnt, opt in casutil.fields_of(spec):
-        if kind != 'n' and kind != 'e':
+        if kind != 'n' and kind != 'e' and kind != 'q':
             return None
         names.append(name)
     return names if len(names) > 1 else None
@@ -640,7 +640,8 @@ def _draw_input(label, spec, ed, shift, alpha, names):
     base, a, d = _input_base(ed)
     if not ed.root:
         # faint hint of what goes here, gone once typing starts
-        draw_string(16, base - 13, clip(spec.replace(',', ', '), 356, 'medium'), LGREY, 'medium')
+        hint = (spec + ',').replace('=,', ',')[:-1]
+        draw_string(16, base - 13, clip(hint.replace(',', ', '), 356, 'medium'), LGREY, 'medium')
     nat.draw(ed, ed.root, 8, base, 368)
     chips = _chips(ed, names, BOT - 18 - 20 * ((len(names) - 1) // 3) if names else 0)
     for x, y, t, c in chips:
@@ -990,7 +991,10 @@ def _forms(text):
     import caslex
     import caseng
     import casutil
-    tree = caslex.parse(text)
+    try:
+        tree = caslex.parse(text)
+    except ValueError as e:
+        return [('!', str(e))]
     if tree is None:
         return [('!', 'cannot read that')]
     tree = _sub_ans(tree, ANS[0])
@@ -1531,30 +1535,37 @@ CAS_OPS = ['d/dx', 'd2/dx2', 'integrate', 'definite integral a..b',
            'series (Maclaurin)', 'limit x -> a', 'substitute x = a',
            'rearrange for x']
 
-def _read(label, spec):
+def _read(label, spec, name=None):
     # editor -> (text, tree); None when the user backs out
     while True:
         s = input_line(label, spec, '')
         if s is None:
             return None
-        s, tree = _parse_eq(s)
+        try:
+            s, tree = _parse_eq(s, name)
+        except ValueError as e:
+            flash(str(e))
+            continue
         if tree is None:
             flash('cannot read that')
             continue
         return s, tree
 
-def _parse_eq(s):
-    # 'l = r' -> l - r, the form the solvers take
+def _parse_eq(s, name=None):
+    # 'l = r' -> l - r, the form the solvers take; 'y = f' -> f for a name
     import caslex
-    if '=' in s:
-        l, r = s.split('=', 1)
-        s = '(' + l + ')-(' + r + ')'
+    import casutil
+    s = casutil.eq_text(s, name, name is None)
     return s, caslex.parse(s)
 
 _TOOLSEL = [0]
 
 def calc_tools(text):
-    s, tree = _parse_eq(text)
+    try:
+        s, tree = _parse_eq(text)
+    except ValueError as e:
+        flash(str(e))
+        return
     if tree is None:
         flash('cannot read that')
         return
@@ -1601,7 +1612,7 @@ def graph_section():
     busy()
     import plot
     while True:
-        got = _read('Graph', 'y = f(x)')
+        got = _read('Graph', 'y = f(x)', 'f(x)')
         if got is None:
             return
         plot.run([got[1]], -6.0, 6.0, 'y', 'y = ' + got[0])

@@ -99,7 +99,7 @@ def tokenize(s):
             toks.append(('rp',))
             i += 1
             continue
-        i += 1
+        raise ValueError("cannot read '" + c + "'")
     return _implicit(toks)
 
 def _implicit(toks):

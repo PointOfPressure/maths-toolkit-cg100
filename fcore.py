@@ -4482,7 +4482,7 @@ SECTIONS = [
     # Pj1 j2-j4 j6-j11 Pj12 j13-j16 j19 j20
     ('J', 'Complex numbers', [
         ('Arithmetic z, w', 'z,w', t_zw),
-        ('Solve in z and z*', 'f(z)', t_zzconj),
+        ('Solve in z and z*', 'f(z)=', t_zzconj),
         ('Solve az + bz* = c', 'za,zb,zc', t_zconj),
         ('Argand sum/product', 'z,w', t_argops),
         ('Modulus-argument', 'z', t_modarg),

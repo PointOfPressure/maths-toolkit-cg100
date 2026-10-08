@@ -168,6 +168,10 @@ def fields_of(spec):
         opt = name.endswith('?')
         if opt:
             name = name[:-1]
+        if name.endswith('='):
+            # an expression that may be typed as an equation l = r
+            out.append((name[:-1], 'q', 0, opt))
+            continue
         if name.endswith('$*'):
             # the rest of the row as raw strings ('?' allowed), for the tool
             out.append((name[:-2], 'L', 0, opt))
@@ -210,6 +214,29 @@ def _realnum(text, name):
 def _allows_complex(name):
     return name[:1] == 'z' or name[:1] == 'w'
 
+def _names(lhs, name):
+    # 'y', 'f' or 'f(x)' on the left names the field itself
+    nk = name.replace(' ', '').lower()
+    if lhs == nk or lhs == nk.split('(')[0]:
+        return True
+    return lhs == 'y' and 'y' not in (nk[nk.find('('):] if '(' in nk else '')
+
+def eq_text(text, name=None, eq=True):
+    # 'l = r' -> 'r' when l names the field (y = ..., f(x) = ...);
+    # else '(l)-(r)' where an equation makes sense, else an error
+    if '=' not in text:
+        return text
+    l, r = text.split('=', 1)
+    if '=' in r:
+        raise ValueError("one '=' only")
+    if name is not None and _names(l.replace(' ', '').lower(), name):
+        return r
+    if not eq:
+        raise ValueError("no '=' in " + name)
+    if r.strip() == '0':
+        return l
+    return '(' + l + ')-(' + r + ')'
+
 def convert(spec, text):
     parts = split_values(text)
     vals = []
@@ -230,8 +257,8 @@ def convert(spec, text):
             else:
                 vals.append(_realnum(parts[i], name))
             i += 1
-        elif kind == 'e':
-            t = caslex.parse(parts[i])
+        elif kind == 'e' or kind == 'q':
+            t = caslex.parse(eq_text(parts[i], name, kind == 'q'))
             if t is None:
                 raise ValueError('cannot read ' + name)
             vals.append(t)

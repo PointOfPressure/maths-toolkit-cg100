@@ -157,6 +157,73 @@ def engine():
     check('modulus rule', sstr('abs(2x)') == '2*|x|')
     check('factorial ratio', sstr('x!/(x-1)!') == 'x')
 
+def eq_fields():
+    # '=' in a tool field: l = r is l - r where the tool solves or takes an
+    # equation; 'y =' / 'f(x) =' names the field; anything else is an error
+    def bad(text):
+        try:
+            caslex.parse(text)
+        except ValueError as e:
+            return str(e)
+        return None
+    check('lexer rejects =', bad('x^2-4=0') == "cannot read '='")
+    check('lexer rejects < > ? $', bad('x<1') and bad('x>1') and bad('?') and bad('2$'))
+    check('eq_text l=r', casutil.eq_text('x^2=4', 'f(x)') == '(x^2)-(4)')
+    check('eq_text l=0', casutil.eq_text('x^2-4=0', 'f(x)') == 'x^2-4')
+    check('eq_text y=', casutil.eq_text('y = x^2', 'f(x)', False) == ' x^2')
+    check('eq_text f(x)=', casutil.eq_text('f(x)=x^2', 'f(x)', False) == 'x^2')
+    check('eq_text y in F(xy)', casutil.eq_text('y=x^2', 'F(xy)') == '(y)-(x^2)')
+    for t in ('x=1=2', 'x^2=4'):
+        try:
+            casutil.eq_text(t, 'f(x)', False)
+            check('eq_text refuses ' + t, False)
+        except ValueError:
+            check('eq_text refuses ' + t, True)
+    import tests_pastpapers
+    import casui
+    o = tests_pastpapers.output
+    check('= in Factorise', '= 0 at x = -2, 2' in o('mpure:B', 'Factorise', 'x^2-4=0'))
+    check('= in Implicit dy/dx', 'dy/dx = -3/4' in o('mcalc:G', 'Implicit dy/dx', 'x^2+y^2=25,3,4'))
+    check('= in Newton-Raphson', 'x = 1.4142136' in o('mcalc:I', 'Newton-Raphson', 'x^2=2,1'))
+    check('= in Solve trig', 'x = 30 deg' in o('mpure:E', 'Solve trig eqn (deg)', 'sin(x)=1/2,0,90', deg=True))
+    check('= in a function field', "no '=' in f(x)" in o('mcalc:G', 'Stationary points', 'x^3=3x'))
+    check('y = in a function field', 'min at (1, -2)' in o('mcalc:G', 'Stationary points', 'y=x^3-3x'))
+    check('< in a field', "cannot read '<'" in o('mpure:B', 'Factorise', 'x^2<4'))
+    check('Graph y = f', casui._parse_eq('y = x^2', 'f(x)')[0] == ' x^2')
+    check('CAS l = r', casui._parse_eq('x^2=4')[0] == '(x^2)-(4)')
+    check('Calculate refuses =', casui._forms('2=2')[0] == ('!', "cannot read '='"))
+    # every tool with an expression field, through its own first case
+    for modname in MODULES:
+        mod = __import__(modname)
+        first = {}
+        for c in __import__('tests_' + modname).CASES:
+            first.setdefault(c[0] + '/' + c[1], c[2])
+        for code, title, tools in mod.SECTIONS:
+            for label, spec, fn in tools:
+                text = first.get(code + '/' + label)
+                fields = casutil.fields_of(spec)
+                if text is None or not fields or fields[0][1] not in ('e', 'q'):
+                    continue
+                parts = casutil.split_values(text)
+                if not parts or '=' in parts[0]:
+                    continue
+                name, kind = fields[0][0], fields[0][1]
+                key = modname + ' ' + code + '/' + label + ' <' + text + '>'
+                want = '\n'.join(flat(casutil.call_tool(fn, casutil.convert(spec, text))))
+                def out(first_part):
+                    vals = casutil.convert(spec, ','.join([first_part] + parts[1:]))
+                    return '\n'.join(flat(casutil.call_tool(fn, vals)))
+                if casutil._names('y', name):
+                    check(key + ': y = f', out('y=' + parts[0]) == want)
+                if kind == 'q':
+                    check(key + ': f = 0', out(parts[0] + '=0') == want)
+                else:
+                    try:
+                        out('(' + parts[0] + ')+1=1')
+                        check(key + ': = refused', False)
+                    except ValueError as e:
+                        check(key + ': = refused', "'='" in str(e), str(e))
+
 def casrender_ok():
     import casrender
     box = casrender.build(caslex.parse('(2+3i)/(1-i)'), 0)
@@ -226,6 +293,7 @@ if __name__ == '__main__':
               ' still failing')
         sys.exit(0)
     engine()
+    eq_fields()
     cas_engine()
     for mname in (only or MODULES):
         module_cases(mname)

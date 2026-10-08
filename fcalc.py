@@ -1650,7 +1650,7 @@ SECTIONS = [
         ('Cartesian to polar', 'x,y', t_xy_to_polar),
         ('Plot r = f(theta)', 'r(x)', t_polar_plot),
         ('Polar area', 'r(x),a,b', t_polar_area),
-        ('Cartesian eqn to polar', 'F(x,y)', t_cart_eq_polar),
+        ('Cartesian eqn to polar', 'F(x,y)=', t_cart_eq_polar),
         ('Polar eqn to cartesian', 'r(x)', t_polar_eq_cart),
     ]),
     # Pa3 a4 a5 Pa6 a7 a8

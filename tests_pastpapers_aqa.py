@@ -796,7 +796,23 @@ CASES += [
     ('73571-jun19', '15ai', 'casui:Calculate', 'Calculate', '(-3)^(1/3)', '-1.44224957', None, False, False),
 ]
 
+# pass 2 (docs/pastpapers/pass2/AQA-GAPS-2.md): the paper's own numbers for each fix
+CASES += [
+    # '=' in a tool field is l - r, not a product
+    ('73572-jun22', '9', 'mpure:F', 'Evaluate log expr', 'logb(2,x^3)-logb(2,y^2)=9', 'f = 0: x = 8*y^(2/3)', None, False, False),
+    ('73571-jun18', '9b', 'mpure:B', 'Simultaneous non-linear', 'x+5y=25,4x+70y=(2x+5y)^2', '(x, y) = (-55, 16)', None, False, False),
+    ('73571-jun18', '9b', 'mpure:B', 'Simultaneous non-linear', 'x+5y=25,4x+70y=(2x+5y)^2', '(x, y) = (-5, 6)', None, False, False),
+]
+
+# outputs that must not appear: (paper, q, module, label, inputs, unwanted, ask, deg, full)
+NOT = [
+]
+
 def run(check):
+    for paper, q, module, label, inputs, unwanted, ask, deg, full in NOT:
+        out = tests_pastpapers.output(module, label, inputs, ask, deg, full)
+        check('past paper ' + paper + ' Q' + q + ' ' + label + ' <' + inputs + '>: no ' + repr(unwanted),
+              unwanted not in out, out.replace('\n', ' | ')[:300])
     for paper, q, module, label, inputs, expected, ask, deg, full in CASES:
         out = tests_pastpapers.output(module, label, inputs, ask, deg, full)
         check('past paper ' + paper + ' Q' + q + ' ' + label + ' <' + inputs + '>: has ' + repr(expected),
