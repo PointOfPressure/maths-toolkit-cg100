@@ -743,6 +743,23 @@ def partial(numn, denn, var='x'):
     return (ptree(quot, var) if quot else None, out)
 
 
+def intfactor(top, fac, i, var='x'):
+    # top/fac^i with a monic fac (as partial() returns it) rewritten over the
+    # integer factor: -1/2/(x-11/2) -> -1/(2x-11)
+    f = poly(fac, var)
+    if f is None or not f:
+        return (top, fac)
+    c = pcontent(f)
+    if f[-1][0] < 0:
+        c = rneg(c)
+    fi = [rdiv(x, c) for x in f]
+    k = R1
+    t = 0
+    while t < i:
+        k = rmul(k, c)
+        t += 1
+    return (caseng.simplify(('/', top, ratnode(k))), ptree(fi, var))
+
 def pgcd(a, b):
     # monic gcd of two rational-coefficient polynomials; at most 60 steps
     a = ptrim(list(a))

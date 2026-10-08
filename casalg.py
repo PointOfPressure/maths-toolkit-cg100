@@ -980,7 +980,106 @@ def _split(g):
     return (caseng._termnode(coef, fl, cxc, top),
             caseng._termnode(R1, None, None, bot))
 
+# f ~ c e^(a x) x^b as x -> +inf, as (c, a, b): c a tree, a and b floats
+def _asy(f, var):
+    t = f[0]
+    if not caseng._hasvar(f, var):
+        try:
+            v = caseng.evalf(f, 0.0)
+        except Exception:
+            return None
+        if isinstance(v, complex) or v != v:
+            return None
+        return None if v == 0 else (f, 0.0, 0.0)
+    if t == 'v':
+        return (_num(1), 0.0, 1.0)
+    if t == 'neg':
+        a = _asy(f[1], var)
+        return None if a is None else (_S(('neg', a[0])), a[1], a[2])
+    if t == '+' or t == '-':
+        a = _asy(f[1], var)
+        b = _asy(f[2], var)
+        if a is None or b is None:
+            return None
+        if t == '-':
+            b = (_S(('neg', b[0])), b[1], b[2])
+        if abs(a[1] - b[1]) > 1e-12:
+            return a if a[1] > b[1] else b
+        if abs(a[2] - b[2]) > 1e-12:
+            return a if a[2] > b[2] else b
+        c = _S(('+', a[0], b[0]))
+        if c == _num(0):
+            return None
+        return (c, a[1], a[2])
+    if t == '*' or t == '/':
+        a = _asy(f[1], var)
+        b = _asy(f[2], var)
+        if a is None or b is None:
+            return None
+        if t == '*':
+            return (_S(('*', a[0], b[0])), a[1] + b[1], a[2] + b[2])
+        return (_S(('/', a[0], b[0])), a[1] - b[1], a[2] - b[2])
+    if t == 'sqrt':
+        return _asy(('^', f[1], ('/', _num(1), _num(2))), var)
+    if t == '^':
+        if caseng._hasvar(f[2], var):
+            if caseng._hasvar(f[1], var):
+                return None
+            return _asy(('exp', ('*', f[2], ('ln', f[1]))), var)
+        try:
+            p = caseng.evalf(f[2], 0.0)
+        except Exception:
+            return None
+        a = _asy(f[1], var)
+        if a is None or isinstance(p, complex):
+            return None
+        try:
+            cv = caseng.evalf(a[0], 0.0)
+        except Exception:
+            return None
+        if cv < 0 and p != int(p):
+            return None
+        return (_S(('^', a[0], f[2])), a[1] * p, a[2] * p)
+    if t == 'exp':
+        r = linin(_S(f[1]), var)
+        if r is None:
+            return None
+        try:
+            k = caseng.evalf(r[0], 0.0)
+        except Exception:
+            return None
+        if isinstance(k, complex):
+            return None
+        return (_S(('exp', r[1])), k, 0.0)
+    return None
+
+def _limit_asy(g, var, sgn):
+    if sgn < 0:
+        g = caseng.subst(g, var, ('neg', ('v', var)))
+    a = _asy(g, var)
+    if a is None:
+        return None
+    c, al, be = a
+    if al < -1e-12 or (abs(al) <= 1e-12 and be < -1e-12):
+        return _num(0)
+    if abs(al) <= 1e-12 and abs(be) <= 1e-12:
+        return c
+    try:
+        cv = caseng.evalf(c, 0.0)
+    except Exception:
+        return None
+    return _num(float('inf') if cv > 0 else float('-inf'))
+
 def _limit_inf(g, var, sgn):
+    r = _limit_inf0(g, var, sgn)
+    if r is None:
+        try:
+            r = _limit_asy(g, var, sgn)
+        except Exception:
+            r = None
+    return r
+
+def _limit_inf0(g, var, sgn):
     vs = caseng.vars_in(g)
     if len(vs) == 1 and vs[0] == var:
         try:

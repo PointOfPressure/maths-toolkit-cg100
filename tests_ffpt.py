@@ -109,7 +109,7 @@ CASES = [
     ('T', 'Arc length y=f(x)', 'x^2,0,1', ['s = 1.48', 'dy/dx = 2*x']),
     ('T', 'Arc length y=f(x)', 'x^(3/2),0,4', ['s = 9.07', 'dy/dx = 3*sqrt(x)/2']),
     ('T', 'Arc length y=f(x)', 'x^2,1,1', ['the two limits are equal']),
-    ('T', 'Arc length parametric', 'cos(t),sin(t),0,pi', ['s = 3.14', 'numerically matches pi',
+    ('T', 'Arc length parametric', 'cos(t),sin(t),0,pi', ['s = pi', '= 3.14',
                                                           'dx/dt = -sin(t)']),
     ('T', 'Arc length parametric', 't^2,t^3,0,1', ['s = 1.44']),
     ('T', 'Arc length polar', '1+cos(t),0,2pi', ['s = 8', 'dr/dtheta = -sin(t)']),

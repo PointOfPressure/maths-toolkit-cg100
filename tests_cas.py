@@ -151,6 +151,10 @@ DIFF = [
 ]
 
 INTEG = [
+    # forms the rules match only after simplify/expand/x^k rewriting
+    ('(x-1)e^x', 'e^(x)*x-2*e^(x)'), ('ln(x)/x^2', '-ln(x)/x-1/x'),
+    ('sqrt(16x^3)', '8*sqrt(x)*x^2/5'), ('x/e^x', '-e^(-x)*x-e^(-x)'),
+    ('(1+x)/sqrt(x)', '2*sqrt(x)*x/3+2*sqrt(x)'),
     # letter coefficients in a linear argument
     ('e^(a*x)', 'e^(a*x)/a'), ('x*e^(a*x)', 'e^(a*x)*x/a-e^(a*x)/a^2'),
     ('sin(k*x)', '-cos(k*x)/k'), ('1/(a*x+b)', 'ln(|a*x+b|)/a'),

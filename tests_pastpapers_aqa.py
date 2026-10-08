@@ -777,6 +777,21 @@ CASES += [
     ('73572-jun24', '9ci', 'casui:CAS', 'series (Maclaurin)', '12x/((1+3x)(2-3x))', '-9*x^2+6*x', '3', False, False),
     ('73572-jun24', '9ci', 'casui:CAS', 'd/dx', '12x/((1+3x)(2-3x))', '(108*x^2+24)/((3*x+1)^2*(3*x-2)^2)', None, False, False),
     ('73573-jun22', '10d', 'mcalc:G', 'Stationary points', '(x^2+10)/(2x+5)', "f'(x) = (2*x^2+10*x-20)/(2*x+5)^2", None, False, False),
+    # limits at infinity through exponentials
+    ('73573-jun19', '8bi', 'casui:CAS', 'limit x -> a', '5(4+11e^(-0.068066x))', '20', 'inf', False, False),
+    ('73573-jun24', '8b', 'casui:CAS', 'limit x -> a', '20(11-10e^(-0.4x))', '220', 'inf', False, False),
+    # integrator tries the simplified, expanded and x^k forms
+    ('73572-jun18', '7', 'casui:CAS', 'integrate', '(x-1)e^x', 'e^(x)*x-2*e^(x)', None, False, False),
+    ('73572-jun19', '5', 'mcalc:H', 'Separable DE at point', 'ln(x)/x^2,1/y,1,2', 'y^2/2 = -ln(x)/x-1/x + 3', None, False, False),
+    ('73571-nov21', '15b', 'casui:CAS', 'definite integral a..b', 'sqrt(16x^3)', '1/20', '0,0.25', False, False),
+    # partial fractions over integer factors
+    ('73572-nov21', '5', 'casui:CAS', 'partial fractions', '5(x-3)/((2x-11)(4-3x))', '-1/(2*x-11)', None, False, False),
+    ('73572-nov21', '5', 'casui:CAS', 'partial fractions', '5(x-3)/((2x-11)(4-3x))', '-1/(3*x-4)', None, False, False),
+    ('73572-jun24', '9b', 'casui:CAS', 'partial fractions', '36x/((1+3x)(2-3x))', '-8/(3*x-2)', None, False, False),
+    ('73573-jun25', '8a', 'casui:CAS', 'partial fractions', 'x/(2x^2+3x+1)', '-1/(2*x+1)', None, False, False),
+    ('73571-jun23', '16a', 'casui:CAS', 'partial fractions', '1/(16-9x^2)', '1/(8*(3*x+4))', None, False, False),
+    # factor theorem in exact arithmetic
+    ('73571-nov21', '13a', 'mpure:B', 'Factor theorem', '125x^3+150x^2+55x+6,-1/5', '(x + 1/5) is a factor', None, False, False),
     # real cube root
     ('73571-jun19', '15ai', 'casui:Calculate', 'Calculate', '(-3)^(1/3)', '-1.44224957', None, False, False),
 ]

@@ -285,7 +285,119 @@ def tidy(node):
 _SYMOK = ('sin', 'cos', 'exp', 'sinh', 'cosh', 'tan', 'cot', 'sec', 'cosec',
           'tanh', 'sech', 'coth', 'ln')
 
+def _monom(b, var):
+    # b = c * var^k (k rational) -> (c tree, k rational pair), else None
+    if b == ('v', var):
+        return (('n', 1), (1, 1))
+    r = caspoly.term_of(caseng.simplify(b))
+    if r is None:
+        return None
+    c, facs = r
+    k = None
+    rest = []
+    for key, base, e in facs:
+        if base == ('v', var):
+            k = (e, 1)
+        elif base[0] == 'sqrt' and base[1] == ('v', var):
+            k = (e, 2)
+        elif base[0] == '^' and base[1] == ('v', var) and caseng._ratval(base[2]) is not None:
+            q = caseng._ratval(base[2])
+            k = caspoly.rmul(q, (e, 1))
+        elif has_var(base, var):
+            return None
+        else:
+            rest.append((key, base, e))
+    if k is None:
+        return None
+    return (caspoly.term_node(c, rest), k)
+
+def _xpow(k, var):
+    return ('^', ('v', var), caspoly.ratnode(k))
+
+def _mono(n, var):
+    # x/e^x, ln x/x^2, (1+x)/sqrt x, sqrt(16x^3) -> sums of products with
+    # var^k factors, the forms the rules below match
+    t = n[0]
+    if t in ('+', '-'):
+        return (t, _mono(n[1], var), _mono(n[2], var))
+    if t == 'neg':
+        return ('neg', _mono(n[1], var))
+    if t == '*':
+        return ('*', _mono(n[1], var), _mono(n[2], var))
+    if t == '/':
+        b = n[2]
+        if b[0] == 'exp':
+            return _mono(('*', n[1], ('exp', ('neg', b[1]))), var)
+        m = _monom(b, var) if has_var(b, var) else None
+        if m is not None:
+            inv = ('*', ('/', ('n', 1), m[0]), _xpow((-m[1][0], m[1][1]), var))
+            a = n[1]
+            if a[0] in ('+', '-'):
+                return (a[0], _mono(('*', a[1], inv), var), _mono(('*', a[2], inv), var))
+            return ('*', _mono(a, var), inv)
+        return ('/', _mono(n[1], var), n[2])
+    if t == 'sqrt' or (t == '^' and caseng._ratval(n[2]) is not None):
+        p = (1, 2) if t == 'sqrt' else caseng._ratval(n[2])
+        m = _monom(n[1], var) if has_var(n[1], var) else None
+        if m is not None:
+            return ('*', ('^', m[0], caspoly.ratnode(p)), _xpow(caspoly.rmul(m[1], p), var))
+    return n
+
+def _alts(n, var):
+    # other forms of an integrand the rules may match
+    out = []
+    s = caseng.simplify(n)
+    for f in (s, caspoly.expand(s)):
+        if f != n and f not in out:
+            out.append(f)
+        g = _mono(f, var)
+        if g != f and g not in out:
+            out.append(g)
+    return out
+
+_ALT = [False]     # only the outermost integ() tries the other forms
+
+def _sumfactor(n, var):
+    # a product with a bracketed sum in var among its factors
+    if n[0] != '*':
+        return False
+    parts = []
+    _flatten(n, parts)
+    moving = [p for p in parts if has_var(p, var)]
+    sums = [p for p in moving if p[0] in ('+', '-')]
+    rest = [p for p in moving if p[0] not in ('+', '-')]
+    if len(sums) != 1 or not rest:
+        return False
+    for p in rest:
+        if p[0] not in ('exp', 'sin', 'cos', 'sinh', 'cosh'):
+            return False
+    return True
+
 def integ(n, var='x', depth=0):
+    if _ALT[0]:
+        return _integ(n, var, depth)
+    _ALT[0] = True
+    try:
+        if _sumfactor(n, var):
+            # (x-1)e^x: multiplied out first, by-parts on the bracket is slow
+            r = _integ(caspoly.expand(caseng.simplify(n)), var, depth)
+            if r is not None:
+                return r
+        r = _integ(n, var, depth)
+        if r is not None:
+            return r
+        for f in _alts(n, var):
+            try:
+                r = _integ(f, var, depth)
+            except Exception:
+                r = None
+            if r is not None:
+                return r
+    finally:
+        _ALT[0] = False
+    return None
+
+def _integ(n, var='x', depth=0):
     t = n[0]
     if t == 'n':
         return ('*', n, ('v', var))

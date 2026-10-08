@@ -1262,6 +1262,13 @@ def t_pdiv(p, d):
 
 def t_factor_thm(p, a):
     v = _need(p, float(a))
+    # exactly, when p is a polynomial and a rational: p(-1/5) is 0, not 8.88e-16
+    P = caspoly.poly(caseng.simplify(p), 'x')
+    r = caseng._fltrat(float(a))
+    if P is not None and r is not None:
+        ex = caspoly.peval(P, r)
+        v = ex[0] * 1.0 / ex[1]
+        v = 0 if ex[0] == 0 else casutil.clean(v)
     br = 'x - ' + fmt(a) if a >= 0 else 'x + ' + fmt(-a)
     lines = ['p(' + fmt(a) + ') = ' + fmt(v)]
     if v == 0:

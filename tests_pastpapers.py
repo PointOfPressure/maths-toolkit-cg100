@@ -512,6 +512,8 @@ CASES += [
     ('y420-jun25', '12', 'fcore', 'Quartic real coeffs', '1,-1,?,?,18,3i', '1/2+sqrt(7)i/2'),
     # decimal right-hand side
     ('y420-jun25', '17b(i)', 'fcalc', 'PI polynomial RHS', '1,0.3,0.02,0.4', 'A*e^(-x/10)+B*e^(-x/5)+20'),
+    # partial fractions over integer factors
+    ('y420-nov21', '1a', 'CAS', 'partial fractions', '1/((2x-1)(2x+1))', '1/(2*(2*x-1))'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

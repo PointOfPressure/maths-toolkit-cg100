@@ -1287,8 +1287,15 @@ def _cas_op(op, tree, s):
         except Exception:
             ex = None
         if ex is not None:
-            return [('m', ex), ('w', 'exact: F(b) - F(a)'),
-                    ('w', 'from ' + casutil.fmt(v[0]) + ' to ' + casutil.fmt(v[1]))]
+            out = [('m', ex)]
+            try:
+                d = casutil.ev(ex)
+                if not isinstance(d, complex):
+                    out.append('integral = ' + casutil.sf3(d))
+            except ValueError:
+                pass
+            return out + [('w', 'exact: F(b) - F(a)'),
+                          ('w', 'from ' + casutil.fmt(v[0]) + ' to ' + casutil.fmt(v[1]))]
         r = cascalc.defint(tree, v[0], v[1], casutil.DEG)
         if r is None:
             return [('!', 'cannot evaluate over that range')]
@@ -1350,9 +1357,15 @@ def _cas_op(op, tree, s):
         if quot is not None:
             lines.append(('m', quot))
         for top, fac, power in terms:
+            top, fac = caspoly.intfactor(top, fac, power)
             den = fac
             if power > 1:
                 den = ('^', fac, ('n', power))
+            r = caseng._ratval(top)
+            if r is not None and r[1] > 1:
+                # 1/(8(3x+4)), not 1/8/(3x+4)
+                top = ('n', r[0])
+                den = ('*', ('n', r[1]), den)
             lines.append(('m', ('/', top, den)))
         if not terms:
             lines.append(('w', 'divides exactly'))
