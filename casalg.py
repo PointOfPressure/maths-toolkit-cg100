@@ -248,8 +248,18 @@ def combine_log(node):
         items.append((hit[1], k))
     if len(items) < 2:
         return _S(node)
-    arg = _prod([(caseng._pow(u, caseng._ratnode(k)), 1) for u, k in items])
-    out = [((name, arg), 1)]
+    # a common factor stays outside: 10ln200 - 10ln(200-x) -> 10ln(200/(200-x))
+    g = None
+    neg = 0
+    for u, k in items:
+        ak = (abs(k[0]), k[1])
+        g = ak if g is None else _rgcd(g, ak)
+        if k[0] < 0:
+            neg += 1
+    if neg * 2 > len(items):
+        g = (-g[0], g[1])
+    arg = _prod([(caseng._pow(u, caseng._ratnode(caspoly.rdiv(k, g))), 1) for u, k in items])
+    out = [(_prod([(caseng._ratnode(g), 1), ((name, arg), 1)]), 1)]
     return _sum(out + rest)
 
 MAXPRIME = 1000    # trial division for the primes of a log argument
@@ -1207,9 +1217,11 @@ def _asy(f, var):
         b = _asy(f[2], var)
         if a is None or b is None:
             return None
+        if b[1] == VAN and t == '/':
+            return None
         for p, q in ((a, b), (b, a)):
             # a vanishing log times anything but a constant: rate unknown
-            if p[1] == VAN and (q[1] != 0.0 or q[2] != 0.0 or t == '/'):
+            if p[1] == VAN and (q[1] != 0.0 or q[2] != 0.0):
                 return None
         if t == '*':
             return (_S(('*', a[0], b[0])), a[1] + b[1], a[2] + b[2])

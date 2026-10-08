@@ -972,13 +972,30 @@ def t_intfactor(P, Q, x0, y0):
     return out
 
 def _also(out, t):
-    # the multiplied-out form too when it is shorter: 1 - e^(-ax)
+    # the multiplied-out form too when it is shorter: 1 - e^(-ax); and the
+    # logs combined: (200-x)(10ln200 - 10ln(200-x)) -> 10(200-x)ln(200/(200-x))
     try:
         e = caspoly.expand(t)
+        if len(caseng.tostr(e)) < len(caseng.tostr(t)):
+            out.append(_m(e))
     except Exception:
+        pass
+    if 'ln' not in caseng.tostr(t):
         return
-    if len(caseng.tostr(e)) < len(caseng.tostr(t)):
-        out.append(_m(e))
+    try:
+        import casalg
+        coef, fl, cxc, fs = caseng._termparts([(t, 1)])
+        hit = False
+        for f in fs:
+            if f[0][0] in ('+', '-') and 'ln' in caseng.tostr(f[0]):
+                f[0] = casalg.combine_log(caseng.strip_abs(f[0]))
+                hit = True
+        c = caseng.simplify(caseng._termnode(coef, fl, cxc, fs)) if hit else \
+            casalg.combine_log(caseng.strip_abs(t))
+        if caseng.tostr(c).count('ln') < caseng.tostr(t).count('ln'):
+            out.append(_m(c))
+    except Exception:
+        pass
 
 def _exact_c(R, IF, x0, y0):
     # C = y0 IF(x0) - R(x0) exactly (20e, 10ln(200), or with letters); None
@@ -1028,6 +1045,54 @@ def t_second_order(a, b, c):
         out.append(_w('disc = 0: y = (A + Bx) e^(m x)'))
     else:
         out.append(_w('disc < 0: y = e^(px)(A cos qx + B sin qx)'))
+    return out
+
+def t_second_k(a, b, c):
+    # a y'' + b y' + c y = 0 with a letter in the coefficients
+    import cassolve
+    A = caseng.simplify(a)
+    B = caseng.simplify(b)
+    C = caseng.simplify(c)
+    lets = []
+    for t in (A, B, C):
+        for v in caseng.vars_in(t):
+            if v not in lets and v != 'x':
+                lets.append(v)
+    if 'x' in caseng.vars_in(A) + caseng.vars_in(B) + caseng.vars_in(C):
+        raise ValueError('constant coefficients only (letters allowed)')
+    ex = lambda t: caseng.simplify(caspoly.expand(caseng.simplify(t)))
+    disc = ex(('-', ('*', B, B), ('*', ('n', 4), ('*', A, C))))
+    L = ('v', 'lambda')
+    aux = caseng.simplify(('+', ('+', ('*', A, ('^', L, ('n', 2))), ('*', B, L)), C))
+    out = ['aux: ' + caseng.tostr(aux) + ' = 0']
+    out.append('disc = ' + caseng.tostr(disc))
+    X = ('v', 'x')
+    Av = ('v', 'A')
+    Bv = ('v', 'B')
+    p = ex(('/', ('neg', B), ('*', ('n', 2), A)))
+    try:
+        dv = caseng.evalf(disc, 0.0)
+    except Exception:
+        dv = None
+    if dv is not None and not isinstance(dv, complex) and dv < 0:
+        q = caseng.simplify(('/', ('sqrt', ('neg', disc)), ('*', ('n', 2), A)))
+        cf = ('*', ('exp', ('*', p, X)), ('+', ('*', Av, ('cos', ('*', q, X))),
+                                         ('*', Bv, ('sin', ('*', q, X)))))
+        out.append('lambda = ' + caseng.tostr(p) + ' +/- ' + caseng.tostr(q) + 'i')
+    elif dv is not None and dv == 0:
+        cf = ('*', ('+', Av, ('*', Bv, X)), ('exp', ('*', p, X)))
+        out.append('lambda = ' + caseng.tostr(p) + ' (repeated)')
+    else:
+        ms = cassolve.roots_co([C, B, A], 'lambda') or []
+        if len(ms) != 2:
+            raise ValueError('cannot solve the auxiliary equation')
+        cf = ('+', ('*', Av, ('exp', ('*', ms[0], X))), ('*', Bv, ('exp', ('*', ms[1], X))))
+        out.append('lambda = ' + caseng.tostr(ms[0]) + ', ' + caseng.tostr(ms[1]))
+        if dv is None:
+            out.append(_wn('real roots when disc > 0'))
+    out.append('y =')
+    out.append(_m(caseng.simplify(cf)))
+    out.append(_w('try y = e^(lambda x): a lambda^2 + b lambda + c = 0'))
     return out
 
 def t_second_ivp(a, b, c, y0, v0):
@@ -1507,6 +1572,7 @@ SECTIONS = [
         ('Integrating factor', 'P(x),Q(x),x0?,y0?', t_intfactor),
         ('Second order homogen', 'a,b,c', t_second_order),
         ('Second order with IVs', 'a,b,c,y0,v0', t_second_ivp),
+        ('Second order in k', 'a(k),b(k),c(k)', t_second_k),
         ('PI polynomial RHS', 'a,b,c,p(x),y0?,v0?', t_pi_poly),
         ('PI for k e^(px)', 'a,b,c,k,p,y0?,v0?', t_pi_exp),
         ('PI for m cos + n sin', 'a,b,c,m,n,omega,y0?,v0?', t_pi_trig),

@@ -34,6 +34,7 @@ T = (
         ('Integrating factor', 'P(x),Q(x),x0?,y0?'),
         ('Second order homogen', 'a,b,c'),
         ('Second order with IVs', 'a,b,c,y0,v0'),
+        ('Second order in k', 'a(k),b(k),c(k)'),
         ('PI polynomial RHS', 'a,b,c,p(x),y0?,v0?'),
         ('PI for k e^(px)', 'a,b,c,k,p,y0?,v0?'),
         ('PI for m cos + n sin', 'a,b,c,m,n,omega,y0?,v0?'),

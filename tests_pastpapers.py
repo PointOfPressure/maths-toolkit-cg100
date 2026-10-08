@@ -599,6 +599,10 @@ CASES += [
     ('y420-spec', '11(i)', 'fcore', 'Sum f(r), r = a..b', '1/r^2,1,10', 'sum = 1.55'),
     ('y420-nov21', '1b', 'fcore', 'Method of differences', '1/((2r-1)(2r+1))', 'S(n) = n/(2*n+1)'),
     ('y420-jun23', '3a', 'fcore', 'Method of differences', '1/(r(r+2))', 'S(n) = (3*n+5)*n/(4*(n+1)*(n+2))'),
+    # DE with a letter
+    ('y420-spec', '16(ii)(A)', 'fcalc', 'Second order in k', '1,2k,k^2+9', '(A*cos(3*x)+B*sin(3*x))*e^(-k*x)'),
+    ('y420-jun24', '17b', 'fcalc', 'Integrating factor', '1/(200-x),10,0,0', '10*(-x+200)*ln(200/(-x+200))'),
+    ('y420-jun25', '17a(iii)', 'fcalc', 'Separable DE', '0.2,20-y,0,0', '-20*e^(-x/5)+20'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
