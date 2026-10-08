@@ -181,6 +181,8 @@ CASES = [
     ('A', 'Roots with a relation', '(a,1/a,b),1,-1,?,-2', ['coeff of x^1 = -1', '2']),
     ('A', 'Roots with a relation', '(a,2a),1,-6,?', ['coeff of x^0 = 8', 'z2 = 4']),
     ('A', 'Roots with a relation', '(a,a),1,0,1', ['no roots of that form']),
+    ('P', 'Induction: M^n in k', '1,m,0,1,1,n*m,0,1', ['proved for all n >= 1']),
+    ('P', 'Induction: M^n in k', '1,m,0,1,1,n*m^2,0,1', ['not proved']),
     ('M', 'Image of points', '2,3,1,4', ['(1, 1) -> (5, 5)', 'area scale |det| = 5']),
     ('M', 'Image of points', '-1,0,-2,1,0,0,2,1', ['(2, 1) -> (-2, -3)', 'orientation reversed']),
     ('M', 'Det 2x2 in terms of k', '1,-2,m,3,-5', ['2*m+3', 'singular when m = -3/2',

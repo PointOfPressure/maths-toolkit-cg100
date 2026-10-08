@@ -2672,6 +2672,22 @@ def t_ptlinek(x1, x2, x3, a1, a2, a3, d1, d2, d3, D):
     out.append(_w('d = |AP x d|/|d|'))
     return out
 
+def t_ind_mpowk(a, b, c, d, p, q, r, s):
+    # induction for M^n = [[p(n), q(n)], [r(n), s(n)]] with a letter in M
+    M = [[caseng.simplify(a), caseng.simplify(b)], [caseng.simplify(c), caseng.simplify(d)]]
+    P = [[p, q], [r, s]]
+    one = [[_sx(caseng.subst(e, 'n', ('n', 1))) for e in row] for row in P]
+    base = all([_sx(('-', one[i][j], M[i][j])) == ('n', 0) for i in range(2) for j in range(2)])
+    nxt = [[_sx(caseng.subst(e, 'n', ('+', ('v', 'n'), ('n', 1)))) for e in row] for row in P]
+    prod = [[_sx(('+', ('*', P[i][0], M[0][j]), ('*', P[i][1], M[1][j]))) for j in range(2)]
+            for i in range(2)]
+    step = all([_sx(('-', prod[i][j], nxt[i][j])) == ('n', 0) for i in range(2) for j in range(2)])
+    out = ['base n = 1: ' + ('true' if base else 'false'),
+           'step M^k M = M^(k+1): ' + ('true' if step else 'false')]
+    out.append('proved for all n >= 1' if base and step else 'not proved')
+    out += [_w(ln) for ln in _smlines('M^k M', prod)]
+    return out
+
 def t_abk(a, b, c, d, p, q, r, s):
     A = [[a, b], [c, d]]
     B = [[p, q], [r, s]]
@@ -4457,6 +4473,7 @@ SECTIONS = [
         ('Induction: sum', 'u(r),S(n)', t_ind_sum),
         ('Induction: recurrence', 'f(u n),u1,g(n)', t_ind_rec),
         ('Induction: M^n', 'A[2x2],p(n),q(n),r(n),s(n)', t_ind_mpow),
+        ('Induction: M^n in k', 'a(k),b(k),c(k),d(k),p(n),q(n),r(n),s(n)', t_ind_mpowk),
         ('Induction: divisor', 'f(n),k,m?', t_ind_div),
         ('Induction: de Moivre', 'theta,n', t_ind_dm),
         ('Counterexample: prime', 'f(n),a,b', t_cx_prime),

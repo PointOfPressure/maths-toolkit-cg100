@@ -4,6 +4,7 @@ T = (
         ('Induction: sum', 'u(r),S(n)'),
         ('Induction: recurrence', 'f(u n),u1,g(n)'),
         ('Induction: M^n', 'A[2x2],p(n),q(n),r(n),s(n)'),
+        ('Induction: M^n in k', 'a(k),b(k),c(k),d(k),p(n),q(n),r(n),s(n)'),
         ('Induction: divisor', 'f(n),k,m?'),
         ('Induction: de Moivre', 'theta,n'),
         ('Counterexample: prime', 'f(n),a,b'),
