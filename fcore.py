@@ -1299,6 +1299,99 @@ def _joinsigned(terms):
             out += ('-' if sign < 0 else '+') + piece
     return out if out else '0'
 
+def _cheb(n):
+    # cos nt in cos t alone: T(k+1) = 2c T(k) - T(k-1)
+    a = [1]
+    b = [0, 1]
+    k = 1
+    while k < n:
+        c = [0] + [2 * v for v in b]
+        for i in range(len(a)):
+            c[i] -= a[i]
+        a, b = b, c
+        k += 1
+    T = b if n >= 1 else a
+    terms = []
+    i = len(T) - 1
+    while i >= 0:
+        v = T[i]
+        if v:
+            body = '1' if i == 0 else ('c' if i == 1 else 'c^' + str(i))
+            mag = abs(v)
+            piece = body if mag == 1 and i > 0 else (str(mag) + (body if i > 0 else ''))
+            terms.append((1 if v > 0 else -1, piece))
+        i -= 1
+    return _joinsigned(terms)
+
+def _laurent(m, n):
+    # (z - 1/z)^m (z + 1/z)^n as {power: integer coefficient}
+    co = {0: 1}
+    for sgn, times in ((-1, m), (1, n)):
+        j = 0
+        while j < times:
+            nxt = {}
+            for p in co:
+                nxt[p + 1] = nxt.get(p + 1, 0) + co[p]
+                nxt[p - 1] = nxt.get(p - 1, 0) + sgn * co[p]
+            co = nxt
+            j += 1
+    return co
+
+def t_sincospow(m, n):
+    # sin^m t cos^n t in multiple angles, from z = e^(it):
+    # sin t = (z - 1/z)/(2i), cos t = (z + 1/z)/2, z^k + z^-k = 2cos kt
+    m = _iv(m, 'm', 0, 10)
+    n = _iv(n, 'n', 0, 10)
+    if m + n == 0:
+        raise ValueError('m + n must be at least 1')
+    co = _laurent(m, n)
+    # divide by (2i)^m 2^n: i^m sets cos or sin and the sign
+    den = 2 ** (m + n)
+    im = m % 4
+    terms = []
+    k = m + n
+    while k >= 0:
+        a = co.get(k, 0)
+        b = co.get(-k, 0)
+        if k == 0:
+            if a:
+                terms.append((a, 'c', 0))
+        else:
+            if im % 2 == 0 and a:
+                # z^k + z^-k (a = b)
+                terms.append((2 * a, 'c', k))
+            elif im % 2 == 1 and a:
+                # z^k - z^-k = 2i sin kt (a = -b)
+                terms.append((2 * a, 's', k))
+        k -= 1
+    # the factor 1/(i^m): i^0 = 1, 1/i = -i (times 2i sin -> 2 sin), ...
+    sign = (1, 1, -1, -1)[im]
+    parts = []
+    g = den
+    for c, f, k in terms:
+        g = casutil.gcd(g, c)
+    for c, f, k in terms:
+        c = sign * c // g
+        fn = ('cos' if f == 'c' else 'sin')
+        body = '1' if k == 0 else (fn + ' ' + ('' if k == 1 else str(k)) + 't')
+        mag = abs(c)
+        piece = (body if mag == 1 and k else str(mag) + ('' if k == 0 else ' ' + body))
+        parts.append((1 if c > 0 else -1, piece))
+    d = den // g
+    out = ['sin^' + str(m) + ' t cos^' + str(n) + ' t =',
+           '(' + _joinsigned(parts) + ')/' + str(d) if d > 1 else _joinsigned(parts)]
+    out.append(_w('z = e^(it): sin t = (z - 1/z)/(2i), cos t = (z + 1/z)/2'))
+    out.append(_w('z^k + z^(-k) = 2cos kt, z^k - z^(-k) = 2i sin kt'))
+    # check at t = 0.7
+    t = 0.7
+    v = 0.0
+    for c, f, k in terms:
+        v += sign * c * (math.cos(k * t) if f == 'c' else math.sin(k * t))
+    v /= den
+    ok = abs(v - math.sin(t) ** m * math.cos(t) ** n) < 1e-9
+    out.append(_w('at t = 0.7 both sides ' + ('agree' if ok else 'DISAGREE')))
+    return out
+
 def t_multangle(n):
     n = _iv(n, 'n', 2, 6)
     ct = []
@@ -1326,6 +1419,7 @@ def t_multangle(n):
         k += 1
     return ['cos ' + str(n) + 't = ' + _joinsigned(ct),
             'sin ' + str(n) + 't = ' + _joinsigned(st),
+            'cos ' + str(n) + 't = ' + _cheb(n),
             _w('c = cos t, s = sin t'),
             _w('from (c+is)^' + str(n) + ' = cos ' + str(n) + 't + i sin ' + str(n) + 't'),
             _w('use s^2 = 1-c^2 to get cosines alone')]
@@ -4212,6 +4306,7 @@ SECTIONS = [
         ('Locus arg(z-z1) = t', 'z1,theta', t_loc_halfline),
         ('Locus |z-z1|=|z-z2|', 'z1,z2', t_loc_bisect),
         ('cos nt, sin nt powers', 'n', t_multangle),
+        ('sin^m t cos^n t', 'm,n', t_sincospow),
         ('cos^n t, sin^n t', 'n', t_powtomult),
     ]),
     # Pm1 m4 m5 m7-m9 m11-m13 m15 Pm6 (m2 m3 m10 m14 are properties to quote)

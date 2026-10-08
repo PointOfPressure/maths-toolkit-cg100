@@ -620,6 +620,9 @@ CASES += [
     ('y420-jun22', '3', 'CAS', 'solve exact f(x)=0', '3cosh(x)-2sinh(x)^2', 'x = ln(sqrt(3)+2)'),
     ('y420-jun22', '3', 'CAS', 'solve exact f(x)=0', '3cosh(x)-2sinh(x)^2', 'x = -ln(sqrt(3)+2)'),
     ('y420-jun25', '13b', 'CAS', 'solve exact f(x)=0', '2x*ln(x)+3x', 'x = 1/(e*sqrt(e))'),
+    # powers of sin and cos in multiple angles
+    ('y420-nov20', '12b', 'fcore', 'sin^m t cos^n t', '3,3', '(-sin 6t+3 sin 2t)/32'),
+    ('y420-spec', '14(ii)', 'fcore', 'cos nt, sin nt powers', '6', 'cos 6t = 32c^6-48c^4+18c^2-1'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

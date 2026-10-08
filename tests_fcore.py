@@ -170,6 +170,8 @@ CASES = [
                                                          'ei-fh = 5*k-48']),
     ('M', 'Det 3x3 in terms of k', '1,2,3,2,4,6,1,1,k', ['singular for every k']),
     ('M', 'Det 3x3 in terms of k', '-1,a,0,2,3,1,1,b,1', ['-a+b-3', 'adj = [-b+3 -a a]']),
+    ('J', 'sin^m t cos^n t', '3,3', ['(-sin 6t+3 sin 2t)/32', 'agree']),
+    ('J', 'sin^m t cos^n t', '4,1', ['(cos 5t-3 cos 3t+2 cos t)/16']),
     ('S', 'C + iS series', '1,1/3,2,1', ['S = (6*sin(theta))/(-3*cos(2*theta)+5)', 'agrees']),
     ('S', 'C + iS series', '1/2,1/2,1,1,5', ['agrees']),
     ('S', 'C + iS series', '1,2,1,1', ['|r| < 1']),

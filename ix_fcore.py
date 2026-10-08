@@ -29,6 +29,7 @@ T = (
         ('Locus arg(z-z1) = t', 'z1,theta'),
         ('Locus |z-z1|=|z-z2|', 'z1,z2'),
         ('cos nt, sin nt powers', 'n'),
+        ('sin^m t cos^n t', 'm,n'),
         ('cos^n t, sin^n t', 'n'),
     )),
     ('M', 'Matrices, transformations', (
