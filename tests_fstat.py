@@ -166,6 +166,8 @@ CASES = [
     ('C', 'pdf constants', '2,a*x^2,0,2,b*(3-x)^2,3', ['a = 1/8, b = 2']),
     ('C', 'pdf constants', '?,k*x,0,2', ['k = 1/2']),
     ('C', 'cdf constants', 'a*(x^2+b*x+c),20,30,25,11/24', ['a = 1/600, b = 10, c = -600']),
+    ('G', 'r-th success on trial n', '0.55,5,10', ['P = 0.117']),
+    ('G', 'r-th success on trial n', '0.04,3', ['E(trials) = r/p = 75']),
     ('N', 'Sum of Normals', '0,1,8,51.5,1.1,-1,2,100.7,1.6,-1,1,201.3,1.7',
      ['W ~ N(9.3, 17.69)', 'P(W>0) = 0.9865']),
     ('N', 'Sum of Normals', '?,1,3,10,1', ['W ~ N(30, 3)']),

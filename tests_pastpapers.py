@@ -611,6 +611,11 @@ CASES += [
     ('y420-jun19', '10b', 'fcore', 'nth roots of z', '2+2i,3', 'w2 = sqrt(2)e^(-7i pi/12)'),
     ('y420-nov21', '10b(i)', 'fcore', 'nth roots of z', '1+sqrt(3)i,3', 'w2 = (2^(1/3))e^(-5i pi/9)'),
     ('y420-jun23', '5a', 'fcore', 'nth roots of z', '-64,6', 'w0 = 2e^(i pi/6)'),
+    # r-th success on trial n
+    ('y422-nov21', '3e', 'fstat', 'r-th success on trial n', '0.04,3,60', 'P = 0.01069'),
+    ('y422-nov21', '3d', 'fstat', 'r-th success on trial n', '0.04,3', 'E(trials) = r/p = 75'),
+    ('y422-jun23', '3d', 'fstat', 'r-th success on trial n', '0.55,5,10', 'P = 0.117'),
+    ('y422-jun25', '4d', 'fstat', 'r-th success on trial n', '0.4,5,20', 'P = 0.01866'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

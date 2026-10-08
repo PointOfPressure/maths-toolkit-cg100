@@ -1801,6 +1801,23 @@ def t_cdfconst(F, a, b, x0, p):
     _constlines(lets, sols, out)
     return out
 
+def t_rthsuccess(p, r, n):
+    # the r-th success on trial n: C(n-1, r-1) p^r (1-p)^(n-r)
+    _geo_p(p)
+    r = _whole(r, 'r', 1, 10000)
+    out = []
+    if n is not None:
+        n = _whole(n, 'n', r, 100000)
+        lp = (casutil.lnfact(n - 1) - casutil.lnfact(r - 1) - casutil.lnfact(n - r) +
+              r * math.log(p) + ((n - r) * math.log(1.0 - p) if p < 1 else 0.0))
+        out.append('P = ' + fmt(math.exp(lp), 10 if casutil.FULL else 4))
+        out.append(w('C(' + fmt(n - 1) + ',' + fmt(r - 1) + ') p^' + fmt(r) +
+                     ' (1-p)^' + fmt(n - r)))
+        out.append(w('r-1 successes in the first n-1 trials, then a success'))
+    out.append('E(trials) = r/p = ' + p5(r / p))
+    out.append('Var = r(1-p)/p^2 = ' + p5(r * (1.0 - p) / (p * p)))
+    return out
+
 def t_normsum(k, terms):
     # W = sum of coef * (X1 + ... + Xcount), every copy independent
     if len(terms) % 4 or not terms:
@@ -3343,6 +3360,7 @@ SECTIONS = [
         ('Geometric P(X=r)', 'p,r', t_geom),
         ('Geometric a<=X<=b', 'p,a,b', t_georange),
         ('Geometric least r', 'p,prob', t_geoinv),
+        ('r-th success on trial n', 'p,r,n?', t_rthsuccess),
     ]),
     ('C', 'Continuous random vars', [
         ('pdf E Var and check', 'f(x),a,b', t_pdf),

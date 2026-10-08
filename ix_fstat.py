@@ -28,6 +28,7 @@ T = (
         ('Geometric P(X=r)', 'p,r'),
         ('Geometric a<=X<=b', 'p,a,b'),
         ('Geometric least r', 'p,prob'),
+        ('r-th success on trial n', 'p,r,n?'),
     )),
     ('C', 'Continuous random vars', (
         ('pdf E Var and check', 'f(x),a,b'),
