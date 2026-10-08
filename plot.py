@@ -45,19 +45,37 @@ def _px(st, x):
 def _py(st, y):
     return int(BOT - (y - st[2]) / (st[3] - st[2]) * (BOT - TOP) + 0.5)
 
+NY = 192        # y = f(x) samples across the screen (every other pixel)
+_YC = [None, []]    # sample spacing, and per curve {index: y}; panning reuses them
+
 def _samples(curves, kind, st):
     # -> list of point lists in world coords; None marks a break
     out = []
     if kind == 'y':
+        h = (st[1] - st[0]) / NY
+        if _YC[0] is None or abs(_YC[0] - h) > 1e-12 * abs(h) or len(_YC[1]) != len(curves):
+            _YC[0] = h
+            _YC[1] = [{} for c in curves]
+        base = int(round(st[0] / h))
+        n = 0
         for tree in curves:
+            memo = _YC[1][n]
+            if len(memo) > 3000:
+                memo.clear()
             pts = []
-            px = 0
-            while px < W:
-                x = st[0] + (st[1] - st[0]) * px / (W - 1.0)
-                y = casutil.evx(tree, x)
+            i = 0
+            while i <= NY:
+                j = base + i
+                x = j * h
+                if j in memo:
+                    y = memo[j]
+                else:
+                    y = casutil.evx(tree, x)
+                    memo[j] = y
                 pts.append(None if y is None else (x, y))
-                px += 1
+                i += 1
             out.append(pts)
+            n += 1
     elif kind == 'polar':
         for tree in curves:
             pts = []
@@ -180,8 +198,16 @@ def run(curves, xlo=-6.0, xhi=6.0, kind='y', title='', ylo=None, yhi=None):
     trace = False
     ti = 0
     tc = 0
+    _YC[0] = None
+    samps = None
+    have = None
     while True:
-        samps = _samples(curves, kind, st)
+        want = (st[0], st[1]) if kind == 'y' else 0
+        if want != have:
+            draw_string(W - 50, 1, 'Busy', (235, 130, 30), 'medium')
+            show_screen()
+            samps = _samples(curves, kind, st)
+            have = want
         if auto:
             r = _yrange(samps, kind)
             if r is None:
@@ -199,7 +225,6 @@ def run(curves, xlo=-6.0, xhi=6.0, kind='y', title='', ylo=None, yhi=None):
             for pts in samps:
                 _draw_curve(pts, st, COLS[i % len(COLS)], kind)
                 i += 1
-        hint = 'arrows pan  +/- zoom  OK trace  0 reset'
         head = title
         if trace:
             pts = samps[tc % len(samps)]
@@ -215,9 +240,7 @@ def run(curves, xlo=-6.0, xhi=6.0, kind='y', title='', ylo=None, yhi=None):
                 head = 'x=' + casutil.sf3(p[0]) + '  y=' + casutil.sf3(p[1])
                 if len(p) > 2:
                     head = ('t=' if kind == 'param' else 'th=') + casutil.sf3(p[2]) + '  ' + head
-            hint = 'left/right move  up/down curve  OK stop'
-        draw_string(2, 1, head, BLACK if trace else GREY, 'small')
-        draw_string(2, 180, hint, GREY, 'small')
+        draw_string(2, 1, head, BLACK if trace else GREY, 'medium')
         show_screen()
         casui.wait_release()
         k = casui.wait_key()

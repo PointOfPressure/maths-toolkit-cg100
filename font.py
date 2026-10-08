@@ -1,9 +1,9 @@
-# Text widths of the calculator's fonts, measured on the fx-CG100:
-# medium digits and capitals 12 px, lower case 10, narrow letters 8;
-# small digits and capitals 8, lower case 6, narrow 4; large 18.
+# Text widths of the calculator's fonts, measured on the fx-CG100 by
+# fontcal.py (2026-10-08): medium digits 12, most letters 10, i 8, l 7;
+# small digits 8, most lower case 6. Large is an estimate.
 # One character per code 32..126, width = code - 48; strings cost nothing to load.
-_M = '88<<<<<888<<8888<8<<<<<<<<88<<<<<<<<<<<<<8<<<<<<<<<<<<<<<<<8<8<<<:::::8::88:8<::::8:8::<:::888<'
-_S = '44888884448844448488888888448888888888888488888888888888888484888666664664464866664646686664448'
+_M = '46:;:?<688::6:<9<<<<<<<<<<779:99=::::::::89::<:;:;:::::<:::797:;6:;:;:9::89:7<::;;9:9::<::9868;'
+_S = '65786884557848468888888888446867887877787667788787778788887565785666665664674866665656686665458'
 _L = '>>BBBEB>>>BB>>>>B>BBBBBBBB>>BBBBEBBBBBBBB>BBBEBBBBBBBBBEBBB>B>BBB@@@@@>@@>>@>E@@@@>@>@@E@@@>>>B'
 _T = {'medium': _M, 'small': _S, 'large': _L}
 

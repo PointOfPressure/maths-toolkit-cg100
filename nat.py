@@ -366,6 +366,7 @@ class Pen:
         self.color = color
         self.caret = None
         self.dry = False
+        self.hole = HOLE
 
 def _text(pen, x, y, s, sz, c):
     x += pen.dx
@@ -443,7 +444,7 @@ def draw_row(pen, row, x, base, lvl):
             cx += 3
         pen.caret = (cx, base - a, base + d)
     if not row:
-        c = HOLE
+        c = pen.hole
         top = base - ASC[sz]
         _hl(pen, x + 1, x + 6, top, c)
         _hl(pen, x + 1, x + 6, base + DESC[sz] - 1, c)
@@ -532,12 +533,26 @@ LAST = [0, None]    # scroll and caret of the last draw, so it can be undrawn
 def draw(ed, row, x, base, maxw, color=INK, dx=None):
     # draws a row, scrolled so the caret stays in view; returns (w, asc, desc).
     # dx given: draw at that scroll with no caret (used to undraw in white)
+    if not row:
+        # an empty line is just the caret, no placeholder box
+        a = ASC['medium']
+        d = DESC['medium']
+        caret = None
+        if ed is not None and dx is None:
+            caret = (x, base - a, base + d)
+            for y in range(base - a - 1, base + d + 1):
+                set_pixel(x, y, CARET)
+                set_pixel(x + 1, y, CARET)
+        LAST[0] = 0
+        LAST[1] = caret
+        return (0, a, d)
     _MC[0] = {}
     w, a, d = measure(row, 0)
     pen = Pen(ed, 0, color)
     if dx is not None:
         pen.dx = dx
         pen.ed = None
+        pen.hole = color
     elif ed is not None and w > maxw:
         pen.dry = True
         draw_row(pen, row, x, base, 0)

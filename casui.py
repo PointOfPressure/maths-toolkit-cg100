@@ -607,7 +607,7 @@ def _chips(ed, names, y):
     cur = _field_at(ed)
     i = 0
     x = 8
-    while i < len(names) and y < BOT - 16:
+    while i < len(names) and y < BOT:
         s = clip(names[i] + ' = ' + (parts[i] if i < len(parts) else ''), 118, 'medium')
         out.append((x, y, s, ACC if i == cur else (INK if i < len(parts) else LGREY)))
         x += 124
@@ -617,16 +617,21 @@ def _chips(ed, names, y):
             y += 20
     return out
 
+def _input_base(ed):
+    import nat
+    w, a, d = nat.measure(ed.root, 0)
+    return TOP + 8 + a, a, d
+
 def _draw_input(label, spec, ed, shift, alpha, names):
     import nat
     clear_screen()
     status(label, shift, alpha)
-    draw_string(8, TOP + 3, clip(spec.replace(',', ', '), 368, 'medium'), GREY, 'medium')
-    w, a, d = nat.measure(ed.root, 0)
-    base = TOP + 34 + (a - 13 if a > 13 else 0)
-    box(3, TOP + 23, W - 4, base + d + 7, ACC)
-    nat.draw(ed, ed.root, 10, base, 362)
-    chips = _chips(ed, names, base + d + 14)
+    base, a, d = _input_base(ed)
+    if not ed.root:
+        # faint hint of what goes here, gone once typing starts
+        draw_string(16, base - 13, clip(spec.replace(',', ', '), 356, 'medium'), LGREY, 'medium')
+    nat.draw(ed, ed.root, 8, base, 368)
+    chips = _chips(ed, names, BOT - 18 - 20 * ((len(names) - 1) // 3) if names else 0)
     for x, y, t, c in chips:
         draw_string(x, y, t, c, 'medium')
     _INP['shown'] = (nat.copy(ed.root), base, nat.LAST[0], nat.LAST[1], a, d, chips)
@@ -640,10 +645,10 @@ def _input_fast(ed, names):
         return False
     row, base, dx, caret, a0, d0, chips = sh
     w, a, d = nat.measure(ed.root, 0)
-    if a != a0 or d != d0:
+    if a != a0 or d != d0 or not row or not ed.root:
         return False
-    nat.undraw(row, 10, base, dx, caret, WHITE)
-    new = _chips(ed, names, base + d + 14)
+    nat.undraw(row, 8, base, dx, caret, WHITE)
+    new = _chips(ed, names, chips[0][1] if chips else 0)
     i = 0
     while i < len(new):
         if i >= len(chips) or chips[i] != new[i]:
@@ -653,7 +658,7 @@ def _input_fast(ed, names):
             x, y, t, c = new[i]
             draw_string(x, y, t, c, 'medium')
         i += 1
-    nat.draw(ed, ed.root, 10, base, 362)
+    nat.draw(ed, ed.root, 8, base, 368)
     _INP['shown'] = (nat.copy(ed.root), base, nat.LAST[0], nat.LAST[1], a, d, new)
     status_mode(False, False)
     show_screen()
@@ -814,11 +819,6 @@ def _draw_result(title, sub, blocks, top, mode, more):
     clear_screen()
     status(title, False, False, MODES[mode] if more else '')
     y = TOP + 3
-    if sub:
-        draw_string(8, y, clip(sub, 368, 'medium'), GREY, 'medium')
-        y += 20
-        hline(8, W - 9, y - 2, BAR)
-        y += 2
     i = top
     n = len(blocks)
     while i < n:
@@ -867,7 +867,7 @@ def result(label, text, lines_fn):
                     if more:
                         busy()
                     raw[full] = lines_fn if not more else lines_fn()
-                blocks = _blocks(raw[full], mode)
+                blocks = _blocks(raw[full], mode if more else 1)
                 if not blocks:
                     blocks = [('!', 'nothing to show', 20)]
             if top >= len(blocks):
@@ -938,7 +938,7 @@ def _forms(text):
     except Exception:
         simp = None
     if simp is not None and caseng.vars_in(simp):
-        return [('m', simp), ('!', 'has a variable - use CAS for x')]
+        return [('m', simp)]
     try:
         val = casutil.ev(tree)
     except ValueError as e:
@@ -1013,8 +1013,6 @@ def _draw_calc(ed, shift, alpha):
         if lay is None:
             forms = e[1]
             note = None
-            if e[2] != len(forms) - 1 and forms[-1][0] == 'a':
-                note = clip('= ' + forms[-1][1], 372, 'medium')
             ans = _ans_box(forms[e[2]])
             w, a, d = nat.measure(e[0], 0)
             h = a + d + 4 + ans[3] + ans[4] + 4 + (18 if note else 0)
@@ -1106,6 +1104,14 @@ def calc_section():
             settings()
             continue
         fresh = CALC.get('fresh')
+        if k == TOOLS:
+            # operations on the line being typed, or on the last one worked out
+            row = ed.root if (ed.root and not fresh) else (HIST[-1][0] if HIST else None)
+            if row and not nat.empty_hole(row):
+                calc_tools(nat.lin(row))
+            shift = False
+            alpha = False
+            continue
         if k == OK or k == EXE:
             if fresh or not ed.root:
                 continue
@@ -1408,19 +1414,37 @@ CAS_OPS = ['d/dx', 'd2/dx2', 'integrate', 'definite integral a..b',
 
 def _read(label, spec):
     # editor -> (text, tree); None when the user backs out
-    import caslex
     while True:
         s = input_line(label, spec, '')
         if s is None:
             return None
-        if '=' in s:
-            l, r = s.split('=', 1)
-            s = '(' + l + ')-(' + r + ')'
-        tree = caslex.parse(s)
+        s, tree = _parse_eq(s)
         if tree is None:
             flash('cannot read that')
             continue
         return s, tree
+
+def _parse_eq(s):
+    # 'l = r' -> l - r, the form the solvers take
+    import caslex
+    if '=' in s:
+        l, r = s.split('=', 1)
+        s = '(' + l + ')-(' + r + ')'
+    return s, caslex.parse(s)
+
+_TOOLSEL = [0]
+
+def calc_tools(text):
+    s, tree = _parse_eq(text)
+    if tree is None:
+        flash('cannot read that')
+        return
+    while True:
+        op = menu('Tools', CAS_OPS, _TOOLSEL[0])
+        if op < 0:
+            return
+        _TOOLSEL[0] = op
+        _run_op(op, tree, s)
 
 def _run_op(op, tree, s):
     try:
@@ -1582,7 +1606,7 @@ def formulae_section():
         if sel < 0:
             return
         title, lines = formulae.SHEETS[sel]
-        show_lines(title, [('w', ln) for ln in lines])
+        show_lines(title, [('a', ln) for ln in lines])
 
 HOME_TILES = [
     ('Calculate', ic_calc), ('CAS', ic_cas), ('Graph', ic_graph), ('Solve', ic_solve),
@@ -1614,3 +1638,9 @@ def main():
                 settings()
         except Home:
             pass
+        except MemoryError:
+            del HIST[:-3]
+            _WRAPS.clear()
+            flash('out of memory - cleared history')
+        except Exception as e:
+            flash('error: ' + str(e))
