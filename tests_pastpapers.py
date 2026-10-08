@@ -632,6 +632,9 @@ CASES += [
     # recurrences with letters
     ('y435-jun19', '5b', 'fxpure', '1st order in letters', 'a,b,c', 'u(n) = A*(a)^n + b/(-a+1)'),
     ('y435-jun25', '2a', 'fxpure', '2nd order + c in letters', '35/25,-12/25,c/25', '(3/5)^n*B+(4/5)^n*A+c/2'),
+    # exact surd values of trig at pi/12, pi/5, ...
+    ('y420-spec', '14(iv)', 'CALC', 'Calculate', 'cos(pi/12)^6', '(15*sqrt(3)+26)/64'),
+    ('y420-jun25', '9b(ii)', 'CALC', 'Calculate', '2sin(pi/5)', 'sqrt(-2*sqrt(5)+10)/2'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

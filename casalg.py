@@ -223,6 +223,65 @@ def expairs(node):
             out.append(ts[i])
     return _S(_sum(out))
 
+# exact sin/cos at multiples of pi/5, pi/8, pi/10, pi/12 (magnitudes)
+_SURDS = ['(sqrt(6)-sqrt(2))/4', '(sqrt(6)+sqrt(2))/4', 'sqrt(2-sqrt(2))/2',
+          'sqrt(2+sqrt(2))/2', '(sqrt(5)-1)/4', '(sqrt(5)+1)/4', 'sqrt(10-2*sqrt(5))/4',
+          'sqrt(10+2*sqrt(5))/4', '1/2', 'sqrt(3)/2', 'sqrt(2)/2', '1', '0']
+_SURDT = []
+
+def _surdtable():
+    if not _SURDT:
+        import caslex
+        for txt in _SURDS:
+            t = _S(caslex.parse(txt))
+            _SURDT.append((caseng.evalf(t, 0.0), t))
+    return _SURDT
+
+def _trigval(fn, arg):
+    try:
+        a = caseng.evalf(arg, 0.0)
+    except Exception:
+        return None
+    if isinstance(a, complex):
+        return None
+    r = caseng._fltrat(a / caseng.PI)
+    if r is None or r[1] not in (5, 8, 10, 12):
+        return None
+    import math
+    if fn == 'tan':
+        s = _trigval('sin', arg)
+        c = _trigval('cos', arg)
+        return None if s is None or c is None or c == _num(0) else _S(('/', s, c))
+    v = math.sin(a) if fn == 'sin' else math.cos(a)
+    for val, t in _surdtable():
+        if abs(abs(v) - val) < 1e-12:
+            return t if v >= 0 else _S(('neg', t))
+    return None
+
+def trigsurd(node):
+    # sin, cos, tan at those angles as surds, then multiplied out:
+    # cos(pi/12)^6 -> (26 + 15sqrt3)/64, 2sin(pi/5) -> sqrt(10 - 2sqrt5)/2
+    hit = [False]
+
+    def step(x, d):
+        if x[0] in ('sin', 'cos', 'tan') and not caseng.vars_in(x[1]):
+            v = _trigval(x[0], x[1])
+            if v is not None:
+                hit[0] = True
+                return v
+        return x
+    t = _walk(node, step, 0)
+    if not hit[0]:
+        return None
+    t = _S(t)
+    try:
+        e = _S(caspoly.expand(t))
+        if len(caseng.tostr(e)) < len(caseng.tostr(t)):
+            t = e
+    except Exception:
+        pass
+    return t
+
 def combine_log(node):
     # a ln u + b ln v -> ln(u^a v^b)
     raw = _terms(_S(node))

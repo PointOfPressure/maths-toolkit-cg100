@@ -1023,6 +1023,16 @@ def _forms(text):
         t2 = caslex.parse(ex) if simp[0] == 'n' else None
         forms.append(('m', t2 if t2 is not None else simp))
         seen.append(ex)
+        if 'sin' in ex or 'cos' in ex or 'tan' in ex:
+            # cos(pi/12)^6 as surds: (15sqrt(3)+26)/64
+            try:
+                import casalg
+                ts = casalg.trigsurd(simp)
+            except Exception:
+                ts = None
+            if ts is not None and len(caseng.tostr(ts)) <= 60 and caseng.tostr(ts) not in seen:
+                forms.append(('m', ts))
+                seen.append(caseng.tostr(ts))
     s = casutil.fmt(val)
     if s not in seen:
         forms.append(('a', s))

@@ -233,6 +233,11 @@ TAYLOR = [
     ('asin(x)', 5, '0 1 0 1/6 0 3/40'),
 ]
 
+TRIGSURD = [
+    ('cos(pi/12)^6', '(15*sqrt(3)+26)/64'), ('sin(7pi/12)', '(sqrt(6)+sqrt(2))/4'),
+    ('cos(2pi/5)', '(sqrt(5)-1)/4'), ('cos(4pi/5)', '(-sqrt(5)-1)/4'),
+]
+
 LNFORM = [
     ('2*acosh(2)-sqrt(3)', '2*ln(sqrt(3)+2)-sqrt(3)'),
     ('ln(2)+ln(5)/2-ln(10)/2', 'ln(2)/2'),
@@ -242,6 +247,10 @@ LNFORM = [
 ]
 
 def run(check):
+    for src, want in TRIGSURD:
+        r = casalg.trigsurd(caseng.simplify(P(src)))
+        got = None if r is None else TS(r)
+        check('cas trigsurd ' + src, got == want, got)
     for src, want in LNFORM:
         got = TS(casalg.lnform(caseng.simplify(P(src))))
         check('cas lnform ' + src, got == want, got)
