@@ -1329,6 +1329,43 @@ def t_lincomb(a, b, c, mx, vx, my, vy, wv):
     out.append(w('X, Y Normal so W is Normal'))
     return out
 
+def _clt(mu, var, n, k, step, mean):
+    # CLT for the mean or sum of n values; step = gap between the values,
+    # so the correction is step/2 on the sum, step/(2n) on the mean
+    n = _whole(n, 'n', 2, 10 ** 9)
+    if var <= 0:
+        raise ValueError('Var must be > 0')
+    E = mu if mean else n * mu
+    V = var / n if mean else n * var
+    sd = _sqrt(V)
+    f4 = lambda v: fmt(v, 10 if casutil.FULL else 4)
+    nm = 'Xbar' if mean else 'S'
+    out = [nm + ' ~ N(' + p5(E) + ', ' + p5(V) + ') approx']
+    if step is None:
+        p = casutil.phi((k - E) / sd)
+        out.append('P(' + nm + '<' + p5(k) + ') = ' + f4(p))
+        out.append('P(' + nm + '>' + p5(k) + ') = ' + f4(1.0 - p))
+    else:
+        if step <= 0:
+            raise ValueError('step must be > 0')
+        c = step / (2.0 * n) if mean else step / 2.0
+        lo = casutil.phi((k - c - E) / sd)
+        hi = casutil.phi((k + c - E) / sd)
+        out.append('P(' + nm + '<' + p5(k) + ') = ' + f4(lo))
+        out.append('P(' + nm + '<=' + p5(k) + ') = ' + f4(hi))
+        out.append('P(' + nm + '>' + p5(k) + ') = ' + f4(1.0 - hi))
+        out.append('P(' + nm + '>=' + p5(k) + ') = ' + f4(1.0 - lo))
+        out.append(w('continuity correction ' + p5(c) + ': ' + p5(k - c) + ', ' + p5(k + c)))
+    out.append(w('SD = ' + p5(sd) + ('; Var = var/n' if mean else '; Var = n var')))
+    out.append(w('n large: Normal by the central limit theorem'))
+    return out
+
+def t_cltmean(mu, var, n, k, step):
+    return _clt(mu, var, n, k, step, True)
+
+def t_cltsum(mu, var, n, k, step):
+    return _clt(mu, var, n, k, step, False)
+
 def t_normsum(k, terms):
     # W = sum of coef * (X1 + ... + Xcount), every copy independent
     if len(terms) % 4 or not terms:
@@ -2890,6 +2927,8 @@ SECTIONS = [
         ('aX+bY+c', 'a,b,c,mx,vx,my,vy,k?', t_lincomb),
         ('nX vs X1+..+Xn', 'mu,var,n,k?', t_nsum),
         ('Sum of Normals', 'k,terms*', t_normsum),
+        ('CLT sample mean', 'mu,var,n,k,step?', t_cltmean),
+        ('CLT sample sum', 'mu,var,n,k,step?', t_cltsum),
         ('Normal prob plot', 'data*', t_nplot),
     ]),
     ('R', 'Bivariate data', [

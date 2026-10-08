@@ -47,6 +47,8 @@ T = (
         ('aX+bY+c', 'a,b,c,mx,vx,my,vy,k?'),
         ('nX vs X1+..+Xn', 'mu,var,n,k?'),
         ('Sum of Normals', 'k,terms*'),
+        ('CLT sample mean', 'mu,var,n,k,step?'),
+        ('CLT sample sum', 'mu,var,n,k,step?'),
         ('Normal prob plot', 'data*'),
     )),
     ('R', 'Bivariate data', (

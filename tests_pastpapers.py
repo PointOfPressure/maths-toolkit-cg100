@@ -567,6 +567,11 @@ CASES += [
     ('y422-nov20', '5b', 'fstat', 'Bivariate from sums', '16,198.0,188.7,2936.92,2605.35,2554.87', 'y = 6.207 + 0.4515x'),
     ('y422-nov21', '8b(ii)', 'fstat', 'Bivariate from sums', '20,80.37,970.86,324.71,47829.24,3886.53', 'r = -0.4255'),
     ('y422-jun25', '7a', 'fstat', 'Bivariate from sums', '30,2.219,357.7,0.2368,4648,25.01', 'r = -0.2744'),
+    # CLT with continuity correction
+    ('y422-nov20', '10c', 'fstat', 'CLT sample mean', '0,16.2,50,1,1', 'P(Xbar>1) = 0.038'),
+    ('y422-jun22', '9e', 'fstat', 'CLT sample mean', '10,440/12,30,7,1', 'P(Xbar<=7) = 0.003482'),
+    ('y422-jun24', '11c', 'fstat', 'CLT sample mean', '50,(51^2-1)/12,100,48,1', 'P(Xbar<48) = 0.08658'),
+    ('y422-jun25', '10c', 'fstat', 'CLT sample mean', '0,2.88,100,0.25,1', 'P(Xbar>0.25) = 0.06647'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
