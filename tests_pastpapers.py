@@ -645,6 +645,7 @@ CASES += [
     ('y435-nov21', '3d', 'fxpure', 'M^n in n (3x3)', '3,3,0,0,2,2,1,3,4', 'M^n[33] = 3*6^n/5+2/5'),
     ('y435-nov20', '5d', 'fcore', 'Describe a 3x3', '1/3,-2/3,-2/3,-2/3,1/3,-2/3,-2/3,-2/3,1/3', 'reflection in the plane x + y + z = 0'),
     ('y435-spec', '5(v)', 'fcore', 'Describe a 3x3', '1/2,-1/sqrt(2),1/2,1/sqrt(2),0,-1/sqrt(2),1/2,1/sqrt(2),1/2', 'rotation 90 deg about (1, 0, 1)'),
+    ('y435-spec', '4(i)', 'fxpure', 'Partials of g(x,y,z)', '(y-2x)*(y+z)^2-18,1,4,-7', 'dg/dy = (-4*x+3*y+z)*(y+z)'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),

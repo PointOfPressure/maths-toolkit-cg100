@@ -41,6 +41,7 @@ T = (
     )),
     ('C', 'Multivariable calculus', (
         ('Partial derivatives', 'f(x,y),a?,b?'),
+        ('Partials of g(x,y,z)', 'g(x,y,z),a?,b?,c?'),
         ('Stationary points', 'f(x,y),a?,b?'),
         ('Tangent plane z=f', 'f(x,y),a,b'),
         ('grad g, normal, plane', 'g(x,y,z),a,b,c'),

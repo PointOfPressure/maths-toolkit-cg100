@@ -2440,6 +2440,41 @@ def t_partial(f, a, b):
                   ', normal to the contour'))
     return out
 
+def _cfac(t):
+    # a common factor taken out and the rest multiplied out:
+    # 2(y-2x)(y+z) + (y+z)^2 -> (y+z)(-4x+3y+z)
+    import casalg
+    try:
+        r = casalg.common_factor(t)
+    except Exception:
+        r = None
+    if r is None:
+        return t
+    fac, rest = r
+    rest = caseng.simplify(caspoly.expand(rest))
+    return caseng.simplify(('*', fac, rest))
+
+def t_partial3(g, a, b, c):
+    _only(g, ['x', 'y', 'z'], 'g(x,y,z)')
+    ds = [_diff(g, v) for v in ('x', 'y', 'z')]
+    out = []
+    for v, d in zip(('x', 'y', 'z'), ds):
+        out.append('dg/d' + v + ' = ' + _ts(_cfac(d)))
+    if a is None and b is None and c is None:
+        return out
+    if a is None or b is None or c is None:
+        raise ValueError('give a, b and c, or none')
+    env = {'x': a, 'y': b, 'z': c}
+    vals = [_ev(d, env) for d in ds]
+    if None in vals:
+        out.append(_warn('undefined at that point'))
+        return out
+    gv = _ev(g, env)
+    out.append('at (' + _f(a) + ', ' + _f(b) + ', ' + _f(c) + '): g = ' + _f(gv))
+    out.append('grad g = ' + _fv(vals))
+    out.append(_w('normal to the surface g = ' + _f(gv) + ' there'))
+    return out
+
 def _newton(fx, fy, fxx, fxy, fyy, x, y):
     # 2-D Newton on grad z = 0; only a converged run counts
     i = 0
@@ -2859,6 +2894,7 @@ SECTIONS = [
     ]),
     ('C', 'Multivariable calculus', [
         ('Partial derivatives', 'f(x,y),a?,b?', t_partial),
+        ('Partials of g(x,y,z)', 'g(x,y,z),a?,b?,c?', t_partial3),
         ('Stationary points', 'f(x,y),a?,b?', t_stat),
         ('Tangent plane z=f', 'f(x,y),a,b', t_tplane),
         ('grad g, normal, plane', 'g(x,y,z),a,b,c', t_gradg),
