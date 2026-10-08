@@ -142,6 +142,7 @@ T = (
             'Estimation, CLT',
             'Confidence intervals',
             'Test for a mean',
+            't tests and intervals',
             'Wilcoxon signed rank',
             'Test essentials',
             'Sampling, simulation',

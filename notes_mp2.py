@@ -101,6 +101,9 @@ NOTES = [
         'sin 270 = -1, cos 270 = 0',
     ]),
     ('Trig graphs', [
+        'Unit circle: point at angle theta',
+        '  is (cos theta, sin theta); defines',
+        '  sin, cos for any angle',
         'sin, cos period 2pi (360 deg)',
         'tan period pi, asymptotes at',
         '  x = pi/2 + k pi',
@@ -241,6 +244,8 @@ NOTES = [
         '  N0 = value at t = 0',
         'Half-life T: e^(kT) = 1/2,',
         '  T = ln 2/|k|',
+        'Continuous compound interest:',
+        '  A = P e^(rt), r the rate',
         'Limits: unbounded growth is',
         '  unrealistic; long-term value,',
         '  refine the model (add a limit)',
