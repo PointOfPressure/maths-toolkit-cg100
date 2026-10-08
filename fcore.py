@@ -3531,6 +3531,26 @@ def t_rootlin(p, q, coeffs):
         hd += (' - ' if q < 0 else ' + ') + _f(-q if q < 0 else q)
     out = []
     _fitpoly([casutil.clean(c) for c in new], 'x', out, hd + ':')
+    # whole-number coefficients: 2x^3 - 3x^2 + 3x/4 + 5/8 -> 16x^3 - 24x^2 + 6x + 5
+    rs = [caseng._fltrat(c) for c in new]
+    if None not in rs:
+        L = 1
+        g = 0
+        for r in rs:
+            L = L * r[1] // casutil.gcd(L, r[1])
+        ints = [r[0] * (L // r[1]) for r in rs]
+        for v in ints:
+            g = casutil.gcd(g, v)
+        if g and L != 1:
+            ints = [v // g for v in ints]
+            k = caspoly.rmake(L, g)
+            lo = []
+            i = len(ints) - 1
+            while i >= 0:
+                lo.append(ints[i])
+                i -= 1
+            out.insert(2, 'times ' + _f(casutil.clean(k[0] * 1.0 / k[1])) + ':')
+            out.insert(3, _m(_polytree(lo, 'x')))
     out.append(_w('substitute x = (y - ' + _f(q) + ')/' + _f(p) + ' and'))
     out.append(_w('multiply through by ' + _f(p) + '^' + str(n)))
     return out

@@ -2964,6 +2964,48 @@ def t_ci_in(lo, hi, mu0):
             w('a C% CI holds every mu0 not rejected'),
             w('by a 2 tail test at the (100-C)% level')]
 
+def t_ci_back(lo, hi, n, pct):
+    # a symmetric CI back to xbar and s (z for n >= 30, t below)
+    if hi <= lo:
+        raise ValueError('need hi > lo')
+    n = _whole(n, 'n', 2, 10 ** 9)
+    cl = _level(pct, 'conf%')
+    tp = (1.0 - cl) / 2.0
+    if n >= 30:
+        k, tabled = _zstar(tp)
+        nm = 'z*'
+    else:
+        k, tabled = _tstar(n - 1, tp)
+        nm = 't*'
+    half = (hi - lo) / 2.0
+    s = half * math.sqrt(n) / k
+    out = ['xbar = ' + p5((lo + hi) / 2.0), 's = ' + p5(s), 's^2 = ' + p5(s * s)]
+    _computed(tabled, out)
+    out.append(w('half width ' + p5(half) + ' = ' + nm + ' s/sqrt(n), ' + nm + ' = ' + p5(k)))
+    return out
+
+def t_pois_table(pairs):
+    # value, frequency pairs: mean and variance (divisor n-1) for a Po check
+    xs, fs = _split(pairs, 'value,frequency')
+    n = 0.0
+    sx = 0.0
+    sxx = 0.0
+    for i in range(len(xs)):
+        n += fs[i]
+        sx += fs[i] * xs[i]
+        sxx += fs[i] * xs[i] * xs[i]
+    if n < 2:
+        raise ValueError('need at least 2 values')
+    mean = sx / n
+    s2 = (sxx - n * mean * mean) / (n - 1)
+    out = ['mean = ' + p5(mean), 'variance = ' + p5(s2), 'var/mean = ' + p5(s2 / mean if mean else 0.0)]
+    out.append('var near mean: Po plausible' if mean and abs(s2 / mean - 1.0) <= 0.5 else
+               'var far from mean: not Po')
+    out.append(w('n = ' + fmt(casutil.clean(n)) + ', sum fx = ' + fmt(casutil.clean(sx)) +
+                 ', sum fx^2 = ' + fmt(casutil.clean(sxx))))
+    out.append(w('variance uses n-1; divisor n gives ' + p5(s2 * (n - 1) / n)))
+    return out
+
 def t_ci_n(sigma, width, pct):
     _pos(sigma, 'sigma')
     _pos(width, 'width')
@@ -3377,6 +3419,7 @@ SECTIONS = [
         ('Poisson mu, P(X=k)', 'k,p', t_poismu_eq),
         ('Poisson mu, P(X<=k)', 'k,p', t_poismu_le),
         ('Sum of Poissons', 'k,mu*', t_poissum),
+        ('Poisson check from table', 'x f pairs*', t_pois_table),
         ('Poisson approx to B', 'n,p,k', t_papprox),
         ('Poisson model check', 'data*', t_poischeck),
         ('Binomial P(X=k)', 'n,p,k', t_binom),
@@ -3455,6 +3498,7 @@ SECTIONS = [
         ('CI mean from summary', 'n,xbar,s,conf%', t_ci_sum),
         ('CI paired data', 'conf%,x y pairs*', t_ci_paired),
         ('CI to test mu0', 'lo,hi,mu0', t_ci_in),
+        ('CI back to xbar and s', 'lo,hi,n,conf%', t_ci_back),
         ('t test for a mean', 'mu0,s,n,xbar,sig%,tail', t_ttest),
         ('t test from data', 'mu0,sig%,tail,data*', t_ttest_data),
         ('t test from sums', 'mu0,n,sumx,sumx2,sig%,tail', t_ttest_sums),

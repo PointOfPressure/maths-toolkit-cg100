@@ -638,6 +638,9 @@ CASES += [
     ('y422-jun19', '9b', 'fstat', 'Piecewise pdf P(lo<X<hi)', 'x/25,(10-x)/25,0,5,10,0,6', 'P(0<X<6) = 17/25'),
     ('y422-spec', '2(ii)(A)', 'fstat', 'Piecewise pdf P(lo<X<hi)', '1/3,1/3+x^2,-1,0,1,-1,1/2', '13/24'),
     ('y420-nov21', '5b', 'fcore', 'Maclaurin approx', 'ln(1+2x),2,0.1', '% error = 100(series - f)/f = -1.27%'),
+    ('y420-jun25', '5', 'fcore', 'Roots p a + q', '1/2,1/2,2,0,-3,4', '16*x^3-24*x^2+6*x+5'),
+    ('y422-nov21', '7d(i)', 'fstat', 'CI back to xbar and s', '1.94,2.84,100,95', 's = 2.2959'),
+    ('y422-nov21', '6a', 'fstat', 'Poisson check from table', '0,34,1,65,2,55,3,24,4,14,5,6,6,2', 'variance = 1.7682'),
     # 3-D stationary points: seeded where one partial is 0; no underflow points
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
     ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
