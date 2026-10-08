@@ -53,12 +53,28 @@ def _val(n):
     except Exception:
         return None
 
+def _letters(n, var):
+    # sample values for the letters other than var (and x)
+    env = {}
+    k = 0
+    for v in caseng.vars_in(n):
+        if v != var and v not in ('pi', 'e', 'ans'):
+            env[v] = 0.6180339887 + 0.37 * k
+            k += 1
+    return env
+
 def check(f, var, r):
     # does r really satisfy f = 0 (domain and extraneous roots included)?
+    # other letters get sample values; if that fails the root is kept
+    env = _letters(f, var)
     try:
-        v = caseng.evalf(_S(caseng.subst(f, var, r)), 0.0)
+        if env:
+            env[var] = caseng.evalf(r, 0.0, False, env)
+            v = caseng.evalf(f, env[var], False, env)
+        else:
+            v = caseng.evalf(_S(caseng.subst(f, var, r)), 0.0)
     except Exception:
-        return False
+        return bool(env)
     if v != v:
         return False
     a = abs(v)
@@ -91,6 +107,174 @@ def _sortroots(roots):
     return [it[3] for it in keyed]
 
 # ---- polynomials ----------------------------------------------------------
+
+MAXSYMDEG = 6       # symbolic-coefficient polynomials read up to this degree
+
+def pcoeffs(tree, var):
+    # [c0, c1, ..] with ci trees free of var, for a polynomial in var whose
+    # coefficients may hold other letters; None otherwise
+    g = caspoly.expand(_S(tree))
+    co = {}
+    top = 0
+    for t, s in _terms(g):
+        r = caspoly.term_of(t)
+        if r is None:
+            return None
+        c, facs = r
+        k = 0
+        rest = []
+        for key, base, e in facs:
+            if base == ('v', var):
+                k += e
+            elif _has(base, var):
+                return None
+            else:
+                rest.append((key, base, e))
+        if k < 0 or k > MAXSYMDEG:
+            return None
+        term = caspoly.term_node(c if s > 0 else caspoly.rneg(c), rest)
+        co[k] = co[k] + [(term, 1)] if k in co else [(term, 1)]
+        if k > top:
+            top = k
+    out = []
+    i = 0
+    while i <= top:
+        out.append(_S(_sum(co[i])) if i in co else _num(0))
+        i += 1
+    return out
+
+def _iszero(n):
+    return n == _num(0)
+
+def solve_sym(tree, var):
+    # roots of a degree <= 2 polynomial in var with letter coefficients
+    co = pcoeffs(tree, var)
+    if co is None or len(co) < 2:
+        return None
+    out = []
+    while len(co) > 1 and _iszero(co[0]):
+        if _num(0) not in out:
+            out.append(_num(0))
+        co = co[1:]
+    if len(co) == 2:
+        out.append(_S(_prod([(_num(-1), 1), (co[0], 1), (co[1], -1)])))
+    elif len(co) == 3:
+        c, b, a = co
+        if _iszero(b):
+            q = _S(_prod([(_num(-1), 1), (c, 1), (a, -1)]))
+            rt = _sqrt_sym(q, var)
+            out.append(_S(rt))
+            out.append(_S(_prod([(_num(-1), 1), (rt, 1)])))
+        else:
+            disc = _S(_sum([(_prod([(b, 1), (b, 1)]), 1),
+                            (_prod([(_num(4), 1), (a, 1), (c, 1)]), -1)]))
+            rt = _sqrt_sym(disc, var)
+            for sg in (1, -1):
+                top = _sum([(_prod([(_num(-1), 1), (b, 1)]), 1), (rt, sg)])
+                out.append(_S(_prod([(top, 1), (_num(2), -1), (a, -1)])))
+    elif len(co) > 3:
+        return None
+    return _dedupe(out)
+
+def _sqrt_sym(d, var):
+    # sqrt of a letter expression: (a+b)^2 - 4ab -> a - b, 4k^2 - 4k -> 2sqrt(k^2-k)
+    half = ('/', _num(1), _num(2))
+    d = _S(caspoly.expand(d))
+    for L in caseng.vars_in(d):
+        if L == var or L in ('pi', 'e'):
+            continue
+        co = pcoeffs(d, L)
+        if co is None or len(co) != 3:
+            continue
+        r2 = caseng._ratval(co[2])
+        if r2 is None or r2[0] <= 0:
+            continue
+        s2 = caseng._pow(co[2], half)
+        if caseng._ratval(s2) is None:
+            continue
+        cand = _S(_sum([(_prod([(s2, 1), (('v', L), 1)]), 1),
+                        (_prod([(co[1], 1), (_num(2), -1), (s2, -1)]), 1)]))
+        diff = _S(caspoly.expand(_sum([(_prod([(cand, 1), (cand, 1)]), 1), (d, -1)])))
+        if diff == _num(0):
+            return cand
+    # pull the square part of the numeric content out of the root
+    g = 0
+    den = 1
+    for t, sg in _terms(d):
+        r = caspoly.term_of(t)
+        if r is None:
+            g = 0
+            break
+        g = caseng.gcd(g, r[0][0])
+        den = den * r[0][1] // caseng.gcd(den, r[0][1])
+    if g > 1 or den > 1:
+        a, b = caseng._sqrt_split(g)
+        if a > 1:
+            inner = _S(caspoly.expand(_prod([(d, 1), (_num(a * a), -1)])))
+            return _S(_prod([(_num(a), 1), (caseng._pow(inner, half), 1)]))
+    return caseng._pow(d, half)
+
+def _surdfree(n):
+    if n[0] == 'sqrt':
+        return False
+    if n[0] == '^':
+        r = caseng._ratval(n[2])
+        if r is not None and r[1] != 1:
+            return False
+    if len(n) >= 2 and n[0] not in ('n', 'v') and not _surdfree(n[1]):
+        return False
+    if len(n) >= 3 and not _surdfree(n[2]):
+        return False
+    return True
+
+def factor_sym(tree, var):
+    # a x^k (x - r1)(x - r2) for a degree <= 2 polynomial in var with letter
+    # coefficients and surd-free roots; None if not that
+    co = pcoeffs(tree, var)
+    if co is None or len(co) < 2 or len(co) > 3:
+        return None
+    lead = co[len(co) - 1]
+    if caseng._ratval(lead) is None:
+        return None
+    rs = solve_sym(tree, var)
+    if rs is None:
+        return None
+    if len(rs) < len(co) - 1:
+        if len(co) == 3 and len(rs) == 1:
+            rs = [rs[0], rs[0]]
+        else:
+            return None
+    # built by hand so x leads each bracket: 3x(x+2p), not 3(2p+x)x
+    X = ('v', var)
+    rs = [r for r in rs if r == _num(0)] + [r for r in rs if r != _num(0)]
+    out = None if lead == _num(1) else lead
+    if len(rs) == 2 and rs[0] == rs[1] and rs[0] != _num(0):
+        r = rs[0]
+        f = ('+', X, _S(_prod([(_num(-1), 1), (r, 1)]))) if caseng._isneg(r) else ('-', X, r)
+        f = ('^', f, _num(2))
+        rs = []
+        out = f if out is None else ('*', out, f)
+    for r in rs:
+        if not _surdfree(r):
+            return None
+        if r == _num(0):
+            f = X
+        elif caseng._isneg(r):
+            f = ('+', X, _S(_prod([(_num(-1), 1), (r, 1)])))
+        else:
+            f = ('-', X, r)
+        out = f if out is None else ('*', out, f)
+    env = _letters(tree, var)
+    for xv in (0.37, 1.91):
+        env[var] = xv
+        try:
+            a = caseng.evalf(tree, xv, False, env)
+            b = caseng.evalf(out, xv, False, env)
+        except Exception:
+            return None
+        if abs(a - b) > 1e-9 * (1 + abs(a)):
+            return None
+    return out
 
 def quadratic(a, b, c):
     # exact roots of a x^2 + b x + c, a, b, c rational pairs
@@ -450,6 +634,10 @@ def roots(f, var, depth=0):
     p = caspoly.poly(g2, var)
     if p is not None:
         return poly_roots(p)
+    if _letters(g, var):
+        r = solve_sym(g2, var)
+        if r:
+            return r
     if _find(g, ('sinh', 'cosh', 'tanh'), []):
         g = _S(casalg.to_exp(g))
     for fn in (_expsolve, _logsolve, _surdsolve, _abssolve):

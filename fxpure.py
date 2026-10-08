@@ -2307,7 +2307,7 @@ def t_partial(f, a, b):
 def _newton(fx, fy, fxx, fxy, fyy, x, y):
     # 2-D Newton on grad z = 0; only a converged run counts
     i = 0
-    while i < 100:
+    while i < 60:
         a = _pt(fx, x, y)
         b = _pt(fy, x, y)
         if a is None or b is None:
@@ -2339,6 +2339,105 @@ def _newton(fx, fy, fxx, fxy, fyy, x, y):
         i += 1
     return None
 
+MAXSEED = 12        # analytic starting points tried before the grid
+SEEDN = 120         # samples of the 1-D scans over -10..10
+
+def _solve1(h, var):
+    # (var = r(other) solutions of h = 0, every solution found?); None if none
+    import cassolve
+    try:
+        co = cassolve.pcoeffs(h, var)
+        if co is not None and 2 <= len(co) <= 3:
+            rs = cassolve.solve_sym(h, var)
+            # a letter in the leading coefficient hides the case where it is 0
+            return (rs, caseng._ratval(co[len(co) - 1]) is not None) if rs else None
+        if not [v for v in caseng.vars_in(h) if v != var]:
+            return ([('n', r) for r in _scan1(h, var)], True)
+        if caseng.count_var(h, var) == 1:
+            inv = caseng.invert(h, var, '_z')
+            if inv is not None:
+                return ([caseng.simplify(caseng.subst(inv, '_z', ('n', 0)))], False)
+    except Exception:
+        pass
+    return None
+
+def _scan1(g, var):
+    # sign changes and touching zeros of g(var) on -10..10
+    out = []
+    xs = [-10.0 + 20.0 * i / SEEDN for i in range(SEEDN + 1)]
+    ys = [_ev(g, {var: x}) for x in xs]
+    i = 1
+    while i <= SEEDN and len(out) < 6:
+        y = ys[i]
+        py = ys[i - 1]
+        if y is not None and py is not None:
+            r = None
+            if y == 0:
+                r = xs[i]
+            elif py == 0:
+                r = None
+            elif (py < 0 < y) or (py > 0 > y):
+                r = cascalc._bisect(g, xs[i - 1], xs[i], False, var)
+            elif i < SEEDN and ys[i + 1] is not None and abs(y) < abs(py) and abs(y) < abs(ys[i + 1]):
+                r = cascalc._touch(g, xs[i - 1], xs[i + 1], False, var)
+            if r is not None:
+                r = cascalc._snap(g, r, False, var)
+                if not out or abs(out[len(out) - 1] - r) > 1e-6:
+                    out.append(r)
+        i += 1
+    return out
+
+def _seeds(fx, fy):
+    # Split one partial into factors and solve each exactly for x or y; along
+    # each curve the other partial is scanned.  -> (points, complete?) where
+    # complete means every factor was solved, so no grid search is needed.
+    import cassolve
+    out = []
+    for p, q in ((fx, fy), (fy, fx)):
+        raw = []
+        caseng._flatmul(caseng.simplify(p), 1, raw)
+        pts = []
+        complete = True
+        for h, sg in raw:
+            if sg < 0 or h[0] == 'exp' or not caseng.vars_in(h):
+                continue
+            if h[0] == '^' and caseng._ratval(h[2]) is not None and caseng._ratval(h[2])[0] > 0:
+                h = h[1]
+            best = None
+            for var, other in (('x', 'y'), ('y', 'x')):
+                if not cascalc.has_var(h, var):
+                    continue
+                got = _solve1(h, var)
+                if got is None:
+                    continue
+                score = (2 if got[1] else 0) + (1 if all([cassolve._surdfree(r) for r in got[0]]) else 0)
+                if best is None or score > best[0]:
+                    best = (score, var, other, got[0], got[1])
+            done = best is not None and best[4]
+            if best is not None:
+                score, var, other, rs, ok = best
+                for r in rs:
+                    if cascalc.has_var(r, var):
+                        done = False
+                        continue
+                    g = caseng.simplify(caseng.subst(q, var, r))
+                    if not cascalc.has_var(g, other):
+                        if _ev(g, {}) == 0:
+                            done = False
+                        continue
+                    for t in _scan1(g, other):
+                        v = _ev(r, {other: t})
+                        if v is not None:
+                            pts.append((v, t) if var == 'x' else (t, v))
+            if not done:
+                complete = False
+        pts.sort(key=lambda p: abs(p[0]) + abs(p[1]))
+        if complete or len(pts) > len(out):
+            out = pts
+        if complete:
+            return (out[:MAXSEED], len(out) <= MAXSEED)
+    return (out[:MAXSEED], False)
+
 def t_stat(f, a, b):
     _xy(f)
     fx = _diff(f, 'x')
@@ -2349,9 +2448,15 @@ def t_stat(f, a, b):
     starts = []
     if a is not None and b is not None:
         starts.append((a, b))
-    for sx in (-3.3, -1.4, 0.0, 1.3, 3.4):
-        for sy in (-3.6, -1.2, 0.0, 1.5, 3.1):
-            starts.append((sx, sy))
+    seeds, complete = _seeds(fx, fy)
+    seeds.sort(key=lambda p: abs(p[0]) + abs(p[1]))
+    for p in seeds:
+        if abs(p[0]) <= 10 and abs(p[1]) <= 10:
+            starts.append(p)
+    if not complete:
+        for sx in (-3.3, -1.4, 0.0, 1.3, 3.4):
+            for sy in (-3.6, -1.2, 0.0, 1.5, 3.1):
+                starts.append((sx, sy))
     found = []
     for sx, sy in starts:
         p = _newton(fx, fy, fxx, fxy, fyy, sx, sy)
@@ -2373,7 +2478,7 @@ def t_stat(f, a, b):
         out.append(_w('searched |x|, |y| <= 10 from starts in -4..4'))
         return out
     found.sort()
-    head = [str(len(found)) + ' stationary point' + ('' if len(found) == 1 else 's')]
+    head = []
     for x, y in found:
         z = _pt(f, x, y)
         A = _pt(fxx, x, y)
@@ -2382,6 +2487,10 @@ def t_stat(f, a, b):
         pt = '(' + _f(x) + ', ' + _f(y) + ', ' + ('?' if z is None else _f(_snap(z))) + ')'
         if A is None or B is None or C is None:
             head.append(pt + ' ?')
+            continue
+        tiny = max(abs(A), abs(B), abs(C))
+        if 0 < tiny < 1e-100 and (z is None or abs(z) < 1e-100):
+            # z and its derivatives have underflowed: not a real stationary point
             continue
         D = A * C - B * B
         if D > 1e-9:
@@ -2393,12 +2502,23 @@ def t_stat(f, a, b):
         head.append(pt + ' ' + kind)
         out.append(_w(pt + ': fxx=' + _f(A) + ' fyy=' + _f(C) + ' fxy=' + _f(B) +
                       ' D=' + _f(D)))
+    n = len([h for h in head if not isinstance(h, tuple)])
+    if n == 0:
+        out.insert(0, _warn('no stationary point found'))
+        out.append(_w('searched |x|, |y| <= 10 from starts in -4..4'))
+        return out
+    head.insert(0, str(n) + ' stationary point' + ('' if n == 1 else 's'))
     if len(found) >= 8:
         head.append(_warn('first 8 found; there may be more'))
     out.append(_w('D = fxx fyy - fxy^2: D > 0 max/min by'))
     out.append(_w('sign of fxx, D < 0 saddle; D = 0: look'))
     out.append(_w('at z along lines through the point'))
-    out.append(_w('Newton from starts in -4..4, |x|,|y| <= 10'))
+    if complete:
+        out.append(_w('along each curve where dz/dx or dz/dy'))
+        out.append(_w('is 0, for |x|, |y| <= 10'))
+    else:
+        out.append(_w('Newton from starts in -4..4 and where'))
+        out.append(_w('one partial is 0; |x|,|y| <= 10'))
     return head + out
 
 def t_tplane(f, a, b):

@@ -770,6 +770,9 @@ CASES += [
     ('73573-nov20', '5a', 'casui:CAS', 'solve exact f(x)=0', 'e^(-0.0435935x)=0.1', 'x = 52.8', None, False, False),
     ('73573-jun22', '7b', 'casui:CAS', 'solve exact f(x)=0', '0.2*x^1.5=60000', 'x = 4481', None, False, False),
     ('73571-jun18', '11b', 'casui:CAS', 'solve exact f(x)=0', '10+100(x/30)^3-50(x/30)^4=4.5*1.063^x', 'x = 49.009', None, False, False),
+    # letters as parameters in CAS solve and factorise
+    ('73572-jun19', '7bi', 'casui:CAS', 'solve exact f(x)=0', '3x^2+6p*x=0', 'x = -2*p', None, False, False),
+    ('73572-jun19', '7bi', 'casui:CAS', 'factorise', '3x^2+6p*x', '3*x*(x+2*p)', None, False, False),
     # real cube root
     ('73571-jun19', '15ai', 'casui:Calculate', 'Calculate', '(-3)^(1/3)', '-1.44224957', None, False, False),
 ]

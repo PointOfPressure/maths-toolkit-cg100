@@ -1331,6 +1331,9 @@ def _cas_op(op, tree, s):
     if op == 8:
         r = caspoly.factor(tree)
         if r is None:
+            import cassolve
+            r = cassolve.factor_sym(tree, 'x')
+        if r is None:
             return [('!', 'does not factorise over the rationals')]
         return [('m', r)]
     if op == 9:

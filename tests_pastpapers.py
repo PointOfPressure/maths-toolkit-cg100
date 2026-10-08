@@ -486,6 +486,11 @@ CASES += [
     ('y422-jun19', '3c', 'fstat', 'aX+bY+c', '2,20,0,133.25,51.1225,22.5,7.29,700', 'Var(W) = 3120'),
     # calculator nCr key
     ('y422-nov20', '1a', 'CALC', 'Calculate', '1/10C4', '1/210'),
+    # 3-D stationary points: seeded where one partial is 0; no underflow points
+    ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '(-6, 9, -54) saddle'),
+    ('y435-nov21', '1b', 'fxpure', 'Stationary points', 'x^3+x^2*y-2y^2', '2 stationary points'),
+    ('y435-jun22', '5a(iii)', 'fxpure', 'Stationary points', 'y*e^(-(x^2+2x+2)y)', '1 stationary point'),
+    ('y435-jun22', '5a(iii)', 'fxpure', 'Stationary points', 'y*e^(-(x^2+2x+2)y)', '(-1, 1, 0.368) max'),
 ]
 
 TOOLS = {}
@@ -563,6 +568,7 @@ NOT = [
     ('y435-jun19', '5d(ii)', 'CALC', 'Calculate', '21*3000+(37500-7500*1.08^21)', 'sqrt'),
     ('y422-jun19', '3c', 'fstat', 'aX+bY+c', '2,20,0,133.25,51.1225,22.5,7.29,700', 'sqrt'),
     ('y422-nov20', '1a', 'CALC', 'Calculate', '1/10C4', 'c'),
+    ('y435-jun22', '5a(iii)', 'fxpure', 'Stationary points', 'y*e^(-(x^2+2x+2)y)', '6.86'),
 ]
 
 def run(check):
