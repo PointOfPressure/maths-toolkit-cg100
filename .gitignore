@@ -12,3 +12,6 @@ desktop.ini
 
 # Rendered screens from casioshot.py
 shots/
+
+# Precompiled modules from deploy.sh
+build/

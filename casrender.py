@@ -8,33 +8,7 @@ DESC = {'large': 5, 'medium': 4, 'small': 2}
 EM   = {'large': 18, 'medium': 17, 'small': 10}
 AXIS = {'large': 5, 'medium': 4, 'small': 3}
 
-_WIDE = "mwMW@%"
-_NARROW = " iIjl1tfr.,;:!'|()[]{}/-"
-
-def cw(ch, size):
-    if size == 'small':
-        if ch in _WIDE:
-            return 8
-        if ch in _NARROW:
-            return 5
-        return 7
-    if size == 'large':
-        if ch in _WIDE:
-            return 21
-        if ch in _NARROW:
-            return 14
-        return 18
-    if ch in _WIDE:
-        return 12
-    if ch in _NARROW:
-        return 8
-    return 10
-
-def strw(s, size):
-    w = 0
-    for ch in s:
-        w += cw(ch, size)
-    return w
+from font import cw, strw
 
 def numstr(v):
     if isinstance(v, int):
@@ -164,11 +138,14 @@ def build(n, lvl):
 _MCACHE = {}
 
 def measure(b):
-    key = id(b)
-    v = _MCACHE.get(key)
-    if v is None:
-        v = _measure(b)
-        _MCACHE[key] = v
+    # cached by id; the entry keeps its box alive so an id is never reused
+    e = _MCACHE.get(id(b))
+    if e is not None and e[0] is b:
+        return e[1]
+    if len(_MCACHE) > 600:
+        _MCACHE.clear()
+    v = _measure(b)
+    _MCACHE[id(b)] = (b, v)
     return v
 
 def _measure(b):

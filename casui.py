@@ -52,23 +52,12 @@ DEG = False     # mirrors casutil.DEG so the home screen needs no engine
 # ---- keys -------------------------------------------------------------------
 # Arrows and DEL repeat while held, like the built-in apps.
 
-def _clock():
-    for name in ('time', 'utime'):
-        try:
-            m = __import__(name)
-        except Exception:
-            continue
-        if hasattr(m, 'ticks_ms'):
-            return m.ticks_ms
-        if hasattr(m, 'monotonic'):
-            return lambda: int(m.monotonic() * 1000)
-    return None
-
-_NOW = _clock()
+# There is no clock on the calculator, so a held key is timed in key polls
+# (each getkey is roughly 0.1 ms there).
 REPEAT = (UP, DOWN, LEFT, RIGHT, DEL)
-DELAY = 380     # ms before a held key repeats
-RATE = 60       # ms between repeats
-_HELD = [0, 0]  # key still down, time of its next repeat
+DELAY = 3000    # polls before a held key starts repeating
+RATE = 400      # polls between repeats
+_HELD = [0]     # key still down from the last press
 
 def readkey():
     k = getkey()
@@ -88,21 +77,23 @@ def wait_key():
 def next_key():
     k0 = _HELD[0]
     if k0:
-        rep = k0 in REPEAT and _NOW is not None
+        wait = DELAY if k0 > 0 else RATE
+        k0 = abs(k0)
+        rep = k0 in REPEAT
+        n = 0
         while True:
             k = readkey()
             if k != k0:
                 break
-            if rep and _NOW() >= _HELD[1]:
-                _HELD[1] = _NOW() + RATE
+            n += 1
+            if rep and n >= wait:
+                _HELD[0] = -k0      # repeating: next gap is RATE
                 return k0
         if k and k != HOME:
             _HELD[0] = k
-            _HELD[1] = _NOW() + DELAY if _NOW else 0
             return k
     k = wait_key()
     _HELD[0] = k
-    _HELD[1] = _NOW() + DELAY if _NOW else 0
     if k == HOME:
         wait_release()
         raise Home()
@@ -110,21 +101,7 @@ def next_key():
 
 # ---- drawing ------------------------------------------------------------------
 
-_WIDE = "mwMW@%"
-_NARROW = " iIjl1tfr.,;:!'|()[]{}/-"
-
-def char_w(ch, size):
-    if size == 'small':
-        return 8 if ch in _WIDE else (5 if ch in _NARROW else 7)
-    if size == 'large':
-        return 21 if ch in _WIDE else (14 if ch in _NARROW else 18)
-    return 12 if ch in _WIDE else (8 if ch in _NARROW else 10)
-
-def text_w(s, size):
-    w = 0
-    for c in s:
-        w += char_w(c, size)
-    return w
+from font import cw as char_w, strw as text_w
 
 def clip(s, maxpx, size):
     if text_w(s, size) <= maxpx:
@@ -162,26 +139,26 @@ def wrap(s, maxpx, size):
         out.append(line)
     return out
 
+# Each set_pixel costs tens of microseconds on the calculator, so: range loops,
+# outlines rather than fills, and nothing big repainted per key.
+
 def hline(x0, x1, y, c):
     sp = set_pixel
-    while x0 <= x1:
-        sp(x0, y, c)
-        x0 += 1
+    for x in range(x0, x1 + 1):
+        sp(x, y, c)
 
 def vline(x, y0, y1, c):
     sp = set_pixel
-    while y0 <= y1:
-        sp(x, y0, c)
-        y0 += 1
+    for y in range(y0, y1 + 1):
+        sp(x, y, c)
 
 def rect(x0, y0, x1, y1, c):
+    # small fills only (indicator chips, icon details)
     sp = set_pixel
-    while y0 <= y1:
-        x = x0
-        while x <= x1:
-            sp(x, y0, c)
-            x += 1
-        y0 += 1
+    r = range(x0, x1 + 1)
+    for y in range(y0, y1 + 1):
+        for x in r:
+            sp(x, y, c)
 
 def box(x0, y0, x1, y1, c):
     # rounded outline
@@ -193,12 +170,10 @@ def box(x0, y0, x1, y1, c):
     set_pixel(x0 + 1, y1 - 1, c); set_pixel(x1 - 1, y1 - 1, c)
 
 def rbox(x0, y0, x1, y1, c):
-    # filled, rounded corners
-    hline(x0 + 2, x1 - 2, y0, c)
-    hline(x0 + 1, x1 - 1, y0 + 1, c)
-    rect(x0, y0 + 2, x1, y1 - 2, c)
-    hline(x0 + 1, x1 - 1, y1 - 1, c)
-    hline(x0 + 2, x1 - 2, y1, c)
+    # filled, rounded corners; small areas only
+    hline(x0 + 1, x1 - 1, y0, c)
+    rect(x0, y0 + 1, x1, y1 - 1, c)
+    hline(x0 + 1, x1 - 1, y1, c)
 
 def line(x0, y0, x1, y1, c):
     dx = x1 - x0 if x1 > x0 else x0 - x1
@@ -253,28 +228,39 @@ def _ind(shift, alpha):
     return ''
 
 def status(title, shift=False, alpha=False, right=None):
-    rect(0, 0, W - 1, SBH - 1, BAR)
     hline(0, W - 1, SBH, LGREY)
     draw_string(6, 2, clip(title, 250, 'medium'), INK, 'medium')
+    _SB[0] = ''
+    _SB[1] = ''
     _status_right(_ind(shift, alpha), right)
 
+CHIPX = 262
+
 def _status_right(ind, right):
-    _SB[0] = ind
-    _SB[1] = right
-    x = W - 6
     s = right if right is not None else ('Deg' if DEG else 'Rad')
-    rect(262, 0, W - 1, SBH - 1, BAR)
-    x -= text_w(s, 'medium')
-    draw_string(x, 2, s, GREY, 'medium')
-    if ind:
-        x -= 22
-        rbox(x, 2, x + 15, 17, YEL if ind == 'S' else RED)
-        ctext(x + 8, 2, ind, INK if ind == 'S' else WHITE, 'medium')
+    if s != _SB[1]:
+        if _SB[1]:
+            draw_string(W - 6 - text_w(_SB[1], 'medium'), 2, _SB[1], WHITE, 'medium')
+        draw_string(W - 6 - text_w(s, 'medium'), 2, s, ORANGE if s == 'Busy' else GREY, 'medium')
+    if ind != _SB[0]:
+        if ind:
+            rbox(CHIPX, 2, CHIPX + 15, 17, YEL if ind == 'S' else RED)
+            ctext(CHIPX + 8, 2, ind, INK if ind == 'S' else WHITE, 'medium')
+        else:
+            rbox(CHIPX, 2, CHIPX + 15, 17, WHITE)
+    _SB[0] = ind
+    _SB[1] = s
+
+def busy():
+    # top-right marker while something slow runs, like the built-in apps
+    _status_right(_SB[0], 'Busy')
+    show_screen()
 
 def status_mode(shift, alpha, right=None):
     # repaint only the indicator corner when SHIFT / ALPHA changes
     ind = _ind(shift, alpha)
-    if ind != _SB[0] or right != _SB[1]:
+    s = right if right is not None else ('Deg' if DEG else 'Rad')
+    if ind != _SB[0] or s != _SB[1]:
         _status_right(ind, right)
         return True
     return False
@@ -282,22 +268,17 @@ def status_mode(shift, alpha, right=None):
 def header(title, right=None):
     status(title, False, False, right)
 
-def body_clear():
-    rect(0, TOP, W - 1, BOT, WHITE)
-
 # ---- popup ---------------------------------------------------------------------
 
 def flash(msg):
-    lines = wrap(msg, 320, 'medium')[:4]
-    h = 18 + 19 * len(lines)
-    y0 = 96 - h // 2
-    rbox(28, y0 + 2, 359, y0 + h + 2, LGREY)     # shadow
-    rbox(26, y0, 357, y0 + h, WHITE)
-    box(26, y0, 357, y0 + h, RED)
-    y = y0 + 9
+    # a message on its own screen; the caller redraws after
+    lines = wrap(msg, 340, 'medium')[:5]
+    clear_screen()
+    y = 96 - 10 * len(lines)
+    box(14, y - 12, W - 15, y + 20 * len(lines) + 8, RED)
     for ln in lines:
         ctext(192, y, ln, RED, 'medium')
-        y += 19
+        y += 20
     show_screen()
     next_key()
     wait_release()
@@ -309,6 +290,18 @@ class Home(BaseException):
 # ---- grids ----------------------------------------------------------------------
 # Every menu is a grid. Word tiles for lists of options, icon tiles for the home
 # screen. Moving repaints the two tiles involved; scrolling repaints the body.
+
+_WRAPS = {}     # (label, width) -> lines; wrapping is slow on the calculator
+
+def _label_lines(label, width):
+    key = (label, width)
+    ls = _WRAPS.get(key)
+    if ls is None:
+        ls = wrap(label, width, 'medium')
+        if len(ls) > 2:
+            ls = [ls[0], clip(' '.join(ls[1:]), width, 'medium')]
+        _WRAPS[key] = ls
+    return ls
 
 class Grid:
     def __init__(self, title, tiles, cols, rows, icons):
@@ -326,10 +319,7 @@ class Grid:
         self.lines = []
         if not icons:
             for label in tiles:
-                ls = wrap(label, self.tw - 10, 'medium')
-                if len(ls) > 2:
-                    ls = [ls[0], clip(' '.join(ls[1:]), self.tw - 10, 'medium')]
-                self.lines.append(ls)
+                self.lines.append(_label_lines(label, self.tw - 10))
 
     def xy(self, i):
         return ((i % self.cols) * self.tw, TOP + (i // self.cols - self.top) * self.th)
@@ -349,12 +339,13 @@ class Grid:
             return
         ls = self.lines[i]
         if on:
-            rbox(x0 + 2, y0 + 2, x1 - 2, y1 - 2, ACC)
-            c = WHITE
+            box(x0 + 2, y0 + 2, x1 - 2, y1 - 2, ACC)
+            box(x0 + 3, y0 + 3, x1 - 3, y1 - 3, ACC)
+            c = ACC
         else:
-            if not full:
-                rbox(x0 + 2, y0 + 2, x1 - 2, y1 - 2, WHITE)
             box(x0 + 2, y0 + 2, x1 - 2, y1 - 2, LGREY)
+            if not full:
+                box(x0 + 3, y0 + 3, x1 - 3, y1 - 3, WHITE)
             c = INK
         y = y0 + (self.th - 18 * len(ls)) // 2
         for s in ls:
@@ -364,12 +355,14 @@ class Grid:
     def scrollbar(self):
         if not self.bar:
             return
-        x = W - 4
-        rect(x, TOP, x + 2, BOT, BAR)
+        x = W - 3
+        vline(x, TOP, BOT, LGREY)
         span = BOT - TOP + 1
         t0 = TOP + span * self.top // self.nrows
         t1 = TOP + span * (self.top + self.rows) // self.nrows - 1
-        rect(x, t0, x + 2, t1 if t1 <= BOT else BOT, ACC)
+        t1 = t1 if t1 <= BOT else BOT
+        vline(x, t0, t1, ACC)
+        vline(x + 1, t0, t1, ACC)
 
     def draw(self, sel):
         clear_screen()
@@ -454,8 +447,18 @@ def grid_run(g, sel):
             g.tile(sel, True, False)
         show_screen()
 
+_COLS = {}
+
 def _cols_for(labels):
     # three across when every label fits on two lines, else two
+    key = labels[0] + labels[-1] + str(len(labels))
+    c = _COLS.get(key)
+    if c is None:
+        c = _cols3(labels)
+        _COLS[key] = c
+    return c
+
+def _cols3(labels):
     for s in labels:
         if len(wrap(s, 118, 'medium')) > 2:
             return 2
@@ -492,24 +495,21 @@ def settings():
 def ic_calc(cx, cy):
     x0 = cx - 15
     y0 = cy - 20
-    rect(x0, y0, x0 + 30, y0 + 40, (60, 70, 90))
-    rect(x0 + 4, y0 + 4, x0 + 26, y0 + 13, (190, 225, 200))
-    draw_string(x0 + 14, y0 + 3, '42', (30, 60, 40), 'small')
-    r = 0
-    while r < 3:
-        c = 0
-        while c < 3:
-            kx = x0 + 4 + c * 8
+    box(x0, y0, x0 + 30, y0 + 40, (60, 70, 90))
+    box(x0 + 1, y0 + 1, x0 + 29, y0 + 39, (60, 70, 90))
+    box(x0 + 4, y0 + 4, x0 + 26, y0 + 13, GREEN)
+    for r in range(3):
+        for c in range(3):
+            kx = x0 + 5 + c * 8
             ky = y0 + 18 + r * 7
-            rect(kx, ky, kx + 5, ky + 4, ORANGE if (r == 2 and c == 2) else (220, 222, 230))
-            c += 1
-        r += 1
+            rect(kx, ky, kx + 4, ky + 3, ORANGE if (r == 2 and c == 2) else GREY)
 
 def ic_cas(cx, cy):
-    rect(cx - 21, cy - 16, cx + 21, cy + 16, PURPLE)
-    ctext(cx, cy - 13, 'd', WHITE, 'medium')
-    hline(cx - 12, cx + 12, cy + 1, WHITE)
-    ctext(cx, cy + 2, 'dx', WHITE, 'medium')
+    box(cx - 21, cy - 16, cx + 21, cy + 16, PURPLE)
+    box(cx - 20, cy - 15, cx + 20, cy + 15, PURPLE)
+    ctext(cx, cy - 14, 'd', PURPLE, 'medium')
+    hline(cx - 11, cx + 11, cy + 1, PURPLE)
+    ctext(cx, cy + 2, 'dx', PURPLE, 'medium')
 
 def ic_graph(cx, cy):
     vline(cx - 16, cy - 19, cy + 19, GREY)
@@ -525,8 +525,9 @@ def ic_graph(cx, cy):
         x += 3
 
 def ic_solve(cx, cy):
-    rect(cx - 21, cy - 14, cx + 21, cy + 14, TEAL)
-    ctext(cx, cy - 8, 'x=?', WHITE, 'medium')
+    box(cx - 21, cy - 14, cx + 21, cy + 14, TEAL)
+    box(cx - 20, cy - 13, cx + 20, cy + 13, TEAL)
+    ctext(cx, cy - 8, 'x=?', TEAL, 'medium')
 
 def ic_pi(cx, cy):
     rect(cx - 17, cy - 15, cx + 17, cy - 11, ACC)
@@ -545,10 +546,11 @@ def ic_argand(cx, cy):
     draw_string(cx + 12, cy + 2, 'z', GREEN, 'medium')
 
 def ic_book(cx, cy):
-    rect(cx - 16, cy - 19, cx + 16, cy + 19, ORANGE)
-    rect(cx - 11, cy - 16, cx + 13, cy + 16, (255, 245, 225))
+    box(cx - 16, cy - 19, cx + 16, cy + 19, ORANGE)
+    box(cx - 15, cy - 18, cx + 15, cy + 18, ORANGE)
+    vline(cx - 10, cy - 18, cy + 18, ORANGE)
     for y in (cy - 10, cy - 4, cy + 2, cy + 8):
-        hline(cx - 7, cx + 9, y, (190, 140, 80))
+        hline(cx - 6, cx + 10, y, (190, 140, 80))
 
 def ic_angle(cx, cy):
     ox = cx - 16
@@ -593,6 +595,28 @@ def _field_at(ed):
         i += 1
     return n
 
+_INP = {}       # what the input screen shows now, for repainting only what changed
+
+def _chips(ed, names, y):
+    # (x, y, text, colour) for the field values under the editor
+    import nat
+    out = []
+    if not names:
+        return out
+    parts = _split(nat.lin(ed.root)) if ed.root else []
+    cur = _field_at(ed)
+    i = 0
+    x = 8
+    while i < len(names) and y < BOT - 16:
+        s = clip(names[i] + ' = ' + (parts[i] if i < len(parts) else ''), 118, 'medium')
+        out.append((x, y, s, ACC if i == cur else (INK if i < len(parts) else LGREY)))
+        x += 124
+        i += 1
+        if i % 3 == 0:
+            x = 8
+            y += 20
+    return out
+
 def _draw_input(label, spec, ed, shift, alpha, names):
     import nat
     clear_screen()
@@ -602,22 +626,38 @@ def _draw_input(label, spec, ed, shift, alpha, names):
     base = TOP + 34 + (a - 13 if a > 13 else 0)
     box(3, TOP + 23, W - 4, base + d + 7, ACC)
     nat.draw(ed, ed.root, 10, base, 362)
-    y = base + d + 14
-    if names:
-        parts = _split(nat.lin(ed.root)) if ed.root else []
-        cur = _field_at(ed)
-        i = 0
-        x = 8
-        while i < len(names) and y < BOT - 16:
-            s = names[i] + ' = ' + (parts[i] if i < len(parts) else '')
-            s = clip(s, 118, 'medium')
-            draw_string(x, y, s, ACC if i == cur else (INK if i < len(parts) else LGREY), 'medium')
-            x += 124
-            i += 1
-            if i % 3 == 0:
-                x = 8
-                y += 20
+    chips = _chips(ed, names, base + d + 14)
+    for x, y, t, c in chips:
+        draw_string(x, y, t, c, 'medium')
+    _INP['shown'] = (nat.copy(ed.root), base, nat.LAST[0], nat.LAST[1], a, d, chips)
     show_screen()
+
+def _input_fast(ed, names):
+    # only the typed row and changed field values are repainted
+    import nat
+    sh = _INP.get('shown')
+    if sh is None:
+        return False
+    row, base, dx, caret, a0, d0, chips = sh
+    w, a, d = nat.measure(ed.root, 0)
+    if a != a0 or d != d0:
+        return False
+    nat.undraw(row, 10, base, dx, caret, WHITE)
+    new = _chips(ed, names, base + d + 14)
+    i = 0
+    while i < len(new):
+        if i >= len(chips) or chips[i] != new[i]:
+            if i < len(chips):
+                x, y, t, c = chips[i]
+                draw_string(x, y, t, WHITE, 'medium')
+            x, y, t, c = new[i]
+            draw_string(x, y, t, c, 'medium')
+        i += 1
+    nat.draw(ed, ed.root, 10, base, 362)
+    _INP['shown'] = (nat.copy(ed.root), base, nat.LAST[0], nat.LAST[1], a, d, new)
+    status_mode(False, False)
+    show_screen()
+    return True
 
 def _split(text):
     import casutil
@@ -667,10 +707,12 @@ def input_line(label, spec, last=''):
     alpha = False
     names = _fields(spec)
     dirty = True
+    quick = False
     while True:
-        if dirty:
+        if dirty and not (quick and _input_fast(ed, names)):
             _draw_input(label, spec, ed, shift, alpha, names)
         dirty = True
+        quick = False
         k = next_key()
         if k == SHIFT or k == ALPHA:
             if k == SHIFT:
@@ -700,6 +742,7 @@ def input_line(label, spec, last=''):
             _LAST[key] = nat.copy(ed.root)
             wait_release()
             return nat.lin(ed.root)
+        quick = k != MENU and k != TOOLS
         if not edit_key(ed, k, shift, alpha) and not shift and not alpha:
             dirty = False
             continue
@@ -711,7 +754,6 @@ def input_line(label, spec, last=''):
 def _blocks(lines, mode):
     import casrender
     import caseng
-    casrender._MCACHE.clear()   # keyed by id(); stale entries from freed boxes overlap text
     out = []
     for ln in lines:
         if isinstance(ln, tuple):
@@ -822,6 +864,8 @@ def result(label, text, lines_fn):
                 full = mode == 2
                 casutil.FULL = full
                 if full not in raw:
+                    if more:
+                        busy()
                     raw[full] = lines_fn if not more else lines_fn()
                 blocks = _blocks(raw[full], mode)
                 if not blocks:
@@ -946,47 +990,55 @@ def _ans_box(form):
 def _draw_calc(ed, shift, alpha):
     import nat
     import casrender
-    casrender._MCACHE.clear()
     clear_screen()
     status('Calculate', shift, alpha)
     fresh = CALC.get('fresh')
     editing = CALC.get('editing')
-    items = []
     hist = HIST if (fresh or not editing) else HIST[:-1]
-    for e in hist:
-        forms = e[1]
-        note = None
-        if e[2] != len(forms) - 1 and forms[-1][0] == 'a':
-            note = clip('= ' + forms[-1][1], 372, 'medium')
-        items.append((e[0], _ans_box(forms[e[2]]), None, note))
-    if not fresh:
-        items.append((ed.root, None, ed, None))
-    # lay out from the newest entry upwards
+    # lay out from the newest entry upwards; only what fits is measured, and a
+    # history entry's layout is worked out once and kept with it
     blocks = []
     total = 0
-    j = len(items) - 1
+    if not fresh:
+        w, a, d = nat.measure(ed.root, 0)
+        blocks.append((ed.root, None, ed, None, a, d, a + d + 4))
+        total = a + d + 4
+    j = len(hist) - 1
     while j >= 0:
-        row, ans, e, note = items[j]
-        w, a, d = nat.measure(row, 0)
-        h = a + d + 4
-        if ans is not None:
-            h += ans[3] + ans[4] + 4
-        if note:
-            h += 18
+        e = hist[j]
+        if len(e) < 4:
+            e.append({})
+        c = e[3]
+        lay = c.get(e[2])
+        if lay is None:
+            forms = e[1]
+            note = None
+            if e[2] != len(forms) - 1 and forms[-1][0] == 'a':
+                note = clip('= ' + forms[-1][1], 372, 'medium')
+            ans = _ans_box(forms[e[2]])
+            w, a, d = nat.measure(e[0], 0)
+            h = a + d + 4 + ans[3] + ans[4] + 4 + (18 if note else 0)
+            lay = (ans, note, a, d, h)
+            c[e[2]] = lay
+        ans, note, a, d, h = lay
         if blocks and total + h > BOT - TOP - 2:
             break
-        blocks.insert(0, (row, ans, e, note, a, d, h))
+        blocks.insert(0, (e[0], ans, None, note, a, d, h))
         total += h
         j -= 1
     y = TOP + 2
     if total > BOT - TOP - 2:
         y = BOT - total
     n = 0
+    CALC['shown'] = None
     for row, ans, e, note, a, d, h in blocks:
         last = n == len(blocks) - 1
         if n:
-            hline(6, 377, y - 2, (235, 236, 240))
+            for x in range(6, 378, 3):
+                set_pixel(x, y - 2, LGREY)
         nat.draw(e, row, 6, y + a, 370, BLACK if (e is not None or last) else GREY)
+        if e is not None:
+            CALC['shown'] = (nat.copy(row), y + a, nat.LAST[0], nat.LAST[1], a, d)
         if ans is not None:
             kind, p, w, aa, ad = ans
             yb = y + a + d + 4 + aa
@@ -1001,7 +1053,25 @@ def _draw_calc(ed, shift, alpha):
         n += 1
     show_screen()
 
+def _calc_fast(ed):
+    # a key that only changed the line being typed: undraw it, draw it again
+    import nat
+    sh = CALC.get('shown')
+    if sh is None or CALC.get('fresh'):
+        return False
+    row, base, dx, caret, a0, d0 = sh
+    w, a, d = nat.measure(ed.root, 0)
+    if a != a0 or d != d0:
+        return False
+    nat.undraw(row, 6, base, dx, caret, WHITE)
+    nat.draw(ed, ed.root, 6, base, 370, BLACK)
+    CALC['shown'] = (nat.copy(ed.root), base, nat.LAST[0], nat.LAST[1], a, d)
+    status_mode(False, False)
+    show_screen()
+    return True
+
 def calc_section():
+    busy()
     import nat
     ed = CALC.get('ed')
     if ed is None:
@@ -1011,10 +1081,12 @@ def calc_section():
     shift = False
     alpha = False
     dirty = True
+    quick = False
     while True:
-        if dirty:
+        if dirty and not (quick and _calc_fast(ed)):
             _draw_calc(ed, shift, alpha)
         dirty = True
+        quick = False
         k = next_key()
         if k == SHIFT or k == ALPHA:
             if k == SHIFT:
@@ -1040,6 +1112,7 @@ def calc_section():
             if nat.empty_hole(ed.root):
                 flash('fill in the empty box')
                 continue
+            busy()
             forms = _forms(nat.lin(ed.root))
             entry = [nat.copy(ed.root), forms, 0]
             if CALC.get('editing') and HIST:
@@ -1088,6 +1161,7 @@ def calc_section():
                 CALC['editing'] = False
         if k == UP or k == DOWN:
             if not fresh and ed.vert(k == UP):
+                quick = True
                 continue
             if not fresh and ed.root:
                 continue    # never swap out a line that is being typed
@@ -1099,6 +1173,7 @@ def calc_section():
                 CALC['fresh'] = False
                 CALC['editing'] = False
             continue
+        quick = k != MENU and k != TOOLS
         if edit_key(ed, k, shift, alpha):
             CALC['fresh'] = False
         shift = False
@@ -1358,6 +1433,7 @@ def _run_op(op, tree, s):
         result(CAS_OPS[op], 'f(x) = ' + s, lines)
 
 def cas_section():
+    busy()
     op = 0
     while True:
         got = _read('CAS', 'f(x)')
@@ -1371,6 +1447,7 @@ def cas_section():
             _run_op(op, tree, s)
 
 def solve_section():
+    busy()
     while True:
         got = _read('Solve', 'equation in x (= allowed)')
         if got is None:
@@ -1378,6 +1455,7 @@ def solve_section():
         _run_op(19, got[1], got[0])
 
 def graph_section():
+    busy()
     import plot
     while True:
         got = _read('Graph', 'y = f(x)')
@@ -1440,10 +1518,21 @@ FURTHER = (
 )
 
 def _tools(code, title, mod):
-    for c, t, tools in __import__(mod).SECTIONS:
+    # (label, spec) pairs from the module's small index file
+    for c, t, tools in __import__('ix_' + mod).T:
         if c == code and t == title:
             return tools
     return []
+
+def _tool_fn(code, title, mod, i):
+    # the tool's function; the module itself loads on first use
+    def run(*vals):
+        busy()
+        for c, t, tools in __import__(mod).SECTIONS:
+            if c == code and t == title:
+                return tools[i][2](*vals)
+        raise ValueError('tool missing')
+    return run
 
 _SEL = {}       # grid title -> last tile picked, so coming back lands where you were
 
@@ -1460,10 +1549,10 @@ def _tools_menu(code, title, mod):
         sel = remembered(title, labels)
         if sel < 0:
             return
-        label, spec, fn = tools[sel]
+        label, spec = tools[sel]
         try:
             import casutil
-            casutil.run_tool(label, spec, fn)
+            casutil.run_tool(label, spec, _tool_fn(code, title, mod, sel))
         except Exception as e:
             flash('tool error: ' + str(e))
 
@@ -1485,6 +1574,7 @@ def paper_section(title, papers):
         qual_section(name, secs)
 
 def formulae_section():
+    busy()
     import formulae
     sel = 0
     while True:

@@ -1,0 +1,2 @@
+import casui
+casui.main()

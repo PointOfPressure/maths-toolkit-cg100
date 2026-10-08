@@ -11,19 +11,7 @@ ASC = {'medium': 13, 'small': 8}
 DESC = {'medium': 4, 'small': 2}
 AXIS = {'medium': 5, 'small': 3}
 
-_WIDE = "mwMW@%"
-_NARROW = " iIjl1tfr.,;:!'|()[]{}/-"
-
-def cw(ch, size):
-    if size == 'small':
-        return 8 if ch in _WIDE else (5 if ch in _NARROW else 7)
-    return 12 if ch in _WIDE else (8 if ch in _NARROW else 10)
-
-def strw(s, size):
-    w = 0
-    for ch in s:
-        w += cw(ch, size)
-    return w
+from font import cw, strw
 
 INK = (0, 0, 0)
 HOLE = (150, 160, 190)
@@ -297,7 +285,19 @@ def _tok(tok, prev):
         return tok
     return SHOW.get(tok, tok)
 
+_MC = [None]    # measure cache, live only during one draw (rows change between keys)
+
 def measure(row, lvl):
+    mc = _MC[0]
+    if mc is not None:
+        v = mc.get((id(row), lvl))
+        if v is None:
+            v = _measure(row, lvl)
+            mc[(id(row), lvl)] = v
+        return v
+    return _measure(row, lvl)
+
+def _measure(row, lvl):
     sz = _sz(lvl)
     if not row:
         return (8, ASC[sz], DESC[sz])
@@ -315,12 +315,20 @@ def measure(row, lvl):
             d = idd
     return (w, a, d)
 
+_SW = {}        # (shown token, size) -> width
+
 def mitem(it, lvl, prev=None):
     sz = _sz(lvl)
     if isinstance(it, str):
         if it == '*':
             return (7, ASC[sz], DESC[sz])
-        return (strw(_tok(it, prev), sz), ASC[sz], DESC[sz])
+        t = _tok(it, prev)
+        key = (t, sz)
+        w = _SW.get(key)
+        if w is None:
+            w = strw(t, sz)
+            _SW[key] = w
+        return (w, ASC[sz], DESC[sz])
     k = it[0]
     if k == 'F':
         nw, na, nd = measure(it[1], lvl)
@@ -361,9 +369,17 @@ class Pen:
 
 def _text(pen, x, y, s, sz, c):
     x += pen.dx
-    if pen.dry or x < 0 or x > 383:
+    if pen.dry or x > 383:
         return
-    draw_string(x, y, s, c, sz)
+    while s and x < 0:
+        x += cw(s[0], sz)
+        s = s[1:]
+    end = x + strw(s, sz)
+    while s and end > 384:
+        end -= cw(s[-1], sz)
+        s = s[:-1]
+    if s:
+        draw_string(x, y, s, c, sz)
 
 def _px(pen, x, y, c):
     x += pen.dx
@@ -371,14 +387,25 @@ def _px(pen, x, y, c):
         set_pixel(x, y, c)
 
 def _hl(pen, x0, x1, y, c):
-    while x0 <= x1:
-        _px(pen, x0, y, c)
-        x0 += 1
+    if pen.dry:
+        return
+    x0 += pen.dx
+    x1 += pen.dx
+    if x0 < 0:
+        x0 = 0
+    if x1 > 383:
+        x1 = 383
+    sp = set_pixel
+    for x in range(x0, x1 + 1):
+        sp(x, y, c)
 
 def _vl(pen, x, y0, y1, c):
-    while y0 <= y1:
-        _px(pen, x, y0, c)
-        y0 += 1
+    x += pen.dx
+    if pen.dry or x < 0 or x > 383:
+        return
+    sp = set_pixel
+    for y in range(y0, y1 + 1):
+        sp(x, y, c)
 
 def _line(pen, x0, y0, x1, y1, c):
     dx = x1 - x0 if x1 > x0 else x0 - x1
@@ -401,11 +428,16 @@ def _line(pen, x0, y0, x1, y1, c):
 def draw_row(pen, row, x, base, lvl):
     sz = _sz(lvl)
     w, a, d = measure(row, lvl)
+    ws = []
+    prev = None
+    for it in row:
+        ws.append(mitem(it, lvl, prev)[0])
+        prev = it
     if pen.ed is not None and row is pen.ed.row:
         cx = x
         n = 0
         while n < pen.ed.i:
-            cx += mitem(row[n], lvl, row[n - 1] if n else None)[0]
+            cx += ws[n]
             n += 1
         if not row:
             cx += 3
@@ -418,12 +450,26 @@ def draw_row(pen, row, x, base, lvl):
         _vl(pen, x + 1, top, base + DESC[sz] - 1, c)
         _vl(pen, x + 6, top, base + DESC[sz] - 1, c)
         return
+    # runs of plain tokens go out as one string: each draw_string is slow
+    buf = ''
+    bx = x
     prev = None
+    n = 0
     for it in row:
-        iw = mitem(it, lvl, prev)[0]
-        draw_item(pen, it, x, base, lvl, prev)
+        if isinstance(it, str) and it != '*':
+            if not buf:
+                bx = x
+            buf += _tok(it, prev)
+        else:
+            if buf:
+                _text(pen, bx, base - ASC[sz], buf, sz, pen.color)
+                buf = ''
+            draw_item(pen, it, x, base, lvl, prev)
         prev = it
-        x += iw
+        x += ws[n]
+        n += 1
+    if buf:
+        _text(pen, bx, base - ASC[sz], buf, sz, pen.color)
 
 def draw_item(pen, it, x, base, lvl, prev=None):
     sz = _sz(lvl)
@@ -481,11 +527,18 @@ def draw_item(pen, it, x, base, lvl, prev=None):
     draw_row(pen, it[1], x + 4, base, lvl)
     _vl(pen, x + aw + 5, base - aa - 1, base + ad, c)
 
-def draw(ed, row, x, base, maxw, color=INK):
-    # draws a row, scrolled so the caret stays in view; returns (w, asc, desc)
+LAST = [0, None]    # scroll and caret of the last draw, so it can be undrawn
+
+def draw(ed, row, x, base, maxw, color=INK, dx=None):
+    # draws a row, scrolled so the caret stays in view; returns (w, asc, desc).
+    # dx given: draw at that scroll with no caret (used to undraw in white)
+    _MC[0] = {}
     w, a, d = measure(row, 0)
     pen = Pen(ed, 0, color)
-    if ed is not None and w > maxw:
+    if dx is not None:
+        pen.dx = dx
+        pen.ed = None
+    elif ed is not None and w > maxw:
         pen.dry = True
         draw_row(pen, row, x, base, 0)
         cx = pen.caret[0] if pen.caret else x + w
@@ -493,11 +546,27 @@ def draw(ed, row, x, base, maxw, color=INK):
             pen.dx = maxw - 12 - (cx - x)
         pen.dry = False
     draw_row(pen, row, x, base, 0)
+    caret = None
     if pen.caret is not None:
         cx, top, bot = pen.caret
+        caret = (cx + pen.dx, top, bot)
         _vl(pen, cx, top - 1, bot, CARET)
         _vl(pen, cx + 1, top - 1, bot, CARET)
+    LAST[0] = pen.dx
+    LAST[1] = caret
+    _MC[0] = None
     return (w, a, d)
+
+def undraw(row, x, base, dx, caret, bg):
+    # paint over a row drawn earlier, in the background colour
+    draw(None, row, x, base, 9999, bg, dx)
+    if caret is not None:
+        cx, top, bot = caret
+        y = top - 1
+        while y <= bot:
+            set_pixel(cx, y, bg)
+            set_pixel(cx + 1, y, bg)
+            y += 1
 
 # ---- keys -------------------------------------------------------------------------
 

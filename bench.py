@@ -1,188 +1,152 @@
-# Speed test: about 20 seconds, no input until the results.
-# Results also go to bench.txt if the calculator lets Python write files.
+# Stopwatch speed test. Each test waits for EXE, runs, then says DONE.
+# Time each one from EXE to DONE (roughly is fine).
 from casioplot import *
 
-OUT = []
+BLK = (0, 0, 0)
 
-def say(s):
-    OUT.append(s)
-    print(s)
+def key():
+    k = getkey()
+    while k:
+        k = getkey()
+    while not k:
+        k = getkey()
+    return k
 
-def _clock():
-    for name in ('time', 'utime'):
-        try:
-            m = __import__(name)
-        except Exception:
-            continue
-        if hasattr(m, 'ticks_ms'):
-            return m.ticks_ms, name + '.ticks_ms'
-        if hasattr(m, 'monotonic'):
-            return (lambda: int(m.monotonic() * 1000)), name + '.monotonic'
-        if hasattr(m, 'time'):
-            return (lambda: int(m.time() * 1000)), name + '.time'
-    return None, 'none'
+def screen(lines):
+    clear_screen()
+    y = 4
+    for s in lines:
+        draw_string(6, y, s, BLK, 'medium')
+        y += 20
+    show_screen()
 
-CLK, CLKNAME = _clock()
-
-def us(fn, n):
-    # microseconds per call
-    if CLK is None:
-        return -1
-    t0 = CLK()
-    fn(n)
-    return int((CLK() - t0) * 1000.0 / n)
-
-def b_pixel(n):
+def t_pixels():
+    # 2000 single pixels, shown once
     sp = set_pixel
     c = (40, 120, 220)
     i = 0
-    while i < n:
-        sp(i % 384, 100 + (i // 384) % 50, c)
+    while i < 2000:
+        sp(100 + i % 100, 100 + i // 100, c)
         i += 1
+    show_screen()
 
-def b_loop(n):
-    i = 0
-    while i < n:
-        i += 1
-
-def b_str(n):
-    ds = draw_string
-    i = 0
-    while i < n:
-        ds(10, 60, 'Calculate', (0, 0, 0), 'medium')
-        i += 1
-
-def b_strl(n):
-    ds = draw_string
-    i = 0
-    while i < n:
-        ds(10, 60, 'Calculate', (0, 0, 0), 'large')
-        i += 1
-
-def b_clear(n):
-    i = 0
-    while i < n:
+def t_text():
+    # 10 screens of 20 words
+    n = 0
+    while n < 10:
         clear_screen()
-        i += 1
-
-def b_show(n):
-    i = 0
-    while i < n:
+        y = 0
+        while y < 20:
+            draw_string(6 + n, y * 9, 'Coordinate geometry', BLK, 'medium')
+            y += 1
         show_screen()
-        i += 1
+        n += 1
 
-def b_key(n):
-    gk = getkey
+def t_show():
+    n = 0
+    while n < 50:
+        show_screen()
+        n += 1
+
+def t_keys():
+    n = 0
+    while n < 1000:
+        getkey()
+        n += 1
+
+def t_loop():
     i = 0
-    while i < n:
-        gk()
+    while i < 20000:
         i += 1
 
-def b_getpx(n):
-    gp = get_pixel
-    i = 0
-    while i < n:
-        gp(i % 384, 50)
-        i += 1
+def t_import():
+    import caseng
 
-def extent(s, size):
-    # draw s at (20, 40), return (width, height, inked pixels)
-    clear_screen()
-    draw_string(20, 40, s, (0, 0, 0), size)
-    x0 = 999; x1 = -1; y0 = 999; y1 = -1; ink = 0
-    y = 30
-    while y < 90:
-        x = 10
-        while x < 380:
-            p = get_pixel(x, y)
-            if p is not None and p[0] < 128:
-                ink += 1
-                if x < x0: x0 = x
-                if x > x1: x1 = x
-                if y < y0: y0 = y
-                if y > y1: y1 = y
-            x += 1
+TESTS = (('A', '2000 pixels', t_pixels), ('B', '10 screens of text', t_text),
+         ('C', '50 show_screen', t_show), ('D', '1000 key reads', t_keys),
+         ('E', '20000 empty loops', t_loop), ('F', 'load caseng', t_import))
+
+def ink(x, y):
+    p = get_pixel(x, y)
+    return p is not None and p[0] < 160 and p[2] < 160
+
+def col(x, y0, y1):
+    out = []
+    y = y0
+    while y <= y1:
+        if ink(x, y):
+            out.append(y)
         y += 1
-    if x1 < 0:
-        return (0, 0, 0)
-    return (x1 - x0 + 1, y1 - y0 + 1, ink, x0 - 20, y0 - 40)
+    return out
 
-def imp(name):
-    if CLK is None:
-        __import__(name)
-        return -1
-    t0 = CLK()
-    __import__(name)
-    return CLK() - t0
+def row(y, x0, x1):
+    n = 0
+    first = -1
+    last = -1
+    x = x0
+    while x <= x1:
+        if ink(x, y):
+            n += 1
+            if first < 0:
+                first = x
+            last = x
+        x += 1
+    return (first, last, n)
+
+def probes():
+    res = []
+    # does text paint a white background over what is there?
+    clear_screen()
+    set_pixel(105, 108, (255, 0, 0))
+    draw_string(100, 100, '  ', BLK, 'medium')
+    p = get_pixel(105, 108)
+    res.append('opaque ' + str(p))
+    for size in ('medium', 'small'):
+        # solid block glyph
+        clear_screen()
+        draw_string(100, 100, '\xe2\x96\x88\xe2\x96\x88', BLK, size)
+        c = col(103, 94, 126)
+        r = row(108 if size == 'medium' else 104, 96, 140)
+        res.append(size + ' block col ' + (str(c[0] - 100) + '..' + str(c[-1] - 100) if c else 'none') + ' row ' + str(r))
+        # underscore line
+        clear_screen()
+        draw_string(100, 100, '_____', BLK, size)
+        c = col(104, 94, 126)
+        r = row(c[-1], 96, 170) if c else None
+        res.append(size + ' _ y ' + str([v - 100 for v in c]) + ' row ' + str(r))
+        # digits and lowercase widths: first..last ink on one row
+        clear_screen()
+        draw_string(100, 100, '0000000000', BLK, size)
+        res.append(size + ' 0x10 ' + str(row(105 if size == 'medium' else 103, 96, 260)))
+        clear_screen()
+        draw_string(100, 100, 'aaaaaaaaaa', BLK, size)
+        res.append(size + ' ax10 ' + str(row(108 if size == 'medium' else 105, 96, 260)))
+    return res
 
 def main():
-    clear_screen()
-    draw_string(6, 80, 'speed test, wait...', (0, 0, 0), 'medium')
-    show_screen()
-    say('clock ' + CLKNAME)
-    try:
-        import gc
-        gc.collect()
-        say('free ' + str(gc.mem_free() // 1024) + 'k')
-    except Exception:
-        say('free ?')
-    try:
-        import sys
-        say('py ' + str(sys.implementation) + ' ' + str(sys.version))
-    except Exception:
-        pass
-    say('loop us ' + str(us(b_loop, 20000)))
-    say('set_pixel us ' + str(us(b_pixel, 5000)))
-    say('get_pixel us ' + str(us(b_getpx, 2000)))
-    say('str med us ' + str(us(b_str, 300)))
-    say('str large us ' + str(us(b_strl, 300)))
-    say('clear us ' + str(us(b_clear, 20)))
-    say('show us ' + str(us(b_show, 20)))
-    say('getkey us ' + str(us(b_key, 2000)))
-    for size in ('small', 'medium', 'large'):
-        say(size + ' M10 ' + str(extent('MMMMMMMMMM', size)))
-        say(size + ' i10 ' + str(extent('iiiiiiiiii', size)))
-        say(size + ' 0x10 ' + str(extent('0000000000', size)))
-        say(size + ' Ag ' + str(extent('Ag', size)))
-    for ch in ('█', '√', 'π', '²', '▶', '→', '×', '−'):
-        say('glyph ' + hex(ord(ch)) + ' ' + str(extent(ch * 3, 'medium')))
+    for code, name, fn in TESTS:
+        screen(['Test ' + code + ': ' + name, '', 'EXE = start (start stopwatch)'])
+        key()
+        screen(['Test ' + code + ' running...'])
+        fn()
+        screen(['Test ' + code + ' DONE', '', 'note the time, EXE for next'])
+        key()
+    res = probes()
     got = []
     for v in 'abcd':
         try:
             __import__('mpy' + v)
-            got.append(v)
+            got.append(v + ' ok')
         except Exception as e:
-            got.append(v + ':' + str(e)[:12])
-    say('mpy ' + ' '.join(got))
-    say('import caslex ms ' + str(imp('caslex')))
-    say('import caseng ms ' + str(imp('caseng')))
-    say('import casui ms ' + str(imp('casui')))
-    try:
-        f = open('bench.txt', 'w')
-        f.write('\n'.join(OUT) + '\n')
-        f.close()
-        say('wrote bench.txt')
-    except Exception as e:
-        say('no file write: ' + str(e))
-    page = 0
-    per = 9
-    while True:
-        clear_screen()
-        i = page * per
-        y = 2
-        while i < len(OUT) and i < (page + 1) * per:
-            draw_string(4, y, OUT[i][:46], (0, 0, 0), 'small')
-            y += 20
-            i += 1
-        draw_string(4, 180, 'page ' + str(page + 1) + '  EXE next', (120, 120, 120), 'small')
-        show_screen()
-        k = getkey()
-        while k:
-            k = getkey()
-        while not k:
-            k = getkey()
-        if k == 22:
-            return
-        page = (page + 1) % ((len(OUT) + per - 1) // per)
+            got.append(v + ' no')
+    clear_screen()
+    y = 4
+    for s in ['All done. Precompiled: ' + ' '.join(got)] + res:
+        draw_string(6, y, s[:46], BLK, 'small')
+        y += 14
+    draw_string(6, 178, 'photo this, EXIT to quit', BLK, 'small')
+    show_screen()
+    while key() != 22:
+        pass
 
 main()

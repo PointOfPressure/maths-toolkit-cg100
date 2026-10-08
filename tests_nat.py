@@ -80,6 +80,11 @@ def run(check):
     check('calc complex as fractions', f[0][0] == 'm' and f[0][1][0] != 'n', repr(f))
     check('calc bad input', casui._forms('1+')[0][0] == '!')
 
+    # the generated tool index files are current
+    import mkindex
+    for path, src in mkindex.files():
+        check('index file current ' + path, open(path).read() == src)
+
     # the static section index matches the modules
     for code, title, mod in casui.MATHS:
         check('index ' + mod + ' ' + code, casui._tools(code, title, mod) != [])
