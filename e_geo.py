@@ -8,6 +8,7 @@ import caseng
 import caspoly
 import eng
 import recog
+import rgeo
 from eng import S, N, ZERO, ONE, txt, eq, val, has
 
 X = ('v', 'x')
@@ -308,7 +309,7 @@ def circleline(F, arg, vals):
 
 def _lineof(F):
     r = _row(F, 'line')
-    E = recog.recog_eq(r)
+    E = rgeo.recog_eq(r)
     a, b, c = _abc(E)
     return r, a, b, c
 
@@ -357,7 +358,7 @@ def foot(F, arg, vals):
 def online(F, arg, vals):
     p = F.points[0]
     r = [x for x, k in zip(F.rows, F.items) if k in ('line', 'circle', 'curve')][0]
-    E = recog.recog_eq(r)
+    E = rgeo.recog_eq(r)
     lhs = caseng.subst(caseng.subst(E, 'x', p[1]), 'y', p[2])
     v = S(lhs)
     lines = ['put x = ' + txt(p[1]) + ', y = ' + txt(p[2]) + ' into ' +
@@ -371,7 +372,7 @@ def online(F, arg, vals):
 def _circle(F):
     # centre (a, b) and r^2 of the circle row, with the completing-the-square lines
     r = _row(F, 'circle')
-    E = S(recog.recog_eq(r))
+    E = S(rgeo.recog_eq(r))
     E = caspoly.expand(E)
     cx = eng.coeffs(E, 'x')
     k = cx[2]
@@ -503,7 +504,7 @@ def compare(F, arg, vals):
     ms = []
     lines = []
     for r in F.rows:
-        a, b, c = _abc(recog.recog_eq(r))
+        a, b, c = _abc(rgeo.recog_eq(r))
         m = _gradient(a, b)
         ms.append(m)
         lines.append((eq(r.lhs, r.rhs) if r.name is None else r.name + ' = ' + txt(r.f)) +
