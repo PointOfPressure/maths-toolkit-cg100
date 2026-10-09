@@ -34,6 +34,7 @@ class Screen(object):
             self.fonts[name] = _load_font(FONT_PX[name])
         self.frames = []
         self.overflow = []
+        self.mark = None    # frames drawn before the scripted keys ran out
 
     def clear(self):
         self.draw.rectangle([0, 0, W - 1, H - 1], fill=(255, 255, 255))
@@ -86,6 +87,8 @@ def _getkey():
         KEYS[0] = None
         return k
     # out of scripted keys: alternate EXIT / idle so every loop exits
+    if SCREEN.mark is None:
+        SCREEN.mark = len(SCREEN.frames)
     _TOGGLE[0] = not _TOGGLE[0]
     return 22 if _TOGGLE[0] else 0
 
@@ -127,6 +130,7 @@ def reset():
     _TOGGLE[0] = False
     SCREEN.frames = []
     SCREEN.overflow = []
+    SCREEN.mark = None
     del KEYS[:]
     SCREEN.clear()
 
@@ -142,6 +146,21 @@ def save(prefix, outdir="shots"):
         big.save(p)
         paths.append(p)
     return paths
+
+
+X2_3X_K = (41, 45, 84, 83, 41, 84, 32, 55)
+HIDDEN = (71, 44, 41, 25, 85, 83, 74, 82, 44, 41, 25, 84, 82, 31, 55, 91)
+TWO_X = (82, 44, 41, 25, 84, 83, 31, 55, 81, 72)
+XY = (82, 44, 41, 25, 84, 83, 44, 32, 85, 25, 31, 55, 81, 72)
+# 2 log(x) = log(4) + log(x + 8)
+LOGEQ = (82, 31, 45, 41, 56, 31, 55, 31, 45, 71, 56, 84, 31, 45, 41, 84, 62, 56)
+
+
+def topic_scene(tid, keys):
+    import topic
+    topic.STATE.clear()
+    press(*keys)
+    topic.run(tid)
 
 
 def _scenes():
@@ -211,6 +230,32 @@ def _scenes():
         ("tex-booklet-diff", lambda: booklet(5)),
         ("home", lambda: casui.main()),
         ("home-sel", lambda: (press(25, 25, 34), casui.main())),
+        ("home-further", lambda: (press(26, 26), casui.main(further=True))),
+        # the redesign (docs/redesign.md): type, EXE, tiles, answer page
+        ("t-alg-type", lambda: topic_scene('alg', X2_3X_K)),
+        ("t-alg-tiles", lambda: topic_scene('alg', X2_3X_K + (95,))),
+        ("t-alg-csq", lambda: topic_scene('alg', X2_3X_K + (95, 81))),
+        ("t-alg-csq-scroll", lambda: topic_scene('alg', X2_3X_K + (95, 81, 34, 34, 34, 34))),
+        ("t-alg-csq-answer", lambda: topic_scene('alg', X2_3X_K + (95, 81, 36))),
+        ("t-alg-more", lambda: topic_scene('alg', X2_3X_K + (95, 36))),
+        ("t-alg-disc", lambda: topic_scene('alg', X2_3X_K + (95, 84))),
+        ("t-alg-prompt", lambda: topic_scene('alg', (83, 41, 44, 83, 25, 85, 41, 84, 82, 95,
+                                                       36, 34, 34, 34, 95, 85, 81))),
+        ("t-alg-pair", lambda: topic_scene('alg', (41, 84, 82, 32, 85, 31, 55, 72, 34,
+                                                      83, 41, 85, 32, 85, 31, 55, 81, 95))),
+        ("t-alg-pair-solve", lambda: topic_scene('alg', (41, 84, 82, 32, 85, 31, 55, 72, 34,
+                                                            83, 41, 85, 32, 85, 31, 55, 81, 95, 81))),
+        ("t-exp-hidden", lambda: topic_scene('exp', HIDDEN + (95,))),
+        ("t-exp-hidden-solve", lambda: topic_scene('exp', HIDDEN + (95, 81))),
+        ("t-exp-subu", lambda: topic_scene('exp', HIDDEN + (95, 82))),
+        ("t-exp-solve", lambda: topic_scene('exp', TWO_X + (95, 81))),
+        ("t-exp-solve-tiles", lambda: topic_scene('exp', TWO_X + (95,))),
+        ("t-exp-solve-format", lambda: topic_scene('exp', TWO_X + (95, 81, 94))),
+        ("t-exp-xy", lambda: topic_scene('exp', XY + (95,))),
+        ("t-exp-xy-rearr", lambda: topic_scene('exp', XY + (95, 81))),
+        ("t-exp-log", lambda: topic_scene('exp', LOGEQ + (95, 81))),
+        ("t-error", lambda: topic_scene('alg', (41, 84, 31, 55, 31, 55, 95))),
+        ("t-settings", lambda: (press(34), __import__('cfg').page())),
         ("maths", lambda: casui.qual_section('Maths  AQA 7357', casui.MATHS)),
         ("maths-p3", lambda: (press(26, 26, 25), casui.qual_section('Maths  AQA 7357', casui.MATHS))),
         ("further", lambda: casui.paper_section('Further  MEI H645', casui.FURTHER)),

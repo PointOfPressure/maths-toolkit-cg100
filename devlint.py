@@ -15,6 +15,9 @@ DEVICE_FILES = [
     "ix_mpure.py", "ix_mcalc.py", "ix_mstat.py", "ix_mmech.py",
     "ix_fcore.py", "ix_fcalc.py", "ix_fmech.py", "ix_fstat.py",
     "ix_falgo.py", "ix_fnum.py", "ix_fxpure.py", "ix_ffpt.py",
+    # the redesign: home, topic screens, recogniser, actions, engines, settings
+    "home.py", "topic.py", "recog.py", "acts.py", "cfg.py", "eng.py",
+    "e_solve.py", "e_alg.py", "e_fn.py", "e_exp.py",
 ]
 
 # measured on device by hwcheck.py 2026-08-09; adding a name claims hardware has it
@@ -33,6 +36,7 @@ BUILTIN_BAD = set([
 ])
 
 METHOD_BAD = set([
+    "isalnum", "isidentifier", "isprintable", "isdecimal", "isnumeric",
     "removeprefix", "removesuffix", "casefold", "format_map", "isascii",
     "expandtabs", "maketrans", "translate", "encode", "decode",
 ])

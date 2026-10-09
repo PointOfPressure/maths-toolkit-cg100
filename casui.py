@@ -49,6 +49,13 @@ BOT = 191       # last body pixel
 
 DEG = False     # mirrors casutil.DEG so the home screen needs no engine
 
+# Settings. The calculator can't save files, so the launch script (maths.py /
+# module.py) holds the defaults and passes them to main(); the Settings page
+# (cfg.py) changes them until the program ends.
+SET = {'further': False, 'angle': 'rad', 'answers': 'both', 'decimals': '3sf',
+       'complex': 'a+bi', 'sleep': 10, 'repeat': 'normal'}
+CASUTIL = [False]   # casutil has loaded: an angle change must reach it too
+
 # ---- keys -------------------------------------------------------------------
 # Arrows and DEL repeat while held, like the built-in apps.
 
@@ -491,15 +498,25 @@ def pick(title, labels, sel=0):
     return grid_run(Grid(title, labels, 5, 5, False), sel)
 
 def settings():
-    global DEG
-    i = menu('Settings: angle', ['Radians', 'Degrees'], 1 if DEG else 0)
-    if i >= 0:
-        DEG = i == 1
-        try:
-            import casutil
-            casutil.DEG = DEG
-        except ImportError:
-            pass
+    # SETTINGS from any screen
+    import cfg
+    cfg.page()
+
+KEYRATE = {'off': (0, 0), 'slow': (4500, 600), 'normal': (3000, 400), 'fast': (1800, 200)}
+
+def configure():
+    # SET -> the globals that act on it
+    global DEG, IDLE, DELAY, RATE, REPEAT
+    DEG = SET['angle'] == 'deg'
+    if CASUTIL[0]:
+        import casutil
+        casutil.DEG = DEG
+    m = SET['sleep']
+    IDLE = 600000 * m if m > 0 else 600000 * 600
+    d, r = KEYRATE.get(SET['repeat'], (3000, 400))
+    DELAY = d
+    RATE = r
+    REPEAT = (UP, DOWN, LEFT, RIGHT, DEL) if d else ()
 
 # ---- icons ---------------------------------------------------------------------------
 
@@ -1770,38 +1787,47 @@ HOME_TILES = [
     ('Maths', ic_pi), ('Further', ic_argand), ('Notes', ic_book), ('Settings', ic_angle),
 ]
 
-def main():
+def classic():
+    # the old home grid, for More > All tools; HOME goes to the new home
     sel = 0
     while True:
-        try:
-            sel = grid('Maths Toolkit', HOME_TILES, sel)
-            if sel < 0:
-                return
-            if sel == 0:
-                calc_section()
-            elif sel == 1:
-                cas_section()
-            elif sel == 2:
-                graph_section()
-            elif sel == 3:
-                solve_section()
-            elif sel == 4:
-                qual_section('Maths', MATHS)
-            elif sel == 5:
-                paper_section('Further', FURTHER)
-            elif sel == 6:
-                notes_section()
-            elif sel == 7:
-                settings()
-        except Home:
-            pass
-        except Idle:
-            clear_screen()
-            show_screen()
+        sel = grid('All tools', HOME_TILES, sel)
+        if sel < 0:
             return
-        except MemoryError:
-            del HIST[:-3]
-            _WRAPS.clear()
-            flash('out of memory - cleared history')
-        except Exception as e:
-            flash('error: ' + str(e))
+        if sel == 0:
+            calc_section()
+        elif sel == 1:
+            cas_section()
+        elif sel == 2:
+            graph_section()
+        elif sel == 3:
+            solve_section()
+        elif sel == 4:
+            qual_section('Maths', MATHS)
+        elif sel == 5:
+            paper_section('Further', FURTHER)
+        elif sel == 6:
+            notes_section()
+        elif sel == 7:
+            settings()
+
+_OPTS = {'angle': ('rad', 'deg'), 'answers': ('exact', 'decimal', 'both'),
+         'decimals': ('3sf', '4sf', '5sf', '6sf', '1dp', '2dp', '3dp', '4dp'),
+         'complex': ('a+bi', 'polar'), 'repeat': ('off', 'slow', 'normal', 'fast')}
+
+def main(further=False, angle='rad', answers='both', decimals='3sf',
+         complex='a+bi', sleep=10, repeat='normal'):
+    # called by the launch script with its settings; a value it doesn't know
+    # keeps the default, so a typo there can't stop the program
+    got = {'angle': angle, 'answers': answers, 'decimals': decimals,
+           'complex': complex, 'repeat': repeat}
+    for k in got:
+        v = str(got[k]).lower().replace(' ', '')
+        if v in _OPTS[k]:
+            SET[k] = v
+    SET['further'] = further is True
+    if isinstance(sleep, int) and 0 <= sleep <= 600:
+        SET['sleep'] = sleep
+    configure()
+    import home
+    home.run()

@@ -6,7 +6,9 @@ import caseng
 
 PI = math.pi
 FULL = False      # result screen toggles this for full precision
-DEG = False       # angle mode for Calculate / CAS numeric operations
+import casui as _ui
+DEG = _ui.DEG     # angle mode for Calculate / CAS numeric operations
+_ui.CASUTIL[0] = True
 
 def w(text):
     return ('w', text)
