@@ -64,5 +64,52 @@ def main(mods):
     print(str(count) + ' runs, ' + str(bad) + ' crashes')
     return bad
 
+# the redesign: odd things typed into a topic, every action that is offered
+TYPED = ['0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2', '2^x=-1',
+         'logb(1,x)=2', 'sqrt(-x)=3', 'abs(x)=-1', '1/(x-x)', 'x^2+y^2', 'k', 'x=x',
+         'pi^x=e', '0^x=0', 'x^x=4', '(x-1)^-1', 'x^(1/3)=-2', '1e9x^2+1e-9', '2^x+2^(2x)',
+         'ln(x)=ln(-x)', 'x+y+z=1', 'sin(x)^2+cos(x)^2', 'log(x)^2-3log(x)+2=0',
+         'y=1/x', 'y=x^3', 'x>x', '2<1', '(2+3i)x=1', 'x^2+(k+1)x+k', '0.1x^2-0.3x=0',
+         'e^x=0', 'x^2=4', 'sqrt(x)=x-2', 'x^4+4', '1/(x^2+1)', 'y=e^(2x)+e^x']
+PAIRS = [['x=1', 'x=2'], ['x+y=1', 'x+y=1'], ['x+y=1', 'x+y=2'], ['x^2+y^2=1', 'x^2+y^2=4'],
+         ['0', '0'], ['x', 'y'], ['y=x', 'y=x^2'], ['e^x', 'ln(x)']]
+STOCK = ['2', '3', '1', '5', '']
+
+def topics():
+    import recog
+    import acts
+    import topic
+    import caslex
+    import plot
+    plot.run = lambda *a, **k: None
+    bad = 0
+    count = 0
+    for rows in [[t] for t in TYPED] + PAIRS:
+        F = recog.form(rows)
+        if F.err:
+            continue
+        for tid in ('alg', 'exp'):
+            for label, mod, fn, arg, ask in acts.offers(F, tid):
+                vals = None
+                if ask:
+                    if ask[0] == 'choose':
+                        vals = [1]
+                    else:
+                        n = sum([ln[1] for ln in ask])
+                        vals = [None if not STOCK[i % 5] else caslex.parse(STOCK[i % 5])
+                                for i in range(n)]
+                count += 1
+                lines = topic.engine(mod, fn, F, arg, vals)
+                for ln in lines or []:
+                    if isinstance(ln, tuple) and ln[0] == '!' and ln[1].startswith('error'):
+                        bad += 1
+                        print('topic ' + tid + ' ' + label + ' <' + '; '.join(rows) + '>: ' + ln[1])
+                        break
+    print(str(count) + ' topic actions, ' + str(bad) + ' crashes')
+    return bad
+
 if __name__ == '__main__':
-    sys.exit(1 if main(sys.argv[1:] or tests.MODULES) else 0)
+    bad = main(sys.argv[1:] or tests.MODULES)
+    if not sys.argv[1:]:
+        bad += topics()
+    sys.exit(1 if bad else 0)

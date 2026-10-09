@@ -458,8 +458,17 @@ def xpart(t, v):
             return ('o',)
         if a[0] == 'p':
             return ('p', _rmul(a[1], r))
+        if a[0] == 'f':
+            return ('f', a[1], _rmul(a[2], r))
+        if a[2] is None:
+            return ('o',)
         return ('x', a[1], _rmul(a[2], r))
+    if k in FATOMS and t[-1] == ('v', v) and (k != 'logb' or not has(t[1], v)):
+        # ln x, log x, sin x ...: u for a quadratic in it
+        return ('f', t, (1, 1))
     return ('o',)
+
+FATOMS = ('ln', 'log', 'logb', 'sin', 'cos', 'tan')
 
 def tpart(t, v):
     # one additive term's v-part: ('c',), ('p', r), ('x', base, m) or ('o',)
@@ -476,6 +485,18 @@ def tpart(t, v):
             acc = a
             continue
         if acc[0] == 'x' and acc[2] is None:
+            return ('o',)
+        if a[0] == 'f':
+            if e < 0:
+                a = ('f', a[1], _rmul(a[2], (-1, 1)))
+            if acc[0] == 'c':
+                acc = a
+            elif acc[0] == 'f' and acc[1] == a[1]:
+                acc = ('f', a[1], _radd(acc[2], a[2]))
+            else:
+                return ('o',)
+            continue
+        if acc[0] == 'f':
             return ('o',)
         if e < 0:
             a = (a[0], _rmul(a[1], (-1, 1))) if a[0] == 'p' else ('x', a[1], _rmul(a[2], (-1, 1)))
@@ -638,6 +659,20 @@ def analyse(F, f, v):
                 F.u = _utree_pow(q[0], v)
                 F.ushow = _ushow_pow(q[0], v)
         return
+    fp = [tpart(t, v) for t, sg in terms(f, 1, [])]
+    fk = [a for a in fp if a[0] != 'c']
+    if fk and fk[0][0] == 'f' and [1 for a in fk if a[0] != 'f' or a[1] != fk[0][1]] == []:
+        # every term a power of one ln x, log x, sin x: quadratic in it?
+        q = _quadin([a[2] for a in fk])
+        if q is not None and not q[1] and q[0] == (1, 1):
+            key = fk[0][1]
+            F.kind = 'trig' if key[0] in ('sin', 'cos', 'tan') else 'log'
+            F.qin = True
+            F.uk = (1, 1)
+            F.u = key
+            F.ushow = (key[0] if key[0] != 'logb' else 'log_' + _bshow(key[1][1] if key[1][0] == 'n'
+                                                                       else key[1][1])) + ' ' + v
+            return
     if hasfn(f, ('ln', 'log', 'logb'), v):
         F.kind = 'log'
         return

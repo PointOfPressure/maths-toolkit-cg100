@@ -150,9 +150,10 @@ def _std(L, Rt, v, lines):
     co = eng.coeffs(E, v)
     if co is None:
         raise Stuck()
-    std = eq(eng.ptree(co, ('v', v)), ZERO)
+    shown = [eng.decimal(c) for c in co] if recog.hasfloat(L) or recog.hasfloat(Rt) else co
+    std = eq(eng.ptree(shown, ('v', v)), ZERO)
     if not lines or lines[-1] != std:
-        if Rt != ZERO or txt(L) != txt(eng.ptree(co, ('v', v))):
+        if Rt != ZERO or txt(L) != txt(eng.ptree(shown, ('v', v))):
             lines.append(std)
     return co
 
@@ -236,6 +237,9 @@ def uterms(E, F, v):
                 raise Stuck()
             if a[0] == 'p':
                 j += e * _kdiv(a[1], k)
+                continue
+            if a[0] == 'f':
+                j += e * _kdiv(a[2], k)
                 continue
             # base^(p v + q): u^(p m / k) times base^q
             if f[0] == 'exp':
@@ -442,6 +446,10 @@ def _lg(b, g):
 def logsolve(L, Rt, v, F, lines):
     la, ra = logterms(L, v)
     lb, rb = logterms(Rt, v)
+    for t, sg in ra + rb:
+        if has(t, v):
+            # x outside the logs too: not a log equation this method solves
+            raise Stuck()
     allb = [x[1] for x in la + lb]
     for b in allb:
         if b != allb[0]:
@@ -459,6 +467,8 @@ def logsolve(L, Rt, v, F, lines):
         if eq(_lg(base, G), K) != lines[-1]:
             lines.append(eq(_lg(base, G), K))
         H = S(('^', base, K)) if base != ('v', 'e') else S(('exp', K))
+    if lines[-1] == lines[0] and len(lines) > 1:
+        lines.pop()
     lines.append(eq(G, H))
     rs = algebraic(G, H, v, F, lines)
     out = []

@@ -42,6 +42,11 @@ FORMS = [
     (['8^x-2^x=0'], 'exp', {'qin': False}, 'exponential equation, base 2'),
     (['4^x-3*3^x+2=0'], 'exp2', {'qin': False}, 'bases 2 and 3'),
     (['x+1/x'], 'rat', {'qin': False}, 'fraction'),
+    (['log(x)^2-3log(x)+2=0'], 'log', {'qin': True, 'ushow': 'log x'}, 'quadratic in log x'),
+    (['ln(x)^2=ln(x)+6'], 'log', {'qin': True, 'ushow': 'ln x'}, 'quadratic in ln x'),
+    (['2sin(x)^2-sin(x)=1'], 'trig', {'qin': True, 'ushow': 'sin x'}, 'quadratic in sin x'),
+    # near-miss: ln x and ln(x + 1) are different things
+    (['ln(x)^2+ln(x+1)=0'], 'log', {'qin': False}, 'log equation'),
     # exponentials
     (['2^x+3=15'], 'exp', {'qin': False, 'bases': [2]}, 'exponential equation, base 2'),
     (['8^x=4^(x+1)'], 'exp', {'bases': [2]}, 'base 2'),

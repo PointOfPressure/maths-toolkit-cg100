@@ -188,7 +188,7 @@ def _simple(a):
     # a number or one letter: needs no brackets after a log
     if not a:
         return False
-    if a.isalpha() and len(a) == 1:
+    if a.isalpha() and (len(a) == 1 or a == 'pi'):
         return True
     for c in a:
         if not (c.isdigit() or c == '.'):
@@ -538,6 +538,18 @@ def add(a, b):
 
 def sq(t):
     return ('^', t, N(2))
+
+def decimal(c):
+    # 9/100 -> 0.09 when the question was typed in decimals
+    r = caspoly.ratof(c)
+    if r is None or r[1] == 1:
+        return c
+    q = r[1]
+    while q % 2 == 0:
+        q //= 2
+    while q % 5 == 0:
+        q //= 5
+    return N(r[0] / float(r[1])) if q == 1 else c
 
 # ---- rearranging, one inverse operation a line ------------------------------------------------
 

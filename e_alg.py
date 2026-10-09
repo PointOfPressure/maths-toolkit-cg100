@@ -248,25 +248,13 @@ def _upfirst(t, v):
         return not has(t, v)
     return False
 
-def _decimal(c):
-    # 9/100 -> 0.09 when the question was typed in decimals
-    r = caspoly.ratof(c)
-    if r is None or r[1] == 1:
-        return c
-    q = r[1]
-    while q % 2 == 0:
-        q //= 2
-    while q % 5 == 0:
-        q //= 5
-    return N(r[0] / float(r[1])) if q == 1 else c
-
 def _expanded(t, v, dec=False):
     e = caspoly.expand(S(t))
     co = eng.coeffs(e, v)
     up = _upfirst(t, v)
     if co is not None and len(co) > 1:
         if dec:
-            co = [_decimal(c) for c in co]
+            co = [eng.decimal(c) for c in co]
         if up:
             return eng.build([(eng.ptree([ZERO] * i + [co[i]], ('v', v)), 1)
                               for i in range(len(co)) if co[i] != ZERO])
