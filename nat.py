@@ -672,29 +672,32 @@ def draw(ed, row, x, base, maxw, color=INK, dx=None):
         LAST[1] = caret
         return (0, a, d)
     _MC[0] = {}
-    w, a, d = measure(row, 0)
-    pen = Pen(ed, 0, color)
-    if dx is not None:
-        pen.dx = dx
-        pen.ed = None
-        pen.hole = color
-    elif ed is not None and w > maxw:
-        pen.dry = True
+    try:
+        w, a, d = measure(row, 0)
+        pen = Pen(ed, 0, color)
+        if dx is not None:
+            pen.dx = dx
+            pen.ed = None
+            pen.hole = color
+        elif ed is not None and w > maxw:
+            pen.dry = True
+            draw_row(pen, row, x, base, 0)
+            cx = pen.caret[0] if pen.caret else x + w
+            if cx - x > maxw - 12:
+                pen.dx = maxw - 12 - (cx - x)
+            pen.dry = False
         draw_row(pen, row, x, base, 0)
-        cx = pen.caret[0] if pen.caret else x + w
-        if cx - x > maxw - 12:
-            pen.dx = maxw - 12 - (cx - x)
-        pen.dry = False
-    draw_row(pen, row, x, base, 0)
-    caret = None
-    if pen.caret is not None:
-        cx, top, bot = pen.caret
-        caret = (cx + pen.dx, top, bot)
-        _vl(pen, cx, top - 1, bot, CARET)
-        _vl(pen, cx + 1, top - 1, bot, CARET)
-    LAST[0] = pen.dx
-    LAST[1] = caret
-    _MC[0] = None
+        caret = None
+        if pen.caret is not None:
+            cx, top, bot = pen.caret
+            caret = (cx + pen.dx, top, bot)
+            _vl(pen, cx, top - 1, bot, CARET)
+            _vl(pen, cx + 1, top - 1, bot, CARET)
+        LAST[0] = pen.dx
+        LAST[1] = caret
+    finally:
+        # an error part way (MemoryError) must not leave the cache live
+        _MC[0] = None
     return (w, a, d)
 
 def undraw(row, x, base, dx, caret, bg):

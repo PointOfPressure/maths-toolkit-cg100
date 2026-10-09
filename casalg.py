@@ -231,10 +231,14 @@ _SURDT = []
 
 def _surdtable():
     if not _SURDT:
+        # built whole, then kept: HOME or a MemoryError part way through must
+        # not leave half a table behind
         import caslex
+        rows = []
         for txt in _SURDS:
             t = _S(caslex.parse(txt))
-            _SURDT.append((caseng.evalf(t, 0.0), t))
+            rows.append((caseng.evalf(t, 0.0), t))
+        _SURDT[:] = rows
     return _SURDT
 
 def _trigval(fn, arg):

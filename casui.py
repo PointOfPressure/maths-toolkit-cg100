@@ -821,6 +821,8 @@ def _blocks(lines, mode):
         x = 16 if kind == 'w' else 8
         for r, dx in tex.lines(b, 376 - x):
             out.append(block(kind, r, x + dx))
+    # the boxes are display lists now: let the measure cache drop them
+    casrender._MCACHE.clear()
     return out
 
 def block(kind, b, x):
@@ -1159,6 +1161,7 @@ def _draw_calc(ed, shift, alpha):
                 draw_string(378 - text_w(note, 'medium'), yb + ad + 2, note, GREY, 'medium')
         y += h
         n += 1
+    casrender._MCACHE.clear()
     show_screen()
 
 def _calc_fast(ed):
