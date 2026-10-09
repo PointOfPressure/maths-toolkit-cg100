@@ -70,6 +70,11 @@ def _square(F):
         k = S(('-', c, ('*', a, ('^', h, N(2)))))
         lines.append('= ' + txt(eng.add(eng.add(eng.mul(a, eng.sq(eng.add(V, h))),
                                                 S(('neg', ('*', a, eng.sq(h))))), c), False))
+    # the constant the way the mark scheme (and casalg.csq) writes it: with
+    # letters, c - b^2/4a stays two terms (1 - 4/k, not (k - 4)/k)
+    nah = S(('neg', ('*', a, ('^', h, N(2)))))
+    if caseng.vars_in(k) and c != ZERO and len(eng.sumterms(nah, 1, [])) == 1:
+        k = ('+', c, nah)
     return a, h, k, lines
 
 def _sgn(c):
@@ -79,17 +84,22 @@ def _sgn(c):
     return ('- ' if n else '+ ') + txt(a)
 
 def _form(a, h, k, V):
-    return eng.add(eng.mul(a, eng.sq(eng.add(V, h))), k)
+    return ('+', eng.mul(a, eng.sq(eng.add(V, h))), k) if k != ZERO else eng.mul(a, eng.sq(eng.add(V, h)))
 
 def csq(F, arg, vals):
+    # a(x + p)^2 + q with the square first, as casalg.csq_lines gives it
     v = F.var
     V = ('v', v)
     a, h, k, lines = _square(F)
     sq = _form(a, h, k, V)
     tail = ' = 0' if F.rows[0].rel == '=' and F.rows[0].name is None else ''
-    if lines and lines[-1] == '= ' + txt(sq):
+    s = txt(sq, False)
+    if lines and lines[-1] == '= ' + s:
         lines.pop()
-    lines.append(eng.boxs('', txt(sq) + tail, sq))
+    lines.append(eng.boxs('', s + tail, sq))
+    if txt(sq) != s:
+        # -2(x - 1/4)^2 + 9/8 is also 9/8 - 2(x - 1/4)^2
+        lines.append('= ' + txt(sq) + tail)
     lines += _turning(a, h, k, v)
     return lines
 
@@ -105,7 +115,7 @@ def _turning(a, h, k, v):
 def vertex(F, arg, vals):
     v = F.var
     a, h, k, lines = _square(F)
-    lines.append('= ' + txt(_form(a, h, k, ('v', v))))
+    lines.append('= ' + txt(_form(a, h, k, ('v', v)), False))
     x0 = S(('neg', h))
     t = _turning(a, h, k, v)
     lines.append(eng.boxs('vertex ', '(' + txt(x0) + ', ' + txt(k) + ')'))

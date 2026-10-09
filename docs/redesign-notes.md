@@ -57,7 +57,9 @@ while building; change any of them by saying so.
 `casui.main(further=FURTHER, angle=ANGLE, answers=ANSWERS, decimals=DECIMALS,
 complex=COMPLEX, sleep=SLEEP, repeat=REPEAT)`. A value main() doesn't know
 keeps its default, so a typo can't stop the program. `SLEEP = 0` means 10
-hours.
+hours. devlint checks that the two launchers match, that `FURTHER` is True
+or False, and that every setting the launcher assigns is passed to main()
+by its own name (pass2-aqa's check, widened for the extra settings).
 
 ## Answers
 
@@ -121,7 +123,7 @@ Each module's own size once loaded, in the order a session loads them:
 
 | part | KB |
 |---|---|
-| casui (keys, drawing, grids, settings; old screens moved to casold) | 35 |
+| casui (keys, drawing, grids, settings; old screens moved to casold) | 37 |
 | home | 4 |
 | nat (editor) + topic | 17 + 12 |
 | caslex + recog | 4 + 21 |
@@ -131,9 +133,9 @@ Each module's own size once loaded, in the order a session loads them:
 | eng (+ the action's engine: e_alg 25, e_solve 17, e_fn 21, e_exp 7) | 22 |
 | Coord: coord + rgeo + acts_geo + e_geo | 6 + 3 + 4 + 21 |
 | Calculus: acts_calc + e_calc | 3 + 22 |
-| casalg (fractions, logs in coefficients) | 28 |
+| casalg (fractions, logs in coefficients) | 32 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
-| casold (Calculate, CAS, old tools; only via All tools / Calculate) | 23 |
+| casold (Calculate, CAS, old tools; only via All tools / Calculate) | 25 |
 
 - Home alone: about 40 KB. A topic with the tiles showing: about 125 KB.
 - Every engine of Algebra and Exp and logs loaded: about 375 KB (all four
@@ -149,6 +151,16 @@ Each module's own size once loaded, in the order a session loads them:
 - If the heap turns out to be about 400 KB: next savings are Algebra's
   inequality, discriminant and domain without cassolve (44 KB with
   cascalc), and trimming recog/acts.
+- After merging pass2-aqa (9 Oct): code is about 8 KB bigger (font tables
+  built at import, errtext and the Further lists in casui, casalg's
+  complete-the-square and power expansion), but the render caches are now
+  dropped after drawing. A 20-action Algebra + Exp session keeps about
+  110 KB free on a 500 KB heap (before: out of memory from the 8th action)
+  and runs 19 of 20 actions on a 400 KB heap (before: 2). Self test: 50/50
+  at 500 KB, lowest 69 KB free (before 80); 48/50 at 450 KB (before 49);
+  26/50 at 400 KB (before 34). Its log rows are allocated up front, so on a
+  full heap it still finishes and shows its summary (the merged build first
+  stopped at 400 KB with a MemoryError while writing a row).
 
 ## Speed (estimated: laptop us x 0.29 + 4 ms per draw_string)
 

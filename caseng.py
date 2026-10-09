@@ -425,7 +425,24 @@ def _sconst(v):
         return ('n', v)
     return _numnode(v)
 
+# HOME while something slow runs: the screens read keys only between jobs,
+# so simplify and the numeric evaluators look at the keyboard every few
+# dozen steps and unwind to the home grid (casui.Home is a BaseException,
+# so the tools' own except Exception handlers let it through)
+_TICK = [0]
+
+def tick():
+    _TICK[0] = 0
+    from casioplot import getkey
+    if getkey() == 12:
+        import casui
+        casui.wait_release()
+        raise casui.Home()
+
 def _s(n):
+    _TICK[0] += 1
+    if _TICK[0] > 63:
+        tick()
     t = n[0]
     if t == 'n':
         return _sconst(n[1])

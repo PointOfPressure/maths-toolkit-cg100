@@ -55,6 +55,14 @@ modules in, and checks each file byte for byte. Device files:
 
 Then on the calculator: Python app > `maths.py` (or `module.py`) > Run.
 
+The calculator can't save files from Python, so the settings that stick
+live in the launchers (keep the two the same; devlint checks): `FURTHER`,
+`ANGLE`, `ANSWERS`, `DECIMALS`, `COMPLEX`, `SLEEP` and `REPEAT`, each with
+its choices in a comment. The Settings page changes them until the program
+ends. `FURTHER = False` hides Further Maths (the home tiles, its notes, the
+Further-only booklet pages, complex and hyperbolic symbols, the Maclaurin CAS
+op); edit it to `True` on the calculator to show them.
+
 ## Screens
 
 Built for how the fx-CG100 actually performs (no clock, ~4 ms per text call,

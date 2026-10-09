@@ -63,7 +63,27 @@ GREY = (110, 115, 125)
 GREEN = (30, 150, 90)
 RED = (200, 50, 50)
 ORANGE = (235, 130, 30)
-LOG = []
+
+# The log rows exist before any case runs: on a full heap a row's text may not
+# fit (NOMEM is written instead), but writing a row and the summary never
+# needs memory the cases used up.
+ROWS = 56
+TXT = [None] * ROWS
+COL = [GREY] * ROWS
+NLOG = [0]
+BAD = [0] * ROWS    # numbers of the failed cases
+NOMEM = '(no memory left to write this row)'
+
+def log(s, c):
+    i = NLOG[0]
+    if i < ROWS:
+        TXT[i] = s
+        COL[i] = c
+        NLOG[0] = i + 1
+
+def rows():
+    # the log as (text, colour) pairs (laptop runs print it)
+    return [(TXT[i], COL[i]) for i in range(NLOG[0])]
 
 def _clobber(n):
     # old pointers left on the stack can keep the probe's blocks alive (the
@@ -94,9 +114,11 @@ def show(now):
     clear_screen()
     draw_string(4, 2, 'Self test', INK, 'small')
     y = 18
-    for s, c in LOG[-11:]:
-        draw_string(4, y, s, c, 'small')
+    i = NLOG[0] - 11 if NLOG[0] > 11 else 0
+    while i < NLOG[0]:
+        draw_string(4, y, TXT[i], COL[i], 'small')
         y += 14
+        i += 1
     draw_string(4, 176, now, ORANGE, 'small')
     show_screen()
 
@@ -191,50 +213,18 @@ def check(case):
             return 'missing ' + nd[:24]
     return ''
 
-def run():
-    start = free_kb()
-    LOG.append(('free at start ' + str(start) + ' KB', GREY))
-    show('loading the topic screens')
-    import casui
-    import topic
-    import recog
-    import acts
-    ui = free_kb()
-    LOG.append(('after the screens ' + str(ui) + ' KB', GREY))
-    low = ui
-    ok = 0
-    bad = []
-    n = len(CASES)
-    i = 0
-    for case in CASES:
-        i += 1
-        show('case ' + str(i) + '/' + str(n) + '  ' + case[0] + '  ' + case[3] + ' ...')
-        try:
-            why = check(case)
-        except MemoryError:
-            why = 'OUT OF MEMORY'
-        except Exception as e:
-            why = 'error ' + str(e)[:24]
-        f = free_kb()
-        if f < low:
-            low = f
-        if why:
-            bad.append(case[0])
-            LOG.append((str(i) + ' FAIL ' + case[0] + ' ' + case[3] + ': ' + why + '  ' + str(f) + ' KB', RED))
-        else:
-            ok += 1
-            LOG.append((str(i) + ' pass ' + case[0] + ' ' + case[3] + '  ' + str(f) + ' KB', GREEN))
-    end = free_kb()
+def _summary(ok, n, start, ui, low, end, nb):
     clear_screen()
     draw_string(4, 4, 'Self test: ' + str(ok) + ' / ' + str(n) + ' pass', GREEN if ok == n else RED, 'medium')
     draw_string(4, 30, 'free KB: start ' + str(start) + ', with screens ' + str(ui), INK, 'small')
     draw_string(4, 46, 'lowest after a case ' + str(low) + ', at the end ' + str(end), INK, 'small')
     y = 66
-    if bad:
+    if nb:
         draw_string(4, y, 'failed:', RED, 'small')
         y += 14
         s = ''
-        for b in bad:
+        for j in range(nb):
+            b = CASES[BAD[j] - 1][0]
             if len(s) + len(b) > 44:
                 draw_string(4, y, s, RED, 'small')
                 y += 14
@@ -245,6 +235,61 @@ def run():
             y += 14
     draw_string(4, 176, 'photo this screen, then EXE', GREY, 'small')
     show_screen()
+
+def run():
+    NLOG[0] = 0
+    start = free_kb()
+    log('free at start ' + str(start) + ' KB', GREY)
+    show('loading the topic screens')
+    import casui
+    import topic
+    import recog
+    import acts
+    ui = free_kb()
+    log('after the screens ' + str(ui) + ' KB', GREY)
+    low = ui
+    ok = 0
+    nb = 0
+    n = len(CASES)
+    i = 0
+    for case in CASES:
+        i += 1
+        try:
+            show('case ' + str(i) + '/' + str(n) + '  ' + case[0] + '  ' + case[3] + ' ...')
+        except MemoryError:
+            pass
+        try:
+            why = check(case)
+        except MemoryError:
+            why = 'OUT OF MEMORY'
+        except Exception as e:
+            why = 'error ' + str(e)[:24]
+        f = free_kb()
+        if f < low:
+            low = f
+        if why:
+            BAD[nb] = i
+            nb += 1
+        else:
+            ok += 1
+        try:
+            if why:
+                s = str(i) + ' FAIL ' + case[0] + ' ' + case[3] + ': ' + why + '  ' + str(f) + ' KB'
+            else:
+                s = str(i) + ' pass ' + case[0] + ' ' + case[3] + '  ' + str(f) + ' KB'
+        except MemoryError:
+            s = NOMEM
+        log(s, RED if why else GREEN)
+    end = free_kb()
+    try:
+        _summary(ok, n, start, ui, low, end, nb)
+    except MemoryError:
+        # constant strings only
+        clear_screen()
+        draw_string(4, 4, 'Self test: out of memory', RED, 'medium')
+        draw_string(4, 30, 'for the summary. Run it again', INK, 'small')
+        draw_string(4, 46, 'after restarting the calculator.', INK, 'small')
+        show_screen()
     k = getkey()
     while k != 95 and k != 22 and k != 24:
         k = getkey()

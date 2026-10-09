@@ -277,11 +277,33 @@ def run(check):
         got = SO(src)
         check('cas solve ' + src, got == want, got)
     _algebra(check)
+    _powers(check)
     _calculus(check)
     _solving(check)
     _printing(check)
     _limits(check)
     _menu(check)
+
+def _nodes(n):
+    if n[0] in ('n', 'v'):
+        return 1
+    return 1 + sum([_nodes(c) for c in n[1:] if isinstance(c, tuple)])
+
+def _powers(check):
+    # a polynomial power is multiplied as coefficients, not as a product tree
+    # (2x+3)^10 ran out of memory on the calculator
+    for src, want in (
+            ('(2x+3)^10', '1024*x^10+15360*x^9+103680*x^8+414720*x^7+1088640*x^6+1959552*x^5+2449440*x^4+2099520*x^3+1180980*x^2+393660*x+59049'),
+            ('(1+x/2)^12', 'x^12/4096+3*x^11/512+33*x^10/512+55*x^9/128+495*x^8/256+99*x^7/16+231*x^6/16+99*x^5/4+495*x^4/16+55*x^3/2+33*x^2/2+6*x+1'),
+            ('(x+k)^4', 'k^4+4*k^3*x+6*k^2*x^2+4*k*x^3+x^4'),
+            ('(x+y-1)^3', 'x^3+3*x^2*y+3*x*y^2+y^3-3*x^2-6*x*y-3*y^2+3*x+3*y-1')):
+        got = EX(src)
+        check('cas expand power ' + src, got == want, got)
+    got = EX('(x+1)^20')
+    check('cas expand (x+1)^20', got.startswith('x^20+20*x^19+190*x^18') and got.endswith('+20*x+1'), got)
+    for src in ('(2x+3)^10', '(x+1)^20', '(1+x/2)^12', '(x+k)^10'):
+        n = _nodes(caspoly._ex(P(src)))
+        check('cas expand power small tree ' + src, n < 200, n)
 
 def _algebra(check):
     # combine logs, change of base, hyperbolic definitions
@@ -297,6 +319,15 @@ def _algebra(check):
     check('cas complete square', got == '2*(x+2)^2-5', got)
     got = TS(casalg.complete_square(P('x^2+2x+5')))
     check('cas complete square 2', got == '(x+1)^2+4', got)
+    for src, want in (('x^2+3x+k', '(x+3/2)^2+k-9/4'), ('2x^2+kx+5', '2*(x+k/4)^2+5-k^2/8'),
+                      ('x^2+bx+c', '(x+b/2)^2+c-b^2/4'), ('-x^2+4x-1', '-(x-2)^2+3'),
+                      ('(x+1)(x-2)', '(x-1/2)^2-9/4'), ('x^2-x-k^2', '(x-1/2)^2-k^2-1/4')):
+        got = TS(casalg.complete_square(P(src)))
+        check('cas complete square ' + src, got == want, got)
+    for src in ('x^3+x', 'sin(x)^2+x', '3x+1', 'x^2+1/x'):
+        check('cas complete square refuses ' + src, casalg.complete_square(P(src)) is None)
+    ca = casalg.quadin(P('k*x^2+(2k+1)*x+k^2'))
+    check('cas quadin letters', [TS(t) for t in ca] == ['k', '2*k+1', 'k^2'], [TS(t) for t in ca])
     # polynomial division and the remainder / factor theorem
     q, r = casalg.divide(P('x^3-2x+1'), P('x-1'))
     check('cas divide q', TS(q) == 'x^2+x-1', TS(q))
@@ -474,6 +505,15 @@ def _menu(check):
             return casui._cas_op(i, P(tree), tree)
         lines = op(16, '2x^2+8x+3')
         check('cas menu complete square', TS(lines[0][1]) == '2*(x+2)^2-5')
+        # letters in b and c, and working in mark-scheme order
+        lines = op(16, 'x^2+3x+k')
+        check('cas menu complete square letters', TS(lines[0][1]) == '(x+3/2)^2+k-9/4', lines)
+        lines = op(16, '2x^2+kx+5')
+        got = [ln[1] if ln[0] == 'w' else TS(ln[1]) for ln in lines[2:]]
+        want = ['take 2 out of the x terms', '2*(x^2+k/2*x)+5', 'half of k/2 is k/4',
+                '2*((x+k/4)^2-k^2/16)+5', 'collect the constants', '2*(x+k/4)^2+5-k^2/8']
+        check('cas menu complete square working order', got == want, got)
+        check('cas menu complete square refuses a cubic', op(16, 'x^3+x')[0][0] == '!')
         lines = op(17, '1/(2-sqrt(3))')
         check('cas menu rationalise', TS(lines[0][1]) == 'sqrt(3)+2', TS(lines[0][1]))
         lines = op(18, '1/x+1/(x+1)')

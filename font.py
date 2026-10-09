@@ -18,6 +18,11 @@ def _table(size):
 
 _T = {'medium': _M, 'small': _S, 'large': _L}
 
+# built now, while the heap is empty: building one later needs a 1-2 KB block,
+# which a heap full of loaded modules may not have (a MemoryError at HOME)
+for _k in _T:
+    _table(_k)
+
 def cw(ch, size):
     o = ord(ch) - 32
     t = _T[size]

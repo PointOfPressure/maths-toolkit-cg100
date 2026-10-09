@@ -512,7 +512,32 @@ def run(check):
             continue
         ok, why = run_case(case)
         check('accept ' + case[0] + ' ' + case[3] + ' <' + '; '.join([str(r) for r in case[2]]) + '>', ok, why)
+    _csq(check)
     _depth(check)
+
+CSQ = ('x^2+3x+k', '2x^2-12x+5', '1+x-2x^2', 'x^2+b*x+4', 'k*x^2+4x+1', '3x^2+6p*x+q',
+       'a*x^2+b*x+c', 'x^2-6x+9', 'x^2+4x', '2x^2+3x', '-x^2+2x+1', 'x^2-2k*x+k^2+1',
+       '5x^2-3x+1', 'x^2+x+1/4', '4x^2-12x+p')
+
+def _csq(check):
+    # the Algebra action and the old tools (casalg.csq_lines: CAS op, Pure
+    # tool) complete the square to the same form and turning point
+    import caslex
+    import caseng
+    import casalg
+    import recog
+    import e_alg
+    for s in CSQ:
+        old = casalg.csq_lines(caslex.parse(s))
+        new = e_alg.csq(recog.form([s]), None, None)
+        box = [l for l in new if isinstance(l, tuple) and l[0] == '=']
+        a = caseng.tostr(old[0][1]).replace('*', '')
+        b = box[0][2].replace(' ', '').replace('*', '') if box else None
+        check('complete the square same both ways: ' + s, a == b, (a, b))
+        vx = [l for l in new if isinstance(l, str) and l.startswith('vertex ')]
+        tp = old[1][old[1].index('('):]
+        check('turning point same both ways: ' + s, vx and vx[0][7:].replace(' ', '') == tp.replace(' ', ''),
+              (vx, tp))
 
 def _depth(check):
     # the calculator stops at about 92 nested calls: every case, with its

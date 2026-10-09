@@ -83,17 +83,12 @@ def go(label, what):
     else:
         open_old(label, old_sections(what))
 
-FREE = []   # functions that drop a module's caches, added as modules load
+FREE = casui.FREE    # functions that drop a module's caches, added as modules load
 
 def free():
     # everything that can be rebuilt; modules themselves can't be unloaded
     # (no sys on the calculator), so this is all a session can get back
-    del casui.HIST[:-3]
-    casui._WRAPS.clear()
-    casui._COLS.clear()
-    casui._INP.clear()
-    for f in FREE:
-        f()
+    casui._free()
 
 def _bare(lines):
     # last resort when even a popup can't be built: constant strings only
@@ -113,19 +108,21 @@ def _bare(lines):
 def _idle():
     from casioplot import clear_screen, show_screen, draw_string
     clear_screen()
-    draw_string(10, 70, 'Closed after ' + str(casui.SET['sleep'] or 600) + ' minutes idle.',
+    draw_string(10, 70, 'Closed after about ' + str(casui.SET['sleep'] or 600) + ' minutes idle.',
                 casui.INK, 'medium')
     draw_string(10, 95, 'Run maths.py to start again.', casui.INK, 'medium')
     show_screen()
 
 def run():
+    # (pass2-aqa's main() loop, for the topic grid)
     sel = 0
     msg = None
-    oom = 0
+    oom = 0     # MemoryErrors in the home grid itself, in a row
     while True:
         # every exception lands here, including those from the popup itself,
         # so nothing ends the program with a dead screen showing
         showing = False
+        ingrid = False
         try:
             if msg is not None:
                 m = msg
@@ -133,8 +130,10 @@ def run():
                 showing = True
                 casui.flash(m)
                 showing = False
+            ingrid = True
             ts = tiles()
             sel = casui.menu('Maths Toolkit', [t[0] for t in ts], sel)
+            ingrid = False
             oom = 0
             if sel < 0:
                 return
@@ -145,17 +144,19 @@ def run():
         except Idle:
             _idle()
             return
-        except MemoryError:
-            msg = None
-            oom += 1
+        except MemoryError as e:
             free()
-            if oom >= 3:
+            if ingrid:
+                oom += 1
+            if oom >= 2:
+                # not even the home grid fits now
                 try:
                     _bare(['Out of memory.', 'Every topic opened stays loaded.',
                            'Press EXE, then run maths.py again.'])
                 except Exception:
                     pass
                 return
-            msg = 'out of memory - cleared caches. If it happens again, run maths.py again.'
+            msg = None if showing else casui.errtext(e)
         except Exception as e:
-            msg = None if showing else 'error: ' + str(e)
+            # an error inside the popup itself is dropped, not shown again
+            msg = None if showing else casui.errtext(e)

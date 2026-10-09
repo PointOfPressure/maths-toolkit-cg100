@@ -95,6 +95,7 @@ def ratnode(r):
     return ('/', ('n', r[0]), ('n', r[1]))
 
 MAXPOW = 12
+POLYPOW = 30     # (ax+b)^n by coefficient lists up to this n
 
 def _factors(node, coef, facs):
     t = node[0]
@@ -128,7 +129,7 @@ def _factors(node, coef, facs):
             return rmul(coef, r)
         e = ratof(node[2])
         ei = None if e is None else rint(e)
-        if ei is not None and -MAXPOW <= ei <= MAXPOW:
+        if ei is not None and -POLYPOW <= ei <= POLYPOW:
             inner = []
             c = _factors(node[1], R1, inner)
             if c is None:
@@ -279,13 +280,23 @@ def _ex(n):
         a = _ex(n[1])
         e = ratof(n[2])
         ei = None if e is None else rint(e)
-        if ei is not None and 0 <= ei <= MAXPOW and a[0] in ('+', '-'):
+        if ei is not None and 0 <= ei <= POLYPOW and a[0] in ('+', '-'):
             if ei == 0:
                 return ('n', 1)
-            out = a
+            # one letter, number coefficients: multiply coefficient lists, so
+            # (2x+3)^10 never builds the 1024-product tree
+            vs = caseng.vars_in(a)
+            if len(vs) == 1:
+                p = poly(a, vs[0])
+                if p is not None:
+                    return ptree(ppow(p, ei), vs[0])
+            if ei > MAXPOW:
+                return ('^', a, _ex(n[2]))
+            # letters: collect like terms after every multiply
+            out = collect(a)
             i = 1
             while i < ei:
-                out = _mulout(out, a)
+                out = collect(_mulout(out, a))
                 i += 1
             return out
         return ('^', a, _ex(n[2]))
@@ -374,7 +385,7 @@ def poly(node, var):
     if t == '^':
         e = ratof(node[2])
         ei = None if e is None else rint(e)
-        if ei is None or ei < 0 or ei > MAXPOW:
+        if ei is None or ei < 0 or ei > POLYPOW:
             return None
         a = poly(node[1], var)
         if a is None:
@@ -426,6 +437,13 @@ def pmul(a, b):
                 j += 1
         i += 1
     return ptrim(out)
+
+def ppow(a, n):
+    out = [R1]
+    while n > 0:
+        out = pmul(out, a)
+        n -= 1
+    return out
 
 def pscale(a, r):
     return ptrim([rmul(c, r) for c in a])

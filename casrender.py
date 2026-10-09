@@ -160,6 +160,17 @@ def measure(b):
     return v
 
 SUBD = {'large': 6, 'medium': 4, 'small': 2}     # subscript drop
+
+def _supat(sz, ba, ea):
+    # (raise, gap) of an exponent over a base of ascent ba. A base taller than
+    # a line of text (a bracket round a fraction) has the exponent's top 2 px
+    # below its own top, so the line grows no taller, and 2 clear pixels after
+    # its last column; a one-line base keeps the usual raise and 1 px gap.
+    shift = EM[sz] * 45 // 100
+    if ba > ASC[sz] + 2:
+        up = ba - 2 - ea
+        return (up if up > shift else shift, 2)
+    return (shift, 1)
 XH = {'large': 12, 'medium': 9, 'small': 6}      # x-height: a bar over x sits lower than over X
 _LOW = 'acegmnopqrsuvwxyz'
 
@@ -235,11 +246,11 @@ def _measure(b):
         sz = b[3]
         bw, ba, bd = measure(b[1])
         ew, ea, ed = measure(b[2])
-        shift = EM[sz] * 45 // 100
+        shift, gap = _supat(sz, ba, ea)
         asc = ba
         if shift + ea > asc:
             asc = shift + ea
-        return (bw + 1 + ew, asc, bd)
+        return (bw + gap + ew, asc, bd)
     if k == 'sub' or k == 'ss':
         sz = b[-1]
         bw, ba, bd = measure(b[1])
@@ -392,9 +403,10 @@ def draw(b, x, base):
     if k == 'sup':
         sz = b[3]
         bw, ba, bd = measure(b[1])
-        shift = EM[sz] * 45 // 100
+        ew, ea, ed = measure(b[2])
+        shift, gap = _supat(sz, ba, ea)
         draw(b[1], x, base)
-        draw(b[2], x + bw + 1, base - shift)
+        draw(b[2], x + bw + gap, base - shift)
         return
     if k == 'sub' or k == 'ss':
         sz = b[-1]

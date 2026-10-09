@@ -9,15 +9,7 @@ import casui
 from casui import *
 from casui import _INP, _LAST, _blocks
 
-def _free():
-    del HIST[:-3]
-    _INP.clear()
-
-try:
-    import home
-    home.FREE.append(_free)
-except ImportError:
-    pass
+# their caches (HIST, _INP) are casui's, and casui._free drops them
 
 # ---- icons ---------------------------------------------------------------------------
 
@@ -489,6 +481,7 @@ def _draw_calc(ed, shift, alpha):
                 draw_string(378 - text_w(note, 'medium'), yb + ad + 2, note, GREY, 'medium')
         y += h
         n += 1
+    casrender._MCACHE.clear()
     show_screen()
 
 def _calc_fast(ed):
@@ -815,10 +808,10 @@ def _cas_op2(op, tree, s):
     if op == 15:
         return [('m', casalg.expand(tree)), ('w', 'compound angles and log laws used')]
     if op == 16:
-        r = casalg.complete_square(tree)
+        r = casalg.csq_lines(tree)
         if r is None:
-            return [('!', 'not a quadratic in x')]
-        return [('m', r), ('w', 'a(x + b/2a)^2 + (c - b^2/4a)')]
+            return [('!', 'not a quadratic in x: a x^2 + b x + c, letters allowed in a, b, c')]
+        return r
     if op == 17:
         r = casalg.rationalise(tree)
         if r is None:
@@ -908,6 +901,15 @@ def _parse_eq(s, name=None):
 
 _TOOLSEL = [0]
 
+# Further-only entries of the old screens, hidden while FURTHER_ON is False
+OPS_FURTHER = ('series (Maclaurin)',)
+NOTES_FURTHER = ('Core Pure Y420', 'Stats Y422', 'Extra Pure Y435')
+# booklet pages for Further only (the A-level Maths booklet has none of them)
+FB_FURTHER = ('Complex numbers', 'Matrix transformations', 'Summations',
+              'Maclaurin series', 'Vectors', 'Area of a sector', 'Hyperbolic functions',
+              'Conics', 'Further num. integ.', 'Numerical solution ODE', 'Arc length',
+              'Surface area of revol.', 'Centres of mass', 'Contingency tables')
+
 def calc_tools(text):
     try:
         s, tree = _parse_eq(text)
@@ -918,19 +920,21 @@ def calc_tools(text):
         flash('cannot read that')
         return
     while True:
-        op = menu('Tools', CAS_OPS, _TOOLSEL[0])
+        op = pick_shown('Tools', CAS_OPS, OPS_FURTHER, _TOOLSEL[0])
         if op < 0:
             return
         _TOOLSEL[0] = op
         _run_op(op, tree, s)
 
 def _run_op(op, tree, s):
+    # Busy first: an op can take seconds, and the menu left showing looked hung
+    busy()
     try:
         lines = _cas_op(op, tree, s)
     except ValueError as e:
         lines = [('!', str(e))]
     except Exception as e:
-        lines = [('!', 'error: ' + str(e))]
+        lines = [('!', errtext(e))]
     if lines is not None:
         result(CAS_OPS[op], 'f(x) = ' + s, lines)
 
@@ -943,8 +947,9 @@ def cas_section():
             return
         s, tree = got
         while True:
-            op = menu('f(x) = ' + s, CAS_OPS, op)
+            op = pick_shown('f(x) = ' + s, CAS_OPS, OPS_FURTHER, op)
             if op < 0:
+                op = 0
                 break
             _run_op(op, tree, s)
 
@@ -966,12 +971,13 @@ def graph_section():
         plot.run([got[1]], -6.0, 6.0, 'y', 'y = ' + got[0])
 
 def notes_section():
-    labels = [p[0] for p in NOTE_PAPERS]
+    idx = shown([p[0] for p in NOTE_PAPERS], NOTES_FURTHER)
+    labels = [NOTE_PAPERS[i][0] for i in idx]
     while True:
         sel = remembered('Notes', labels)
         if sel < 0:
             return
-        name, mods = NOTE_PAPERS[sel]
+        name, mods = NOTE_PAPERS[idx[sel]]
         if mods:
             busy()
             import notesui
@@ -983,11 +989,13 @@ def _booklet(name):
     busy()
     import tn_fb
     import notesui
+    idx = shown(tn_fb.T, FB_FURTHER)
+    labels = [tn_fb.T[i] for i in idx]
     while True:
-        sel = remembered(name, tn_fb.T)
+        sel = remembered(name, labels)
         if sel < 0:
             return
-        notesui.show(tn_fb.T[sel], tn_fb.N[sel])
+        notesui.show(labels[sel], tn_fb.N[idx[sel]])
 
 HOME_TILES = [
     ('Calculate', ic_calc), ('CAS', ic_cas), ('Graph', ic_graph), ('Solve', ic_solve),
@@ -995,26 +1003,29 @@ HOME_TILES = [
 ]
 
 def classic():
-    # the old home grid, for More > All tools; HOME goes to the new home
+    # the old home grid, for More > All tools; HOME goes to the new home.
+    # The Further tile only with the launcher's FURTHER switch on
+    tiles = [t for t in HOME_TILES if casui.FURTHER_ON or t[0] != 'Further']
     sel = 0
     while True:
-        sel = grid('All tools', HOME_TILES, sel)
+        sel = grid('All tools', tiles, sel)
         if sel < 0:
             return
-        if sel == 0:
+        name = tiles[sel][0]
+        if name == 'Calculate':
             calc_section()
-        elif sel == 1:
+        elif name == 'CAS':
             cas_section()
-        elif sel == 2:
+        elif name == 'Graph':
             graph_section()
-        elif sel == 3:
+        elif name == 'Solve':
             solve_section()
-        elif sel == 4:
+        elif name == 'Maths':
             qual_section('Maths', MATHS)
-        elif sel == 5:
+        elif name == 'Further':
             paper_section('Further', FURTHER)
-        elif sel == 6:
+        elif name == 'Notes':
             notes_section()
-        elif sel == 7:
+        elif name == 'Settings':
             settings()
 

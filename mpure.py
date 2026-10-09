@@ -1227,7 +1227,19 @@ def _quad_sym(a, b, c):
     vx = S(('/', ('neg', b), ('*', ('n', 2), a)))
     vy = S(('-', c, ('/', ('^', b, ('n', 2)), ('*', ('n', 4), a))))
     lines.append('vertex (' + caseng.tostr(vx) + ', ' + caseng.tostr(vy) + ')')
+    cs = casalg.csq_lines(('+', ('+', ('*', a, ('^', X, ('n', 2))), ('*', b, X)), c))
+    if cs is not None:
+        lines.append(cs[0])
+        lines.extend([ln for ln in cs[2:]])
     lines.append(w('letters are constants, taken as positive'))
+    return lines
+
+
+def t_csq(f):
+    # a x^2 + b x + c typed as an expression; letters allowed in a, b, c
+    lines = casalg.csq_lines(f)
+    if lines is None:
+        raise ValueError('not a quadratic in x: type a x^2 + b x + c')
     return lines
 
 
@@ -3226,7 +3238,98 @@ def t_line2(x1, y1, x2, y2):
               (fmt(-1.0 / g) if g != 0 else 'undefined'))]
 
 
+def _rs(r):
+    # exact rational (p, q) as text
+    return str(r[0]) if r[1] == 1 else str(r[0]) + '/' + str(r[1])
+
+
+def _rf(r):
+    return r[0] / float(r[1])
+
+
+def _intline(A, B, C):
+    # A x + B y + C = 0 for rationals: whole numbers, no common factor,
+    # leading coefficient positive
+    den = 1
+    for r in (A, B, C):
+        den = den // casutil.gcd(den, r[1]) * r[1]
+    v = [r[0] * (den // r[1]) for r in (A, B, C)]
+    g = casutil.gcd(casutil.gcd(v[0], v[1]), v[2])
+    if g > 1:
+        v = [k // g for k in v]
+    if v[0] < 0 or (v[0] == 0 and v[1] < 0):
+        v = [-k for k in v]
+    return _linstr(v, ['x', 'y', '']) + ' = 0'
+
+
+def _rp(r):
+    # a rational as a factor or a term: bracketed when negative or a fraction
+    t = _rs(r)
+    return '(' + t + ')' if (r[0] < 0 or r[1] != 1) else t
+
+
+def _rn(r):
+    # a rational as a term of a sum: bracketed when negative
+    t = _rs(r)
+    return '(' + t + ')' if r[0] < 0 else t
+
+
+def _less(name, r):
+    # 'x - 3', 'x + 3/2', 'x'
+    if r[0] == 0:
+        return name
+    if r[0] < 0:
+        return name + ' + ' + _rs((-r[0], r[1]))
+    return name + ' - ' + _rs(r)
+
+
 def t_perpbis(x1, y1, x2, y2):
+    # perpendicular bisector of AB, exact when the points are rational
+    R = caspoly
+    pts = [caseng._fltrat(float(v)) for v in (x1, y1, x2, y2)]
+    if None in pts:
+        return _perpbis_float(x1, y1, x2, y2)
+    ax, ay, bx, by = pts
+    dx = R.rsub(bx, ax)
+    dy = R.rsub(by, ay)
+    if R.rzero(dx) and R.rzero(dy):
+        raise ValueError('the two points are the same')
+    mx = R.rdiv(R.radd(ax, bx), (2, 1))
+    my = R.rdiv(R.radd(ay, by), (2, 1))
+    M = '(' + _rs(mx) + ', ' + _rs(my) + ')'
+    wm = w('M = ((x1 + x2)/2, (y1 + y2)/2) = ((' + _rs(ax) + ' + ' + _rn(bx) + ')/2, (' +
+           _rs(ay) + ' + ' + _rn(by) + ')/2)')
+    wg = 'm(AB) = (y2 - y1)/(x2 - x1) = (' + _rs(by) + ' - ' + _rn(ay) + ')/(' + \
+         _rs(bx) + ' - ' + _rn(ax) + ')'
+    if R.rzero(dy):
+        # AB horizontal: the bisector is the vertical line through M
+        return ['x = ' + _rs(mx), _intline(R.R1, R.R0, R.rneg(mx)),
+                'midpoint ' + M, 'gradient AB = 0',
+                'perpendicular gradient undefined (vertical line)',
+                wm, w(wg + ' = 0'),
+                w('AB is horizontal, so the bisector is vertical through M')]
+    if R.rzero(dx):
+        # AB vertical: the bisector is the horizontal line through M
+        return ['y = ' + _rs(my), _intline(R.R0, R.R1, R.rneg(my)),
+                'midpoint ' + M, 'gradient AB undefined (vertical)',
+                'perpendicular gradient = 0',
+                wm, w('x2 - x1 = 0, so AB is vertical'),
+                w('the bisector is horizontal through M')]
+    g = R.rdiv(dy, dx)
+    p = R.rdiv(R.rneg(R.R1), g)
+    c = R.rsub(my, R.rmul(p, mx))
+    return [_lineeq(_rf(p), _rf(c)), _intline(p, R.rneg(R.R1), c),
+            'midpoint ' + M, 'gradient AB = ' + _rs(g),
+            'perpendicular gradient = ' + _rs(p),
+            wm, w(wg + ' = ' + _rs(g)),
+            w('m = -1/m(AB) = ' + _rs(p)),
+            w(_less('y', my) + ' = ' + (_less('x', mx) if p == R.R1 else
+                                        ('-' if p == (-1, 1) else str(p[0]) if p[1] == 1 else _rp(p)) +
+                                        '(' + _less('x', mx) + ')')),
+            w('c = ' + _rs(my) + ' - ' + _rp(p) + '(' + _rs(mx) + ') = ' + _rs(c))]
+
+
+def _perpbis_float(x1, y1, x2, y2):
     dx = x2 - x1
     dy = y2 - y1
     if dx == 0 and dy == 0:
@@ -3246,7 +3349,8 @@ def t_perpbis(x1, y1, x2, y2):
     p = -1.0 / g
     lines.insert(0, _lineeq(p, my - p * mx))
     lines.insert(1, _general(p, -1, my - p * mx))
-    lines.append('gradient = ' + fmt(p))
+    lines.append('gradient AB = ' + fmt(g))
+    lines.append('perpendicular gradient = ' + fmt(p))
     lines.append(w('chord gradient ' + fmt(g) + ', times ' + fmt(p) + ' = -1'))
     return lines
 
@@ -5170,6 +5274,7 @@ SECTIONS = [
         ('Simplify surd expr', 'f(x)', t_surdexpr),
         ('Rationalise', 'a,b,c,d,e,f', t_rationalise),
         ('Quadratic', 'a(k),b(k),c(k)', t_quadratic),
+        ('Complete the square', 'f(x)', t_csq),
         ('Quadratic in f(x)', 'a,b,c,f(x)', t_quad_in),
         ('Simultaneous 2 linear', 'a1,b1,c1,a2,b2,c2', t_simul2),
         ('Simultaneous non-linear', 'f(x,y)=,g(x,y)=', t_simulnl),

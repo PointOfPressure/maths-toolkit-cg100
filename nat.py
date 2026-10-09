@@ -389,7 +389,7 @@ def mitem(it, lvl, prev=None):
         return ((nw if nw > dw else dw) + 6, ax + 3 + na + nd, da + dd + 3 - ax)
     if k == 'P':
         ew, ea, ed = measure(it[1], lvl + 1)
-        up = 7 if sz == 'medium' else 4
+        up = _pup(prev, lvl, ea)
         a = up + ea
         return (ew + 1, a if a > ASC[sz] else ASC[sz], DESC[sz])
     if k == 'R' or k == 'N':
@@ -423,6 +423,20 @@ def mitem(it, lvl, prev=None):
         return (_fw(name, sup, sz) + lw + aw + rw, a, ad + 1 if tall else ad)
     aw, aa, ad = measure(it[1], lvl)
     return (aw + 8, aa + 1, ad + 1)
+
+def _pup(prev, lvl, ea):
+    # how far up a power's exponent sits. After a box taller than a line of
+    # text (a bracket round a fraction) its top is 2 px below that box's top,
+    # so the line grows no taller; after one-line text, the usual raise. The
+    # power starts 1 px after its base, 2 clear of a drawn bracket's last pixel.
+    sz = _sz(lvl)
+    up = 7 if sz == 'medium' else 4
+    if prev is not None and not isinstance(prev, str):
+        # a tall box's ascent has 1 px of headroom over its top pixel
+        pa = mitem(prev, lvl)[1]
+        if pa > ASC[sz] + 2 and pa - 3 - ea > up:
+            up = pa - 3 - ea
+    return up
 
 class Pen:
     # dx scrolls the line; caret gets (x, top, bottom) when the edited row is met
@@ -606,8 +620,8 @@ def draw_item(pen, it, x, base, lvl, prev=None):
         draw_row(pen, it[2], x + (w - dw) // 2, ybar + 2 + da, lvl)
         return
     if k == 'P':
-        up = 7 if sz == 'medium' else 4
-        draw_row(pen, it[1], x + 1, base - up, lvl + 1)
+        ew, ea, ed = measure(it[1], lvl + 1)
+        draw_row(pen, it[1], x + 1, base - _pup(prev, lvl, ea), lvl + 1)
         return
     if k == 'R' or k == 'N':
         rw, ra, rd = measure(it[-1], lvl)
@@ -658,29 +672,32 @@ def draw(ed, row, x, base, maxw, color=INK, dx=None):
         LAST[1] = caret
         return (0, a, d)
     _MC[0] = {}
-    w, a, d = measure(row, 0)
-    pen = Pen(ed, 0, color)
-    if dx is not None:
-        pen.dx = dx
-        pen.ed = None
-        pen.hole = color
-    elif ed is not None and w > maxw:
-        pen.dry = True
+    try:
+        w, a, d = measure(row, 0)
+        pen = Pen(ed, 0, color)
+        if dx is not None:
+            pen.dx = dx
+            pen.ed = None
+            pen.hole = color
+        elif ed is not None and w > maxw:
+            pen.dry = True
+            draw_row(pen, row, x, base, 0)
+            cx = pen.caret[0] if pen.caret else x + w
+            if cx - x > maxw - 12:
+                pen.dx = maxw - 12 - (cx - x)
+            pen.dry = False
         draw_row(pen, row, x, base, 0)
-        cx = pen.caret[0] if pen.caret else x + w
-        if cx - x > maxw - 12:
-            pen.dx = maxw - 12 - (cx - x)
-        pen.dry = False
-    draw_row(pen, row, x, base, 0)
-    caret = None
-    if pen.caret is not None:
-        cx, top, bot = pen.caret
-        caret = (cx + pen.dx, top, bot)
-        _vl(pen, cx, top - 1, bot, CARET)
-        _vl(pen, cx + 1, top - 1, bot, CARET)
-    LAST[0] = pen.dx
-    LAST[1] = caret
-    _MC[0] = None
+        caret = None
+        if pen.caret is not None:
+            cx, top, bot = pen.caret
+            caret = (cx + pen.dx, top, bot)
+            _vl(pen, cx, top - 1, bot, CARET)
+            _vl(pen, cx + 1, top - 1, bot, CARET)
+        LAST[0] = pen.dx
+        LAST[1] = caret
+    finally:
+        # an error part way (MemoryError) must not leave the cache live
+        _MC[0] = None
     return (w, a, d)
 
 def undraw(row, x, base, dx, caret, bg):

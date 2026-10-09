@@ -539,8 +539,10 @@ def _zeros(tree, what):
     out = []
     seen = []
     for r in _troots(tree):
+        if r < -1e-6:
+            continue
         r = r if r > 1e-6 else 0.0
-        if r >= -1e-6 and len(out) < 3 and _s3(r) not in seen:
+        if len(out) < 3 and _s3(r) not in seen:
             seen.append(_s3(r))
             out.append(_w(what + ' at t = ' + _s3(r)))
     return out

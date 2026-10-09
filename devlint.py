@@ -113,6 +113,15 @@ class Lint(ast.NodeVisitor):
             self.flag(n, "." + n.attr + "() is not in MicroPython 1.9.4")
         self.generic_visit(n)
 
+    def visit_ExceptHandler(self, n):
+        # Home and Idle are BaseExceptions so tools' handlers let them through;
+        # a bare except or except BaseException would swallow HOME
+        if n.type is None:
+            self.flag(n, "bare except: swallows HOME (use except Exception)")
+        elif isinstance(n.type, ast.Name) and n.type.id == "BaseException":
+            self.flag(n, "except BaseException swallows HOME")
+        self.generic_visit(n)
+
     def visit_Name(self, n):
         if isinstance(n.ctx, ast.Load) and n.id in BUILTIN_BAD:
             self.flag(n, "builtin '" + n.id + "' is not in MicroPython 1.9.4")
@@ -149,7 +158,47 @@ def run(root="."):
         all_bad.extend(check_file(p, mods))
     for f in missing:
         all_bad.append((f, 0, "device file is missing"))
+    all_bad.extend(check_launchers(root))
     return all_bad
+
+
+def check_launchers(root):
+    # maths.py and module.py are the same launcher (deploy.sh copies both),
+    # holding the settings the calculator can't save: FURTHER = True/False
+    bad = []
+    try:
+        a = open(os.path.join(root, "maths.py")).read()
+        b = open(os.path.join(root, "module.py")).read()
+    except IOError:
+        return bad
+    if a != b:
+        bad.append(("module.py", 0, "differs from maths.py: the two launchers must match"))
+    tree = ast.parse(a)
+    sets = [n for n in tree.body if isinstance(n, ast.Assign) and
+            [t.id for t in n.targets if isinstance(t, ast.Name)] == ["FURTHER"]]
+    if len(sets) != 1 or not isinstance(sets[0].value, ast.Constant) or \
+            sets[0].value.value not in (True, False):
+        bad.append(("maths.py", 0, "needs one line FURTHER = True or FURTHER = False"))
+    # casui.main(further=FURTHER, angle=ANGLE, ...): every setting the
+    # launcher assigns goes in by its own name
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and
+             isinstance(n.func, ast.Attribute) and n.func.attr == "main" and
+             isinstance(n.func.value, ast.Name) and n.func.value.id == "casui"]
+    if len(calls) != 1:
+        bad.append(("maths.py", 0, "must call casui.main(further=FURTHER, ...) once"))
+        return bad
+    kw = {}
+    for k in calls[0].keywords:
+        if isinstance(k.value, ast.Name):
+            kw[k.arg] = k.value.id
+    if kw.get("further") != "FURTHER":
+        bad.append(("maths.py", 0, "must call casui.main(further=FURTHER, ...)"))
+    names = [t.id for n in tree.body if isinstance(n, ast.Assign) for t in n.targets
+             if isinstance(t, ast.Name)]
+    for nm in names:
+        if kw.get(nm.lower()) != nm:
+            bad.append(("maths.py", 0, nm + " is set but not passed as " + nm.lower() + "=" + nm))
+    return bad
 
 
 if __name__ == "__main__":

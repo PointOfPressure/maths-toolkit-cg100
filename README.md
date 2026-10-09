@@ -4,7 +4,7 @@ A calculator app in stock MicroPython 1.9.4 using the built-in `casioplot`.
 An expression calculator with complex numbers, a CAS (simplify, expand,
 factorise, solve, differentiate, integrate, series, limits), a plotter,
 revision notes (the AQA formulae booklet plus notes for every paper sat), and
-722 tools mapped section by section to two specifications:
+723 tools mapped section by section to two specifications:
 
 - A-level Mathematics: **AQA 7357**
 - A-level Further Mathematics: **OCR B (MEI) H645**, every paper: Core Pure
@@ -20,9 +20,17 @@ It precompiles every module to `.mpy` with MicroPython 1.9.4's `mpy-cross`
 default `~/dev/cg100/bin/mpy-cross-1.9.4`), deletes every other `.py`/`.mpy`
 in the storage root, copies the launchers `maths.py` and `module.py` and the
 modules in, and checks each file byte for byte. Device files:
-`maths.py`, `module.py`, `font.py`, `casui.py`, `nat.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `casalg.py`, `cassolve.py`, `plot.py`, `tex.py`, `texg.py`, `notesui.py`, `notes_ix.py`, `tn_fb.py`, `tn_mp1.py`, `tn_mp2.py`, `tn_mp3.py`, `tn_ms.py`, `tn_mm.py`, `tn_cp1.py`, `tn_cp2.py`, `tn_cp3.py`, `tn_st1.py`, `tn_st2.py`, `tn_xp.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`, `falgo.py`, `fnum.py`, `fxpure.py`, `ffpt.py`, `ix_mpure.py`, `ix_mcalc.py`, `ix_mstat.py`, `ix_mmech.py`, `ix_fcore.py`, `ix_fcalc.py`, `ix_fmech.py`, `ix_fstat.py`, `ix_falgo.py`, `ix_fnum.py`, `ix_fxpure.py`, `ix_ffpt.py`.
+`maths.py`, `module.py`, `font.py`, `casui.py`, `nat.py`, `casutil.py`, `caslex.py`, `caseng.py`, `casrender.py`, `cascalc.py`, `caspoly.py`, `casalg.py`, `cassolve.py`, `plot.py`, `tex.py`, `texg.py`, `notesui.py`, `notes_ix.py`, `tn_fb.py`, `tn_mp1.py`, `tn_mp2.py`, `tn_mp3.py`, `tn_ms.py`, `tn_mm.py`, `tn_cp1.py`, `tn_cp2.py`, `tn_cp3.py`, `tn_st1.py`, `tn_st2.py`, `tn_xp.py`, `tables.py`, `mpure.py`, `mcalc.py`, `mstat.py`, `mmech.py`, `fcore.py`, `fcalc.py`, `fmech.py`, `fstat.py`, `falgo.py`, `fnum.py`, `fxpure.py`, `ffpt.py`, `ix_mpure.py`, `ix_mcalc.py`, `ix_mstat.py`, `ix_mmech.py`, `ix_fcore.py`, `ix_fcalc.py`, `ix_fmech.py`, `ix_fstat.py`, `ix_falgo.py`, `ix_fnum.py`, `ix_fxpure.py`, `ix_ffpt.py`, `casold.py`, `home.py`, `topic.py`, `recog.py`, `acts.py`, `cfg.py`, `eng.py`, `e_solve.py`, `e_alg.py`, `e_fn.py`, `e_exp.py`, `coord.py`, `e_geo.py`, `e_calc.py`, `rgeo.py`, `acts_geo.py`, `acts_calc.py`, `selftest.py`, `selfcases.py`.
 
 Then on the calculator: Python app > `maths.py` (or `module.py`) > Run.
+
+The calculator can't save files from Python, so the settings that stick
+live in the launchers (keep the two the same; devlint checks): `FURTHER`,
+`ANGLE`, `ANSWERS`, `DECIMALS`, `COMPLEX`, `SLEEP` and `REPEAT`, each with
+its choices in a comment. The Settings page changes them until the program
+ends. `FURTHER = False` hides Further Maths (the home tiles, its notes, the
+Further-only booklet pages, complex and hyperbolic symbols, the Maclaurin CAS
+op); edit it to `True` on the calculator to show them.
 
 ## Screens
 
@@ -110,7 +118,7 @@ Result screens typeset every answer and working line the same way at run time
 | Section | Tools |
 | --- | --- |
 | A Proof | Counterexample f>0, Counterexample prime, Counterexample d|f(n), Counterexample f=g |
-| B Algebra and functions | Index a^(p/q), Simplify sqrt(n), Simplify surd expr, Rationalise, Quadratic, Quadratic in f(x), Simultaneous 2 linear, Simultaneous non-linear, Line meets quadratic, Solve f(x)=g(x), Linear inequality, Quadratic inequality, Inequality f(x) > g(x), Discriminant in k, Expand, Factorise, Divide p(x) by d(x), Factor theorem, Simplify f(x)/g(x), Partial fractions, Composite fg and gf, Inverse function, Domain of f(x), Range of f on [a,b], Transform af(bx+c)+d, Solve |ax+b|=cx+d, Proportion y=kx^n, Plot f(x) |
+| B Algebra and functions | Index a^(p/q), Simplify sqrt(n), Simplify surd expr, Rationalise, Quadratic, Complete the square, Quadratic in f(x), Simultaneous 2 linear, Simultaneous non-linear, Line meets quadratic, Solve f(x)=g(x), Linear inequality, Quadratic inequality, Inequality f(x) > g(x), Discriminant in k, Expand, Factorise, Divide p(x) by d(x), Factor theorem, Simplify f(x)/g(x), Partial fractions, Composite fg and gf, Inverse function, Domain of f(x), Range of f on [a,b], Transform af(bx+c)+d, Solve |ax+b|=cx+d, Proportion y=kx^n, Plot f(x) |
 | C Coordinate geometry | Line through 2 points, Perpendicular bisect, Parallel through pt, Perpendicular thru pt, Intersect y=mx+c, Triangle 3 vertices, Foot of perpendicular, Circle from general, Circle centre+radius, Point and circle, Circle, centre on line, Circle through 3 pts, Line meets circle, Tangent to circle, Param to Cartesian, Param point at t, Plot parametric |
 | D Sequences and series | Arithmetic a,d,n, Geometric a,r,n, AP sum, first and last, AP: n for Sn > k, GP: n for Sn > k, AP from 2 terms, AP from term and sum, GP from 2 terms, Binomial (a+bx)^n, Binomial rational n, Sigma sum f(r) a..b, Recurrence u(n+1), Recurrence sum to N, Terms of u(n), nCr and nPr |
 | E Trigonometry | Exact trig at x deg, Triangle SSS, Triangle SAS, Triangle ASA, Triangle SSA, Area (1/2)ab sinC, Arc and sector (rad), Arc and sector (deg), Degrees to radians, Radians to degrees, Solve trig eqn (deg), Solve trig eqn (rad), Quad in sin x (deg), Quad in cos x (deg), Quad in tan x (deg), R form a sin + b cos, Small angle (rad), Compound angle (deg), Double angle (deg), sec cosec cot (deg), arcsin arccos arctan, Exact ratios from one, Identity check (rad) |

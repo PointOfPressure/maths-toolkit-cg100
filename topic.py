@@ -396,7 +396,7 @@ def engine(mod, fn, F, arg, vals):
     except (casui.Home, casui.Idle):
         raise
     except Exception as e:
-        return [('!', 'error: ' + str(e))]
+        return [('!', casui.errtext(e))]
 
 # ---- prompts (mockup C): only what is missing ------------------------------------------------
 # ask is a list of lines (label, fields, open) with fields 1 or 2 boxes; open

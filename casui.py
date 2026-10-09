@@ -48,6 +48,7 @@ TOP = 22        # first body pixel
 BOT = 191       # last body pixel
 
 DEG = False     # mirrors casutil.DEG so the home screen needs no engine
+FURTHER_ON = False  # main(further=...): False hides Further Maths (H645) everywhere
 
 # Settings. The calculator can't save files, so the launch script (maths.py /
 # module.py) holds the defaults and passes them to main(); the Settings page
@@ -319,6 +320,10 @@ def _label_lines(label, width):
         ls = wrap(label, width, 'medium')
         if len(ls) > 2:
             ls = [ls[0], clip(' '.join(ls[1:]), width, 'medium')]
+        if len(_WRAPS) >= 120:
+            # about 200 bytes a label: unbounded, a long session's menus
+            # alone filled the heap
+            _WRAPS.clear()
         _WRAPS[key] = ls
     return ls
 
@@ -525,9 +530,25 @@ _LAST = {}      # label|spec -> the row last typed there, so going back never lo
 
 _INP = {}       # what the input screen shows now, for repainting only what changed
 
+# Further-only entries, hidden while FURTHER_ON is False
+SYM_FURTHER = ('i', 'sinh(', 'cosh(', 'tanh(', 'asinh(', 'acosh(', 'atanh(',
+               'arg(', 'conj(', 're(', 'im(')
+# (the CAS op, notes papers and booklet pages to hide are in casold.py)
+
+def shown(labels, hide):
+    # indices of the labels to show: all with Further on, else those not in hide
+    return [i for i in range(len(labels)) if FURTHER_ON or labels[i] not in hide]
+
+def pick_shown(title, labels, hide, sel=0, how=None):
+    # a menu of the shown labels; -> index into labels, or -1
+    idx = shown(labels, hide)
+    at = idx.index(sel) if sel in idx else 0
+    i = (how or menu)(title, [labels[j] for j in idx], at)
+    return -1 if i < 0 else idx[i]
+
 def symbols(ed):
     import nat
-    i = pick('Symbols', nat.SYMBOLS)
+    i = pick_shown('Symbols', nat.SYMBOLS, SYM_FURTHER, 0, pick)
     if i >= 0:
         nat.symbol(ed, nat.SYMBOLS[i])
 
@@ -585,6 +606,8 @@ def _blocks(lines, mode):
         x = 16 if kind == 'w' else 8
         for r, dx in tex.lines(b, 376 - x):
             out.append(block(kind, r, x + dx))
+    # the boxes are display lists now: let the measure cache drop them
+    casrender._MCACHE.clear()
     return out
 
 def block(kind, b, x):
@@ -825,7 +848,7 @@ def _tools_menu(code, title, mod):
             import casutil
             casutil.run_tool(label, spec, _tool_fn(code, title, mod, sel))
         except Exception as e:
-            flash('tool error: ' + str(e))
+            flash(errtext(e))
 
 def qual_section(title, secs):
     labels = [t for c, t, m in secs]
@@ -858,6 +881,34 @@ NOTE_PAPERS = (
     ('Extra Pure Y435', ('notes_xp',)),
 )
 
+def _free():
+    # drop what can be rebuilt; modules can't be unloaded (no sys on the
+    # calculator), so this is all the memory a running session can get back.
+    # The new screens add their own droppers to FREE (home.free calls this).
+    del HIST[:-3]
+    _WRAPS.clear()
+    _COLS.clear()
+    _INP.clear()
+    for f in FREE:
+        f()
+
+FREE = []   # functions that drop a module's caches, added as modules load
+
+RESTART = 'Press EXIT on the home screen, then run maths.py again.'
+
+def errtext(e):
+    # what to tell the user about an exception from a screen or a tool.
+    # Every section stays loaded once opened, so a long session can fill
+    # memory; an import that runs out half way leaves a broken module behind
+    # (MicroPython 1.9.4 keeps it), which then fails as a missing attribute,
+    # or as a missing name inside that module (the self test met both)
+    if isinstance(e, MemoryError):
+        return 'Out of memory: every section opened stays loaded. ' + RESTART
+    s = str(e)
+    if isinstance(e, NameError) or (isinstance(e, AttributeError) and 'module' in s):
+        return 'A section did not finish loading (memory ran out). ' + RESTART
+    return 'error: ' + s
+
 _OPTS = {'angle': ('rad', 'deg'), 'answers': ('exact', 'decimal', 'both'),
          'decimals': ('3sf', '4sf', '5sf', '6sf', '1dp', '2dp', '3dp', '4dp'),
          'complex': ('a+bi', 'polar'), 'repeat': ('off', 'slow', 'normal', 'fast')}
@@ -874,6 +925,8 @@ def main(further=False, angle='rad', answers='both', decimals='3sf',
         if v in _OPTS[k]:
             SET[k] = v
     SET['further'] = further is True
+    global FURTHER_ON
+    FURTHER_ON = SET['further']
     if isinstance(sleep, int) and 0 <= sleep <= 600:
         SET['sleep'] = sleep
     configure()

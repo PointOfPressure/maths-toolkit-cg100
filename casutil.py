@@ -112,6 +112,9 @@ def real(v):
 # ---- evaluation -------------------------------------------------------------
 
 def ev(tree, x=0.0, env=None):
+    caseng._TICK[0] += 4
+    if caseng._TICK[0] > 63:
+        caseng.tick()
     try:
         v = caseng.evalf(tree, x, DEG, env)
     except ValueError as e:
@@ -129,6 +132,9 @@ def ev(tree, x=0.0, env=None):
 
 def evx(tree, x, env=None):
     # numeric sample for plotting/solving: None instead of an error, real only
+    caseng._TICK[0] += 4
+    if caseng._TICK[0] > 63:
+        caseng.tick()
     try:
         v = caseng.evalf(tree, x, DEG, env)
     except Exception:
@@ -303,7 +309,11 @@ def call_tool(fn, vals):
     except OverflowError:
         return [('!', 'number too large')]
     except Exception as e:
-        return [('!', 'error: ' + str(e))]
+        # MemoryError lands here too (an Exception in MicroPython)
+        import casui
+        if isinstance(e, MemoryError):
+            casui._free()
+        return [('!', casui.errtext(e))]
     if lines is None:
         return []
     return lines

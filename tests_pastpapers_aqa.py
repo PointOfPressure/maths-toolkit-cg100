@@ -802,10 +802,15 @@ CASES += [
     ('73572-jun22', '9', 'mpure:F', 'Evaluate log expr', 'logb(2,x^3)-logb(2,y^2)=9', 'f = 0: x = 8*y^(2/3)', None, False, False),
     ('73571-jun18', '9b', 'mpure:B', 'Simultaneous non-linear', 'x+5y=25,4x+70y=(2x+5y)^2', '(x, y) = (-55, 16)', None, False, False),
     ('73571-jun18', '9b', 'mpure:B', 'Simultaneous non-linear', 'x+5y=25,4x+70y=(2x+5y)^2', '(x, y) = (-5, 6)', None, False, False),
+    # a negative root of v is not 'parallel at t = 0'
+    ('73572-nov20', '14a', 'mmech:Q', 'Vector r(t) to v, a', 't^3-5t^2,8t-t^2,2', 'v parallel to i at t = 4', None, False, False),
+    ('73572-nov20', '14a', 'mmech:Q', 'Vector r(t) to v, a', 't^3-5t^2,8t-t^2,2', 'v parallel to j at t = 0', None, False, False),
+    ('73572-nov20', '14a', 'mmech:Q', 'Vector r(t) to v, a', 't^3-5t^2,8t-t^2,2', 'v parallel to j at t = 3.33', None, False, False),
 ]
 
 # outputs that must not appear: (paper, q, module, label, inputs, unwanted, ask, deg, full)
 NOT = [
+    ('73572-jun25', '19b', 'mmech:Q', 'Vector a(t) to v, r', '6t,7,0,4,0,0,2', 'parallel to i', None, False, False),
 ]
 
 def run(check):

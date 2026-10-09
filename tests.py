@@ -12,6 +12,7 @@ import cascalc
 import caspoly
 import casutil
 import plot
+PLOT_RUN = plot.run
 plot.run = lambda *a, **k: None
 casutil.pick = lambda *a, **k: None
 casutil.ask = lambda *a, **k: None
@@ -224,6 +225,216 @@ def eq_fields():
                     except ValueError as e:
                         check(key + ': = refused', "'='" in str(e), str(e))
 
+def home_keys():
+    # HOME and memory: nothing may end main() with a dead screen showing.
+    # main() runs home.run(), whose topic grid is a casui.menu
+    import casui
+    import casioplot
+    import font
+    check('font tables built at import', sorted(font._B.keys()) == ['large', 'medium', 'small'])
+    saved = (casui.menu, casui.flash, casui.wait_key, casui.wait_release)
+    def script(steps):
+        # steps: what each grid() call does in turn
+        it = list(steps)
+        def grid(title, tiles, sel=0, right=None):
+            s = it.pop(0)
+            if isinstance(s, BaseException) or s is MemoryError:
+                raise s
+            return s
+        return grid
+    shown = []
+    def flash_home(msg):
+        shown.append(msg)
+        raise casui.Home()
+    try:
+        casui.wait_release = lambda: None
+        # MemoryError, then HOME pressed on the popup: back to the grid, not out
+        casui.menu = script([MemoryError(), -1])
+        casui.flash = flash_home
+        try:
+            casui.main()
+            ok = True
+        except BaseException as e:
+            ok = repr(e)
+        check('HOME on the out-of-memory popup stays in main', ok is True, ok)
+        check('out-of-memory popup says restart', shown and 'run maths.py again' in shown[0], shown)
+        # the popup itself running out of memory: dropped, grid again
+        def flash_oom(msg):
+            raise MemoryError()
+        casui.menu = script([MemoryError(), -1])
+        casui.flash = flash_oom
+        try:
+            casui.main()
+            ok = True
+        except BaseException as e:
+            ok = repr(e)
+        check('MemoryError inside the popup stays in main', ok is True, ok)
+        # an error inside the popup is not shown again forever
+        n = [0]
+        def flash_err(msg):
+            n[0] += 1
+            raise ValueError('x')
+        casui.menu = script([ValueError('boom'), -1])
+        casui.flash = flash_err
+        casui.main()
+        check('error inside the popup shown once', n[0] == 1, n[0])
+        # the home grid itself out of memory twice: bare message, clean exit
+        casui.menu = script([MemoryError(), MemoryError(), -1])
+        casui.flash = lambda msg: None
+        casui.wait_key = lambda: casui.EXE
+        try:
+            casui.main()
+            ok = True
+        except BaseException as e:
+            ok = repr(e)
+        check('home grid out of memory ends cleanly', ok is True, ok)
+        # Idle anywhere ends main quietly
+        casui.menu = script([casui.Idle()])
+        try:
+            casui.main()
+            ok = True
+        except BaseException as e:
+            ok = repr(e)
+        check('Idle ends main', ok is True, ok)
+    finally:
+        casui.menu, casui.flash, casui.wait_key, casui.wait_release = saved
+    # messages for a full heap and for a half-loaded module
+    check('errtext memory', 'Out of memory' in casui.errtext(MemoryError()))
+    check('errtext half-loaded module',
+          'did not finish loading' in casui.errtext(AttributeError("'module' object has no attribute 'Ed'")))
+    check('errtext half-loaded module, missing name',
+          'did not finish loading' in casui.errtext(NameError("name '_over' isn't defined")))
+    check('errtext other', casui.errtext(ValueError('bad')) == 'error: bad')
+    def oom():
+        raise MemoryError()
+    check('call_tool out of memory', 'Out of memory' in str(casutil.call_tool(oom, [])))
+    # label wraps are capped
+    casui._WRAPS.clear()
+    for i in range(300):
+        casui._label_lines('label number ' + str(i), 118)
+    check('wrap cache capped', len(casui._WRAPS) <= 120, len(casui._WRAPS))
+    casui._WRAPS.clear()
+    # a held HOME during simplify / evaluation unwinds to the home grid
+    real = casioplot.getkey
+    big = caslex.parse('(x+1)^12*(x-2)^7+sin(x)^2*(x+3)^5')
+    try:
+        casioplot.getkey = lambda: 12
+        try:
+            for i in range(300):
+                caseng.simplify(big)
+            ok = 'no Home'
+        except casui.Home:
+            ok = True
+        check('HOME interrupts simplify', ok is True, ok)
+        try:
+            for i in range(100):
+                casutil.evx(big, 0.5)
+            ok = 'no Home'
+        except casui.Home:
+            ok = True
+        check('HOME interrupts evaluation', ok is True, ok)
+    finally:
+        casioplot.getkey = real
+        caseng._TICK[0] = 0
+    check('no HOME: simplify runs', caseng.tostr(caseng.simplify(caslex.parse('x+x'))) == '2*x')
+    # the graph screen passes HOME on (it used to redraw the graph) and lets go
+    # of its sample memo when it closes
+    try:
+        casui.wait_key = lambda: casui.HOME
+        casui.wait_release = lambda: None
+        try:
+            PLOT_RUN([caslex.parse('x^2')], -6.0, 6.0, 'y', 'y = x^2')
+            ok = 'returned'
+        except casui.Home:
+            ok = True
+        check('HOME in a graph goes home', ok is True, ok)
+        check('graph memo freed', plot._YC[0] is None and plot._YC[1] == [], plot._YC[0])
+    finally:
+        casui.menu, casui.flash, casui.wait_key, casui.wait_release = saved
+    # CAS ops show Busy before they start (the CAS menu lives in casold)
+    import casold
+    marks = []
+    rb = (casold.busy, casold.result)
+    try:
+        casold.busy = lambda: marks.append('busy')
+        casold.result = lambda *a: marks.append('result')
+        casold._run_op(6, caslex.parse('x+x'), 'x+x')
+    finally:
+        casold.busy, casold.result = rb
+    check('CAS op shows Busy first', marks == ['busy', 'result'], marks)
+
+def further_switch():
+    # FURTHER = False in the launchers hides Further Maths from every menu
+    import casui
+    import nat
+    import tn_fb
+    src = open(os.path.join(HERE, 'maths.py')).read()
+    check('launchers match', src == open(os.path.join(HERE, 'module.py')).read())
+    check('launcher: Further off by default', 'FURTHER = False' in src and
+          'casui.main(further=FURTHER' in src, src)
+    import casold
+    seen = []
+    saved = (casui.grid, casui.menu, casui.pick, casold.remembered, casui.FURTHER_ON,
+             casold.grid, dict(casui.SET))
+    def grid(title, tiles, sel=0, right=None):
+        seen.append([t[0] for t in tiles])
+        return -1
+    def home_menu(title, labels, sel=0, hint=None):
+        seen.append(list(labels))
+        return -1
+    try:
+        casui.menu = home_menu
+        casold.grid = grid
+        casui.main()
+        casold.classic()
+        casui.main(further=True)
+        casold.classic()
+        check('home topics without Further', 'Algebra' in seen[0] and 'Complex' not in seen[0], seen[0])
+        check('old home grid without Further', seen[1] == ['Calculate', 'CAS', 'Graph', 'Solve', 'Maths',
+                                                           'Notes', 'Settings'], seen[1])
+        check('home topics with Further', 'Complex' in seen[2] and 'Matrices' in seen[2], seen[2])
+        check('old home grid with Further', 'Further' in seen[3] and len(seen[3]) == 8, seen[3])
+        for flag in (False, True):
+            casui.FURTHER_ON = flag
+            got = []
+            def menu(title, labels, sel=0, hint=None):
+                got.append(list(labels))
+                return labels.index('limit x -> a') if 'limit x -> a' in labels else -1
+            casui.menu = menu
+            casui.pick = menu
+            op = casui.pick_shown('Tools', casui.CAS_OPS, casold.OPS_FURTHER, 0)
+            check('CAS ops Maclaurin shown only with Further ' + str(flag),
+                  ('series (Maclaurin)' in got[0]) == flag, got[0])
+            check('CAS op picked by label ' + str(flag), casui.CAS_OPS[op] == 'limit x -> a', op)
+            casui.pick_shown('Symbols', nat.SYMBOLS, casui.SYM_FURTHER, 0, casui.pick)
+            check('symbols: complex and hyperbolic only with Further ' + str(flag),
+                  (('sinh(' in got[1]) and ('i' in got[1])) == flag and 'pi' in got[1], got[1])
+            labels = []
+            def remembered(title, opts):
+                labels.append(list(opts))
+                return -1
+            casold.remembered = remembered
+            casold.notes_section()
+            casold._booklet('Formula booklet')
+            check('notes papers: Further only with Further ' + str(flag),
+                  ('Core Pure Y420' in labels[0]) == flag and 'Pure 7357' in labels[0], labels[0])
+            check('booklet: Further pages only with Further ' + str(flag),
+                  ('Arc length' in labels[1]) == flag and 'Binomial expansion' in labels[1] and
+                  'Not in the booklet' in labels[1], labels[1])
+    finally:
+        casui.grid, casui.menu, casui.pick, casold.remembered, casui.FURTHER_ON, casold.grid, st = saved
+        casui.SET.clear()
+        casui.SET.update(st)
+        casui.configure()
+    for t in casold.FB_FURTHER:
+        check('booklet page exists: ' + t, t in tn_fb.T)
+    for t in casui.SYM_FURTHER:
+        check('symbol exists: ' + t, t in nat.SYMBOLS)
+    for t in casold.OPS_FURTHER:
+        check('CAS op exists: ' + t, t in casui.CAS_OPS)
+    for t in casold.NOTES_FURTHER:
+        check('notes paper exists: ' + t, t in [p[0] for p in casui.NOTE_PAPERS])
+
 def casrender_ok():
     import casrender
     box = casrender.build(caslex.parse('(2+3i)/(1-i)'), 0)
@@ -302,6 +513,8 @@ if __name__ == '__main__':
         sys.exit(0)
     engine()
     eq_fields()
+    home_keys()
+    further_switch()
     cas_engine()
     for mname in (only or MODULES):
         module_cases(mname)
