@@ -23,6 +23,9 @@ def S(t):
     r = caseng.simplify(t2)
     return _unhide(r, hid) if hid else r
 
+def E_(t):
+    return E(t)
+
 def E(t):
     # caspoly.expand with exact logs kept, as S
     hid = []
@@ -778,11 +781,23 @@ def clearfrac(L, Rt, v, lines):
         lines.append(eq(L, Rt))
     return L, Rt
 
+def linin(E, v):
+    # E = a v + b with a, b free of v: (a, b), else None. The coefficients
+    # first (no casalg needed), casalg.linin when they hold logs and the like
+    co = coeffs(E, v)
+    if co is not None:
+        if len(co) == 2:
+            return (co[1], co[0])
+        if len(co) == 1:
+            return (ZERO, co[0])
+        return None
+    import casalg
+    return casalg.linin(E, v)
+
 def collect(L, Rt, v, lines):
     # v in several places but linear: gather the v terms, take v out, divide
-    import casalg
-    E = caspoly.expand(S(('-', L, Rt)))
-    r = casalg.linin(E, v)
+    E = E_(S(('-', L, Rt)))
+    r = linin(E, v)
     if r is None or r[0] == ZERO or has(r[0], v) or has(r[1], v):
         raise Stuck()
     a = S(r[0])

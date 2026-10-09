@@ -18,6 +18,7 @@ DEVICE_FILES = [
     # the redesign: home, topic screens, recogniser, actions, engines, settings
     "casold.py", "home.py", "topic.py", "recog.py", "acts.py", "cfg.py", "eng.py",
     "e_solve.py", "e_alg.py", "e_fn.py", "e_exp.py",
+    "selftest.py", "selfcases.py",
 ]
 
 # measured on device by hwcheck.py 2026-08-09; adding a name claims hardware has it

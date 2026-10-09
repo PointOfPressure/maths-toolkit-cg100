@@ -14,11 +14,10 @@ def _sub(f, v, a):
 
 def _lincoef(E, xs):
     # E = a x + b y + c (numbers): -> [a, b, -c] as rationals, else None
-    import casalg
     g = caspoly.expand(S(E))
     out = []
     for v in xs:
-        r = casalg.linin(g, v)
+        r = eng.linin(g, v)
         if r is None:
             return None
         c = caspoly.ratof(S(r[0]))

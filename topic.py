@@ -153,6 +153,7 @@ def recognise(tid, eds, st):
     casui.busy()
     import recog
     import acts
+    st['rows'] = [nat.copy(ed.root) for ed in eds]
     F = recog.form(texts(eds))
     st['F'] = None
     st['offers'] = []

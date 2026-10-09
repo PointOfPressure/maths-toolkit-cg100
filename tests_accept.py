@@ -343,6 +343,14 @@ def run_case(case):
     return True, ''
 
 def run(check):
+    # the calculator's self test runs a copy of 50 of these: still the same
+    import selfcases
+    byref = {}
+    for c in C:
+        byref[c[0]] = c
+    check('selfcases has 50 cases', len(selfcases.CASES) == 50, len(selfcases.CASES))
+    for c in selfcases.CASES:
+        check('selfcases ' + c[0] + ' matches tests_accept', byref.get(c[0]) == c, c)
     for case in C:
         if case[0] in PENDING:
             continue
