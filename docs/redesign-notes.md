@@ -24,6 +24,16 @@ while building; change any of them by saying so.
   says so.
 - **SETTINGS** opens the Settings page from any screen; **HOME** goes home from
   any screen.
+- **Coord geometry:** the point boxes A and B (mockup 5). LEFT/RIGHT at the
+  end of a box move to the other box of the point; UP/DOWN move between rows
+  (keeping the x or y column). **MENU on a point row adds a point** (C, at
+  most three); DEL in the empty boxes of the last point removes it. Below
+  the points, a row for a line or circle typed as written; DOWN from it
+  adds a second row. EXE, the tiles, More and the answer page as in every
+  topic.
+- **Calculus:** typed like Algebra: `y = f(x)` or an expression, `F(x, y) = 0`,
+  two rows `x = f(t)` and `y = g(t)`, two curves, or `dy/dx = ...` (dy over
+  dx with the fraction key, or typed in a line).
 
 ## Screens
 
@@ -61,6 +71,13 @@ hours.
   an "exact" form built from 0.1216047 is not exact.
 - Letters: the calculator's ALPHA keys type lower case, so every letter is
   lower case (N = A e^(kt) reads as n = a e^(kt)).
+
+## Topics on home
+
+Calculate, Algebra, Coord geometry, Exp and logs and Calculus are the new
+screens. Sequences and series, Trig, Numerical, Vectors, Statistics,
+Kinematics, Forces and the Further topics still open their old section menus.
+Graph and Notes are the old screens.
 
 ## Recognition
 
@@ -107,17 +124,20 @@ Each module's own size once loaded, in the order a session loads them:
 | casui (keys, drawing, grids, settings; old screens moved to casold) | 35 |
 | home | 4 |
 | nat (editor) + topic | 17 + 12 |
-| caslex + recog | 4 + 18 |
+| caslex + recog | 4 + 21 |
 | acts | 10 |
 | tex + texg + casrender (answer page) | 17 + 13 + 11 |
 | caseng + caspoly (first action) | 44 + 17 |
-| eng (+ the action's engine: e_alg 20, e_solve 16, e_fn 19, e_exp 7) | 18 |
+| eng (+ the action's engine: e_alg 25, e_solve 17, e_fn 21, e_exp 7) | 22 |
+| Coord: coord + rgeo + acts_geo + e_geo | 6 + 3 + 4 + 21 |
+| Calculus: acts_calc + e_calc | 3 + 22 |
 | casalg (fractions, logs in coefficients) | 28 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
 | casold (Calculate, CAS, old tools; only via All tools / Calculate) | 23 |
 
 - Home alone: about 40 KB. A topic with the tiles showing: about 125 KB.
-- Every engine of both topics loaded: about 375 KB, so the whole set needs a
+- Every engine of Algebra and Exp and logs loaded: about 375 KB (all four
+  topics: about 430 KB), so the whole set needs a
   heap of about 420 KB to keep 40 KB for working. A 500 KB heap runs the
   50-case self test with 85 KB to spare at its lowest.
 - On a 400 KB heap the first Algebra actions fit (complete square,
@@ -144,3 +164,18 @@ Each module's own size once loaded, in the order a session loads them:
 | More grid | 0.5 s |
 | Settings page / move | 1.1 s / 0.1 s |
 | self test, all 50 cases | about 7 min |
+
+## Coord geometry and Calculus choices
+
+- A circle from its centre and radius is not an action: it is writing
+  (x - a)^2 + (y - b)^2 = r^2 (the spec: no one-formula tools).
+- Three points offer the circle through them and the triangle first, then
+  the two-point actions for AB, BC and AC (in More).
+- A definite integral is refused when the function is undefined inside
+  the interval (F(b) - F(a) would be wrong); undefined exactly at an end is
+  allowed when the integral has a limit there, and the page says so.
+- Stationary points with letters take the letters as positive to decide
+  max or min, and say so. Increasing joins up across a lone stationary
+  point (x^4 + 5x^3 increases for x > -15/4).
+- The calculus variable is x, else t, else n, else the only letter; with
+  two or more letters and none of those, type it in x.
