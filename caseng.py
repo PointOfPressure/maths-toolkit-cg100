@@ -427,7 +427,7 @@ def _sconst(v):
 
 # HOME while something slow runs: the screens read keys only between jobs,
 # so simplify and the numeric evaluators look at the keyboard every few
-# hundred steps and unwind to the home grid (casui.Home is a BaseException,
+# dozen steps and unwind to the home grid (casui.Home is a BaseException,
 # so the tools' own except Exception handlers let it through)
 _TICK = [0]
 
@@ -441,7 +441,7 @@ def tick():
 
 def _s(n):
     _TICK[0] += 1
-    if _TICK[0] > 255:
+    if _TICK[0] > 63:
         tick()
     t = n[0]
     if t == 'n':

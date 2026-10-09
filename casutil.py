@@ -110,8 +110,8 @@ def real(v):
 # ---- evaluation -------------------------------------------------------------
 
 def ev(tree, x=0.0, env=None):
-    caseng._TICK[0] += 8
-    if caseng._TICK[0] > 255:
+    caseng._TICK[0] += 4
+    if caseng._TICK[0] > 63:
         caseng.tick()
     try:
         v = caseng.evalf(tree, x, DEG, env)
@@ -130,8 +130,8 @@ def ev(tree, x=0.0, env=None):
 
 def evx(tree, x, env=None):
     # numeric sample for plotting/solving: None instead of an error, real only
-    caseng._TICK[0] += 8
-    if caseng._TICK[0] > 255:
+    caseng._TICK[0] += 4
+    if caseng._TICK[0] > 63:
         caseng.tick()
     try:
         v = caseng.evalf(tree, x, DEG, env)

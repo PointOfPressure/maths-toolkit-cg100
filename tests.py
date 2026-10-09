@@ -317,7 +317,7 @@ def home_keys():
     try:
         casioplot.getkey = lambda: 12
         try:
-            for i in range(3):
+            for i in range(300):
                 caseng.simplify(big)
             ok = 'no Home'
         except casui.Home:
