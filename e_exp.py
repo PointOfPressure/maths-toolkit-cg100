@@ -63,7 +63,7 @@ def combine(F, arg, vals):
         t = _combine1(sides[0], lines, v)
         if lines[-1][2:] == txt(t, False):
             lines.pop()
-        lines.append(eng.box('', S(t)) if F.kind == 'num' else eng.boxs('', txt(t, False)))
+        lines.append(eng.box('', S(t)) if F.kind == 'num' else eng.boxt('', t, False))
         return lines
     sub = []
     a = _combine1(sides[0], sub, v)
@@ -103,10 +103,14 @@ def expandlogs(F, arg, vals):
     sides = _side(F)
     outs = [_expand1(s, v) for s in sides]
     t = outs[0] if len(outs) == 1 else None
-    lines.append(eng.boxs('', txt(outs[0]) if len(outs) == 1 else eq(outs[0], outs[1])))
+    outs = [S(o) for o in outs]
+    lines.append(eng.boxt('', outs[0]) if len(outs) == 1 else eng.boxs('', eq(outs[0], outs[1])))
     return lines
 
 def evaluate(F, arg, vals):
+    return _evaluate(F)
+
+def _evaluate(F):
     f = F.rows[0].f
     lines = [txt(f)]
     t = f
@@ -120,7 +124,10 @@ def evaluate(F, arg, vals):
     t = eng.nice(eng.tidylog(t))
     if lines[-1] == '= ' + txt(t):
         lines.pop()
-    lines.append(eng.box('= ', t))
+    v = val(t)
+    if isinstance(v, float) and v != int(v):
+        lines.append('= ' + eng.sf(v, 10))
+    lines.append(eng.box('= ', t, not F.dec))
     return lines
 
 # ---- models --------------------------------------------------------------------------------
@@ -133,12 +140,12 @@ def model(F, arg, vals):
     (x1, y1), (x2, y2) = (vals[0], vals[1]), (vals[2], vals[3])
     lines = [nm + ' = ' + txt(r.f)]
     dec = F.dec
-    for t in vals:
+    for t in vals[:4]:
         if recog.hasfloat(t) or (t[0] == '^' and val(t) is not None and val(t) != int(val(t))):
             dec = True
     if dec:
         # decimals typed: the working in decimals (6 s.f.)
-        x1, y1, x2, y2 = [_num(t) for t in vals]
+        x1, y1, x2, y2 = [_num(t) for t in vals[:4]]
     e1 = caseng.subst(caseng.subst(r.f, v, x1), nm, y1)
     e2 = caseng.subst(caseng.subst(r.f, v, x2), nm, y2)
     lines.append(txt(y1) + ' = ' + txt(e1))
@@ -174,6 +181,9 @@ def model(F, arg, vals):
     lines.append(eng.box(k + ' = ', kv, not dec))
     fit = caseng.subst(caseng.subst(r.f, c, _short(cv)), k, _short(kv))
     lines.append(nm + ' = ' + txt(fit))
+    if len(vals) > 4 and vals[4] is not None:
+        at = caseng.subst(caseng.subst(caseng.subst(r.f, c, cv), k, kv), v, vals[4])
+        lines.append(eng.box(nm + '(' + txt(vals[4]) + ') = ', S(at), False))
     return lines
 
 def _num(t):
@@ -255,5 +265,5 @@ def implicit(F, arg, vals):
         raise ValueError('no ' + y + ' to differentiate')
     lines.append('d/d' + x + ': ' + txt(fx) + ' + (' + txt(fy) + ') dy/d' + x + ' = 0')
     d = cascalc.tidy(('neg', ('/', fx, fy)))
-    lines.append(eng.boxs('dy/d' + x + ' = ', txt(eng.nice(d))))
+    lines.append(eng.boxt('dy/d' + x + ' = ', eng.nice(d)))
     return lines

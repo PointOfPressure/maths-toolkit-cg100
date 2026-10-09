@@ -368,7 +368,13 @@ def dec(v):
     if 'e' not in s10 and (digs <= n if d[1:] == 'sf' else len(s10.split('.')[1]) <= n):
         return s10
     if d[1:] == 'sf':
-        return sf(v, n) + ' (' + str(n) + ' s.f.)'
+        s = sf(v, n)
+        if 'e' not in s:
+            # the trailing zeros count: 49.0 to 3 s.f., not 49
+            digs = len(s.replace('-', '').replace('.', '').lstrip('0'))
+            if digs < n:
+                s += ('' if '.' in s else '.') + '0' * (n - digs)
+        return s + ' (' + str(n) + ' s.f.)'
     s = ('%.' + str(n) + 'f') % v
     return s + ' (' + str(n) + ' d.p.)'
 
@@ -384,11 +390,68 @@ def box(pre, t, exact=True):
             dc = None
     if dc is not None and ('.' in ex or not exact):
         ex = None
-    return ('=', pre, ex, dc)
+    return ('=', pre, ex, dc, t)
 
-def boxs(pre, s):
-    # boxed text with no decimal
-    return ('=', pre, s, None)
+def boxt(pre, t, top=True):
+    # boxed tree, no decimal (an expression with letters)
+    return ('=', pre, txt(t, top), None, t)
+
+def pair(names, vals, exact=True):
+    # x = 11, y = -ln(48/55)/2, with the decimals when they say more
+    ex = ',  '.join([n + ' = ' + txt(t) for n, t in zip(names, vals)])
+    ds = []
+    more = False
+    for n, t in zip(names, vals):
+        v = val(t)
+        d = dec(v) if v is not None else None
+        if d is not None and d != txt(t):
+            more = True
+        ds.append(n + ' = ' + (d if d is not None else txt(t)))
+    dc = ',  '.join(ds) if more else None
+    if dc is not None and ('.' in ex or not exact):
+        ex = None
+    return ('=', '', ex, dc, None)
+
+def boxs(pre, s, t=None):
+    # boxed text with no decimal (t: the tree it shows, when there is one)
+    return ('=', pre, s, None, t)
+
+def powlog(b, R):
+    # b^R with b's logs in R undone: 2^(9 + log_2 y^2) = 512 y^2,
+    # a^(2 log_a 7 + 1/2) = 49 sqrt a; None when R has no such log
+    import recog
+    got = []
+    rest = []
+    for t, sg in sumterms(R, 1, []):
+        lg = None
+        c = []
+        for f, e in recog.factors(t, 1, []):
+            fb = None
+            if f[0] == 'logb':
+                fb, fa = f[1], f[2]
+            elif f[0] == 'ln':
+                fb, fa = ('v', 'e'), f[1]
+            elif f[0] == 'log':
+                fb, fa = N(10), f[1]
+            if fb is not None and fb == b and e > 0 and lg is None:
+                lg = fa
+            else:
+                c.append((f, e))
+        if lg is None:
+            rest.append((t, sg))
+            continue
+        ct = N(sg)
+        for f, e in c:
+            ct = ('*', ct, f) if e > 0 else ('/', ct, f)
+        got.append(('^', lg, S(ct)))
+    if not got:
+        return None
+    out = got[0]
+    for g in got[1:]:
+        out = ('*', out, g)
+    if rest:
+        out = ('*', out, ('^', b, build(rest)) if b != ('v', 'e') else ('exp', build(rest)))
+    return S(out)
 
 # ---- polynomials ----------------------------------------------------------------------------
 
@@ -611,20 +674,15 @@ def isolate(L, Rt, v, lines, depth=0):
         R2 = S(('^', Rt, N(2)))
         lines.append(eq(L[1], R2))
         return isolate(L[1], R2, v, lines, depth + 1)
-    if k == 'ln':
-        R2 = S(('exp', Rt))
-        lines.append(eq(L[1], R2))
-        return isolate(L[1], R2, v, lines, depth + 1)
-    if k == 'log':
-        R2 = S(('^', N(10), Rt))
-        lines.append(eq(L[1], R2))
-        return isolate(L[1], R2, v, lines, depth + 1)
-    if k == 'logb' and not has(L[1], v):
-        R2 = S(('^', L[1], Rt))
-        lines.append(eq(L[2], ('^', L[1], Rt)))
-        if R2 != ('^', L[1], Rt):
-            lines.append(eq(L[2], R2))
-        return isolate(L[2], R2, v, lines, depth + 1)
+    if k == 'ln' or k == 'log' or (k == 'logb' and not has(L[1], v)):
+        b = ('v', 'e') if k == 'ln' else (N(10) if k == 'log' else L[1])
+        g = L[1] if k != 'logb' else L[2]
+        raw = ('exp', Rt) if k == 'ln' else ('^', b, Rt)
+        R2 = powlog(b, Rt) or S(raw)
+        if txt(R2) != txt(raw) and k == 'logb':
+            lines.append(eq(g, raw))
+        lines.append(eq(g, R2))
+        return isolate(g, R2, v, lines, depth + 1)
     raise Stuck()
 
 def _br(s):
@@ -814,11 +872,39 @@ def _powof(a, b):
         tot = ('+', tot, p) if e > 0 else ('-', tot, p)
     return S(tot)
 
+def _powdist(t):
+    # (512 y^2)^(1/3) -> 8 y^(2/3): a fractional power of a product, factor
+    # by factor
+    import recog
+    k = t[0]
+    if k == 'n' or k == 'v':
+        return t
+    t = (k,) + tuple([_powdist(c) for c in t[1:]])
+    if k == 'sqrt' and t[1][0] == '^' and recog.rat(t[1][2]) is not None:
+        return S(('^', t[1][1], S(('/', t[1][2], N(2)))))
+    if k == '^' and t[1][0] == '^' and recog.rat(t[2]) is not None and recog.rat(t[1][2]) is not None:
+        # (y^2)^(1/3) -> y^(2/3), as the mark scheme writes it
+        return S(('^', t[1][1], S(('*', t[1][2], t[2]))))
+    if k == '^' and t[1][0] in ('*', '/') and recog.rat(t[2]) is not None:
+        out = None
+        for f, e in recog.factors(t[1], 1, []):
+            g = S(('^', f, t[2]))
+            if g[0] == '^' and g[1][0] == '^' and recog.rat(g[1][2]) is not None:
+                g = S(('^', g[1][1], S(('*', g[1][2], t[2]))))
+            out = g if out is None else (('*', out, g) if e > 0 else ('/', out, g))
+        if e < 0 and out is not None and len(recog.factors(t[1], 1, [])) == 1:
+            out = ('/', ONE, out)
+        return S(out)
+    return t
+
 def nice(t):
     # the tidiest of a few equal forms: no fraction inside a numerator, then
     # the shortest (5 - 1/(2y^2) over (5y^2 - 1/2)/y^2)
     t = S(tidylog(t))
     cands = [t]
+    pd = _powdist(t)
+    if pd != t:
+        cands.append(pd)
     if t[0] == '/' and t[2][0] not in ('+', '-'):
         ts = sumterms(t[1], 1, [])
         if len(ts) > 1:
@@ -827,8 +913,8 @@ def nice(t):
         e = caspoly.expand(t)
         if e != t:
             cands.append(e)
-    elif t[0] in ('*', '+', '-') and _hasvar(t):
-        cands.append(caspoly.expand(t))
+    elif t[0] in ('*', '+', '-'):
+        cands.append(S(caspoly.expand(t)))
     if t[0] == '/' and not _hasvar(t) and _hassq(t[2]):
         import casalg
         try:

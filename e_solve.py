@@ -626,6 +626,12 @@ def rearr(F, v, vals):
     else:
         L, Rt = r.lhs, r.rhs
     lines = [eq(L, Rt)]
+    if F.kind in ('log', 'xy', 'const') and has(L, v):
+        # logs of one base, v inside: one log first (log laws)
+        logs, rest = logterms(L, v)
+        if len(logs) > 1 and [1 for c, b, g in logs if b != logs[0][1]] == []:
+            L = eng.build([(eng.logto(logs[0][1], combine(logs)), 1)] + rest)
+            lines.append(eq(L, Rt))
     try:
         rs = eng.solve_for(L, Rt, v, lines)
     except NoRoot as e:
@@ -641,5 +647,5 @@ def rearr(F, v, vals):
     if len(rs) == 1 and out and out[-1] == v + ' = ' + txt(rs[0]):
         out.pop()
     for t in rs:
-        out.append(eng.boxs(v + ' = ', txt(t)))
+        out.append(eng.boxs(v + ' = ', txt(t), t))
     return out

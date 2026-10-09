@@ -447,7 +447,8 @@ def xpart(t, v):
         if m is None:
             m = numv(pq[0])
             if m is None:
-                return ('o',)
+                # a letter times v up there (e^(kt)): still an exponential
+                return ('x', rb[0], None)
             m = (m, 0)
         return ('x', rb[0], _rmul(m, (rb[1], 1)))
     if k == '^' and not has(t[2], v):
@@ -468,6 +469,13 @@ def tpart(t, v):
         if a[0] == 'c':
             continue
         if a[0] == 'o' or (a[0] == 'p' and f[0] in ('+', '-')):
+            return ('o',)
+        if a[0] == 'x' and a[2] is None:
+            if acc[0] != 'c':
+                return ('o',)
+            acc = a
+            continue
+        if acc[0] == 'x' and acc[2] is None:
             return ('o',)
         if e < 0:
             a = (a[0], _rmul(a[1], (-1, 1))) if a[0] == 'p' else ('x', a[1], _rmul(a[2], (-1, 1)))
@@ -562,6 +570,8 @@ def _ushow_exp(b, k, v):
     p, q = k
     if q == 0:
         return _bshow(b) + '^(' + _fnum(p) + v + ')'
+    if p == 1 and q > 1:
+        return _bshow(b) + '^(' + v + '/' + str(q) + ')'
     e = v if (p, q) == (1, 1) else (str(p) + v if q == 1 else '(' + str(p) + v + '/' + str(q) + ')')
     if q == 1 and p != 1:
         e = '(' + e + ')'
@@ -577,13 +587,39 @@ def _utree_exp(b, k, v):
         return ('exp', e)
     return ('^', _btree(b), e)
 
+def brackets(t, v):
+    # something to multiply out: a product or power of a sum, or a sum over
+    # a power of v ((5 - sqrt x)/x^2 -> 5x^-2 - x^(-3/2))
+    k = t[0]
+    if k == 'n' or k == 'v':
+        return False
+    if k == '^' and t[1][0] in ('+', '-') and t[2][0] == 'n':
+        return True
+    if k == '*' and (t[1][0] in ('+', '-') or t[2][0] in ('+', '-')):
+        return True
+    if (k == '-' and t[2][0] in ('+', '-')) or (k == 'neg' and t[1][0] in ('+', '-')):
+        return True
+    if k == '/' and t[1][0] in ('+', '-') and has(t[2], v) and \
+            (t[2] == ('v', v) or (t[2][0] == '^' and t[2][1] == ('v', v))):
+        return True
+    for c in t[1:]:
+        if brackets(c, v):
+            return True
+    return False
+
 def analyse(F, f, v):
     # sets kind and its details on F from the tree f in v
     ex = [False]
     d = pdeg(f, v, ex)
-    F.expand = ex[0]
+    F.expand = ex[0] or brackets(f, v)
+    if d is not None and ex[0] and d > 0 and not F.letters:
+        # brackets can cancel: (x + 1)^2 - x^2 is linear
+        import caspoly
+        p = caspoly.poly(f, v)
+        if p is not None:
+            d = len(p) - 1 if p else 0
     if d is not None:
-        if d == 0:
+        if d <= 0:
             F.kind = 'num' if not F.letters else 'const'
             return
         F.poly = True
@@ -628,7 +664,7 @@ def analyse(F, f, v):
             F.kind = 'exp2'
             return
         ms = [a[2] for a in parts if a[0] == 'x']
-        q = _quadin(ms)
+        q = None if None in ms else _quadin(ms)
         F.kind = 'exp'
         if q is not None:
             F.qin = True
@@ -738,7 +774,7 @@ def describe(F):
     if k == 'num':
         return 'numbers: ' + ('surds and powers' if F.surd else ('logs' if F.logs else 'no letters'))
     if k == 'const':
-        return 'letters only, no ' + v
+        return 'expression in ' + _and(ls)
     if k == 'xy':
         return 'equation in ' + _and(F.vars2)
     if k == 'model':

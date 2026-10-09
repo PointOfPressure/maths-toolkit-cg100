@@ -246,6 +246,12 @@ def cas_engine():
     tests_pastpapers_aqa.run(check)
     import tests_tex
     tests_tex.run(check)
+    # the redesign: recogniser forms and near-misses, every offered action
+    # runs, and the past-paper parts through the new flow
+    import tests_recog
+    tests_recog.run(check)
+    import tests_accept
+    tests_accept.run(check)
     _depth_check()
 
 def _depth_check():

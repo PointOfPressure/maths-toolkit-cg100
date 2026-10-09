@@ -102,24 +102,9 @@ def a_graph(F):
 def a_expand(F):
     if F.pair or _ineq(F):
         return []
-    if F.expand or (F.kind == 'num' and _brackets(_row(F).f)):
+    if F.expand and F.kind != 'log':
         return [(9 if not _eq(F) else 20, ('Expand', 'e_alg', 'expand', None, None))]
-    if F.kind == 'log' and not _eq(F):
-        return []
     return []
-
-def _brackets(t):
-    k = t[0]
-    if k == 'n' or k == 'v':
-        return False
-    if k == '^' and t[1][0] in ('+', '-'):
-        return True
-    if k == '*' and (t[1][0] in ('+', '-') or t[2][0] in ('+', '-')):
-        return True
-    for c in t[1:]:
-        if _brackets(c):
-            return True
-    return False
 
 def a_rearr(F):
     r = _row(F)
@@ -177,10 +162,12 @@ def _invertible(F):
     return False
 
 def a_inv(F):
-    if _fn(F) and not F.letters and not F.qin and _invertible(F):
+    if _fn(F) and not F.letters:
         p = 8 if F.kind in ('rat', 'func', 'log', 'power') or F.kind == 'exp' else 40
         if F.poly and F.deg == 1:
             p = 12
+        if not _invertible(F):
+            p = 42
         return [(p, ('Inverse', 'e_fn', 'inverse', None, None))]
     return []
 
@@ -207,7 +194,7 @@ def a_simp(F):
         return []
     if F.kind == 'num':
         return [(2, ('Simplify', 'e_alg', 'simp', None, None))]
-    if F.kind in ('rat', 'func', 'power', 'qpow', 'abs', 'const'):
+    if F.kind in ('rat', 'func', 'power', 'qpow', 'abs', 'const', 'exp'):
         return [(2 if F.kind == 'rat' else 5, ('Simplify', 'e_alg', 'simp', None, None))]
     return []
 
@@ -256,6 +243,12 @@ def a_divide(F):
         return [(30, ('Divide out', 'e_alg', 'divide', 'own', None))]
     return []
 
+def a_transform(F):
+    if _fn(F) and not F.letters:
+        return [(45, ('Transform', 'e_alg', 'transform', None,
+                      [('(a, b) =', 2, False), ('(c, d) =', 2, False)]))]
+    return []
+
 def a_comp(F):
     if F.pair == 'fg':
         return [(1, ('fg and gf', 'e_fn', 'comp', None, None))]
@@ -286,7 +279,8 @@ def a_model(F):
         nm = _row(F).name
         v = F.var
         pt = ('(' + v + ', ' + nm + ') =', 2, False)
-        return [(1, ('From two points', 'e_exp', 'model', None, [pt, pt])),
+        return [(1, ('From two points', 'e_exp', 'model', None,
+                     [pt, pt, ('then at ' + v + ' =', 1, True)])),
                 (2, ('Log-linear form', 'e_exp', 'loglin', None, None))]
     return []
 
@@ -297,9 +291,10 @@ def a_implicit(F):
 
 ALG = (a_solve, a_ineq, a_pf, a_csq, a_fact, a_roots, a_disc, a_vertex, a_subu,
        a_comp, a_inv, a_dom, a_range, a_graph, a_expand, a_simp, a_ratl, a_rearr,
-       a_ftheorem, a_divide, a_combine, a_eval)
+       a_ftheorem, a_divide, a_combine, a_eval, a_transform)
 EXP = (a_solve, a_subu, a_logs, a_rearr, a_combine, a_eval, a_model, a_implicit,
-       a_ineq, a_fact, a_roots, a_inv, a_dom, a_range, a_graph, a_simp)
+       a_ineq, a_fact, a_roots, a_inv, a_dom, a_range, a_graph, a_simp, a_expand,
+       a_transform)
 TOPIC = {'alg': ALG, 'exp': EXP}
 
 def offers(F, tid):

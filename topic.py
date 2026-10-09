@@ -423,9 +423,10 @@ def prompt(tid, st, label, ask):
             cur = (cur - 1) % len(eds)
             continue
         if k == OK or k == EXE:
-            empty = [i for i in range(len(eds)) if not eds[i].root]
+            empty = [i for i in range(len(eds)) if not eds[i].root and not _open(ask, i)]
             if empty:
-                # EXE with a box still empty: go to it
+                # EXE with a box still empty: go to it (a box that may stay
+                # empty, like "then at t =", doesn't stop it)
                 cur = empty[0]
                 continue
             vals = _read(ask, eds)
@@ -437,6 +438,14 @@ def prompt(tid, st, label, ask):
             shift = False
             alpha = False
 
+def _open(ask, i):
+    # box i may be left empty
+    for ln in ask:
+        if i < ln[1]:
+            return ln[2]
+        i -= ln[1]
+    return False
+
 def _read(ask, eds):
     import caslex
     out = []
@@ -445,7 +454,7 @@ def _read(ask, eds):
         for j in range(ln[1]):
             s = nat.lin(eds[i].root)
             i += 1
-            if s.strip() == '?' and ln[2]:
+            if (s.strip() == '?' or not s.strip()) and ln[2]:
                 out.append(None)
                 continue
             try:
@@ -494,7 +503,7 @@ def _draw_prompt(tid, st, label, ask, eds, cur, shift, alpha):
         else:
             h = _field(x, y, 120, eds[i], i == cur)
         if opn and n == 1:
-            draw_string(x + 130, y + 3, '? = no limit', LGREY, 'medium')
+            draw_string(x + 130, y + 3, 'may be empty', LGREY, 'medium')
         i += n
         y += h + 6
     if y + 18 <= BOT:

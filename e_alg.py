@@ -89,7 +89,7 @@ def csq(F, arg, vals):
     tail = ' = 0' if F.rows[0].rel == '=' and F.rows[0].name is None else ''
     if lines and lines[-1] == '= ' + txt(sq):
         lines.pop()
-    lines.append(eng.boxs('', txt(sq) + tail))
+    lines.append(eng.boxs('', txt(sq) + tail, sq))
     lines += _turning(a, h, k, v)
     return lines
 
@@ -154,7 +154,12 @@ def fact(F, arg, vals):
     tail = ' = 0' if F.rows[0].rel == '=' and F.rows[0].name is None else ''
     if F.qin and not F.poly:
         import e_solve
-        co, shows = e_solve.uterms(f, F, v)
+        r = F.rows[0]
+        raw = ('-', r.lhs, r.rhs) if r.rel and r.name is None else r.f
+        try:
+            co, shows = e_solve.uterms(raw, F, v)
+        except eng.Stuck:
+            raise ValueError('cannot write it as a quadratic in ' + F.ushow)
         co = e_solve._intco(co)
         lines.append('let u = ' + F.ushow)
         lines.extend(shows)
@@ -165,7 +170,7 @@ def fact(F, arg, vals):
             raise ValueError('the quadratic in u does not factorise')
         lines.append(txt(qt) + ' = ' + txt(ft))
         back = caseng.subst(ft, 'u', F.u)
-        lines.append(eng.boxs('', txt(back) + tail))
+        lines.append(eng.boxs('', txt(back) + tail, back))
         return lines
     if tail:
         lines.append(eq(f, ZERO))
@@ -173,7 +178,7 @@ def fact(F, arg, vals):
     if t is None:
         lines.append(eng.boxs('', 'does not factorise with rational numbers'))
         return lines
-    lines.append(eng.boxs('', txt(t) + tail))
+    lines.append(eng.boxs('', txt(t) + tail, t))
     return lines
 
 # ---- discriminant ----------------------------------------------------------------------------------
@@ -243,29 +248,58 @@ def _upfirst(t, v):
         return not has(t, v)
     return False
 
-def _expanded(t, v):
+def _decimal(c):
+    # 9/100 -> 0.09 when the question was typed in decimals
+    r = caspoly.ratof(c)
+    if r is None or r[1] == 1:
+        return c
+    q = r[1]
+    while q % 2 == 0:
+        q //= 2
+    while q % 5 == 0:
+        q //= 5
+    return N(r[0] / float(r[1])) if q == 1 else c
+
+def _expanded(t, v, dec=False):
     e = caspoly.expand(S(t))
     co = eng.coeffs(e, v)
     up = _upfirst(t, v)
     if co is not None and len(co) > 1:
+        if dec:
+            co = [_decimal(c) for c in co]
         if up:
             return eng.build([(eng.ptree([ZERO] * i + [co[i]], ('v', v)), 1)
                               for i in range(len(co)) if co[i] != ZERO])
         return eng.ptree(co, ('v', v))
     if e[0] == '/' and e[2][0] in ('v', '^') and has(e[2], v):
-        # one power of x underneath: term by term, 256x^8 - ... + 6561/x^8
+        # one power of x underneath: term by term, 256x^8 - ... + 6561/x^8,
+        # and in index form when there are roots: 5x^(-2) - x^(-3/2)
         ts = eng.sumterms(e[1], 1, [])
-        return eng.build([(S(('/', a, e[2])), b) for a, b in ts])
+        out = []
+        for a, b in ts:
+            out.append((_index(S(('/', a, e[2])), v), b))
+        return eng.build(out)
     return e
+
+def _index(t, v):
+    # c x^p as a coefficient and one power, when x has a root in it
+    import recog
+    a = recog.tpart(t, v)
+    if a[0] != 'p' or recog._pq(a[1]) == int(recog._pq(a[1])) and not _sqrtx(t, v):
+        return t
+    c = S(caseng.subst(t, v, ONE))
+    p = eng.R(a[1][0], a[1][1]) if a[1][1] else N(a[1][0])
+    return eng.mul(c, ('^', ('v', v), p))
 
 def expand(F, arg, vals):
     r = F.rows[0]
     v = F.var
     lines = [_first(F)]
     if r.rel and r.name is None:
-        lines.append(eng.boxs('', txt(_expanded(r.lhs, v)) + ' ' + r.rel + ' ' + txt(_expanded(r.rhs, v))))
+        lines.append(eng.boxs('', txt(_expanded(r.lhs, v, F.dec), False) + ' ' + r.rel + ' ' +
+                              txt(_expanded(r.rhs, v, F.dec), False)))
     else:
-        lines.append(eng.boxs((r.name + ' = ') if r.name else '', txt(_expanded(r.f, v))))
+        lines.append(eng.boxt((r.name + ' = ') if r.name else '', _expanded(r.f, v, F.dec), False))
     return lines
 
 OPS = ('>', '>=', '<', '<=')
@@ -354,8 +388,8 @@ def divide(F, arg, vals):
     r = S(r)
     lines = ['(' + txt(num) + ') / (' + txt(den) + ')']
     lines.append(txt(num) + ' = (' + txt(den) + ')(' + txt(q) + ')' + ('' if r == ZERO else ' ' + _sgn(r)))
-    lines.append(eng.boxs('quotient ', txt(q)))
-    lines.append(eng.boxs('remainder ', txt(r)))
+    lines.append(eng.boxt('quotient ', q))
+    lines.append(eng.boxt('remainder ', r))
     if r != ZERO:
         rr = caspoly.ratof(r)
         part = _over(rr, den) if rr is not None else ('/', r, den)
@@ -370,7 +404,21 @@ def simp(F, arg, vals):
     lines = [_first(F)]
     if F.kind == 'num':
         t = eng.nice(S(eng.tidylog(f)))
+        p = _posexp(t)
+        if p is not None:
+            lines.append('= ' + txt(t))
+            lines.append('times top and bottom by ' + txt(p[1]))
+            t = p[0]
         lines.append(eng.box('= ', t))
+        return lines
+    if F.kind == 'exp':
+        t = _primes(f, v, lines)
+        if t is not None:
+            lines.append(eng.boxt('= ', t))
+            return lines
+    if F.kind == 'const' or F.letters:
+        t = eng.nice(f)
+        lines.append(eng.boxs('= ', txt(t), t))
         return lines
     if F.kind == 'rat':
         import casalg
@@ -382,11 +430,175 @@ def simp(F, arg, vals):
                 lines.append('= ' + txt(('/', fn or n0, fd or d0)))
         t = casalg.single_fraction(f, v)
         t = eng.nice(t) if t is not None else eng.nice(f)
-        lines.append(eng.boxs('= ', txt(t)))
+        lines.append(eng.boxs('= ', txt(t), t))
         return lines
+    if _sqrtx(f, v):
+        t = _usimp(f, v, lines)
+        if t is not None:
+            lines.append(eng.boxs('= ', txt(t), t))
+            lines.append(('w', v + ' > 0 assumed'))
+            return lines
     t = eng.nice(f)
-    lines.append(eng.boxs('= ', txt(t)))
+    lines.append(eng.boxs('= ', txt(t), t))
     return lines
+
+def _sqrtx(t, v):
+    k = t[0]
+    if k == 'sqrt' and t[1] == ('v', v):
+        return True
+    if k == '^' and t[1] == ('v', v):
+        r = caspoly.ratof(t[2])
+        if r is not None and r[1] == 2:
+            return True
+    if k in ('n', 'v'):
+        return False
+    for c in t[1:]:
+        if _sqrtx(c, v):
+            return True
+    return False
+
+def _usub(t, v):
+    # sqrt x -> u, x -> u^2, x^(p/2) -> u^p
+    k = t[0]
+    U = ('v', 'zu')
+    if k == 'sqrt' and t[1] == ('v', v):
+        return U
+    if k == '^' and t[1] == ('v', v):
+        r = caspoly.ratof(t[2])
+        if r is not None and r[1] in (1, 2):
+            return ('^', U, N(r[0] * (2 // r[1])))
+    if t == ('v', v):
+        return ('^', U, N(2))
+    if k in ('n', 'v'):
+        return t
+    return (k,) + tuple([_usub(c, v) for c in t[1:]])
+
+def _usimp(f, v, lines):
+    # u = sqrt x turns surds in x into a fraction in u, which cancels
+    import casalg
+    g = _usub(f, v)
+    try:
+        r = casalg.single_fraction(S(g), 'zu')
+    except Exception:
+        return None
+    if r is None:
+        return None
+    lines.append('u = sqrt ' + v + ':  ' + txt(caseng.subst(g, 'zu', ('v', 'u'))))
+    r = caspoly.expand(r) if r[0] != '/' else r
+    back = eng.nice(caseng.subst(r, 'zu', ('sqrt', ('v', v))))
+    return back
+
+def _negexp(t):
+    # the c of the first e^(-c) in t
+    k = t[0]
+    if k == 'exp' and eng.neg(t[1])[0]:
+        return eng.neg(t[1])[1]
+    if k == '^' and t[1] == ('v', 'e') and eng.neg(t[2])[0]:
+        return eng.neg(t[2])[1]
+    if k in ('n', 'v'):
+        return None
+    for c in t[1:]:
+        r = _negexp(c)
+        if r is not None:
+            return r
+    return None
+
+def _posexp(t):
+    # (1 + e^-pi)/(2(1 - e^-pi)) -> (e^pi + 1)/(2(e^pi - 1))
+    if t[0] != '/':
+        return None
+    c = _negexp(t)
+    if c is None:
+        return None
+    m = ('exp', c)
+    a = S(caspoly.expand(S(('*', t[1], m))))
+    b = t[2]
+    fs = []
+    import recog
+    for f, e in recog.factors(b, 1, []):
+        fs.append(f)
+    # times the bracket that holds e^(-c), not the number in front
+    done = False
+    bb = None
+    for f in fs:
+        if not done and _negexp(f) is not None:
+            f = S(caspoly.expand(S(('*', f, m))))
+            done = True
+        bb = f if bb is None else ('*', bb, f)
+    if not done:
+        return None
+    out = ('/', a, bb)
+    return (out, m) if val(out) is not None and abs(val(out) - val(t)) < 1e-9 * (1 + abs(val(t))) else None
+
+def _primes(f, v, lines):
+    # 24(3/4)^(n-1) -> 3^n/2^(2n-5): every number as powers of primes, then
+    # one power of each prime
+    import recog
+    ex = {}
+    for g, e in recog.factors(f, 1, []):
+        if g[0] == '^' and not has(g[1], v):
+            base = caspoly.ratof(g[1])
+            if base is None:
+                return None
+            for p, m in _pf(base[0]):
+                ex[p] = S(('+', ex.get(p, ZERO), ('*', N(e * m), g[2])))
+            for p, m in _pf(base[1]):
+                ex[p] = S(('-', ex.get(p, ZERO), ('*', N(e * m), g[2])))
+        else:
+            r = caspoly.ratof(g)
+            if r is None:
+                return None
+            for p, m in _pf(r[0]):
+                ex[p] = S(('+', ex.get(p, ZERO), N(e * m)))
+            for p, m in _pf(r[1]):
+                ex[p] = S(('-', ex.get(p, ZERO), N(e * m)))
+    if not ex:
+        return None
+    top = None
+    bot = None
+    ps = sorted(ex.keys())
+    ps.reverse()
+    for p in ps:
+        e = S(caspoly.expand(S(ex[p])))
+        if e == ZERO:
+            continue
+        n, a = eng.neg(e)
+        import recog as rg
+        pq = rg.lin(e, v)
+        if pq is not None and not n:
+            c = val(pq[0])
+            if c is not None and c < 0:
+                # 3 - 2(n - 1) = 5 - 2n: under the line as 2^(2n - 5)
+                n = True
+                a = S(caspoly.expand(S(('neg', e))))
+        if n:
+            t = ('^', N(p), a) if a != ONE else N(p)
+            bot = t if bot is None else ('*', bot, t)
+        else:
+            t = ('^', N(p), e) if e != ONE else N(p)
+            top = t if top is None else ('*', top, t)
+    if top is None:
+        top = ONE
+    out = top if bot is None else ('/', top, bot)
+    lines.append('each number as powers of primes')
+    return out
+
+def _pf(n):
+    # prime factors of a whole number: [(p, power)]
+    out = []
+    n = abs(n)
+    p = 2
+    while p * p <= n and p < 1000:
+        m = 0
+        while n % p == 0:
+            n //= p
+            m += 1
+        if m:
+            out.append((p, m))
+        p += 1
+    if n > 1:
+        out.append((n, 1))
+    return out
 
 def _numden(f):
     if f[0] == '/':
@@ -417,7 +629,7 @@ def ratl(F, arg, vals):
     if F.kind == 'num':
         lines.append(eng.box('= ', t))
     else:
-        lines.append(eng.boxs('= ', txt(t)))
+        lines.append(eng.boxt('= ', t))
         lines.append(('w', v + ' > 0 assumed for the roots'))
     return lines
 
@@ -685,7 +897,7 @@ def pf(F, arg, vals):
         if piece is None:
             continue
         out = piece if out is None else eng.add(out, piece)
-    lines.append(eng.boxs('', txt(out) if out is not None else '0'))
+    lines.append(eng.boxt('', out) if out is not None else eng.boxs('', '0'))
     return lines
 
 def _gp(g, j):
@@ -719,6 +931,33 @@ def _restprod(facs, g, j, const):
         t = h if e == 1 else ('^', h, N(e))
         out = t if out is None else ('*', out, t)
     return out
+
+# ---- transformations -------------------------------------------------------------------------
+
+def transform(F, arg, vals):
+    # y = a f(bx + c) + d, and the transformations in the order they act
+    v = F.var
+    V = ('v', v)
+    f = F.rows[0].f
+    a, b, c, d = vals
+    lines = ['f(' + v + ') = ' + txt(f)]
+    inner = eng.add(eng.mul(b, V), c)
+    raw = eng.add(eng.mul(a, caseng.subst(f, v, inner)), d)
+    lines.append(txt(a) + 'f(' + txt(inner) + ') + ' + txt(d) if d != ZERO else
+                 (txt(a) if a != ONE else '') + 'f(' + txt(inner) + ')')
+    t = eng.nice(raw)
+    lines.append(eng.boxs('y = ', txt(t), t))
+    cv = val(c)
+    bv = val(b)
+    if cv:
+        lines.append('translate by ' + txt(S(('neg', c))) + ' in the ' + v + ' direction')
+    if bv is not None and bv != 1:
+        lines.append('stretch parallel to the ' + v + '-axis, scale factor ' + txt(S(('/', ONE, b))))
+    if val(a) is not None and val(a) != 1:
+        lines.append('stretch parallel to the y-axis, scale factor ' + txt(a))
+    if val(d):
+        lines.append('translate by ' + txt(d) + ' in the y direction')
+    return lines
 
 # ---- graph ----------------------------------------------------------------------------------------------
 

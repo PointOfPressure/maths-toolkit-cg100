@@ -147,8 +147,16 @@ def _subst(E1, E2, a, b, xs, lines, F):
     G = recog.Form()
     G.var = u
     G.dec = F.dec
-    rs = e_solve.poly(put, ZERO, u, G, lines) if recog.pdeg(S(put), u, [False]) is not None else \
-        e_solve._cas(S(put), u, lines)
+    rs = None
+    try:
+        if recog.pdeg(S(put), u, [False]) is None:
+            raise Stuck()
+        rs = e_solve.poly(put, ZERO, u, G, lines)
+    except Stuck:
+        try:
+            rs = eng.solve_for(put, ZERO, u, lines)
+        except (Stuck, NoRoot):
+            rs = e_solve._cas(S(put), u, lines)
     if rs is None:
         raise ValueError('every ' + u + ' works: the equations are not independent')
     pairs = []
@@ -159,7 +167,7 @@ def _subst(E1, E2, a, b, xs, lines, F):
     if not pairs:
         lines.append(eng.boxs('', 'no real solutions'))
     for p, q in pairs:
-        lines.append(eng.boxs('', x + ' = ' + txt(p) + ',  ' + y + ' = ' + txt(q)))
+        lines.append(eng.pair((x, y), (p, q), not F.dec))
     return lines
 
 # ---- f and g ------------------------------------------------------------------------------------------
@@ -209,7 +217,7 @@ def comp(F, arg, vals):
             lines.pop()
         out.append((name, t))
     for name, t in out:
-        lines.append(eng.boxs(name + ' = ', txt(t)))
+        lines.append(eng.boxt(name + ' = ', t))
     return lines
 
 def meet(F, arg, vals):
@@ -230,49 +238,57 @@ def inverse(F, arg, vals):
     v = F.var
     f = F.rows[0].f
     Y = ('v', 'y')
+    V = ('v', v)
     lines = ['y = ' + txt(f)]
-    co = eng.coeffs(caspoly.expand(S(f)), v) if F.poly else None
-    if co is not None and len(co) == 3:
-        h = S(('/', ('neg', co[1]), ('*', N(2), co[2])))
-        a = S(('-', h, ONE))
-        b = S(('+', h, ONE))
-        fa = eng.nice(_sub(f, v, a))
-        lines.append(eng.boxs('', 'many-to-one: f(' + txt(a) + ') = f(' + txt(b) + ') = ' + txt(fa)))
-        lines.append('so f has no inverse (unless its domain is cut at ' + v + ' = ' + txt(h) + ')')
-        return lines
     sub = []
     try:
         xs = eng.solve_for(Y, f, v, sub)
-    except Stuck:
-        w = _witness(f, v)
-        if w is not None:
-            lines.append(eng.boxs('', 'many-to-one: ' + w))
-            lines.append('so f has no inverse')
-            return lines
-        raise ValueError('cannot rearrange y = f(x) for x')
-    except NoRoot:
-        raise ValueError('cannot rearrange y = f(x) for x')
-    lines += sub
-    if len(xs) > 1:
-        # two branches: one y from two x
-        y0 = val(_sub(f, v, N(1)))
-        w = _witness(f, v)
-        lines.append(eng.boxs('', 'many-to-one: ' + (w or 'two x for one y')))
-        lines.append('so f has no inverse (unless its domain is cut)')
+    except (Stuck, NoRoot):
+        xs = None
+    if xs is not None and len(xs) == 1:
+        lines += sub
+        inv = eng.nice(_sub(xs[0], 'y', V))
+        lines.append('swap ' + v + ' and y')
+        lines.append(eng.boxs('f^-1(' + v + ') = ', txt(inv), inv))
+        try:
+            rg = range_text(f, v, None)
+        except Exception:
+            rg = None
+        if rg:
+            lines.append('domain of f^-1 = range of f: ' + rg.replace('f(' + v + ')', v))
         return lines
-    inv = eng.nice(_sub(xs[0], 'y', ('v', v)))
-    lines.append('swap ' + v + ' and y')
-    lines.append(eng.boxs('f^-1(' + v + ') = ', txt(inv)))
-    try:
-        rg = range_text(f, v, None)
-    except Exception:
-        rg = None
-    if rg:
-        lines.append('domain of f^-1 = range of f: ' + rg.replace('f(' + v + ')', v))
-    return lines
+    w = _witness(f, v)
+    if xs is not None and len(xs) == 2:
+        # two branches: one for each side of the turning point
+        lines += sub
+        lines.append(eng.boxs('', 'many-to-one: ' + (w or 'two ' + v + ' for one y') + ', so no inverse'))
+        y0 = None
+        for x0 in (2, 3, 1, 5, 0.5):
+            y0 = val(_sub(f, v, N(x0)))
+            if y0 is not None and not isinstance(y0, complex):
+                a = val(_sub(xs[0], 'y', N(y0)))
+                b = val(_sub(xs[1], 'y', N(y0)))
+                if a is not None and b is not None and not isinstance(a, complex) and \
+                        not isinstance(b, complex) and abs(a - b) > 1e-9:
+                    break
+            y0 = None
+        if y0 is not None:
+            hi, lo = (xs[0], xs[1]) if a > b else (xs[1], xs[0])
+            h = _snap((a + b) / 2.0)
+            lines.append('with the domain cut at ' + v + ' = ' + txt(h) + ':')
+            lines.append(eng.boxs('f on ' + v + ' >= ' + txt(h) + ':  f^-1(' + v + ') = ',
+                                  txt(eng.nice(_sub(hi, 'y', V))), eng.nice(_sub(hi, 'y', V))))
+            lines.append(eng.boxs('f on ' + v + ' <= ' + txt(h) + ':  f^-1(' + v + ') = ',
+                                  txt(eng.nice(_sub(lo, 'y', V))), eng.nice(_sub(lo, 'y', V))))
+        return lines
+    if w is not None:
+        lines.append(eng.boxs('', 'many-to-one: ' + w))
+        lines.append('so f has no inverse')
+        return lines
+    raise ValueError('cannot rearrange y = f(x) for x')
 
 def _witness(f, v):
-    # f(a) = f(b) with a != b, from a few simple pairs
+    # f(a) = f(b) with a != b: simple pairs first, then f(x) = f(a) solved
     for a, b in ((-1, 1), (-2, 2), (0, 2), (1, 3), (-3, 3)):
         fa = val(_sub(f, v, N(a)))
         fb = val(_sub(f, v, N(b)))
@@ -281,6 +297,23 @@ def _witness(f, v):
         if abs(fa - fb) < 1e-9 * (1 + abs(fa)):
             ex = eng.nice(_sub(f, v, N(a)))
             return 'f(' + str(a) + ') = f(' + str(b) + ') = ' + txt(ex)
+    import e_solve
+    for a in (0, 1, 2, -1, -2, 3):
+        ya = eng.nice(_sub(f, v, N(a)))
+        yv = val(ya)
+        if yv is None or isinstance(yv, complex):
+            continue
+        G = recog.from_trees(f, ya)
+        try:
+            rs = e_solve.solve(G, None, None)
+        except Exception:
+            continue
+        for ln in rs:
+            if isinstance(ln, tuple) and ln[0] == '=' and len(ln) > 4 and ln[4] is not None:
+                b = ln[4]
+                bv = val(b)
+                if bv is not None and not isinstance(bv, complex) and abs(bv - a) > 1e-6 * (1 + abs(a)):
+                    return 'f(' + str(a) + ') = f(' + txt(b) + ') = ' + txt(ya)
     return None
 
 # ---- domain ---------------------------------------------------------------------------------------------
@@ -450,7 +483,19 @@ def range_ivs(f, v, ivs, lines):
     d = cascalc.tidy(caseng.diff(f, v))
     if lines is not None:
         lines.append("f'(" + v + ') = ' + txt(d))
-    st = cassolve.solve_exact(d, v) or []
+    st = []
+    if len(ivs) == 1 and ivs[0][0] is not None and ivs[0][1] is not None:
+        # a finite interval: every stationary point in it (a trig one repeats)
+        dd = None
+        for g, e in recog.factors(d, 1, []):
+            if has(g, v) and e > 0:
+                dd = g if dd is None else ('*', dd, g)
+        try:
+            st = cassolve.solve_interval(dd or d, v, ivs[0][0], S(('+', ivs[0][1], N(1e-9))))
+        except Exception:
+            st = []
+    if not st:
+        st = cassolve.solve_exact(d, v) or []
     st = [r for r in st if val(r) is not None and not isinstance(val(r), complex)]
     if not st and has(d, v):
         st = [_snap(r) for r in (cascalc.solve(d, v, eng.casui.DEG, wide=True) or [])]
@@ -475,13 +520,21 @@ def range_ivs(f, v, ivs, lines):
                     if lines is not None and r not in kinks and shown[0] < 4:
                         shown[0] += 1
                         lines.append('stationary at ' + v + ' = ' + txt(r) + ':  f = ' + txt(y))
+        if lo is not None and hi is not None:
+            # a finite interval: turning points found by sampling too, so a
+            # trig one the CAS solves only once is not missed
+            for x in _turns(f, v, val(lo), val(hi)):
+                y = _f(f, v, x)
+                if y is not None:
+                    cands.append((y, _snap(y), True))
         for end, side, closed in ((lo, 1, loc), (hi, -1, hic)):
             if end is not None and closed:
                 y = eng.nice(_sub(f, v, end))
                 yv = val(y)
-                if yv is not None:
+                if yv is not None and not isinstance(yv, complex):
                     cands.append((yv, y, True))
-                continue
+                    continue
+                # not defined at that end after all: its limit then
             lim = _endlim(f, v, end, side)
             if lim is None:
                 continue
@@ -526,6 +579,33 @@ def range_ivs(f, v, ivs, lines):
                 continue
         merged.append(p)
     return merged
+
+def _turns(f, v, a, b, n=240):
+    # local maxima and minima of f on [a, b] from samples, each refined
+    xs = [a + (b - a) * i / float(n) for i in range(n + 1)]
+    ys = [_f(f, v, x) for x in xs]
+    out = []
+    for i in range(1, n):
+        y0, y1, y2 = ys[i - 1], ys[i], ys[i + 1]
+        if y0 is None or y1 is None or y2 is None:
+            continue
+        if (y1 >= y0 and y1 >= y2) or (y1 <= y0 and y1 <= y2):
+            up = y1 >= y0 and y1 >= y2
+            lo = xs[i - 1]
+            hi = xs[i + 1]
+            for k in range(40):
+                m1 = lo + (hi - lo) / 3.0
+                m2 = hi - (hi - lo) / 3.0
+                f1 = _f(f, v, m1)
+                f2 = _f(f, v, m2)
+                if f1 is None or f2 is None:
+                    break
+                if (f1 < f2) == up:
+                    lo = m1
+                else:
+                    hi = m2
+            out.append((lo + hi) / 2.0)
+    return out
 
 def _frac(x):
     # a float as a small fraction (p, q) when it is one, else None
