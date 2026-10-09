@@ -359,6 +359,65 @@ def home_keys():
         casui.busy, casui.result = rb
     check('CAS op shows Busy first', marks == ['busy', 'result'], marks)
 
+def further_switch():
+    # FURTHER = False in the launchers hides Further Maths from every menu
+    import casui
+    import nat
+    import tn_fb
+    src = open(os.path.join(HERE, 'maths.py')).read()
+    check('launchers match', src == open(os.path.join(HERE, 'module.py')).read())
+    check('launcher: Further off by default', 'FURTHER = False' in src and
+          'casui.main(further=FURTHER)' in src, src)
+    seen = []
+    saved = (casui.grid, casui.menu, casui.pick, casui.remembered, casui.FURTHER_ON)
+    def grid(title, tiles, sel=0, right=None):
+        seen.append([t[0] for t in tiles])
+        return -1
+    try:
+        casui.grid = grid
+        casui.main()
+        casui.main(further=True)
+        check('home without Further', seen[0] == ['Calculate', 'CAS', 'Graph', 'Solve', 'Maths',
+                                                  'Notes', 'Settings'], seen[0])
+        check('home with Further', 'Further' in seen[1] and len(seen[1]) == 8, seen[1])
+        for flag in (False, True):
+            casui.FURTHER_ON = flag
+            got = []
+            def menu(title, labels, sel=0, hint=None):
+                got.append(list(labels))
+                return labels.index('limit x -> a') if 'limit x -> a' in labels else -1
+            casui.menu = menu
+            casui.pick = menu
+            op = casui.pick_shown('Tools', casui.CAS_OPS, casui.OPS_FURTHER, 0)
+            check('CAS ops Maclaurin shown only with Further ' + str(flag),
+                  ('series (Maclaurin)' in got[0]) == flag, got[0])
+            check('CAS op picked by label ' + str(flag), casui.CAS_OPS[op] == 'limit x -> a', op)
+            casui.pick_shown('Symbols', nat.SYMBOLS, casui.SYM_FURTHER, 0, casui.pick)
+            check('symbols: complex and hyperbolic only with Further ' + str(flag),
+                  (('sinh(' in got[1]) and ('i' in got[1])) == flag and 'pi' in got[1], got[1])
+            labels = []
+            def remembered(title, opts):
+                labels.append(list(opts))
+                return -1
+            casui.remembered = remembered
+            casui.notes_section()
+            casui._booklet('Formula booklet')
+            check('notes papers: Further only with Further ' + str(flag),
+                  ('Core Pure Y420' in labels[0]) == flag and 'Pure 7357' in labels[0], labels[0])
+            check('booklet: Further pages only with Further ' + str(flag),
+                  ('Arc length' in labels[1]) == flag and 'Binomial expansion' in labels[1] and
+                  'Not in the booklet' in labels[1], labels[1])
+    finally:
+        casui.grid, casui.menu, casui.pick, casui.remembered, casui.FURTHER_ON = saved
+    for t in casui.FB_FURTHER:
+        check('booklet page exists: ' + t, t in tn_fb.T)
+    for t in casui.SYM_FURTHER:
+        check('symbol exists: ' + t, t in nat.SYMBOLS)
+    for t in casui.OPS_FURTHER:
+        check('CAS op exists: ' + t, t in casui.CAS_OPS)
+    for t in casui.NOTES_FURTHER:
+        check('notes paper exists: ' + t, t in [p[0] for p in casui.NOTE_PAPERS])
+
 def casrender_ok():
     import casrender
     box = casrender.build(caslex.parse('(2+3i)/(1-i)'), 0)
@@ -430,6 +489,7 @@ if __name__ == '__main__':
     engine()
     eq_fields()
     home_keys()
+    further_switch()
     cas_engine()
     for mname in (only or MODULES):
         module_cases(mname)

@@ -153,7 +153,30 @@ def run(root="."):
         all_bad.extend(check_file(p, mods))
     for f in missing:
         all_bad.append((f, 0, "device file is missing"))
+    all_bad.extend(check_launchers(root))
     return all_bad
+
+
+def check_launchers(root):
+    # maths.py and module.py are the same launcher (deploy.sh copies both),
+    # holding the settings the calculator can't save: FURTHER = True/False
+    bad = []
+    try:
+        a = open(os.path.join(root, "maths.py")).read()
+        b = open(os.path.join(root, "module.py")).read()
+    except IOError:
+        return bad
+    if a != b:
+        bad.append(("module.py", 0, "differs from maths.py: the two launchers must match"))
+    tree = ast.parse(a)
+    sets = [n for n in tree.body if isinstance(n, ast.Assign) and
+            [t.id for t in n.targets if isinstance(t, ast.Name)] == ["FURTHER"]]
+    if len(sets) != 1 or not isinstance(sets[0].value, ast.Constant) or \
+            sets[0].value.value not in (True, False):
+        bad.append(("maths.py", 0, "needs one line FURTHER = True or FURTHER = False"))
+    if "casui.main(further=FURTHER)" not in a:
+        bad.append(("maths.py", 0, "must call casui.main(further=FURTHER)"))
+    return bad
 
 
 if __name__ == "__main__":

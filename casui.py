@@ -48,6 +48,7 @@ TOP = 22        # first body pixel
 BOT = 191       # last body pixel
 
 DEG = False     # mirrors casutil.DEG so the home screen needs no engine
+FURTHER_ON = False  # main(further=...): False hides Further Maths (H645) everywhere
 
 # ---- keys -------------------------------------------------------------------
 # Arrows and DEL repeat while held, like the built-in apps.
@@ -684,9 +685,31 @@ def _split(text):
     import casutil
     return casutil.split_values(text)
 
+# Further-only entries, hidden while FURTHER_ON is False
+SYM_FURTHER = ('i', 'sinh(', 'cosh(', 'tanh(', 'asinh(', 'acosh(', 'atanh(',
+               'arg(', 'conj(', 're(', 'im(')
+OPS_FURTHER = ('series (Maclaurin)',)
+NOTES_FURTHER = ('Core Pure Y420', 'Stats Y422', 'Extra Pure Y435')
+# booklet pages for Further only (the A-level Maths booklet has none of them)
+FB_FURTHER = ('Complex numbers', 'Matrix transformations', 'Summations',
+              'Maclaurin series', 'Vectors', 'Area of a sector', 'Hyperbolic functions',
+              'Conics', 'Further num. integ.', 'Numerical solution ODE', 'Arc length',
+              'Surface area of revol.', 'Centres of mass', 'Contingency tables')
+
+def shown(labels, hide):
+    # indices of the labels to show: all with Further on, else those not in hide
+    return [i for i in range(len(labels)) if FURTHER_ON or labels[i] not in hide]
+
+def pick_shown(title, labels, hide, sel=0, how=None):
+    # a menu of the shown labels; -> index into labels, or -1
+    idx = shown(labels, hide)
+    at = idx.index(sel) if sel in idx else 0
+    i = (how or menu)(title, [labels[j] for j in idx], at)
+    return -1 if i < 0 else idx[i]
+
 def symbols(ed):
     import nat
-    i = pick('Symbols', nat.SYMBOLS)
+    i = pick_shown('Symbols', nat.SYMBOLS, SYM_FURTHER, 0, pick)
     if i >= 0:
         nat.symbol(ed, nat.SYMBOLS[i])
 
@@ -1574,7 +1597,7 @@ def calc_tools(text):
         flash('cannot read that')
         return
     while True:
-        op = menu('Tools', CAS_OPS, _TOOLSEL[0])
+        op = pick_shown('Tools', CAS_OPS, OPS_FURTHER, _TOOLSEL[0])
         if op < 0:
             return
         _TOOLSEL[0] = op
@@ -1601,8 +1624,9 @@ def cas_section():
             return
         s, tree = got
         while True:
-            op = menu('f(x) = ' + s, CAS_OPS, op)
+            op = pick_shown('f(x) = ' + s, CAS_OPS, OPS_FURTHER, op)
             if op < 0:
+                op = 0
                 break
             _run_op(op, tree, s)
 
@@ -1748,12 +1772,13 @@ NOTE_PAPERS = (
 )
 
 def notes_section():
-    labels = [p[0] for p in NOTE_PAPERS]
+    idx = shown([p[0] for p in NOTE_PAPERS], NOTES_FURTHER)
+    labels = [NOTE_PAPERS[i][0] for i in idx]
     while True:
         sel = remembered('Notes', labels)
         if sel < 0:
             return
-        name, mods = NOTE_PAPERS[sel]
+        name, mods = NOTE_PAPERS[idx[sel]]
         if mods:
             busy()
             import notesui
@@ -1765,11 +1790,13 @@ def _booklet(name):
     busy()
     import tn_fb
     import notesui
+    idx = shown(tn_fb.T, FB_FURTHER)
+    labels = [tn_fb.T[i] for i in idx]
     while True:
-        sel = remembered(name, tn_fb.T)
+        sel = remembered(name, labels)
         if sel < 0:
             return
-        notesui.show(tn_fb.T[sel], tn_fb.N[sel])
+        notesui.show(labels[sel], tn_fb.N[idx[sel]])
 
 HOME_TILES = [
     ('Calculate', ic_calc), ('CAS', ic_cas), ('Graph', ic_graph), ('Solve', ic_solve),
@@ -1819,7 +1846,12 @@ def _idle():
     draw_string(10, 95, 'Run maths.py to start again.', INK, 'medium')
     show_screen()
 
-def main():
+def main(further=False):
+    # further: the launcher's FURTHER switch (maths.py / module.py); False
+    # hides the Further tile, its notes, booklet pages, symbols and CAS op
+    global FURTHER_ON
+    FURTHER_ON = further
+    tiles = [t for t in HOME_TILES if further or t[0] != 'Further']
     sel = 0
     msg = None
     oom = 0     # MemoryErrors in the home grid itself, in a row
@@ -1836,26 +1868,27 @@ def main():
                 flash(m)
                 showing = False
             ingrid = True
-            sel = grid('Maths Toolkit', HOME_TILES, sel)
+            sel = grid('Maths Toolkit', tiles, sel)
             ingrid = False
             oom = 0
             if sel < 0:
                 return
-            if sel == 0:
+            name = tiles[sel][0]
+            if name == 'Calculate':
                 calc_section()
-            elif sel == 1:
+            elif name == 'CAS':
                 cas_section()
-            elif sel == 2:
+            elif name == 'Graph':
                 graph_section()
-            elif sel == 3:
+            elif name == 'Solve':
                 solve_section()
-            elif sel == 4:
+            elif name == 'Maths':
                 qual_section('Maths', MATHS)
-            elif sel == 5:
+            elif name == 'Further':
                 paper_section('Further', FURTHER)
-            elif sel == 6:
+            elif name == 'Notes':
                 notes_section()
-            elif sel == 7:
+            elif name == 'Settings':
                 settings()
         except Home:
             pass
