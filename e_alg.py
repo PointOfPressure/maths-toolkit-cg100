@@ -570,11 +570,11 @@ def _ppow(p, m):
     return out
 
 def pf(F, arg, vals):
-    import casalg
     v = F.var
     V = ('v', v)
     f = F.rows[0].f
     if f[0] != '/':
+        import casalg
         f = casalg.single_fraction(f, v)
         if f is None or f[0] != '/':
             raise ValueError('type it as one fraction')

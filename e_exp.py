@@ -183,8 +183,7 @@ def _num(t):
         return t
     if v == int(v) and abs(v) < 1e12:
         return N(int(v))
-    import casutil
-    return N(float(casutil._sf(v, 6)))
+    return N(float(eng.sf(v, 6)))
 
 def _short(t):
     # a fitted constant to 4 s.f. for the model line
@@ -193,8 +192,7 @@ def _short(t):
         return t
     if v == int(v):
         return N(int(v))
-    import casutil
-    return N(float(casutil._sf(v, 4)))
+    return N(float(eng.sf(v, 4)))
 
 def _br(t):
     s = txt(t)

@@ -595,8 +595,7 @@ def _snap(y):
                 return t
         except ValueError:
             pass
-    import casutil
-    return ('n', float(casutil._sf(y, 6)))
+    return ('n', float(eng.sf(y, 6)))
 
 def range_str(pieces):
     if not pieces:

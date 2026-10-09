@@ -362,8 +362,6 @@ def run_offer(tid, st, off):
         if vals is None:
             return
     casui.busy()
-    import casutil
-    casutil.DEG = casui.DEG
     lines = engine(mod, fn, F, arg, vals)
     if lines is not None:
         answer(label, lines)

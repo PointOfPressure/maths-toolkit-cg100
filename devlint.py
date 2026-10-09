@@ -16,7 +16,7 @@ DEVICE_FILES = [
     "ix_fcore.py", "ix_fcalc.py", "ix_fmech.py", "ix_fstat.py",
     "ix_falgo.py", "ix_fnum.py", "ix_fxpure.py", "ix_ffpt.py",
     # the redesign: home, topic screens, recogniser, actions, engines, settings
-    "home.py", "topic.py", "recog.py", "acts.py", "cfg.py", "eng.py",
+    "casold.py", "home.py", "topic.py", "recog.py", "acts.py", "cfg.py", "eng.py",
     "e_solve.py", "e_alg.py", "e_fn.py", "e_exp.py",
 ]
 

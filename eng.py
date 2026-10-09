@@ -68,6 +68,17 @@ def neg(t):
             if a[1] == ONE and k == '*':
                 return (True, t[2])
             return (True, (k, a[1], t[2]))
+    if k == '+' or k == '-':
+        # every term negative: -k - 1 is -(k + 1)
+        ts = sumterms(t, 1, [])
+        out = []
+        for a, sg in ts:
+            n, b = neg(a)
+            if (sg > 0) == n:
+                out.append((b, 1))
+            else:
+                return (False, t)
+        return (True, build(out))
     return (False, t)
 
 def sumterms(t, sg, out):
@@ -259,10 +270,9 @@ def txt(t, top=True):
     fl = []
     s = caseng.tostr(_fhide(order(t, top), fl))
     if fl:
-        import casutil
         i = len(fl) - 1
         while i >= 0:
-            s = s.replace('zf' + str(i), casutil._sf(fl[i], 7))
+            s = s.replace('zf' + str(i), sf(fl[i], 7))
             i -= 1
     if 'log' in s or 'ln' in s:
         s = _logs(s)
@@ -320,21 +330,45 @@ def val(t, env=None):
         return None
     return v
 
+def sf(v, n):
+    # v to n significant figures, as text (casutil._sf, kept here so the
+    # topic screens don't load casutil)
+    import math
+    if v == 0:
+        return '0'
+    neg = v < 0
+    av = -v if neg else v
+    e = int(math.floor(math.log10(av)))
+    mi = int(round(av / (10.0 ** (e - n + 1))))
+    if mi >= 10 ** n:
+        mi //= 10
+        e += 1
+    d = str(mi)
+    if e >= n + 3 or e < -4:
+        frac = d[1:].rstrip('0')
+        s = d[0] + ('.' + frac if frac else '') + 'e' + str(e)
+    elif e >= n - 1:
+        s = d + '0' * (e - n + 1)
+    elif e >= 0:
+        s = (d[:e + 1] + '.' + d[e + 1:]).rstrip('0').rstrip('.')
+    else:
+        s = ('0.' + '0' * (-e - 1) + d).rstrip('0')
+    return '-' + s if neg else s
+
 def dec(v):
     # decimal per the Decimals setting: '3.58 (3 s.f.)'
-    import casutil
     d = casui.SET['decimals']
     n = int(d[0])
     if isinstance(v, complex):
-        return casutil.fmt(v, n)
+        return caseng.cstr(v, lambda x: sf(x, n))
     if v == int(v) and abs(v) < 1e15:
         return str(int(v))
-    s10 = casutil._sf(v, 10)
+    s10 = sf(v, 10)
     digs = len(s10.replace('-', '').replace('.', '').lstrip('0'))
     if 'e' not in s10 and (digs <= n if d[1:] == 'sf' else len(s10.split('.')[1]) <= n):
         return s10
     if d[1:] == 'sf':
-        return casutil._sf(v, n) + ' (' + str(n) + ' s.f.)'
+        return sf(v, n) + ' (' + str(n) + ' s.f.)'
     s = ('%.' + str(n) + 'f') % v
     return s + ' (' + str(n) + ' d.p.)'
 
@@ -359,18 +393,48 @@ def boxs(pre, s):
 # ---- polynomials ----------------------------------------------------------------------------
 
 def coeffs(f, v):
-    # [c0, c1, ..] as trees (letters allowed), or None
+    # [c0, c1, ..] as trees (letters allowed), or None. Like
+    # cassolve.pcoeffs, but here so a quadratic in x with a k in it doesn't
+    # load cassolve (and cascalc with it)
     p = caspoly.poly(f, v)
     if p is not None:
         out = [caspoly.ratnode(c) for c in p]
         return out if out else [ZERO]
-    import cassolve
-    co = cassolve.pcoeffs(f, v)
-    if co is None:
-        return None
-    while len(co) > 1 and co[-1] == ZERO:
-        co.pop()
-    return co
+    g = S(f)
+    if g[0] == '/' and not has(g[2], v):
+        co = coeffs(g[1], v)
+        return None if co is None else [S(('/', c, g[2])) for c in co]
+    g = caspoly.expand(g)
+    co = {}
+    top = 0
+    for t, sg in sumterms(g, 1, []):
+        r = caspoly.term_of(t)
+        if r is None:
+            return None
+        c, facs = r
+        k = 0
+        rest = []
+        for key, base, e in facs:
+            if base == ('v', v):
+                k += e
+            elif has(base, v):
+                return None
+            else:
+                rest.append((key, base, e))
+        if k < 0 or k > 12 or k != int(k):
+            return None
+        k = int(k)
+        term = caspoly.term_node(c if sg > 0 else caspoly.rneg(c), rest)
+        if k in co:
+            co[k].append((term, 1))
+        else:
+            co[k] = [(term, 1)]
+        if k > top:
+            top = k
+    out = [S(build(co[i])) if i in co else ZERO for i in range(top + 1)]
+    while len(out) > 1 and out[-1] == ZERO:
+        out.pop()
+    return out
 
 def ptree(co, v):
     # coefficient trees -> a x^2 + b x + c, highest power first
