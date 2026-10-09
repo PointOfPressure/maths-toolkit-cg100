@@ -1462,10 +1462,10 @@ def _cas_op2(op, tree, s):
     if op == 15:
         return [('m', casalg.expand(tree)), ('w', 'compound angles and log laws used')]
     if op == 16:
-        r = casalg.complete_square(tree)
+        r = casalg.csq_lines(tree)
         if r is None:
-            return [('!', 'not a quadratic in x')]
-        return [('m', r), ('w', 'a(x + b/2a)^2 + (c - b^2/4a)')]
+            return [('!', 'not a quadratic in x: a x^2 + b x + c, letters allowed in a, b, c')]
+        return r
     if op == 17:
         r = casalg.rationalise(tree)
         if r is None:

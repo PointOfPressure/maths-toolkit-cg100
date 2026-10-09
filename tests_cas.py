@@ -319,6 +319,15 @@ def _algebra(check):
     check('cas complete square', got == '2*(x+2)^2-5', got)
     got = TS(casalg.complete_square(P('x^2+2x+5')))
     check('cas complete square 2', got == '(x+1)^2+4', got)
+    for src, want in (('x^2+3x+k', '(x+3/2)^2+k-9/4'), ('2x^2+kx+5', '2*(x+k/4)^2+5-k^2/8'),
+                      ('x^2+bx+c', '(x+b/2)^2+c-b^2/4'), ('-x^2+4x-1', '-(x-2)^2+3'),
+                      ('(x+1)(x-2)', '(x-1/2)^2-9/4'), ('x^2-x-k^2', '(x-1/2)^2-k^2-1/4')):
+        got = TS(casalg.complete_square(P(src)))
+        check('cas complete square ' + src, got == want, got)
+    for src in ('x^3+x', 'sin(x)^2+x', '3x+1', 'x^2+1/x'):
+        check('cas complete square refuses ' + src, casalg.complete_square(P(src)) is None)
+    ca = casalg.quadin(P('k*x^2+(2k+1)*x+k^2'))
+    check('cas quadin letters', [TS(t) for t in ca] == ['k', '2*k+1', 'k^2'], [TS(t) for t in ca])
     # polynomial division and the remainder / factor theorem
     q, r = casalg.divide(P('x^3-2x+1'), P('x-1'))
     check('cas divide q', TS(q) == 'x^2+x-1', TS(q))
@@ -496,6 +505,15 @@ def _menu(check):
             return casui._cas_op(i, P(tree), tree)
         lines = op(16, '2x^2+8x+3')
         check('cas menu complete square', TS(lines[0][1]) == '2*(x+2)^2-5')
+        # letters in b and c, and working in mark-scheme order
+        lines = op(16, 'x^2+3x+k')
+        check('cas menu complete square letters', TS(lines[0][1]) == '(x+3/2)^2+k-9/4', lines)
+        lines = op(16, '2x^2+kx+5')
+        got = [ln[1] if ln[0] == 'w' else TS(ln[1]) for ln in lines[2:]]
+        want = ['take 2 out of the x terms', '2*(x^2+k/2*x)+5', 'half of k/2 is k/4',
+                '2*((x+k/4)^2-k^2/16)+5', 'collect the constants', '2*(x+k/4)^2+5-k^2/8']
+        check('cas menu complete square working order', got == want, got)
+        check('cas menu complete square refuses a cubic', op(16, 'x^3+x')[0][0] == '!')
         lines = op(17, '1/(2-sqrt(3))')
         check('cas menu rationalise', TS(lines[0][1]) == 'sqrt(3)+2', TS(lines[0][1]))
         lines = op(18, '1/x+1/(x+1)')

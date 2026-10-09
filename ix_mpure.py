@@ -12,6 +12,7 @@ T = (
         ('Simplify surd expr', 'f(x)'),
         ('Rationalise', 'a,b,c,d,e,f'),
         ('Quadratic', 'a(k),b(k),c(k)'),
+        ('Complete the square', 'f(x)'),
         ('Quadratic in f(x)', 'a,b,c,f(x)'),
         ('Simultaneous 2 linear', 'a1,b1,c1,a2,b2,c2'),
         ('Simultaneous non-linear', 'f(x,y)=,g(x,y)='),

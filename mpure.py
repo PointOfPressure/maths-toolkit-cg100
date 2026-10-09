@@ -1227,7 +1227,19 @@ def _quad_sym(a, b, c):
     vx = S(('/', ('neg', b), ('*', ('n', 2), a)))
     vy = S(('-', c, ('/', ('^', b, ('n', 2)), ('*', ('n', 4), a))))
     lines.append('vertex (' + caseng.tostr(vx) + ', ' + caseng.tostr(vy) + ')')
+    cs = casalg.csq_lines(('+', ('+', ('*', a, ('^', X, ('n', 2))), ('*', b, X)), c))
+    if cs is not None:
+        lines.append(cs[0])
+        lines.extend([ln for ln in cs[2:]])
     lines.append(w('letters are constants, taken as positive'))
+    return lines
+
+
+def t_csq(f):
+    # a x^2 + b x + c typed as an expression; letters allowed in a, b, c
+    lines = casalg.csq_lines(f)
+    if lines is None:
+        raise ValueError('not a quadratic in x: type a x^2 + b x + c')
     return lines
 
 
@@ -5170,6 +5182,7 @@ SECTIONS = [
         ('Simplify surd expr', 'f(x)', t_surdexpr),
         ('Rationalise', 'a,b,c,d,e,f', t_rationalise),
         ('Quadratic', 'a(k),b(k),c(k)', t_quadratic),
+        ('Complete the square', 'f(x)', t_csq),
         ('Quadratic in f(x)', 'a,b,c,f(x)', t_quad_in),
         ('Simultaneous 2 linear', 'a1,b1,c1,a2,b2,c2', t_simul2),
         ('Simultaneous non-linear', 'f(x,y)=,g(x,y)=', t_simulnl),

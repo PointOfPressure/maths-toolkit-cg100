@@ -697,22 +697,184 @@ def _cuberoot(r):
         return None
     return caseng._rq(sgn * a, b)
 
-def complete_square(node, var='x'):
-    # a x^2 + b x + c -> a(x + b/2a)^2 + (c - b^2/4a)
-    p = caspoly.poly(_S(node), var)
-    if p is None or len(p) != 3:
+def _qpoly(n, var):
+    # n as [c0, c1, c2] (trees free of var, unsimplified), degree <= 2
+    t = n[0]
+    if not caseng._hasvar(n, var):
+        return [n]
+    if t == 'v':
+        return [_num(0), _num(1)]
+    if t == 'neg':
+        p = _qpoly(n[1], var)
+        return None if p is None else [('neg', c) for c in p]
+    if t == '+' or t == '-':
+        p = _qpoly(n[1], var)
+        q = _qpoly(n[2], var)
+        if p is None or q is None:
+            return None
+        out = []
+        i = 0
+        while i < len(p) or i < len(q):
+            a = p[i] if i < len(p) else _num(0)
+            b = q[i] if i < len(q) else _num(0)
+            out.append((t, a, b))
+            i += 1
+        return out
+    if t == '*':
+        p = _qpoly(n[1], var)
+        q = _qpoly(n[2], var)
+        if p is None or q is None:
+            return None
+        return _qmul(p, q)
+    if t == '/':
+        if caseng._hasvar(n[2], var):
+            return None
+        p = _qpoly(n[1], var)
+        return None if p is None else [('/', c, n[2]) for c in p]
+    if t == '^':
+        r = caseng._ratval(n[2])
+        if r is None or r[1] != 1 or r[0] < 0 or r[0] > 2:
+            return None
+        b = _qpoly(n[1], var)
+        if b is None:
+            return None
+        out = [_num(1)]
+        i = 0
+        while i < r[0] and out is not None:
+            out = _qmul(out, b)
+            i += 1
+        return out
+    return None
+
+def _qmul(p, q):
+    out = []
+    i = 0
+    while i < len(p):
+        j = 0
+        while j < len(q):
+            if i + j > 2:
+                # a nonzero x^3 term means not a quadratic
+                if _S(caspoly.expand(('*', p[i], q[j]))) != _num(0):
+                    return None
+            else:
+                while len(out) <= i + j:
+                    out.append(_num(0))
+                out[i + j] = ('+', out[i + j], ('*', p[i], q[j]))
+            j += 1
+        i += 1
+    return out
+
+def quadin(node, var='x'):
+    # node as A var^2 + B var + C, A != 0, letters allowed -> (A, B, C)
+    p = _qpoly(node, var)
+    if p is None:
         return None
-    a = p[2]
-    b = p[1]
-    c = p[0]
-    h = caspoly.rdiv(b, caspoly.rmul(a, (2, 1)))
-    k = caspoly.rsub(c, caspoly.rmul(a, caspoly.rmul(h, h)))
-    inner = _sum([(('v', var), 1), (caspoly.ratnode(h), 1)])
-    sq = caseng._pow(inner, _num(2))
-    items = [(_prod([(caspoly.ratnode(a), 1), (sq, 1)]), 1)]
-    if not caspoly.rzero(k):
-        items.append((caspoly.ratnode(k), 1))
-    return _sum(items)
+    p = [_S(caspoly.expand(c)) for c in p] + [_num(0), _num(0)]
+    if p[2] == _num(0):
+        return None
+    return (p[2], p[1], p[0])
+
+def _neglook(t):
+    # does t print with a leading minus?
+    k = t[0]
+    if k == 'neg':
+        return True
+    if k == 'n':
+        v = t[1]
+        return isinstance(v, (int, float)) and v < 0
+    if k == '/' or k == '*':
+        return _neglook(t[1])
+    return False
+
+def _lterms(t, sg, out):
+    # the terms of a sum, left to right, as (term, sign)
+    if t[0] == '+' or t[0] == '-':
+        _lterms(t[1], sg, out)
+        _lterms(t[2], sg if t[0] == '+' else -sg, out)
+    else:
+        out.append((t, sg))
+    return out
+
+def _plus(a, b):
+    # a + b as typed: a - |b| when b reads negative; b == 0 dropped; a sum
+    # b joins term by term
+    if b == _num(0):
+        return a
+    if a == _num(0):
+        return b
+    if b[0] == '+' or b[0] == '-':
+        for t, sg in _lterms(b, 1, []):
+            a = _plus(a, t if sg > 0 else _S(('neg', t)))
+        return a
+    if _neglook(b):
+        return ('-', a, _S(('neg', b)))
+    return ('+', a, b)
+
+def _times(a, t):
+    # a t with a == 1 or -1 folded
+    if a == _num(1):
+        return t
+    if a == _num(-1):
+        return ('neg', t)
+    return ('*', a, t)
+
+def csq(node, var='x'):
+    # complete the square: a(x + p)^2 + q, letters allowed in a, b and c.
+    # -> (tree, a, p, q, working) or None; working is result lines
+    # (('w', text) and ('mw', tree)) in mark-scheme order
+    r = quadin(node, var)
+    if r is None:
+        return None
+    a, b, c = r
+    X = ('v', var)
+    T = caseng.tostr
+    E = lambda t: _S(caspoly.expand(t))
+    p = E(('/', b, ('*', _num(2), a)))
+    p2 = E(('^', p, _num(2)))                   # p^2
+    nap2 = E(('neg', ('*', a, p2)))             # -a p^2 = -b^2/4a
+    q = E(('+', c, nap2))
+    one = []
+    caspoly._addterms(nap2, 1, one)
+    if caseng.vars_in(q) and c != _num(0) and len(one) == 1:
+        # letters: c - b^2/4a stays two terms, the way it is worked
+        q = _plus(c, nap2)
+    sq = ('^', _plus(X, p), _num(2))
+    tree = _plus(_times(a, sq), q)
+    out = []
+    if a != _num(1):
+        ba = E(('/', b, a))
+        out.append(('w', 'take ' + T(a) + ' out of the x terms'))
+        out.append(('mw', _plus(_times(a, _plus(('^', X, _num(2)), _times(ba, X))), c)))
+        out.append(('w', 'half of ' + T(ba) + ' is ' + T(p)))
+        out.append(('mw', _plus(_times(a, _plus(sq, E(('neg', p2)))), c)))
+    else:
+        out.append(('w', 'half of ' + T(b) + ' is ' + T(p)))
+        out.append(('mw', _plus(_plus(sq, E(('neg', p2))), c)))
+    out.append(('w', 'collect the constants'))
+    out.append(('mw', tree))
+    return (tree, a, p, q, out)
+
+def csq_lines(node, var='x'):
+    # result lines for the CAS op and the Pure tool, or None
+    r = csq(node, var)
+    if r is None:
+        return None
+    tree, a, p, q, work = r
+    T = caseng.tostr
+    tp = '(' + T(_S(('neg', p))) + ', ' + T(q) + ')'
+    ar = caseng._ratval(a)
+    if ar is not None and ar[0] > 0:
+        tp = 'minimum point ' + tp
+    elif ar is not None and ar[0] < 0:
+        tp = 'maximum point ' + tp
+    else:
+        tp = 'turning point ' + tp
+    return [('m', tree), tp] + work
+
+def complete_square(node, var='x'):
+    # a x^2 + b x + c -> a(x + b/2a)^2 + (c - b^2/4a); letters allowed
+    r = csq(node, var)
+    return None if r is None else r[0]
 
 # ---- polynomial division --------------------------------------------------
 
