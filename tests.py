@@ -252,6 +252,8 @@ def cas_engine():
     tests_recog.run(check)
     import tests_accept
     tests_accept.run(check)
+    import tests_ui
+    tests_ui.run(check)
     _depth_check()
 
 def _depth_check():

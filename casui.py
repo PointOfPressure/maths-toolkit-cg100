@@ -52,8 +52,9 @@ DEG = False     # mirrors casutil.DEG so the home screen needs no engine
 # Settings. The calculator can't save files, so the launch script (maths.py /
 # module.py) holds the defaults and passes them to main(); the Settings page
 # (cfg.py) changes them until the program ends.
-SET = {'further': False, 'angle': 'rad', 'answers': 'both', 'decimals': '3sf',
-       'complex': 'a+bi', 'sleep': 10, 'repeat': 'normal'}
+DEFAULTS = (('further', False), ('angle', 'rad'), ('answers', 'both'), ('decimals', '3sf'),
+            ('complex', 'a+bi'), ('sleep', 10), ('repeat', 'normal'))
+SET = dict(DEFAULTS)
 CASUTIL = [False]   # casutil has loaded: an angle change must reach it too
 
 # ---- keys -------------------------------------------------------------------
@@ -865,6 +866,7 @@ def main(further=False, angle='rad', answers='both', decimals='3sf',
          complex='a+bi', sleep=10, repeat='normal'):
     # called by the launch script with its settings; a value it doesn't know
     # keeps the default, so a typo there can't stop the program
+    SET.update(dict(DEFAULTS))
     got = {'angle': angle, 'answers': answers, 'decimals': decimals,
            'complex': complex, 'repeat': repeat}
     for k in got:

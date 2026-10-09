@@ -23,6 +23,24 @@ def S(t):
     r = caseng.simplify(t2)
     return _unhide(r, hid) if hid else r
 
+def E(t):
+    # caspoly.expand with exact logs kept, as S
+    hid = []
+    t2 = _hide(t, hid)
+    r = caspoly.expand(t2)
+    return _unhide(r, hid) if hid else r
+
+def _floaty(t):
+    k = t[0]
+    if k == 'n':
+        return isinstance(t[1], float)
+    if k == 'v':
+        return False
+    for c in t[1:]:
+        if _floaty(c):
+            return True
+    return False
+
 def _hide(t, hid):
     k = t[0]
     if k == 'n' or k == 'v':
@@ -922,11 +940,11 @@ def nice(t):
         if len(ts) > 1:
             cands.append(build([(S(('/', a, t[2])), b) for a, b in ts]))
     if t[0] == '/' and _hasvar(t):
-        e = caspoly.expand(t)
+        e = E(t)
         if e != t:
             cands.append(e)
     elif t[0] in ('*', '+', '-'):
-        cands.append(S(caspoly.expand(t)))
+        cands.append(S(E(t)))
     if t[0] == '/' and not _hasvar(t) and _hassq(t[2]):
         import casalg
         try:
@@ -940,7 +958,10 @@ def nice(t):
         if m > 1:
             cands.append(('/', caspoly.expand(S(('*', N(m), t[1]))), S(('*', N(m), t[2]))))
     best = None
+    exact = not _floaty(t)
     for c in cands:
+        if exact and _floaty(c):
+            continue    # a form that went to decimals is not the same answer
         key = (_nested(c), len(txt(c)))
         if best is None or key < best[0]:
             best = (key, c)
