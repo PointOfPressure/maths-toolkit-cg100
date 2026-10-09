@@ -165,7 +165,38 @@ def corpus():
     return lines
 
 
+def sup_layout(check):
+    # an exponent on a base taller than a line of text: its top 2 px below
+    # the base's top (the line grows no taller) and 2 clear pixels after the
+    # bracket; one-line bases keep the usual raise and 1 px gap
+    import casrender
+    import caslex
+    for lvl, sz in ((0, 'medium'), (1, 'small')):
+        b = casrender.flat(casrender.build(caslex.parse('(x+3/2)^2'), lvl))
+        w, a, d = casrender.measure(b)
+        ba = casrender.measure(b[1])[1]
+        strs, ops = casrender.record(b, 0, 100)
+        ex = strs[-1]
+        xs = []
+        for o in ops:
+            if o[0] == 1:
+                xs.append(o[1])
+            elif o[0] == 0:
+                xs.append(o[2])
+            elif o[0] == 4:
+                xs.extend(o[1][0::2])
+        check('sup on a bracket: no taller ' + sz, a == ba, (a, ba))
+        check('sup on a bracket: top 2 px below the bracket ' + sz,
+              ex[1] == 100 - a + 2 and ex[2] == '2', ex)
+        check('sup on a bracket: 2 px clear of it ' + sz, ex[0] == max(xs) + 3, (ex[0], max(xs)))
+    for src, want in (('x^2', [(0, 87, 'x', M), (11, 85, '2', S)]),
+                      ('(x+1)^2', [(0, 87, '(', M), (8, 87, 'x + 1', M), (48, 87, ')', M), (57, 85, '2', S)])):
+        b = casrender.flat(casrender.build(caslex.parse(src), 0))
+        check('sup on one line unchanged ' + src, casrender.record(b, 0, 100)[0] == want,
+              casrender.record(b, 0, 100)[0])
+
 def run(check):
+    sup_layout(check)
     # glyphs: every code drawn in both sizes, from the generator
     check('tex: texg.py is current (python3 mkglyph.py)', open(os.path.join(HERE, 'texg.py')).read() == mkglyph.source())
     codes = set(tex.GREEK.values()) | set(tex.SYMG.values()) | set(tex.CMD.values()) | set('ZIx')

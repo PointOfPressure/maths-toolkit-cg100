@@ -26,7 +26,45 @@ def typed(*keys):
 def val(ed):
     return casutil.fmt(casutil.ev(caslex.parse(nat.lin(ed.root))))
 
+def drawn(ed):
+    # what nat.draw puts on screen: [(x, y, text, size)] and the pixels
+    strs = []
+    pix = []
+    saved = (nat.draw_string, nat.set_pixel)
+    nat.draw_string = lambda x, y, s, c=None, sz=None: strs.append((x, y, s, sz))
+    nat.set_pixel = lambda x, y, c=None: pix.append((x, y))
+    try:
+        nat.draw(None, ed.root, 0, 100, 380)
+    finally:
+        nat.draw_string, nat.set_pixel = saved
+    return strs, pix
+
+def power_layout(check):
+    # (x + 3/2)^2 typed: the 2 sits at the top of the bracket, 2 px clear of it
+    ed = typed(('n', 55), 'x', '+', '3', 'frac', '2', 'R', ('n', 56), 'sq')
+    w, a, d = nat.measure(ed.root, 0)
+    strs, pix = drawn(ed)
+    ex = strs[-1]
+    top = min([p[1] for p in pix])
+    right = max([p[0] for p in pix])
+    check('nat power on a bracket: last string is the 2', ex[2] == '2' and ex[3] == 'small', strs)
+    check('nat power on a bracket: top 2 px below the bracket', ex[1] == top + 2, (ex, top))
+    a0 = nat.measure(ed.root[:-1], 0)[1]
+    check('nat power on a bracket: line no taller', a == a0, (a, a0))
+    check('nat power on a bracket: 2 px clear of it', ex[0] == right + 3, (ex, right))
+    # small size: the same inside an exponent
+    ed = typed('exp', ('n', 55), 'x', '+', '1', 'frac', '2', 'R', ('n', 56), 'sq')
+    strs, pix = drawn(ed)
+    ex = strs[-1]
+    inner = [p for p in pix if p[0] > 12]
+    check('nat power on a small bracket: top 2 px below it', ex[1] == min([p[1] for p in inner]) + 2,
+          (ex, min([p[1] for p in inner])))
+    # one-line base: unchanged (exponent 7 px up, 1 px after the x)
+    strs, pix = drawn(typed('x', 'sq'))
+    check('nat power on x unchanged', strs == [(0, 87, 'x', 'medium'), (11, 85, '2', 'small')], strs)
+
 def run(check):
+    power_layout(check)
     check('nat 1/2 via fraction key', val(typed('1', 'frac', '2')) == '1/2')
     check('nat fraction grabs the term before it', val(typed('1', '+', '3', 'frac', '2')) == '5/2')
     check('nat fraction grab drops outer brackets',

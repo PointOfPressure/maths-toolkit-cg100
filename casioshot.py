@@ -192,6 +192,22 @@ def _scenes():
         press(*keys)
         notesui.show(tn_fb.T[i], tn_fb.N[i])
 
+    def sup_sheet():
+        # each expression at medium (left column) and small (right column)
+        import casrender
+        from casioplot import clear_screen, show_screen
+        clear_screen()
+        srcs = ('(x+3/2)^2', '2(x+k/4)^2+5', '((x+1)/2)^3', '(x+1)^2+x^2',
+                'e^(x^2)*sqrt(x)^3', '(1/2)^n')
+        for lvl, x0 in ((0, 4), (1, 200)):
+            y = 4
+            for src in srcs:
+                b = casrender.flat(casrender.build(caslex.parse(src), lvl))
+                w, a, d = casrender.measure(b)
+                casrender.draw(b, x0, y + a)
+                y += a + d + 4
+        show_screen()
+
     return [
         ("tex-expand", lambda: tool('mpure', 'Expand', '(x+1)^8', 94)),
         ("tex-maclaurin", lambda: tool('fcore', 'Maclaurin series', 'ln(1+x),6', 94)),
@@ -241,7 +257,18 @@ def _scenes():
         ("notes-detail", lambda: (casui._SEL.clear(), press(34, 25, 24, 34, 34, 24, 34, 34),
                                   casui.notes_section())),
         ("plot-cubic", lambda: plot.run([caslex.parse('x^3-3x')], -4, 4, 'y', 'y = x^3-3x')),
+        # superscripts on tall bases: typeset results, notes, the editor
+        ("sup-sheet", lambda: sup_sheet()),
+        ("sup-csq", lambda: tool('mpure', 'Complete the square', 'x^2+3x+k', 94)),
+        ("sup-notes-quad", lambda: notes('notes_mp1', 2, 26)),
+        # ( x + 3 frac 2 right ) x^2 + x x^2, then e^( ( x + 1 frac 2 right ) x^2
+        ("sup-nat", lambda: calc(55, 41, 84, 83, 42, 82, 25, 56, 45, 84, 41, 45, 84,
+                                 46, 55, 41, 84, 81, 42, 82, 25, 56, 45)),
+        ("sup-booklet-arc", lambda: booklet(21)),
+        ("sup-notes-cp1", lambda: notes('notes_cp1', 7)),
+        ("sup-nat-exe", lambda: calc(55, 41, 84, 83, 42, 82, 25, 56, 45, 84, 41, 45, 95)),
     ]
+
 
 
 if __name__ == "__main__":

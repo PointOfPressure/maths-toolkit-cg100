@@ -389,7 +389,7 @@ def mitem(it, lvl, prev=None):
         return ((nw if nw > dw else dw) + 6, ax + 3 + na + nd, da + dd + 3 - ax)
     if k == 'P':
         ew, ea, ed = measure(it[1], lvl + 1)
-        up = 7 if sz == 'medium' else 4
+        up = _pup(prev, lvl, ea)
         a = up + ea
         return (ew + 1, a if a > ASC[sz] else ASC[sz], DESC[sz])
     if k == 'R' or k == 'N':
@@ -423,6 +423,20 @@ def mitem(it, lvl, prev=None):
         return (_fw(name, sup, sz) + lw + aw + rw, a, ad + 1 if tall else ad)
     aw, aa, ad = measure(it[1], lvl)
     return (aw + 8, aa + 1, ad + 1)
+
+def _pup(prev, lvl, ea):
+    # how far up a power's exponent sits. After a box taller than a line of
+    # text (a bracket round a fraction) its top is 2 px below that box's top,
+    # so the line grows no taller; after one-line text, the usual raise. The
+    # power starts 1 px after its base, 2 clear of a drawn bracket's last pixel.
+    sz = _sz(lvl)
+    up = 7 if sz == 'medium' else 4
+    if prev is not None and not isinstance(prev, str):
+        # a tall box's ascent has 1 px of headroom over its top pixel
+        pa = mitem(prev, lvl)[1]
+        if pa > ASC[sz] + 2 and pa - 3 - ea > up:
+            up = pa - 3 - ea
+    return up
 
 class Pen:
     # dx scrolls the line; caret gets (x, top, bottom) when the edited row is met
@@ -606,8 +620,8 @@ def draw_item(pen, it, x, base, lvl, prev=None):
         draw_row(pen, it[2], x + (w - dw) // 2, ybar + 2 + da, lvl)
         return
     if k == 'P':
-        up = 7 if sz == 'medium' else 4
-        draw_row(pen, it[1], x + 1, base - up, lvl + 1)
+        ew, ea, ed = measure(it[1], lvl + 1)
+        draw_row(pen, it[1], x + 1, base - _pup(prev, lvl, ea), lvl + 1)
         return
     if k == 'R' or k == 'N':
         rw, ra, rd = measure(it[-1], lvl)
