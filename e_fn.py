@@ -101,10 +101,39 @@ def _elim(c1, c2, xs, lines, F):
     lines.append(eng.box(y + ' = ', _rt(yv), not F.dec))
     return lines
 
+def _oneunknown(E1, E2, a, b, xs, lines, F):
+    # one equation holds only one of the unknowns: solve it, then the other
+    import e_solve
+    for E, O, n in ((E1, E2, '1'), (E2, E1, '2')):
+        for v, u in ((xs[0], xs[1]), (xs[1], xs[0])):
+            if has(E, v) and not has(E, u):
+                G = recog.from_trees(E, ZERO)
+                G.var = v
+                sub = e_solve.solve(G, None, None)
+                lines.append('(' + n + ') has only ' + v + ':')
+                lines += [ln for ln in sub[1:] if not (isinstance(ln, tuple) and ln[0] == '=')]
+                pairs = []
+                for r in getattr(G, 'roots', []) or []:
+                    H = recog.from_trees(caseng.subst(O, v, r), ZERO)
+                    H.var = u
+                    s2 = e_solve.solve(H, None, None)
+                    lines.append(v + ' = ' + txt(r) + ':  ' + txt(caseng.subst(O, v, r)) + ' = 0')
+                    for w in getattr(H, 'roots', []) or []:
+                        pairs.append((r, w) if v == xs[0] else (w, r))
+                if not pairs:
+                    lines.append(eng.boxs('', 'no real solutions'))
+                for p, q in pairs:
+                    lines.append(eng.pair(xs, (p, q), not F.dec))
+                return lines
+    return None
+
 def _subst(E1, E2, a, b, xs, lines, F):
     # one equation gives one unknown in terms of the other: substitute it
     import e_solve
     x, y = xs
+    one = _oneunknown(E1, E2, a, b, xs, lines, F)
+    if one is not None:
+        return one
     pick = None
     for E, o, n, r in ((E1, E2, '1', a), (E2, E1, '2', b)):
         for v, u in ((y, x), (x, y)):
@@ -155,7 +184,13 @@ def _subst(E1, E2, a, b, xs, lines, F):
         try:
             rs = eng.solve_for(put, ZERO, u, lines)
         except (Stuck, NoRoot):
-            rs = e_solve._cas(S(put), u, lines)
+            # whatever form it is now (fractions, logs): Solve's own method
+            H = recog.from_trees(put, ZERO)
+            H.var = u
+            H.dec = F.dec
+            sub = e_solve.solve(H, None, None)
+            lines += [ln for ln in sub[1:] if not (isinstance(ln, tuple) and ln[0] == '=')]
+            rs = getattr(H, 'roots', None)
     if rs is None:
         raise ValueError('every ' + u + ' works: the equations are not independent')
     pairs = []

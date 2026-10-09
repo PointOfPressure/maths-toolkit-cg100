@@ -163,6 +163,13 @@ def poly(L, Rt, v, F, lines):
     if co is None:
         raise Stuck()
     d = len(co) - 1
+    nz = [i for i in range(len(co)) if co[i] != ZERO]
+    if d >= 3 and (nz == [0, d] or nz == [d]) and count(L, v) + count(Rt, v) == 1:
+        # x^3 = 8, 256 - 4x^4 = 0: undo it a step at a time
+        try:
+            return eng.solve_for(L, Rt, v, lines)
+        except (Stuck, NoRoot):
+            pass
     if d >= 2:
         co = _std(L, Rt, v, lines)
     if d < 1:
@@ -177,6 +184,26 @@ def poly(L, Rt, v, F, lines):
             return [S(('neg', ('/', co[0], co[1])))]
     if d == 2:
         return quad(co, v, lines, False)
+    nz = [i for i in range(len(co)) if co[i] != ZERO]
+    V = ('v', v)
+    if nz == [0, d] or (len(nz) == 1 and nz[0] == d):
+        # a x^n + c = 0: x^n on its own, then the root
+        try:
+            return eng.solve_for(eng.mul(co[d], ('^', V, N(d))), S(('neg', co[0])), v, lines)
+        except (Stuck, NoRoot):
+            pass
+    if d == 4 and co[1] == ZERO and co[3] == ZERO:
+        # a quadratic in x^2
+        lines.append('let u = ' + v + '^2')
+        us = quad([co[0], co[2], co[4]], 'u', lines)
+        out = []
+        for r in us:
+            lines.append(v + '^2 = ' + txt(r))
+            try:
+                out += eng.isolate(('^', V, N(2)), r, v, lines)
+            except NoRoot:
+                lines.append(v + '^2 = ' + txt(r) + ': no real ' + v)
+        return out
     return cubic(co, v, lines)
 
 def cubic(co, v, lines):

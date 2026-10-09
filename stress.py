@@ -70,7 +70,9 @@ TYPED = ['0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2', '2^x=-1',
          'pi^x=e', '0^x=0', 'x^x=4', '(x-1)^-1', 'x^(1/3)=-2', '1e9x^2+1e-9', '2^x+2^(2x)',
          'ln(x)=ln(-x)', 'x+y+z=1', 'sin(x)^2+cos(x)^2', 'log(x)^2-3log(x)+2=0',
          'y=1/x', 'y=x^3', 'x>x', '2<1', '(2+3i)x=1', 'x^2+(k+1)x+k', '0.1x^2-0.3x=0',
-         'e^x=0', 'x^2=4', 'sqrt(x)=x-2', 'x^4+4', '1/(x^2+1)', 'y=e^(2x)+e^x']
+         'e^x=0', 'x^2=4', 'sqrt(x)=x-2', 'x^4+4', '1/(x^2+1)', 'y=e^(2x)+e^x',
+         'dy/dx=0', 'dy/dx=y', 'dy/dx=x+y', 'dy/dx=sin(x)/y', 'dy/dx=1/(x-1)', 'tan(x)', '1/x',
+         'abs(x)', 'x^x', 'e^(x^2)', 'ln(ln(x))']
 PAIRS = [['x=1', 'x=2'], ['x+y=1', 'x+y=1'], ['x+y=1', 'x+y=2'], ['x^2+y^2=1', 'x^2+y^2=4'],
          ['0', '0'], ['x', 'y'], ['y=x', 'y=x^2'], ['e^x', 'ln(x)']]
 STOCK = ['2', '3', '1', '5', '']
@@ -88,7 +90,7 @@ def topics():
         F = recog.form(rows)
         if F.err:
             continue
-        for tid in ('alg', 'exp'):
+        for tid in ('alg', 'exp', 'calc'):
             for label, mod, fn, arg, ask in acts.offers(F, tid):
                 vals = None
                 if ask:

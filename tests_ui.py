@@ -108,6 +108,9 @@ def run(check):
     case('geo circle ABC', 'geo', AB + (35, 85, 72, 25, 85, 72, EXE, 81), 'Circle ABC', [])
     case('geo point and line', 'geo', (81, 25, 82, 34, 34, 32, 85, 31, 55, 83, 41, EXE, 82),
          'Perpendicular thru A', ['x+3y-7=0'])
+    # Calculus: y = x^3 - 3x, Stationary points (tile 2); dy/dx = x y with a point
+    case('calc stationary', 'calc', (32, 85, 31, 55, 41, 44, 83, 25, 85, 83, 41, EXE, 82),
+         'Stationary points', ['maximum', 'minimum'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

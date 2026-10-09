@@ -81,6 +81,13 @@ FORMS = [
     (['2+3*4'], 'num', {'surd': False, 'logs': False}, 'numbers'),
     (['logb(2,8)+logb(2,4)'], 'num', {'logs': True}, 'logs'),
     (['(6a+15d)^2'], 'const', {'expand': True}, 'a and d'),
+    # calculus forms
+    (['dy/dx=x*y'], 'de', {'var': 'x'}, 'differential equation dy/dx'),
+    (['((dy)/(dx))=2x/y'], 'de', {}, 'differential equation'),
+    (['dv/dt=-0.1v^2'], 'de', {'var': 't'}, 'dv/dt'),
+    (['x=t^2+t', 'y=4t^2-t^3'], 'pair', {'pair': 'param', 'var': 't'}, 'parametric'),
+    # near-miss: y = ... and x = ... with x in both is not parametric
+    (['y=x^2', 'x=2y'], 'pair', {'pair': 'simul'}, 'two equations'),
     # two rows
     (['x+2y=5', '3x-y=1'], 'pair', {'pair': 'simul', 'vars2': ['x', 'y']}, 'two equations in x and y'),
     (['y=x^2', 'y=2x+1'], 'pair', {'pair': 'simul'}, 'two equations'),
@@ -128,7 +135,10 @@ TILES = [
 ]
 
 # what an action asks gets these answers in the sweep
-ANSWER = {'Factor theorem': ['1'], 'Divide': ['x-1'], 'Graph': ['2', '3', '4'],
+ANSWER = {'Gradient at a point': ['3', '4'], 'Tangent at a point': ['3', '4'],
+          'Solve with a point': ['1', '2'], 'Definite integral': ['1', '2'],
+          'Area under curve': ['1', '2'], 'Area between, limits': ['0', '1'],
+          'Factor theorem': ['1'], 'Divide': ['x-1'], 'Graph': ['2', '3', '4'],
           'Range on an interval': ['0', '3'], 'Transform': ['2', '1', '0', '0'],
           'Inequality': [0], 'From two points': ['1', '2', '3', '7', '']}
 
@@ -173,7 +183,7 @@ def run(check):
     # every offered action runs, in both topics
     for rows, kind, attrs, words in FORMS:
         F = recog.form(rows)
-        for tid in ('alg', 'exp'):
+        for tid in ('alg', 'exp', 'calc'):
             for o in acts.offers(F, tid):
                 label, mod, fn, arg, ask = o
                 vals = None

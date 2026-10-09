@@ -14,7 +14,7 @@ MATHS = (
     ('Sequences, series', 'o:D'),
     ('Trig', 'o:E'),
     ('Exp and logs', 't:exp'),
-    ('Calculus', 'o:GH'),
+    ('Calculus', 't:calc'),
     ('Numerical', 'o:I'),
     ('Vectors', 'o:J'),
     ('Statistics', 'o:KLMNO'),

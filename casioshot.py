@@ -157,6 +157,9 @@ LOGEQ = (82, 31, 45, 41, 56, 31, 55, 31, 45, 71, 56, 84, 31, 45, 41, 84, 62, 56)
 
 
 AB_KEYS = (81, 25, 82, 34, 85, 73, 23, 23, 23, 72)
+# y = x^3 - 3x;  y = x e^x
+CUBIC_Y = (32, 85, 31, 55, 41, 44, 83, 25, 85, 83, 41)
+XEX = (32, 85, 31, 55, 41, 46, 41, 25)
 
 
 def geo_scene(keys):
@@ -270,6 +273,10 @@ def _scenes():
         ("t-exp-log", lambda: topic_scene('exp', LOGEQ + (95, 81))),
         ("t-error", lambda: topic_scene('alg', (41, 84, 31, 55, 31, 55, 95))),
         ("t-settings", lambda: (press(34), __import__('cfg').page())),
+        ("t-calc-tiles", lambda: topic_scene('calc', CUBIC_Y + (95,))),
+        ("t-calc-stat", lambda: topic_scene('calc', CUBIC_Y + (95, 82))),
+        ("t-calc-diff", lambda: topic_scene('calc', XEX + (95, 81))),
+        ("t-calc-tangent", lambda: topic_scene('calc', CUBIC_Y + (95, 83, 82, 95))),
         ("t-geo-boxes", lambda: geo_scene(AB_KEYS)),
         ("t-geo-tiles", lambda: geo_scene(AB_KEYS + (95,))),
         ("t-geo-perpbis", lambda: geo_scene(AB_KEYS + (95, 81))),

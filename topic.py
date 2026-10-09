@@ -18,6 +18,7 @@ TOPICS = {
     'alg': ('Algebra', 'x^2 + 3x + k   or  2 rows', 'B'),
     'exp': ('Exp and logs', '4^x - 3*2^x + 2 = 0', 'F'),
     'geo': ('Coord geometry', 'line or circle', 'C'),
+    'calc': ('Calculus', 'y = x^3 - 3x  or  dy/dx = ...', 'GH'),
 }
 
 STATE = {}      # topic id -> {'rows': [...], 'sel': tile, 'key': text, 'F': form, 'offers': [...]}

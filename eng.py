@@ -696,7 +696,7 @@ def isolate(L, Rt, v, lines, depth=0):
             if ev is not None and ev == int(ev) and int(ev) % 2 == 0 and ev != 0:
                 _pos(Rt, True)
                 root = ('^', Rt, S(('/', ONE, e))) if ev != 2 else ('sqrt', Rt)
-                root = S(root)
+                root = nice(root)
                 lines.append(txt(b) + ' = +-' + _br(txt(root)))
                 out = []
                 for r in (root, S(('neg', root))):
@@ -949,6 +949,12 @@ def _powdist(t):
     if k == 'n' or k == 'v':
         return t
     t = (k,) + tuple([_powdist(c) for c in t[1:]])
+    if k == '^' and t[1][0] == 'n' and isinstance(t[1][1], int) and t[1][1] > 1 and \
+            recog.rat(t[2]) is not None and recog.rat(t[2])[1] > 1:
+        # 4^(1/4) = 2^(1/2) = sqrt 2
+        rb = recog.rootbase(t[1])
+        if rb is not None and isinstance(rb[0], int) and rb[1] > 1:
+            return S(('^', N(rb[0]), S(('*', N(rb[1]), t[2]))))
     if k == 'sqrt' and t[1][0] == '^' and recog.rat(t[1][2]) is not None:
         return S(('^', t[1][1], S(('/', t[1][2], N(2)))))
     if k == '^' and t[1][0] == '^' and recog.rat(t[2]) is not None and recog.rat(t[1][2]) is not None:
@@ -966,6 +972,10 @@ def _powdist(t):
         return S(out)
     return t
 
+def negsum(t):
+    # -(a + b - c) as -a - b + c, term by term
+    return build([(a, -s) for a, s in sumterms(t, 1, [])])
+
 def nice(t):
     # the tidiest of a few equal forms: no fraction inside a numerator, then
     # the shortest (5 - 1/(2y^2) over (5y^2 - 1/2)/y^2)
@@ -973,7 +983,7 @@ def nice(t):
     cands = [t]
     pd = _powdist(t)
     if pd != t:
-        cands.append(pd)
+        cands.insert(0, pd)     # on a tie, the powers tidied (2 sqrt 2, not 2 4^(1/4))
     if t[0] == '/' and t[2][0] not in ('+', '-'):
         ts = sumterms(t[1], 1, [])
         if len(ts) > 1:
@@ -992,16 +1002,32 @@ def nice(t):
                 cands.append(S(r))
         except Exception:
             pass
+    if t[0] == '/' and _hasfrac(t[2]) and t[2][0] in ('+', '-'):
+        # -1/(x^3/18 - 2/9) -> -18/(x^3 - 4)
+        m = _intscale(sumterms(t[2], 1, []))
+        if m > 1:
+            a = S(('*', N(m), t[1]))
+            b = caspoly.expand(S(('*', N(m), t[2])))
+            cands.append(('/', a, b))
+            cands.append(('/', S(('neg', a)), negsum(b)))
+    if t[0] == 'neg' and t[1][0] == '/' and t[1][2][0] in ('+', '-'):
+        cands.append(('/', t[1][1], negsum(t[1][2])))
     if t[0] == '/' and _hasfrac(t[1]):
         m = _intscale(sumterms(t[1], 1, []))
         if m > 1:
             cands.append(('/', caspoly.expand(S(('*', N(m), t[1]))), S(('*', N(m), t[2]))))
     best = None
     exact = not _floaty(t)
+    more = []
+    for c in cands:
+        # a minus in front over a sum: the other way up reads better
+        if c[0] == '/' and neg(c[1])[0] and c[2][0] in ('+', '-'):
+            more.append(('/', neg(c[1])[1], negsum(c[2])))
+    cands += more
     for c in cands:
         if exact and _floaty(c):
             continue    # a form that went to decimals is not the same answer
-        key = (_nested(c), len(txt(c)))
+        key = (_nested(c), neg(c)[0], len(txt(c)))
         if best is None or key < best[0]:
             best = (key, c)
     return best[1]

@@ -20,6 +20,7 @@ class Row:
         self.name = None
         self.f = None
         self.err = None
+        self.de = None       # ('y', 'x') for dy/dx = ...
 
 class Form:
     def __init__(self):
@@ -84,6 +85,13 @@ def _name(l):
         return l
     return None
 
+def _deriv_name(l):
+    # 'dy/dx', '((dy)/(dx))', 'dP/dt' -> ('y', 'x')
+    s = l.replace(' ', '').replace('(', '').replace(')', '').replace('*', '').lower()
+    if len(s) == 5 and s[0] == 'd' and s[2] == '/' and s[3] == 'd' and s[1].isalpha() and s[4].isalpha():
+        return (s[1], s[4])
+    return None
+
 def parse_row(text):
     r = Row(text)
     try:
@@ -104,6 +112,13 @@ def parse_row(text):
         r.err = str(e) or 'cannot read that'
         return r
     if rel == '=':
+        d = _deriv_name(l)
+        if d is not None:
+            # dy/dx = f(x, y): a differential equation
+            r.de = d
+            r.name = 'd' + d[0] + '/d' + d[1]
+            r.f = r.rhs
+            return r
         nm = _name(l)
         if nm is not None and nm[0] not in letters(r.rhs):
             r.name = nm
@@ -803,6 +818,10 @@ def describe(F):
         return 'two equations in ' + _and(F.vars2)
     if F.pair == 'fg':
         return 'f and g, functions of ' + v
+    if F.pair == 'param':
+        return 'parametric x(' + v + '), y(' + v + ')'
+    if k == 'de':
+        return 'differential equation d' + r.de[0] + '/d' + r.de[1]
     if F.pair == 'two':
         return 'two rows'
     eq = r.rel == '=' and r.name is None
@@ -869,6 +888,11 @@ def form(texts):
     return F
 
 def _one(F, r):
+    if r.de is not None:
+        F.kind = 'de'
+        F.var = r.de[1]
+        F.letters = [c for c in letters(r.f) if c not in r.de]
+        return
     ls = letters(r.f)
     F.var = _pickvar(ls, r.name)
     F.vars2 = []
@@ -921,6 +945,15 @@ def _pair(F):
     fa = a.rel == '' or (a.name is not None and len(a.name) == 4)
     fb = b.rel == '' or (b.name is not None and len(b.name) == 4)
     F.vars2 = []
+    if sorted([a.name or '', b.name or '']) == ['x', 'y']:
+        # x = f(t), y = g(t): a parametric curve
+        tv = [c for c in letters(a.f) + letters(b.f) if c not in ('x', 'y')]
+        if tv and 'x' not in letters(a.f) + letters(b.f) and 'y' not in letters(a.f) + letters(b.f):
+            F.pair = 'param'
+            F.kind = 'pair'
+            F.var = tv[0]
+            F.letters = [c for c in tv if c != tv[0]]
+            return
     if fa and fb:
         F.pair = 'fg'
         F.var = _pickvar(ls, a.name)
