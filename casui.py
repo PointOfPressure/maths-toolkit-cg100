@@ -311,6 +311,10 @@ def _label_lines(label, width):
         ls = wrap(label, width, 'medium')
         if len(ls) > 2:
             ls = [ls[0], clip(' '.join(ls[1:]), width, 'medium')]
+        if len(_WRAPS) >= 120:
+            # about 200 bytes a label: unbounded, a long session's menus
+            # alone filled the heap
+            _WRAPS.clear()
         _WRAPS[key] = ls
     return ls
 
@@ -1577,12 +1581,14 @@ def calc_tools(text):
         _run_op(op, tree, s)
 
 def _run_op(op, tree, s):
+    # Busy first: an op can take seconds, and the menu left showing looked hung
+    busy()
     try:
         lines = _cas_op(op, tree, s)
     except ValueError as e:
         lines = [('!', str(e))]
     except Exception as e:
-        lines = [('!', 'error: ' + str(e))]
+        lines = [('!', errtext(e))]
     if lines is not None:
         result(CAS_OPS[op], 'f(x) = ' + s, lines)
 
@@ -1708,7 +1714,7 @@ def _tools_menu(code, title, mod):
             import casutil
             casutil.run_tool(label, spec, _tool_fn(code, title, mod, sel))
         except Exception as e:
-            flash('tool error: ' + str(e))
+            flash(errtext(e))
 
 def qual_section(title, secs):
     labels = [t for c, t, m in secs]
@@ -1770,11 +1776,69 @@ HOME_TILES = [
     ('Maths', ic_pi), ('Further', ic_argand), ('Notes', ic_book), ('Settings', ic_angle),
 ]
 
+def _free():
+    # drop what can be rebuilt; modules can't be unloaded (no sys on the
+    # calculator), so this is all the memory a running session can get back
+    del HIST[:-3]
+    _WRAPS.clear()
+    _COLS.clear()
+    _INP.clear()
+
+RESTART = 'Press EXIT on the home screen, then run maths.py again.'
+
+def errtext(e):
+    # what to tell the user about an exception from a screen or a tool.
+    # Every section stays loaded once opened, so a long session can fill
+    # memory; an import that runs out half way leaves a broken module behind
+    # (MicroPython 1.9.4 keeps it), which then fails as a missing attribute.
+    if isinstance(e, MemoryError):
+        return 'Out of memory: every section opened stays loaded. ' + RESTART
+    s = str(e)
+    if isinstance(e, AttributeError) and 'module' in s:
+        return 'A section did not finish loading (memory ran out). ' + RESTART
+    return 'error: ' + s
+
+def _bare(lines):
+    # last resort when even a popup can't be built: constant strings only,
+    # then EXE / EXIT / HOME ends the program cleanly
+    clear_screen()
+    y = 60
+    for s in lines:
+        draw_string(10, y, s, RED, 'medium')
+        y += 22
+    show_screen()
+    wait_release()
+    k = wait_key()
+    while k != EXE and k != EXITK and k != OK and k != HOME:
+        k = wait_key()
+    wait_release()
+
+def _idle():
+    clear_screen()
+    draw_string(10, 70, 'Closed after about 10 minutes idle.', INK, 'medium')
+    draw_string(10, 95, 'Run maths.py to start again.', INK, 'medium')
+    show_screen()
+
 def main():
     sel = 0
+    msg = None
+    oom = 0     # MemoryErrors in the home grid itself, in a row
     while True:
+        # every exception lands here, including those from the popup itself,
+        # so nothing can end the program with a dead screen left showing
+        showing = False
+        ingrid = False
         try:
+            if msg is not None:
+                m = msg
+                msg = None
+                showing = True
+                flash(m)
+                showing = False
+            ingrid = True
             sel = grid('Maths Toolkit', HOME_TILES, sel)
+            ingrid = False
+            oom = 0
             if sel < 0:
                 return
             if sel == 0:
@@ -1796,12 +1860,21 @@ def main():
         except Home:
             pass
         except Idle:
-            clear_screen()
-            show_screen()
+            _idle()
             return
-        except MemoryError:
-            del HIST[:-3]
-            _WRAPS.clear()
-            flash('out of memory - cleared history')
+        except MemoryError as e:
+            _free()
+            if ingrid:
+                oom += 1
+            if oom >= 2:
+                # not even the home grid fits now
+                try:
+                    _bare(['Out of memory.', 'Every section opened stays loaded.',
+                           'Press EXE, then run maths.py again.'])
+                except Exception:
+                    pass
+                return
+            msg = None if showing else errtext(e)
         except Exception as e:
-            flash('error: ' + str(e))
+            # an error inside the popup itself is dropped, not shown again
+            msg = None if showing else errtext(e)

@@ -190,9 +190,21 @@ def _draw_bars(curves, st, c):
         _line(x0, y1, x1, y1, c)
         _line(x0, y0, x1, y0, GREY)
 
+_KEYS = (casui.HOME, casui.EXITK, casui.OK, casui.EXE, casui.LEFT, casui.RIGHT,
+         casui.UP, casui.DOWN, casui.PLUS, casui.MINUS, casui.ZERO)
+
 def run(curves, xlo=-6.0, xhi=6.0, kind='y', title='', ylo=None, yhi=None):
     if not curves:
         return
+    try:
+        _run(curves, xlo, xhi, kind, title, ylo, yhi)
+    finally:
+        # the sample memo holds up to 3000 points a curve: let it go with
+        # the graph (it used to stay in memory until the next plot)
+        _YC[0] = None
+        _YC[1] = []
+
+def _run(curves, xlo, xhi, kind, title, ylo, yhi):
     auto = (ylo is None)
     st = [float(xlo), float(xhi), ylo, yhi]
     trace = False
@@ -244,7 +256,16 @@ def run(curves, xlo=-6.0, xhi=6.0, kind='y', title='', ylo=None, yhi=None):
         show_screen()
         casui.wait_release()
         k = casui.wait_key()
+        while k not in _KEYS:
+            # any other key: nothing to redraw
+            casui.wait_release()
+            k = casui.wait_key()
         span = st[1] - st[0]
+        if k == casui.HOME:
+            # this loop reads keys itself, so HOME has to be passed on here;
+            # it used to fall through and redraw the graph
+            casui.wait_release()
+            raise casui.Home()
         if k == casui.EXITK:
             return
         if k == casui.OK or k == casui.EXE:

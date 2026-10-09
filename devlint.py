@@ -108,6 +108,15 @@ class Lint(ast.NodeVisitor):
             self.flag(n, "." + n.attr + "() is not in MicroPython 1.9.4")
         self.generic_visit(n)
 
+    def visit_ExceptHandler(self, n):
+        # Home and Idle are BaseExceptions so tools' handlers let them through;
+        # a bare except or except BaseException would swallow HOME
+        if n.type is None:
+            self.flag(n, "bare except: swallows HOME (use except Exception)")
+        elif isinstance(n.type, ast.Name) and n.type.id == "BaseException":
+            self.flag(n, "except BaseException swallows HOME")
+        self.generic_visit(n)
+
     def visit_Name(self, n):
         if isinstance(n.ctx, ast.Load) and n.id in BUILTIN_BAD:
             self.flag(n, "builtin '" + n.id + "' is not in MicroPython 1.9.4")

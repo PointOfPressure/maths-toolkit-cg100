@@ -46,7 +46,7 @@ def tokenize(s):
             if dot or expo:
                 try:
                     toks.append(('num', float(txt)))
-                except:
+                except Exception:
                     pass
             else:
                 toks.append(('num', int(txt)))

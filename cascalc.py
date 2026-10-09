@@ -16,7 +16,7 @@ def _const(n, var):
         return None
     try:
         v = caseng.evalf(n, 0.0)
-    except:
+    except Exception:
         return None
     return v
 
@@ -195,7 +195,7 @@ def _byparts(a, b, var, depth):
     try:
         du = caseng.simplify(caseng.diff(u, var))
         rest = _prod(v, du)
-    except:
+    except Exception:
         return None
     if rest == ('n', 0):
         return ('*', u, v)
@@ -205,7 +205,7 @@ def _byparts(a, b, var, depth):
             den = caseng.simplify(('+', ('n', 1), k))
             if den != ('n', 0):
                 return ('/', ('*', u, v), den)
-    except:
+    except Exception:
         pass
     w = integ(rest, var, depth + 1)
     if w is None:
@@ -279,7 +279,7 @@ def integ_rational(a, b, var, depth):
 def tidy(node):
     try:
         return caspoly.collect(caspoly.cancel(caseng.simplify(node)))
-    except:
+    except Exception:
         return caseng.simplify(node)
 
 _SYMOK = ('sin', 'cos', 'exp', 'sinh', 'cosh', 'tan', 'cot', 'sec', 'cosec',
@@ -555,7 +555,7 @@ def _integ(n, var='x', depth=0):
                 if not has_var(k, var):
                     F = ('ln', ('abs', b))
                     return F if k == ('n', 1) else ('*', k, F)
-        except:
+        except Exception:
             pass
         if not has_var(a, var):
             if b[0] == 'sqrt':
@@ -703,7 +703,7 @@ def defint(tree, a, b, deg=False, n=200, var='x'):
             v = _at(tree, a + i * h, deg, var)
             s += (4 if (i % 2) else 2) * v
             i += 1
-    except:
+    except Exception:
         return None
     r = s * h / 3.0
     if r != r or r > 1.7e308 or r < -1.7e308:
@@ -714,7 +714,7 @@ def _bisect(tree, a, b, deg=False, var='x'):
     try:
         fa = _rv(tree, a, deg, var)
         fb = _rv(tree, b, deg, var)
-    except:
+    except Exception:
         return None
     if (fa < 0 and fb < 0) or (fa > 0 and fb > 0):
         return None
@@ -723,7 +723,7 @@ def _bisect(tree, a, b, deg=False, var='x'):
         m = (a + b) / 2
         try:
             fm = _rv(tree, m, deg, var)
-        except:
+        except Exception:
             return None
         if fm == 0 or (b - a) < 1e-7:
             return m
@@ -745,7 +745,7 @@ def _touch(tree, lo, hi, deg, var='x'):
         try:
             f1 = _rv(tree, m1, deg, var)
             f2 = _rv(tree, m2, deg, var)
-        except:
+        except Exception:
             return None
         if (f1 if f1 >= 0 else -f1) <= (f2 if f2 >= 0 else -f2):
             hi = m2
@@ -755,7 +755,7 @@ def _touch(tree, lo, hi, deg, var='x'):
     m = (lo + hi) / 2.0
     try:
         fm = _rv(tree, m, deg, var)
-    except:
+    except Exception:
         return None
     return m if -1e-9 < fm < 1e-9 else None
 
@@ -787,7 +787,7 @@ def _isroot(tree, r, fa, fb, deg, var):
     # a bisected sign change is a root, not a pole or a jump
     try:
         fr = _rv(tree, r, deg, var)
-    except:
+    except Exception:
         return False
     big = fa if fa >= 0 else -fa
     nb = fb if fb >= 0 else -fb
@@ -803,14 +803,14 @@ def _outer(tree, var, roots):
         px = side * 20.0
         try:
             py = _rv(tree, px, False, var)
-        except:
+        except Exception:
             py = None
         k = 1
         while k <= OUTER and len(roots) < MAXROOTS:
             x = side * 20.0 * ratio ** k
             try:
                 y = _rv(tree, x, False, var)
-            except:
+            except Exception:
                 y = None
             # strict: where f underflows to 0 there is no root
             if y is not None and py is not None and ((py < 0 < y) or (py > 0 > y)):
@@ -852,7 +852,7 @@ def _snap(tree, r, deg, var):
                 fc = _rv(tree, c, deg, var)
                 if (fc if fc >= 0 else -fc) <= fr:
                     return c
-    except:
+    except Exception:
         pass
     return r
 
@@ -872,7 +872,7 @@ def _inner(tree, var, deg):
     while i <= SAMPLES:
         try:
             ys.append(_rv(tree, -hi + i * step, deg, var))
-        except:
+        except Exception:
             ys.append(None)
         i += 1
     i = 1

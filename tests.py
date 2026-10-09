@@ -12,6 +12,7 @@ import cascalc
 import caspoly
 import casutil
 import plot
+PLOT_RUN = plot.run
 plot.run = lambda *a, **k: None
 casutil.pick = lambda *a, **k: None
 casutil.ask = lambda *a, **k: None
@@ -224,6 +225,140 @@ def eq_fields():
                     except ValueError as e:
                         check(key + ': = refused', "'='" in str(e), str(e))
 
+def home_keys():
+    # HOME and memory: nothing may end main() with a dead screen showing
+    import casui
+    import casioplot
+    import font
+    check('font tables built at import', sorted(font._B.keys()) == ['large', 'medium', 'small'])
+    saved = (casui.grid, casui.flash, casui.wait_key, casui.wait_release)
+    def script(steps):
+        # steps: what each grid() call does in turn
+        it = list(steps)
+        def grid(title, tiles, sel=0, right=None):
+            s = it.pop(0)
+            if isinstance(s, BaseException) or s is MemoryError:
+                raise s
+            return s
+        return grid
+    shown = []
+    def flash_home(msg):
+        shown.append(msg)
+        raise casui.Home()
+    try:
+        casui.wait_release = lambda: None
+        # MemoryError, then HOME pressed on the popup: back to the grid, not out
+        casui.grid = script([MemoryError(), -1])
+        casui.flash = flash_home
+        try:
+            casui.main()
+            ok = True
+        except BaseException as e:
+            ok = repr(e)
+        check('HOME on the out-of-memory popup stays in main', ok is True, ok)
+        check('out-of-memory popup says restart', shown and 'run maths.py again' in shown[0], shown)
+        # the popup itself running out of memory: dropped, grid again
+        def flash_oom(msg):
+            raise MemoryError()
+        casui.grid = script([MemoryError(), -1])
+        casui.flash = flash_oom
+        try:
+            casui.main()
+            ok = True
+        except BaseException as e:
+            ok = repr(e)
+        check('MemoryError inside the popup stays in main', ok is True, ok)
+        # an error inside the popup is not shown again forever
+        n = [0]
+        def flash_err(msg):
+            n[0] += 1
+            raise ValueError('x')
+        casui.grid = script([ValueError('boom'), -1])
+        casui.flash = flash_err
+        casui.main()
+        check('error inside the popup shown once', n[0] == 1, n[0])
+        # the home grid itself out of memory twice: bare message, clean exit
+        casui.grid = script([MemoryError(), MemoryError(), -1])
+        casui.flash = lambda msg: None
+        casui.wait_key = lambda: casui.EXE
+        try:
+            casui.main()
+            ok = True
+        except BaseException as e:
+            ok = repr(e)
+        check('home grid out of memory ends cleanly', ok is True, ok)
+        # Idle anywhere ends main quietly
+        casui.grid = script([casui.Idle()])
+        try:
+            casui.main()
+            ok = True
+        except BaseException as e:
+            ok = repr(e)
+        check('Idle ends main', ok is True, ok)
+    finally:
+        casui.grid, casui.flash, casui.wait_key, casui.wait_release = saved
+    # messages for a full heap and for a half-loaded module
+    check('errtext memory', 'Out of memory' in casui.errtext(MemoryError()))
+    check('errtext half-loaded module',
+          'did not finish loading' in casui.errtext(AttributeError("'module' object has no attribute 'Ed'")))
+    check('errtext other', casui.errtext(ValueError('bad')) == 'error: bad')
+    def oom():
+        raise MemoryError()
+    check('call_tool out of memory', 'Out of memory' in str(casutil.call_tool(oom, [])))
+    # label wraps are capped
+    casui._WRAPS.clear()
+    for i in range(300):
+        casui._label_lines('label number ' + str(i), 118)
+    check('wrap cache capped', len(casui._WRAPS) <= 120, len(casui._WRAPS))
+    casui._WRAPS.clear()
+    # a held HOME during simplify / evaluation unwinds to the home grid
+    real = casioplot.getkey
+    big = caslex.parse('(x+1)^12*(x-2)^7+sin(x)^2*(x+3)^5')
+    try:
+        casioplot.getkey = lambda: 12
+        try:
+            for i in range(3):
+                caseng.simplify(big)
+            ok = 'no Home'
+        except casui.Home:
+            ok = True
+        check('HOME interrupts simplify', ok is True, ok)
+        try:
+            for i in range(100):
+                casutil.evx(big, 0.5)
+            ok = 'no Home'
+        except casui.Home:
+            ok = True
+        check('HOME interrupts evaluation', ok is True, ok)
+    finally:
+        casioplot.getkey = real
+        caseng._TICK[0] = 0
+    check('no HOME: simplify runs', caseng.tostr(caseng.simplify(caslex.parse('x+x'))) == '2*x')
+    # the graph screen passes HOME on (it used to redraw the graph) and lets go
+    # of its sample memo when it closes
+    try:
+        casui.wait_key = lambda: casui.HOME
+        casui.wait_release = lambda: None
+        try:
+            PLOT_RUN([caslex.parse('x^2')], -6.0, 6.0, 'y', 'y = x^2')
+            ok = 'returned'
+        except casui.Home:
+            ok = True
+        check('HOME in a graph goes home', ok is True, ok)
+        check('graph memo freed', plot._YC[0] is None and plot._YC[1] == [], plot._YC[0])
+    finally:
+        casui.grid, casui.flash, casui.wait_key, casui.wait_release = saved
+    # CAS ops show Busy before they start
+    marks = []
+    rb = (casui.busy, casui.result)
+    try:
+        casui.busy = lambda: marks.append('busy')
+        casui.result = lambda *a: marks.append('result')
+        casui._run_op(6, caslex.parse('x+x'), 'x+x')
+    finally:
+        casui.busy, casui.result = rb
+    check('CAS op shows Busy first', marks == ['busy', 'result'], marks)
+
 def casrender_ok():
     import casrender
     box = casrender.build(caslex.parse('(2+3i)/(1-i)'), 0)
@@ -294,6 +429,7 @@ if __name__ == '__main__':
         sys.exit(0)
     engine()
     eq_fields()
+    home_keys()
     cas_engine()
     for mname in (only or MODULES):
         module_cases(mname)
