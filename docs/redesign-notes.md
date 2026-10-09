@@ -97,3 +97,50 @@ hours.
   limits (numerical, snapped to exact numbers). Inverse gives the domain of
   f^-1 as the range of f.
 - Graph with letters asks for their values first.
+
+## Memory (MicroPython 1.9.4 unix port, .mpy with -mcache-lookup-bc)
+
+Each module's own size once loaded, in the order a session loads them:
+
+| part | KB |
+|---|---|
+| casui (keys, drawing, grids, settings; old screens moved to casold) | 35 |
+| home | 4 |
+| nat (editor) + topic | 17 + 12 |
+| caslex + recog | 4 + 18 |
+| acts | 10 |
+| tex + texg + casrender (answer page) | 17 + 13 + 11 |
+| caseng + caspoly (first action) | 44 + 17 |
+| eng (+ the action's engine: e_alg 20, e_solve 16, e_fn 19, e_exp 7) | 18 |
+| casalg (fractions, logs in coefficients) | 28 |
+| cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
+| casold (Calculate, CAS, old tools; only via All tools / Calculate) | 23 |
+
+- Home alone: about 40 KB. A topic with the tiles showing: about 125 KB.
+- Every engine of both topics loaded: about 375 KB, so the whole set needs a
+  heap of about 420 KB to keep 40 KB for working. A 500 KB heap runs the
+  50-case self test with 85 KB to spare at its lowest.
+- On a 400 KB heap the first Algebra actions fit (complete square,
+  factorise, roots) and the fourth runs out. For comparison the old flow, one
+  Maths tool from section B (casui + mpure + engine + tex), needs about
+  450 KB, and it has been in use on the calculator, so the real heap is
+  probably bigger than 400 KB. `selftest.py` prints the free memory at
+  start: that photo settles it.
+- If the heap turns out to be about 400 KB: next savings are Algebra's
+  inequality, discriminant and domain without cassolve (44 KB with
+  cascalc), and trimming recog/acts.
+
+## Speed (estimated: laptop us x 0.29 + 4 ms per draw_string)
+
+| screen | device |
+|---|---|
+| home grid, first draw / move | 1.2 s / 0.1 s |
+| typing a key in a topic | 0.1 s |
+| EXE, first time (loads recog, acts) | 1.7 s |
+| EXE again (parse + recognise + tiles) | 0.5-0.7 s |
+| moving between tiles | 0.14 s |
+| first answer page (loads the CAS, engine, typesetter) | 4.5-6.5 s |
+| later answer pages | about 1.5 s |
+| More grid | 0.5 s |
+| Settings page / move | 1.1 s / 0.1 s |
+| self test, all 50 cases | about 7 min |
