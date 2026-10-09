@@ -150,7 +150,10 @@ def check(case):
     import topic
     import caslex
     ref, tid, rows, label, ask, needles = case
-    F = recog.form(rows)
+    if tid == 'geo':
+        F = recog.geo([r for r in rows if isinstance(r, tuple)], [r for r in rows if not isinstance(r, tuple)])
+    else:
+        F = recog.form(rows)
     if F.err:
         return 'not read'
     off = None

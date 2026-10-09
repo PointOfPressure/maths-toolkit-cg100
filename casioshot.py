@@ -156,6 +156,17 @@ XY = (82, 44, 41, 25, 84, 83, 44, 32, 85, 25, 31, 55, 81, 72)
 LOGEQ = (82, 31, 45, 41, 56, 31, 55, 31, 45, 71, 56, 84, 31, 45, 41, 84, 62, 56)
 
 
+AB_KEYS = (81, 25, 82, 34, 85, 73, 23, 23, 23, 72)
+
+
+def geo_scene(keys):
+    import topic
+    import coord
+    topic.STATE.clear()
+    press(*keys)
+    coord.run()
+
+
 def topic_scene(tid, keys):
     import topic
     topic.STATE.clear()
@@ -259,6 +270,13 @@ def _scenes():
         ("t-exp-log", lambda: topic_scene('exp', LOGEQ + (95, 81))),
         ("t-error", lambda: topic_scene('alg', (41, 84, 31, 55, 31, 55, 95))),
         ("t-settings", lambda: (press(34), __import__('cfg').page())),
+        ("t-geo-boxes", lambda: geo_scene(AB_KEYS)),
+        ("t-geo-tiles", lambda: geo_scene(AB_KEYS + (95,))),
+        ("t-geo-perpbis", lambda: geo_scene(AB_KEYS + (95, 81))),
+        ("t-geo-more", lambda: geo_scene(AB_KEYS + (95, 36))),
+        ("t-geo-line", lambda: geo_scene((81, 25, 82, 34, 34, 32, 85, 31, 55, 83, 41, 95))),
+        ("t-geo-circle", lambda: geo_scene((34, 34, 34, 41, 45, 84, 32, 85, 45, 85, 73, 41, 84, 71,
+                                             32, 85, 31, 55, 81, 82, 95, 81))),
         ("maths", lambda: casui.qual_section('Maths  AQA 7357', casui.MATHS)),
         ("maths-p3", lambda: (press(26, 26, 25), casui.qual_section('Maths  AQA 7357', casui.MATHS))),
         ("further", lambda: casui.paper_section('Further  MEI H645', casui.FURTHER)),

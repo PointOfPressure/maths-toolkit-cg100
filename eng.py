@@ -216,7 +216,7 @@ def _simple(a):
             return False
     return True
 
-_AFTER = ('', ' ', ')', '+', '-', '=', ',', '/')   # ln 12 needs no brackets before these
+_AFTER = ('', ' ', ')', '+', '-', '=', ',')   # ln 12 needs no brackets before these
 
 def _pows(s):
     # e^(x) -> e^x, 2^(3) -> 2^3
@@ -360,7 +360,8 @@ def sf(v, n):
     neg = v < 0
     av = -v if neg else v
     e = int(math.floor(math.log10(av)))
-    mi = int(round(av / (10.0 ** (e - n + 1))))
+    # half up, as taught: 180.5 to 3 s.f. is 181
+    mi = int(math.floor(av / (10.0 ** (e - n + 1)) + 0.5 + 1e-9))
     if mi >= 10 ** n:
         mi //= 10
         e += 1
@@ -387,6 +388,9 @@ def dec(v):
     s10 = sf(v, 10)
     digs = len(s10.replace('-', '').replace('.', '').lstrip('0'))
     if 'e' not in s10 and (digs <= n if d[1:] == 'sf' else len(s10.split('.')[1]) <= n):
+        return s10
+    if 'e' not in s10 and digs <= n + 1 and d[1:] == 'sf':
+        # an exact decimal one digit longer (180.5 at 3 s.f.): all of it
         return s10
     if d[1:] == 'sf':
         s = sf(v, n)
@@ -874,11 +878,20 @@ def _hasfrac(t):
     return False
 
 def tidylog(t):
-    # exact logs: log_2 12 -> 2 + log_2 3, log_2 1 -> 0, log_a a^p -> p
+    # exact logs: log_2 12 -> 2 + log_2 3, log_2 1 -> 0, log_a a^p -> p,
+    # and 2^(-log_2 A) -> 1/A
     k = t[0]
     if k == 'n' or k == 'v':
         return t
     t = (k,) + tuple([tidylog(c) for c in t[1:]])
+    if k == '^' and not _hasvar(t[1]) and _haslogs(t[2]):
+        p = powlog(t[1], t[2])
+        if p is not None:
+            return p
+    if k == 'exp' and _haslogs(t[1]):
+        p = powlog(('v', 'e'), t[1])
+        if p is not None:
+            return p
     if k == 'logb' or k == 'ln' or k == 'log':
         b = t[1] if k == 'logb' else (('v', 'e') if k == 'ln' else N(10))
         a = t[2] if k == 'logb' else t[1]
@@ -898,6 +911,17 @@ def tidylog(t):
             if r is not None:
                 return r
     return t
+
+def _haslogs(t):
+    k = t[0]
+    if k in ('ln', 'log', 'logb'):
+        return True
+    if k in ('n', 'v'):
+        return False
+    for c in t[1:]:
+        if _haslogs(c):
+            return True
+    return False
 
 def _powof(a, b):
     # a as a power of b (b^2 sqrt b -> 5/2), else None

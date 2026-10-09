@@ -105,6 +105,26 @@ def topics():
                         bad += 1
                         print('topic ' + tid + ' ' + label + ' <' + '; '.join(rows) + '>: ' + ln[1])
                         break
+    # Coord geometry: the same points, vertical lines, circles that aren't
+    GEO = [([('0', '0'), ('0', '0')], []), ([('1', '1'), ('1', '5')], []), ([('1', '1'), ('4', '1')], []),
+           ([('0', '0'), ('1', '1'), ('2', '2')], []), ([], ['x^2+y^2=-4']), ([], ['x^2+y^2=0']),
+           ([('5', '5')], ['x^2+y^2=1']), ([('0', '0')], ['x=3']), ([('0', '0')], ['y=2']),
+           ([], ['y=x', 'y=x+1']), ([], ['x=1', 'x=2']), ([], ['x^2+y^2=1', 'x^2+y^2=4']),
+           ([], ['x=sin(t)', 'y=cos(t)']), ([], ['x=e^t', 'y=e^(2t)']), ([('k', '2'), ('3', 'k')], []),
+           ([('1e9', '0'), ('0', '1e-9')], []), ([('2+3i', '0'), ('1', '1')], [])]
+    for pts, eqs in GEO:
+        F = recog.geo(pts, eqs)
+        if F.err:
+            continue
+        for label, mod, fn, arg, ask in acts.offers(F, 'geo'):
+            vals = [caslex.parse('2')] if ask else None
+            count += 1
+            lines = topic.engine(mod, fn, F, arg, vals)
+            for ln in lines or []:
+                if isinstance(ln, tuple) and ln[0] == '!' and ln[1].startswith('error'):
+                    bad += 1
+                    print('geo ' + label + ' ' + repr(pts) + repr(eqs) + ': ' + ln[1])
+                    break
     print(str(count) + ' topic actions, ' + str(bad) + ' crashes')
     return bad
 

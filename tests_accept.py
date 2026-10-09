@@ -227,6 +227,46 @@ C = [
     ('3 nov21 16b', 'alg', ['16c+k=1', 'c+k=5/8'], 'Solve', None, ['c=1/40', 'k=3/5']),
 ]
 
+# Coord geometry: points as ('x', 'y') in the boxes, rows as typed
+C += [
+    ('1 jun18 5b g', 'geo', ['x=4*2^(-t)+3', 'y=3*2^t-5'], 'Cartesian equation', None,
+     ['~12/(y+5)+3|~12/(x-3)-5']),
+    ('1 jun18 7a', 'geo', [('8', '17'), ('15', '10'), ('-2', '-7')], 'Triangle ABC', None,
+     ['rightangleatb', 'ab^2=98']),
+    ('1 jun18 7bii', 'geo', [('8', '17'), ('15', '10'), ('-2', '-7')], 'Circle ABC', None,
+     ['centre(3,5)', 'radius13']),
+    ('1 jun18 7bii b', 'geo', [('-8', '-2'), 'x^2+y^2-6x-10y=135'], 'A inside or outside?', None,
+     ['aisoutside', 'sqrt(170)']),
+    ('1 jun19 4 g', 'geo', [('-1', '11/2'), ('3', '1/2')], 'Perp bisector', None,
+     ['~4/5x+11/5', '4x-5y+11=0', 'midpoint(1,3)']),
+    ('1 jun22 1 g', 'geo', ['x=cos(t)', 'y=sin(t)'], 'Cartesian equation', None, ['x^2+y^2=1']),
+    ('1 jun22 8ai', 'geo', [('0', '5'), '5x+3y=83'], 'Foot of perpendicular', None,
+     ['(10,11)', 'distance=2sqrt(34)']),
+    ('1 jun23 9ai', 'geo', [('-6', '15'), ('12', '19')], 'Midpoint', None, ['midpoint(3,17)']),
+    ('1 jun23 9bi', 'geo', [('-6', '15'), ('12', '19'), '2x-5y=-30'], 'Circle, centre on line', None,
+     ['centre(5,8)', '(x-5)^2+(y-8)^2=170']),
+    ('1 jun25 13c', 'geo', ['x=4(4t+1)^2', 'y=e^(-4t)'], 'Cartesian equation', None,
+     ['~4(1-ln(y))^2|~e^(1-sqrt(x)/2)']),
+    ('1 nov21 5a', 'geo', [('15', '2'), 'y=4/3x'], 'Perpendicular thru A', None, ['3x+4y-53=0']),
+    ('1 nov21 5b', 'geo', [('15', '2'), '-4x+3y=21'], 'Foot of perpendicular', None, ['(3,11)', 'distance=15']),
+    ('1 nov21 12b', 'geo', [('4', '0'), 'y=-3/2x'], 'Perpendicular thru A', None, ['2x-3y-8=0']),
+    ('1 nov21 14bi', 'geo', ['x=t^2+t', 'y=4t^2-t^3'], 'Point at t', ['4'], ['x=20,y=0']),
+    ('2 jun25 9di', 'geo', [('6', '10'), ('12', '-8'), ('18', '10')], 'Triangle ABC', None, ['angleb=0.644']),
+    ('2 nov20 6a', 'geo', [('7', '9'), '12x+5y=298'], 'Foot of perpendicular', None, ['(19,14)', 'distance=13']),
+    ('2 nov20 8a', 'geo', ['x=t^2', 'y=2t'], 'Cartesian equation', None, ['~y^2/4']),
+    ('2 nov21 7ai', 'geo', ['x^2+y^2-6x-8y=p'], 'Centre and radius', None,
+     ['centre(3,4)', 'p+25', 'p>-25']),
+    ('3 jun18 3', 'geo', [('0', '0'), 'y=-2/3x'], 'Perpendicular thru A', None, ['3x-2y=0']),
+    ('3 jun19 5', 'geo', ['x^2+y^2-6x-8y-264=0'], 'Centre and radius', None, ['radius=17']),
+    ('3 jun22 6a', 'geo', ['x=-2t^2', 'y=9t-0.7t^2'], 'Point at t', ['9.5'], ['x=-180.5']),
+    ('3 jun22 7ai g', 'geo', [('1.76', '1.94'), ('3.46', '4.49')], 'Line AB', None, ['~1.5x-0.7']),
+    ('3 jun23 9a', 'geo', ['x=t-1/t+4.8', 'y=t+2/t'], 'Point at t', ['0.2'], ['x=0,y=10.2|x=0,y=51/5']),
+    ('3 jun24 9a', 'geo', ['x^2+y^2+8x-12y+27=0'], 'Centre and radius', None,
+     ['(x+4)^2+(y-6)^2=25', 'centre(-4,6)', 'radius=5']),
+    ('3 jun24 9d', 'geo', [('-4', '6'), ('0', '9'), ('9', '-3')], 'Triangle ABC', None,
+     ['anglea=1.25', 'rightangleatb']),
+]
+
 # parts with calculator steps the new flow does not do yet (not counted as passes)
 NOT_YET = [
     ('1 jun18 12c', 'trig', 'cubic in sec x on 0..360: Trig topic'),
@@ -235,7 +275,10 @@ NOT_YET = [
     ('2 jun22 17', 'trig', 'sqrt of trig squares: Trig topic'),
     ('2 jun24 6', 'trig', 'trig equation on an interval: Trig topic'),
     ('1 jun25 16bi', 'trig', 'compound angle expansion: Trig topic'),
+    ('1 jun25 13b', 'geo', 'tangent to a parametric curve at t = 0: Calculus topic'),
 ]
+# by design (spec: no one-formula tools): a circle from its centre and radius
+# is just writing (x - a)^2 + (y - b)^2 = r^2; 1 jun22 8bii, 2 jun22 1, 2 nov20 6b, 3 jun18 1
 
 PENDING = []    # refs failing now, kept out of tests.py (python3 tests_accept.py shows them)
 
@@ -300,7 +343,10 @@ def run_case(case):
     import acts
     import topic
     ref, tid, rows, label, ask, needles = case
-    F = recog.form(rows)
+    if tid == 'geo':
+        F = recog.geo([r for r in rows if isinstance(r, tuple)], [r for r in rows if not isinstance(r, tuple)])
+    else:
+        F = recog.form(rows)
     if F.err:
         return False, 'not read: ' + F.err
     offers = acts.offers(F, tid)
@@ -336,7 +382,7 @@ def run_case(case):
                 for t in trees:
                     if _same(t, want):
                         hit = True
-            elif _norm(alt) in blob:
+            elif _norm(alt) in blob or _norm(alt) in blob.replace('*', ''):
                 hit = True
         if not hit:
             return False, 'missing ' + repr(nd) + ' in: ' + ' | '.join(text)[:400]
@@ -355,7 +401,7 @@ def run(check):
         if case[0] in PENDING:
             continue
         ok, why = run_case(case)
-        check('accept ' + case[0] + ' ' + case[3] + ' <' + '; '.join(case[2]) + '>', ok, why)
+        check('accept ' + case[0] + ' ' + case[3] + ' <' + '; '.join([str(r) for r in case[2]]) + '>', ok, why)
     _depth(check)
 
 def _depth(check):
@@ -413,4 +459,4 @@ if __name__ == '__main__':
     print('not yet in the new flow: ' + str(len(NOT_YET)) + ' parts (' +
           ', '.join([r for r, t, w in NOT_YET]) + ')')
     for case, why in bad:
-        print('FAIL ' + case[0] + '  ' + case[3] + ' <' + '; '.join(case[2]) + '>  ' + why[:300])
+        print('FAIL ' + case[0] + '  ' + case[3] + ' <' + '; '.join([str(r) for r in case[2]]) + '>  ' + why[:300])

@@ -10,7 +10,7 @@ from casui import Home, Idle
 MATHS = (
     ('Calculate', 'calc'),
     ('Algebra', 't:alg'),
-    ('Coord geometry', 'o:C'),
+    ('Coord geometry', 'geo'),
     ('Sequences, series', 'o:D'),
     ('Trig', 'o:E'),
     ('Exp and logs', 't:exp'),
@@ -69,6 +69,9 @@ def go(label, what):
     if what[:2] == 't:':
         import topic
         topic.run(what[2:])
+    elif what == 'geo':
+        import coord
+        coord.run()
     elif what == 'calc':
         casui.calc_section()
     elif what == 'graph':

@@ -534,7 +534,7 @@ def _primes(f, v, lines):
                 ex[p] = S(('-', ex.get(p, ZERO), ('*', N(e * m), g[2])))
         else:
             r = caspoly.ratof(g)
-            if r is None:
+            if r is None or r[0] <= 0:
                 return None
             for p, m in _pf(r[0]):
                 ex[p] = S(('+', ex.get(p, ZERO), N(e * m)))

@@ -32,10 +32,18 @@ def _drive(tid, keys):
     casioshot.reset()
     casioshot.press(*keys)
     try:
-        topic.run(tid)
+        if tid == 'geo':
+            import coord
+            coord.run()
+        else:
+            topic.run(tid)
     finally:
         topic.answer = real
     return got
+
+# Coord geometry: A = (1, 2) (RIGHT out of the x box), DOWN to B's y box,
+# -6, LEFT to its x box, 5
+AB = (81, 25, 82, 34, 85, 73, 23, 23, 23, 72)
 
 def _text(lines):
     import topic
@@ -93,6 +101,13 @@ def run(check):
          ['f(-1)=0', '(x+1)isafactor'])
     # typing after EXE goes back to editing: + 1 then EXE reads the new row
     case('type again', 'alg', X2_3X_K + (EXE, 84, 81, EXE, 81), 'Complete square', ['k+1-9/4|k-5/4'])
+    # Coord geometry: point boxes, then a tile
+    case('geo perp bisector', 'geo', AB + (EXE, 81), 'Perp bisector', ['midpoint(3,-2)', 'x-2y-7=0'])
+    case('geo distance', 'geo', AB + (EXE, 71), 'Distance', ['AB=4sqrt(5)'])
+    # MENU adds C; DOWN past the points reaches the line row
+    case('geo circle ABC', 'geo', AB + (35, 85, 72, 25, 85, 72, EXE, 81), 'Circle ABC', [])
+    case('geo point and line', 'geo', (81, 25, 82, 34, 34, 32, 85, 31, 55, 83, 41, EXE, 82),
+         'Perpendicular thru A', ['x+3y-7=0'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

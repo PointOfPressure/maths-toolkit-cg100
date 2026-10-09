@@ -89,6 +89,26 @@ FORMS = [
     (['f(x)=x^2', 'g(x)=2x+1'], 'pair', {'pair': 'fg'}, 'f and g'),
 ]
 
+# Coord geometry: (points in the boxes, rows), items, words
+GEO = [
+    ([('1', '2'), ('5', '-6')], [], [], '2 points A and B'),
+    ([('8', '17'), ('15', '10'), ('-2', '-7')], [], [], '3 points A, B and C'),
+    ([('1', '2')], ['y=3x+1'], ['line'], 'line and point A'),
+    ([], ['2x+3y=6'], ['line'], 'line'),
+    ([], ['x=4'], ['line'], 'line'),
+    ([], ['x^2+y^2-6x+4y=12'], ['circle'], 'circle'),
+    ([], ['(x-3)^2+(y+2)^2=25'], ['circle'], 'circle'),
+    ([], ['x^2+y^2+4x-6y=k'], ['circle'], 'k unknown'),
+    # near-misses: not circles
+    ([], ['x^2+2y^2=25'], ['curve'], 'curve'),
+    ([], ['x^2+y^2+xy=1'], ['curve'], 'curve'),
+    ([], ['y=x^2'], ['curve'], 'curve'),
+    ([], ['y=2x+1', 'x^2+y^2=25'], ['line', 'circle'], 'line and circle'),
+    ([], ['x=t^2+1', 'y=2t'], ['param'], 'parametric'),
+    ([], ['t^2+1', '2t'], ['param'], 'parametric'),
+]
+GEO_ERR = [([('1', '')], [], 'fill in both'), ([('1', '2+')], [], 'A:'), ([], ['x+y='], 'nothing after')]
+
 # typing mistakes: read as errors, never guessed at
 ERRORS = [
     (['x=1=2'], 'one'),
@@ -129,6 +149,21 @@ def run(check):
             want = attrs[a]
             check(key + ' ' + a + ' = ' + repr(want), got == want, repr(got))
         check(key + ' says ' + repr(words), words in F.note, F.note)
+    for pts, eqs, items, words in GEO:
+        F = recog.geo(pts, eqs)
+        key = 'recog geo ' + repr(pts) + ' ' + repr(eqs)
+        check(key + ' reads', F.err is None, F.err)
+        check(key + ' items', F.items == items, F.items)
+        check(key + ' says ' + repr(words), words in F.note, F.note)
+        for o in acts.offers(F, 'geo'):
+            label, mod, fn, arg, ask = o
+            vals = [caslex.parse('2')] if ask else None
+            lines = topic.engine(mod, fn, F, arg, vals)
+            bad = [ln[1] for ln in (lines or []) if isinstance(ln, tuple) and ln[0] == '!' and 'error' in ln[1]]
+            check('offered geo ' + label + ' ' + key + ' runs', not bad, bad)
+    for pts, eqs, words in GEO_ERR:
+        F = recog.geo(pts, eqs)
+        check('recog geo refuses ' + repr(pts) + repr(eqs), F.err is not None and words in F.err, F.err)
     for rows, words in ERRORS:
         F = recog.form(rows)
         check('recog refuses <' + '; '.join(rows) + '>', F.err is not None and words in F.err, F.err)

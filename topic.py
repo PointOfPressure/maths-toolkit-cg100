@@ -17,6 +17,7 @@ from casui import (W, TOP, BOT, INK, ACC, GREY, LGREY, WHITE, RED, BAR,
 TOPICS = {
     'alg': ('Algebra', 'x^2 + 3x + k   or  2 rows', 'B'),
     'exp': ('Exp and logs', '4^x - 3*2^x + 2 = 0', 'F'),
+    'geo': ('Coord geometry', 'line or circle', 'C'),
 }
 
 STATE = {}      # topic id -> {'rows': [...], 'sel': tile, 'key': text, 'F': form, 'offers': [...]}
@@ -90,9 +91,13 @@ def _tile(i, label, on, ty, th, full=False):
         box(x0 + 2, y0 + 2, x1 - 2, y1 - 2, LGREY)
         if not full:
             box(x0 + 3, y0 + 3, x1 - 3, y1 - 3, WHITE)
-    s = clip(label, tw - 30, 'medium')
     draw_string(x0 + 8, y0 + (th - 18) // 2, str(i + 1), LGREY if not on else ACC, 'small')
-    ctext(x0 + tw // 2 + 4, y0 + (th - 18) // 2, s, ACC if on else INK, 'medium')
+    if text_w(label, 'medium') <= tw - 30:
+        ctext(x0 + tw // 2 + 4, y0 + (th - 18) // 2, label, ACC if on else INK, 'medium')
+    else:
+        # a long label in the small font rather than cut short
+        ctext(x0 + tw // 2 + 6, y0 + (th - 12) // 2, clip(label, tw - 28, 'small'),
+              ACC if on else INK, 'small')
 
 def _draw(tid, eds, cur, mode, st, shift=False, alpha=False):
     clear_screen()
@@ -102,8 +107,14 @@ def _draw(tid, eds, cur, mode, st, shift=False, alpha=False):
     _rows(eds, cur, lay, mode == 'edit')
     hline(0, W - 1, sep, LGREY)
     st['sep'] = sep
-    F = st.get('F')
-    if mode == 'act' and F is not None:
+    if mode == 'act' and st.get('F') is not None:
+        draw_act(st, sep)
+    show_screen()
+
+def draw_act(st, sep):
+    # the grey detected line and the tiles under the input
+    F = st['F']
+    if True:
         y = sep + 4
         more = 'TOOLS more'
         mw = text_w(more, 'medium')
@@ -124,7 +135,6 @@ def _draw(tid, eds, cur, mode, st, shift=False, alpha=False):
         while i < n and i < rows * 2:
             _tile(i, offers[i][0], i == st['sel'], ty, th, True)
             i += 1
-    show_screen()
 
 def _fast(eds, cur, st):
     # typing that only changed the row being typed: undraw it, draw it again
@@ -483,9 +493,13 @@ def _field(x, y, w, ed, on):
 def _draw_prompt(tid, st, label, ask, eds, cur, shift, alpha):
     clear_screen()
     casui.status(TOPICS[tid][0], shift, alpha)
-    rows = [nat.Ed(r) for r in st['rows'] if r]
-    lay, sep = _layout(rows)
-    _rows(rows, -1, lay, False)
+    if 'header' in st:
+        # a topic with its own input layout (Coord geometry's point boxes)
+        sep = st['header']()
+    else:
+        rows = [nat.Ed(r) for r in st['rows'] if r]
+        lay, sep = _layout(rows)
+        _rows(rows, -1, lay, False)
     hline(0, W - 1, sep, LGREY)
     y = sep + 6
     draw_string(8, y, clip(label, W - 16, 'medium'), ACC, 'medium')
@@ -530,6 +544,9 @@ def shown(item, view):
         return pre + ex
     if view == 'decimal':
         return pre + dc
+    if pre == '' and ' = ' in dc:
+        # a pair of values: the exact pair, then the decimals under it
+        return ex + '\n' + dc
     if _worth(ex) and (pre == '' or pre[-2:] == '= '):
         return pre + ex + ' = ' + dc
     return pre + ex
@@ -549,7 +566,8 @@ def layout(lines, work, view):
         if isinstance(ln, tuple) and ln[0] == '=':
             group = []
             while i < n and isinstance(lines[i], tuple) and lines[i][0] == '=':
-                group += _typeset(shown(lines[i], view))
+                for part in shown(lines[i], view).split('\n'):
+                    group += _typeset(part)
                 i += 1
             items.append(('b', group))
             seen_box = True
