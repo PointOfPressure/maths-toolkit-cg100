@@ -129,6 +129,10 @@ CASES = [
      ['equal roots: no k', 'distinct: every k', 'no real roots: no k']),
     ('B', 'Discriminant in k', '1,2,3', ['no real roots for any k']),
     ('B', 'Expand', '(2x-1)(x+3)', ['2*x^2+5*x-3']),
+    # (2x+3)^10 ran out of memory on the calculator
+    ('B', 'Expand', '(2x+3)^10', ['1024*x^10+15360*x^9+', '+393660*x+59049']),
+    ('B', 'Expand', '(1+x/2)^12', ['x^12/4096+3*x^11/512', '+6*x+1']),
+    ('B', 'Expand', '(x+1)^20', ['x^20+20*x^19+190*x^18', '184756*x^10']),
     ('B', 'Factorise', 'x^2-5x+6', ['(x-2)*(x-3)']),
     ('B', 'Factorise', 'x^2+1', ['no rational factorisation']),
     # 7357/2 Jun19 Q7bi: 3x^2 + 6px = 0 at x = 0, -2p
