@@ -163,7 +163,9 @@ Each module's own size once loaded, in the order a session loads them:
 | later answer pages | about 1.5 s |
 | More grid | 0.5 s |
 | Settings page / move | 1.1 s / 0.1 s |
-| self test, all 50 cases | about 7 min |
+| Coord: first answer (perpendicular bisector, loads the CAS) | 4.9 s |
+| Calculus: stationary points, first / again | 7.6 s / 2.5 s |
+| self test, all 50 cases | about 4 min |
 
 ## Coord geometry and Calculus choices
 
