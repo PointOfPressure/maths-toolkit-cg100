@@ -76,7 +76,8 @@ def _grid(n, ty):
         th = 35
     return rows, th
 
-def _tile(i, label, on, ty, th):
+def _tile(i, label, on, ty, th, full=False):
+    # full: on a cleared screen, so there is no old highlight to rub out
     tw = W // 2
     x0 = (i % 2) * tw
     y0 = ty + (i // 2) * th
@@ -87,7 +88,8 @@ def _tile(i, label, on, ty, th):
         box(x0 + 3, y0 + 3, x1 - 3, y1 - 3, ACC)
     else:
         box(x0 + 2, y0 + 2, x1 - 2, y1 - 2, LGREY)
-        box(x0 + 3, y0 + 3, x1 - 3, y1 - 3, WHITE)
+        if not full:
+            box(x0 + 3, y0 + 3, x1 - 3, y1 - 3, WHITE)
     s = clip(label, tw - 30, 'medium')
     draw_string(x0 + 8, y0 + (th - 18) // 2, str(i + 1), LGREY if not on else ACC, 'small')
     ctext(x0 + tw // 2 + 4, y0 + (th - 18) // 2, s, ACC if on else INK, 'medium')
@@ -120,7 +122,7 @@ def _draw(tid, eds, cur, mode, st, shift=False, alpha=False):
         st['grid'] = (ty, th, min(n, rows * 2))
         i = 0
         while i < n and i < rows * 2:
-            _tile(i, offers[i][0], i == st['sel'], ty, th)
+            _tile(i, offers[i][0], i == st['sel'], ty, th, True)
             i += 1
     show_screen()
 

@@ -356,6 +356,41 @@ def run(check):
             continue
         ok, why = run_case(case)
         check('accept ' + case[0] + ' ' + case[3] + ' <' + '; '.join(case[2]) + '>', ok, why)
+    _depth(check)
+
+def _depth(check):
+    # the calculator stops at about 92 nested calls: every case, with its
+    # answer page laid out, must stay well under that
+    import sys
+    import topic
+    worst = [0, '']
+
+    def prof(frame, event, arg):
+        if event == 'call':
+            d = 0
+            f = frame
+            while f is not None:
+                d += 1
+                f = f.f_back
+            if d > worst[0]:
+                worst[0] = d
+        return None
+    base = 0
+    f = sys._getframe()
+    while f is not None:
+        base += 1
+        f = f.f_back
+    deepest = (0, '')
+    for case in C:
+        worst[0] = 0
+        sys.setprofile(prof)
+        try:
+            run_case(case)
+        finally:
+            sys.setprofile(None)
+        if worst[0] - base > deepest[0]:
+            deepest = (worst[0] - base, case[0])
+    check('accept: calls nest under 45 deep', deepest[0] < 45, deepest)
 
 if __name__ == '__main__':
     import sys
