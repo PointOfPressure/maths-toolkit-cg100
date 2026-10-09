@@ -129,7 +129,7 @@ def _factors(node, coef, facs):
             return rmul(coef, r)
         e = ratof(node[2])
         ei = None if e is None else rint(e)
-        if ei is not None and -MAXPOW <= ei <= MAXPOW:
+        if ei is not None and -POLYPOW <= ei <= POLYPOW:
             inner = []
             c = _factors(node[1], R1, inner)
             if c is None:
