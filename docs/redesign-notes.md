@@ -186,6 +186,19 @@ Each module's own size once loaded, in the order a session loads them:
   full heap it still finishes and shows its summary (the merged build first
   stopped at 400 KB with a MemoryError while writing a row).
 
+- Stage 2 (22 Oct): Trig, Sequences, Numerical and Vectors with their tiles
+  showing take 125-127 KB (the screens were 125 KB; topic and recog grew
+  3 KB). Their engines are 10-15 KB modules each; a Trig equation also
+  loads casalg and e_solve as Algebra does. They don't reuse the old
+  section modules as engines: mpure loads 226 KB and mcalc 94 KB.
+- Self test, now two runs with a restart between (every topic in one run
+  needs more than a 500 KB heap: modules stay loaded): `selftest.py`, the
+  50 stage 1 parts: 50/50 at 500 KB, lowest 66 KB free (was 69); 25/50 at
+  400 KB (was 26). `selftest2.py`, 12 stage 2 parts (three per topic):
+  12/12 at 500 KB, lowest 79 KB free; 6/12 at 400 KB (Trig and Sequences
+  fit, Numerical and Vectors run out). Measured on the MicroPython 1.9.4
+  unix port from .mpy.
+
 ## Speed (estimated: laptop us x 0.29 + 4 ms per draw_string)
 
 | screen | device |
@@ -202,6 +215,7 @@ Each module's own size once loaded, in the order a session loads them:
 | Coord: first answer (perpendicular bisector, loads the CAS) | 4.9 s |
 | Calculus: stationary points, first / again | 7.6 s / 2.5 s |
 | self test, all 50 cases | about 4 min |
+| self test part 2, 12 cases (estimated) | about 1 min |
 
 ## Trig choices
 

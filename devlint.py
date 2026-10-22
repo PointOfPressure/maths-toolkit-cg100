@@ -22,7 +22,7 @@ DEVICE_FILES = [
     "rseq.py", "acts_seq.py", "e_seq.py", "e_seqbox.py",
     "rnum.py", "acts_num.py", "e_num.py",
     "rvec.py", "acts_vec.py", "e_vec.py",
-    "selftest.py", "selfcases.py",
+    "selftest.py", "selftest2.py", "selfcases.py",
 ]
 
 # measured on device by hwcheck.py 2026-08-09; adding a name claims hardware has it

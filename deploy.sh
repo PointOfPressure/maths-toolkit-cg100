@@ -2,7 +2,7 @@
 # Usage: ./deploy.sh /media/sayer/disk   (the calculator's storage root)
 # Precompiles every module to .mpy (the calculator loads those several times
 # faster than .py) and copies them with the launchers maths.py, module.py and
-# selftest.py. Deletes every other .py / .mpy in the root first.
+# selftest.py and selftest2.py. Deletes every other .py / .mpy in the root first.
 # Needs mpy-cross from MicroPython 1.9.4; the calculator takes the build
 # without unicode and without cached map lookups (variant b of hw/).
 set -e
@@ -11,8 +11,8 @@ DEST="$1"
 cd "$(dirname "$0")"
 MPYCROSS="${MPYCROSS:-$HOME/dev/cg100/bin/mpy-cross-1.9.4}"
 [ -x "$MPYCROSS" ] || { echo "mpy-cross 1.9.4 not found: $MPYCROSS"; exit 1; }
-LAUNCH="maths.py module.py selftest.py"
-MODS=$(python3 -c "import devlint; print(' '.join(f[:-3] for f in devlint.DEVICE_FILES if f not in ('maths.py', 'module.py', 'selftest.py')))")
+LAUNCH="maths.py module.py selftest.py selftest2.py"
+MODS=$(python3 -c "import devlint; print(' '.join(f[:-3] for f in devlint.DEVICE_FILES if f not in ('maths.py', 'module.py', 'selftest.py', 'selftest2.py')))")
 rm -rf build && mkdir build
 for m in $MODS; do "$MPYCROSS" -mno-unicode -o "build/$m.mpy" "$m.py"; done
 for f in "$DEST"/*.py "$DEST"/*.mpy; do

@@ -1,4 +1,4 @@
-# The self test's cases and runner (selftest.py starts it). 62 past-paper
+# The self test's cases and runner (selftest.py and selftest2.py start it). 62 past-paper
 # parts from tests_accept.py, run through the new topic flow exactly as the
 # screens do (recognise, the action from the tiles, its engine) without
 # drawing the answers; each shows pass or fail and the free memory, then one
@@ -56,7 +56,7 @@ CASES = (
     ('3 nov20 8bii', 'exp', ['logb(3,3^n/2^(2n-5))'], 'Expand logs', None, ['~n-(2n-5)logb(3,2)']),
     ('3 nov21 6', 'alg', ['(10+5x-2sqrt(x)-x^(3/2))/(5-sqrt(x))'], 'Simplify', None, ['x+2']),
     ('1 jun18 2', 'exp', ['5^x'], 'Transform', ['5', '1', '0', '0'], ['~5^(x+1)']),
-    # stage 2: Trig, Sequences, Numerical, Vectors (each engine module once)
+    # stage 2 (selftest2.py): Trig, Sequences, Numerical, Vectors, each engine once
     ('1 jun23 10ai', 'trig', ['sin(x)=0.5'], 'Solve (degrees)', ['-360', '0'], ['x=-330', 'x=-210']),
     ('2 jun22 4', 'trig', [''], 'Triangle', ['6.1', '8.7', '', '38', '?', '', ''], ['b=61.4', 'b=119'], {'angle': 'deg'}),
     ('3 jun25 10a', 'trig', ['2sin(x)+5cos(x)'], 'R form', ['0'], ['r=sqrt(29)', 'a=68.2'], {'angle': 'deg'}),
@@ -213,7 +213,9 @@ def _check(tid, rows, label, ask, needles):
     if off is None:
         return 'not offered'
     vals = None
-    if off[4] and off[4][0] == 'boxes' and len(off[4]) > 3:
+    if off[4] and off[4][0] == 'choose':
+        vals = [int(ask[0])]
+    elif off[4] and off[4][0] == 'boxes' and len(off[4]) > 3:
         vals = [a.strip() or None for a in ask]
     elif off[4] and off[4][0] == 'boxes':
         vals = topic.readboxes(off[4][1], ask)
@@ -256,7 +258,7 @@ def _summary(ok, n, start, ui, low, end, nb):
         y += 14
         s = ''
         for j in range(nb):
-            b = CASES[BAD[j] - 1][0]
+            b = CASES[FIRST[0] + BAD[j] - 1][0]
             if len(s) + len(b) > 44:
                 draw_string(4, y, s, RED, 'small')
                 y += 14
@@ -268,7 +270,15 @@ def _summary(ok, n, start, ui, low, end, nb):
     draw_string(4, 176, 'photo this screen, then EXE', GREY, 'small')
     show_screen()
 
-def run():
+FIRST = [0]    # the first case of this run, for the failed list
+
+def run(first=0, last=None):
+    # cases first..last-1: selftest.py runs stage 1 (Algebra, Exp and logs,
+    # Coord, Calculus), selftest2.py stage 2 (Trig, Sequences, Numerical,
+    # Vectors). Modules can't be unloaded, so every topic in one run would
+    # need more memory than the calculator has; restart between the two.
+    cases = CASES[first:last]
+    FIRST[0] = first
     NLOG[0] = 0
     start = free_kb()
     log('free at start ' + str(start) + ' KB', GREY)
@@ -282,9 +292,9 @@ def run():
     low = ui
     ok = 0
     nb = 0
-    n = len(CASES)
+    n = len(cases)
     i = 0
-    for case in CASES:
+    for case in cases:
         i += 1
         try:
             show('case ' + str(i) + '/' + str(n) + '  ' + case[0] + '  ' + case[3] + ' ...')
