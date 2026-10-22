@@ -779,13 +779,18 @@ def _run_case(tid, rows, label, ask, needles):
     return True, ''
 
 def run(check):
-    # the calculator's self test runs a copy of 62 of these: still the same
+    # the calculator's self test runs a copy of 71 of these (three runs):
+    # still the same
     import selfcases
+    import selfcases2
+    import selfcases3
     byref = {}
     for c in C:
         byref[c[0]] = c
-    check('selfcases has 62 cases', len(selfcases.CASES) == 62, len(selfcases.CASES))
-    for c in selfcases.CASES:
+    every = selfcases.CASES + selfcases2.CASES + selfcases3.CASES
+    check('self test has 50 + 12 + 9 cases', (len(selfcases.CASES), len(selfcases2.CASES),
+                                              len(selfcases3.CASES)) == (50, 12, 9), len(every))
+    for c in every:
         check('selfcases ' + c[0] + ' matches tests_accept', byref.get(c[0]) == c, c)
     for case in C:
         if case[0] in PENDING:

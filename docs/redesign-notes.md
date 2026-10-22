@@ -221,6 +221,19 @@ Each module's own size once loaded, in the order a session loads them:
   fit, Numerical and Vectors run out). Measured on the MicroPython 1.9.4
   unix port from .mpy.
 
+- Stage 3 (22 Oct): Statistics, Kinematics and Forces with tiles showing
+  take 124-130 KB; the screens themselves grew 5 KB over stage 2 (the box
+  and menu-then-boxes prompts in topic, recog.read). A Statistics session
+  is about 210 KB (no CAS); Kinematics on a function of t loads the
+  Calculus engine (about 350 KB with an answer page); Forces about 290 KB.
+- Self test, three runs with a restart between (each run's cases in its
+  own module, so a run doesn't hold the others'): `selftest.py` 50/50 at
+  500 KB, lowest 70 KB free; 27/50 at 400 KB. `selftest2.py` 12/12 at
+  500 KB, lowest 79 KB; 6/12 at 400 KB. `selftest3.py` (Statistics,
+  Kinematics, Forces, three each) 9/9 at 500 KB, lowest 95 KB; 6/9 at
+  400 KB (Forces runs out after Kinematics' CAS). MicroPython 1.9.4 unix
+  port, from .mpy.
+
 ## Speed (estimated: laptop us x 0.29 + 4 ms per draw_string)
 
 | screen | device |

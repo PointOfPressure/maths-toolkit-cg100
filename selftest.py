@@ -2,6 +2,7 @@
 # topic screens (Algebra, Exp and logs, Coord geometry, Calculus), each pass
 # or fail with the free memory after it, then one summary screen to
 # photograph. A few minutes; the bottom line shows which case it is on.
-# selftest2.py does the same for the stage 2 topics: restart in between.
+# selftest2.py and selftest3.py do the same for stages 2 and 3: restart
+# the calculator in between.
 import selfcases
-selfcases.run(0, 50)
+selfcases.run()

@@ -2,5 +2,6 @@
 # parts through the stage 2 topic screens (Trig, Sequences and series,
 # Numerical, Vectors), each pass or fail with the free memory after it,
 # then one summary screen to photograph.
+import selfcases2
 import selfcases
-selfcases.run(50)
+selfcases.run(selfcases2.CASES)

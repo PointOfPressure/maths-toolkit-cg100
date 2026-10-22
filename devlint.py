@@ -25,7 +25,7 @@ DEVICE_FILES = [
     "rstat.py", "acts_stat.py", "e_stat.py", "e_data.py", "fmt.py",
     "rkin.py", "acts_kin.py", "e_kin.py", "e_suvat.py",
     "acts_force.py", "e_force.py",
-    "selftest.py", "selftest2.py", "selfcases.py",
+    "selftest.py", "selftest2.py", "selftest3.py", "selfcases.py", "selfcases2.py", "selfcases3.py",
 ]
 
 # measured on device by hwcheck.py 2026-08-09; adding a name claims hardware has it
