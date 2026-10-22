@@ -46,8 +46,8 @@ while building; change any of them by saying so.
   x = g(x) (x on both sides: iteration), or y values with commas between
   (the trapezium rule asks for h). The start value is x(1); iterates are
   x(2), x(3), ...
-- **Vectors:** a row is a vector, `3i + 4j - k` (i from MENU or the
-  keypad's i) or in brackets `(3, 4)`, `(3, 4, -1)`; DOWN adds a second
+- **Vectors:** a row is a vector, `3i + 4j - k` (ALPHA i, j, k) or in
+  brackets with the comma key, `(3, 4)`, `(3, 4, -1)`; DOWN adds a second
   (a and b, or the position vectors of A and B). Nothing typed: the
   Quadrilateral ABCD boxes (each point as (x, y)) and size-and-direction
   boxes (angle anticlockwise from i, in the Angle setting).
