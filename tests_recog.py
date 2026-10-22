@@ -159,6 +159,7 @@ SWEEP = [
     ('stat', ['3,1,4,1,5,9,2,6']), ('stat', ['1,2,3,4', '2,3,5,4']),
     ('kin', ['']), ('kin', ['v=3t^2-4t']), ('kin', ['s=t^3-6t']), ('kin', ['a=6t-2']), ('kin', ['v=k*t^2']),
     ('kin', ['r=t^2i+(3t-1)j']), ('kin', ['v=2i+t*j']), ('kin', ['0,2,5', '0,4,-2']),
+    ('force', ['']),
 ]
 BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', '1', '?', '', '', ''],
           'AP facts': ['3', '2', '10', '', '?'], 'GP facts': ['3', '1/2', '', '', '', '?'],
@@ -166,7 +167,10 @@ BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', 
           'From sums': ['10', '50', '300', ''], 'PMCC test': ['0.6', '12', '5', ''],
           'Two events': ['0.5', '0.4', '0.2', '', ''], 'mu, sigma from two': ['10', '0.2', '14', '0.9'],
           'Stratified sample': ['20', '30,50,20'], 'Outlier fences': ['3', '5', '8', ''],
-          'SUVAT': ['?', '2', '', '3', '4'], 'Projectile': ['20', '0.6', '', '', '', '']}
+          'SUVAT': ['?', '2', '', '3', '4'], 'Projectile': ['20', '0.6', '', '', '', ''],
+          'Slope or surface': ['5', '30', '40', '10', '0.2', '?', '', ''],
+          'Pulley': ['3', '0', '0.1', '2', '', '', ''], 'Towing': ['1000', '200', '2000', '300', '100', '', '', ''],
+          'Moments': ['5g@2, 3g@4', 'p@0, q@6', ''], 'Forces': ['10@0, 10@90', '']}
 ANSWER.update({'Distance': ['0', '3'], 'At time t': ['2'], 'Displacement': ['1', '0'], 'Velocity': ['0']})
 CHOOSEPLUS = {'Test for p': ['2', '5'], 'Critical region': ['5'], 'Test for mean': ['20', '11', '5'],
               'Find mu': ['12', '0.3'], 'Find sigma': ['8', '0.2']}
@@ -182,7 +186,8 @@ SWEEP_TILES = [('trig', [''], ['Triangle', 'Arc and sector']), ('seq', [''], ['A
                                        'Test for p']),
                ('stat', ['2,3,5,7,8,9,11,14'], ['Summary stats', 'Quartiles, IQR', 'Outliers']),
                ('kin', [''], ['SUVAT', 'Projectile']),
-               ('kin', ['v=3t^2-4t'], ['Acceleration', 'Displacement', 'When at rest', 'Distance'])]
+               ('kin', ['v=3t^2-4t'], ['Acceleration', 'Displacement', 'When at rest', 'Distance']),
+               ('force', [''], ['Slope or surface', 'Pulley', 'Towing', 'Moments', 'Forces'])]
 
 def sweep(check):
     import recog
@@ -228,6 +233,12 @@ def run(check):
     import plot
     plot.run = lambda *a, **k: None
     sweep(check)
+    # simultaneous equations where one has only x: x from it, then y
+    import e_fn
+    import recog as rg
+    got = e_fn.simul(rg.form(['2x=6', 'x+y=5']), None, None)
+    check('simul with one equation in x alone', ('=', 'x = ', '3', None, ('n', 3)) in got and
+          [1 for ln in got if isinstance(ln, tuple) and ln[0] == '=' and ln[2] == '2' and ln[1] == 'y = '], got)
     import recog
     import acts
     import topic

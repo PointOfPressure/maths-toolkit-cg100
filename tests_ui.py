@@ -131,6 +131,9 @@ def run(check):
     # v empty, a = 2, t = 4 (MENU ? is awkward by keys: no ?, so every
     # missing value is boxed)
     case('kin suvat', 'kin', (EXE, 81, RIGHT, 83, RIGHT, RIGHT, 82, RIGHT, 71, EXE), 'SUVAT', ['s=28', 'v=11'])
+    # Forces: EXE with nothing typed, Slope or surface, m = 2, RIGHT past the
+    # empty slope box, P = 6, EXE: no friction, so it moves with a = 3
+    case('force block', 'force', (EXE, 81, 82, RIGHT, RIGHT, 73, EXE), 'Slope or surface', ['a=3'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

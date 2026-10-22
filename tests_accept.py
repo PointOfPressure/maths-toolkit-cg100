@@ -604,6 +604,35 @@ C += [
     ('2 nov21 14', 'kin', ['12,18,25,30,36', '5.8,5.2,6.2,6,3.8'], 'v-t graph', None, ['displacement=132.8']),
 ]
 
+# Forces (paper 2): box forms, ? for what is wanted
+C += [
+    ('2 jun18 11', 'force', [''], 'Moments', ['4@0.6, ?@-1.5', 'r@0', ''], ['f1=1.6|f1=8/5']),
+    ('2 jun18 13a', 'force', [''], 'Slope or surface', ['20', '0', '150', '0', '0.85', '', '', ''],
+     ['staysatrest']),
+    ('2 jun18 13b', 'force', [''], 'Slope or surface', ['20', '0', '150', '15', '0.85', '', '', ''],
+     ['itmovesup']),
+    ('2 jun18 17ai', 'force', [''], 'Towing', ['410', '72', '300', '140', '?', '0.2', '', ''],
+     ['r2=63.6', 't=78']),
+    ('2 jun19 14a', 'force', [''], 'Moments', ['0.28g@17, m*g@10', 'r@14', ''], ['m=0.21|m=21/100']),
+    ('2 jun22 14a', 'force', [''], 'Moments', ['12@-66, m@80', 'r@0', ''], ['m=9.9|m=99/10']),
+    ('2 jun22 19a', 'force', [''], 'Slope or surface', ['20', '25', '230', '0', '?', '1.2', '', ''], ['mu=0.693']),
+    ('2 jun23 15', 'force', [''], 'Slope or surface', ['0.65/9.8', '0', '?', '0', '0.4', '0.91', '', ''],
+     ['p=0.32']),
+    ('2 jun23 17ai', 'force', [''], 'Moments', ['m*g@3.5', '4g@1.4, y@5', ''], ['m=9.6|m=48/5']),
+    ('2 jun23 19bi', 'force', [''], 'Towing', ['1.5', '0.7', '0', '0.8', '0.6', '', '', ''],
+     ['a=-0.636|a=-7/11', 't=0.155|t=17/110']),
+    ('2 jun24 12', 'force', [''], 'Slope or surface', ['2', '', '6', '', '', '?', '', ''], ['a=3']),
+    ('2 jun24 21c', 'force', [''], 'Pulley', ['50', '60', '1', '80', '', '', 'g'], ['~(11-5sqrt(3))g/26']),
+    ('2 jun25 15a', 'force', [''], 'Forces', ['17@0, 26@140', ''], ['resultant=16.9|resultant=17.0',
+                                                                    'direction=99.9']),
+    ('2 nov20 13a', 'force', [''], 'Moments', ['w@0, 4g@3.5', 'r@2', ''], ['w=29.4|w=147/5']),
+    ('2 nov20 18a', 'force', [''], 'Pulley', ['0.2', '16.26020471', '?', '2', '543*9.81/625', '', '9.81'],
+     ['mu=0.17']),
+    ('2 nov20 18bi', 'force', [''], 'Slope or surface', ['0.2', '16.26020471', '0', '0', '0.17', '?', 'up', '9.81'],
+     ['a=-4.35']),
+    ('2 nov21 13 f', 'force', [''], 'Slope or surface', ['1200', '', '?', '', '', '1.5', '', ''], ['p=1800']),
+]
+
 # parts with calculator steps the new flow does not do yet (not counted as passes)
 NOT_YET = [
     ('1 nov20 8b', 'alg', 'inequality f > g on a window 0..500: no window in Solve inequality yet'),

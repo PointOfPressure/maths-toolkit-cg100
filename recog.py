@@ -984,7 +984,8 @@ BLANK = {'trig': 'nothing typed: triangle and sector boxes',
          'seq': 'nothing typed: AP and GP boxes',
          'vec': 'nothing typed: vector boxes',
          'stat': 'nothing typed: sums, tests and probability boxes',
-         'kin': 'nothing typed: SUVAT and projectile boxes'}
+         'kin': 'nothing typed: SUVAT and projectile boxes',
+         'force': 'nothing typed: the forces boxes'}
 
 def read(tid, rows):
     # one topic's input -> Form: typed rows (Coord geometry: point pairs as

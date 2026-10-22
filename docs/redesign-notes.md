@@ -63,6 +63,12 @@ while building; change any of them by saying so.
   any three, `?` for what you want) and Projectile boxes (u, angle, height
   above the landing level, g (9.8 when empty), time, range; `?` for u
   finds it from the time or range).
+- **Forces:** box forms only (EXE with nothing typed): Slope or surface,
+  Pulley, Towing, Moments, Forces. Every box takes a number, `?` for what
+  is wanted, or a letter for an unknown; at most two unknowns. Moments and
+  Forces take lists: `F@x, F@x` (x from one end) and `F@angle, ai + bj`
+  (angles anticlockwise from i). Masses can be typed as `4g`; the g box is
+  9.8 when empty, or type g to keep it as a letter. Angles are degrees.
 - **Calculus:** typed like Algebra: `y = f(x)` or an expression, `F(x, y) = 0`,
   two rows `x = f(t)` and `y = g(t)`, two curves, or `dy/dx = ...` (dy over
   dx with the fraction key, or typed in a line).
@@ -109,8 +115,8 @@ by its own name (pass2-aqa's check, widened for the extra settings).
 ## Topics on home
 
 Calculate, Algebra, Coord geometry, Exp and logs, Calculus, Trig,
-Sequences and series, Numerical, Vectors, Statistics and Kinematics are
-the new screens.
+Sequences and series, Numerical, Vectors, Statistics, Kinematics and
+Forces are the new screens.
 Kinematics, Forces and the Further topics still open their old section menus.
 Graph and Notes are the old screens.
 
@@ -171,6 +177,7 @@ Each module's own size once loaded, in the order a session loads them:
 | Vectors: rvec + acts_vec, then e_vec | 4 + 2, then 11 |
 | Statistics: rstat + acts_stat, then e_stat or e_data (+ fmt; no CAS) | 3 + 4, then 13 or 14 |
 | Kinematics: rkin + acts_kin, then e_suvat (boxes, v-t graph) or e_kin (+ e_calc, cascalc, e_solve) | 3 + 2, then 11 or 9 (+ 46 + 17) |
+| Forces: acts_force, then e_force (+ e_solve) | 1, then 13 (+ 17) |
 | Trig: acts_trig, then e_trig (expressions, identities) + e_tsolve (equations) or e_tri (boxes) | 5, then 14 + 15 or 12 |
 | casalg (fractions, logs in coefficients) | 32 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
@@ -323,6 +330,24 @@ Each module's own size once loaded, in the order a session loads them:
   use sin^2 + cos^2 = 1 and roots of products (|a| = 2e^t, 2 jun22 17).
 - v-t graph: straight lines between the points; gradients, areas, running
   displacement and the times it is back at the start (2 jun18 12b).
+
+## Forces choices
+
+- Each form writes its equations (resolving along and across the slope,
+  each particle of a pulley or a towed pair, up = down and moments about
+  the end) and solves them for the unknowns: one equation with one unknown
+  by the Algebra solver, two linear ones together. So mu, P, a mass or a
+  reaction can be the one asked for (the old tools crashed on ?).
+- Slope or surface: with a empty and nothing unknown it says whether the
+  block moves (push along the slope against mu R) and with what a. The
+  moving box (up, down; empty is up) sets the direction of friction, so a
+  block sliding up after the string breaks decelerates (2 nov20 18bi).
+- Pulley: m2 hangs and falls; m1 lies on a table (slope 0), a slope, or
+  hangs (slope 90). Tilting about a support: type 0 for the other reaction.
+- Masses and forces with g kept as a letter give answers in g
+  ((11 - 5 sqrt 3)g/26, 2 jun24 21c).
+- Algebra's simultaneous equations got x wrong when one equation had no y
+  (2x = 6, x + y = 5 gave x = 11/3): x now comes from that equation.
 
 ## Coord geometry and Calculus choices
 

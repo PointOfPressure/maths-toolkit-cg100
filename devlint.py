@@ -24,6 +24,7 @@ DEVICE_FILES = [
     "rvec.py", "acts_vec.py", "e_vec.py",
     "rstat.py", "acts_stat.py", "e_stat.py", "e_data.py", "fmt.py",
     "rkin.py", "acts_kin.py", "e_kin.py", "e_suvat.py",
+    "acts_force.py", "e_force.py",
     "selftest.py", "selftest2.py", "selfcases.py",
 ]
 

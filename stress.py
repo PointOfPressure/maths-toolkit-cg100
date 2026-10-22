@@ -85,7 +85,7 @@ TYPED = ['(x+y)^3', '0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2',
 PAIRS = [['x=1', 'x=2'], ['x+y=1', 'x+y=1'], ['x+y=1', 'x+y=2'], ['x^2+y^2=1', 'x^2+y^2=4'],
          ['0', '0'], ['x', 'y'], ['y=x', 'y=x^2'], ['e^x', 'ln(x)']]
 STOCK = ['2', '3', '1', '5', '']
-NEWT = ('trig', 'seq', 'num', 'vec', 'stat', 'kin')     # the stage 2 topics, typed rows as the others
+NEWT = ('trig', 'seq', 'num', 'vec', 'stat', 'kin', 'force')     # the stage 2 topics, typed rows as the others
 BOXES = [
     ('trig', 'Triangle', ['1', '2', '5', '', '', '', '']), ('trig', 'Triangle', ['', '', '', '30', '40', '50', '']),
     ('trig', 'Triangle', ['3', '', '', '', '', '', '']), ('trig', 'Triangle', ['3', '4', '', '', '', '', '20']),
@@ -121,6 +121,16 @@ BOXES = [
     ('kin', 'Projectile', ['0', '30', '', '', '', '']), ('kin', 'Projectile', ['5', '30', '', '0', '', '']),
 ]
 RAWBOXES = [
+    ('force', 'Slope or surface', ['', '', '', '', '', '', '', '']), ('force', 'Slope or surface', ['?', '?', '?', '', '', '?', '', '']),
+    ('force', 'Slope or surface', ['5', '90', '', '', '0.5', '', '', '']), ('force', 'Slope or surface', ['5', '30', '', '', '', '?', 'sideways', '']),
+    ('force', 'Slope or surface', ['0', '0', '0', '0', '0', '', '', '']), ('force', 'Slope or surface', ['5', '', '1', '', '?', '0', '', '0']),
+    ('force', 'Pulley', ['', '', '', '', '', '', '']), ('force', 'Pulley', ['0', '0', '0', '0', '', '', '']),
+    ('force', 'Pulley', ['1', '0', '5', '1', '', '', '']), ('force', 'Pulley', ['?', '?', '', '1', '', '', '']),
+    ('force', 'Towing', ['', '', '', '', '', '', '', '']), ('force', 'Towing', ['0', '0', '0', '', '', '', '', '']),
+    ('force', 'Towing', ['1', '1', '?', '?', '?', '', '', '']), ('force', 'Moments', ['', '', '']),
+    ('force', 'Moments', ['5', '', '']), ('force', 'Moments', ['5@1', '?@1, ?@1', '']), ('force', 'Moments', ['a@b', 'c@d', '']),
+    ('force', 'Moments', ['5@1', '5@1', '']), ('force', 'Forces', ['', '']), ('force', 'Forces', ['1@0, ?@?', '']),
+    ('force', 'Forces', ['3i+4j', '']), ('force', 'Forces', ['3i+4j, ?@0, ?@90', '']), ('force', 'Forces', ['x@y, z', '']),
     ('stat', 'Stratified sample', ['', '']), ('stat', 'Stratified sample', ['10', '0,0']),
     ('stat', 'Stratified sample', ['10', 'a,b']), ('stat', 'Stratified sample', ['10', '5']),
     ('vec', 'Quadrilateral ABCD', ['(0,0)', '(0,0)', '(0,0)', '(0,0)']),

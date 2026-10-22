@@ -67,16 +67,23 @@ def _elim(c1, c2, xs, lines, F):
                               else 'parallel lines: no solution'))
         return lines
     if b1[0] == 0 or b2[0] == 0:
-        # one equation has no y: x from it, then y
-        pass
+        # one equation has no y: x from it, then y (adding the rows would
+        # not get rid of y)
+        n, c = ('1', c1) if b1[0] == 0 else ('2', c2)
+        xv = caspoly.rdiv(c[2], c[0])
+        lines.append('(' + n + ') has no ' + y + ':  ' + x + ' = ' + txt(_rt(xv)))
+        src, cc = ('2', c2) if n == '1' else ('1', c1)
+        rest = caspoly.rsub(cc[2], caspoly.rmul(cc[0], xv))
+        yv = caspoly.rdiv(rest, cc[1])
+        lines.append('in (' + src + '):  ' + txt(eng.mul(_rt(cc[1]), ('v', y))) + ' = ' + txt(_rt(rest)))
+        lines.append(eng.box(x + ' = ', _rt(xv), not F.dec))
+        lines.append(eng.box(y + ' = ', _rt(yv), not F.dec))
+        return lines
     m1 = (abs(b2[0]) * b1[1], 1)
     m2 = (abs(b1[0]) * b2[1], 1)
     g = recog._gcd(m1[0], m2[0]) or 1
     m1 = (m1[0] // g, 1)
     m2 = (m2[0] // g, 1)
-    if b1[0] == 0 or b2[0] == 0:
-        m1 = (1, 1)
-        m2 = (1, 1)
     r1 = [caspoly.rmul(c, m1) for c in c1]
     r2 = [caspoly.rmul(c, m2) for c in c2]
     if m1 != (1, 1):

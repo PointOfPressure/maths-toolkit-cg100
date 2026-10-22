@@ -19,7 +19,7 @@ MATHS = (
     ('Vectors', 't:vec'),
     ('Statistics', 't:stat'),
     ('Kinematics', 't:kin'),
-    ('Forces', 'o:RS'),
+    ('Forces', 't:force'),
 )
 FURTHER = (
     ('Complex', 'f:0:J'),
