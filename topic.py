@@ -19,7 +19,10 @@ TOPICS = {
     'exp': ('Exp and logs', '4^x - 3*2^x + 2 = 0', 'F'),
     'geo': ('Coord geometry', 'line or circle', 'C'),
     'calc': ('Calculus', 'y = x^3 - 3x  or  dy/dx = ...', 'GH'),
+    'trig': ('Trig', '2sin^2 x = cos x   or EXE: triangle', 'E'),
 }
+# topics where EXE with nothing typed offers their box forms (triangle, AP)
+BLANK = ('trig', 'seq', 'vec')
 
 STATE = {}      # topic id -> {'rows': [...], 'sel': tile, 'key': text, 'F': form, 'offers': [...]}
 
@@ -167,7 +170,7 @@ def recognise(tid, eds, st):
     import recog
     import acts
     st['rows'] = [nat.copy(ed.root) for ed in eds]
-    F = recog.form(texts(eds))
+    F = recog.read(tid, texts(eds))
     st['F'] = None
     st['offers'] = []
     st['F'] = F
@@ -239,7 +242,7 @@ def run(tid):
                 casui.wait_release()
                 return
             if k == OK or k == EXE or k == TOOLS:
-                if not texts(eds):
+                if not texts(eds) and tid not in BLANK:
                     redraw = None
                     continue
                 hole = False
@@ -406,6 +409,8 @@ def prompt(tid, st, label, ask):
     if ask[0] == 'choose':
         i = casui.menu(label, ask[1])
         return None if i < 0 else [i]
+    if ask[0] == 'boxes':
+        return boxes(tid, st, label, ask)
     eds = []
     for ln in ask:
         for j in range(ln[1]):
@@ -526,6 +531,104 @@ def _draw_prompt(tid, st, label, ask, eds, cur, shift, alpha):
         y += h + 6
     if y + 18 <= BOT:
         draw_string(8, y + 2, 'EXE to work out', GREY, 'medium')
+    show_screen()
+
+# ---- fact boxes (mockup F): fill in what you know, ? for what you want -----------------------
+# ask = ('boxes', [name, ...], columns); the values are trees, None for an
+# empty box and '?' for one marked wanted
+
+def boxes(tid, st, label, ask):
+    names = ask[1]
+    eds = [nat.Ed() for n in names]
+    cur = 0
+    shift = False
+    alpha = False
+    while True:
+        _draw_boxes(tid, label, ask, eds, cur, shift, alpha)
+        k = casui.next_key()
+        if k == SHIFT or k == ALPHA:
+            if k == SHIFT:
+                shift = not shift
+                alpha = False
+            else:
+                alpha = not alpha
+                shift = False
+            continue
+        if k == EXITK:
+            casui.wait_release()
+            return None
+        if k == SETTINGS:
+            casui.settings()
+            continue
+        ed = eds[cur]
+        c = ask[2]
+        if k == RIGHT and not ed.stack and ed.i == len(ed.root):
+            cur = (cur + 1) % len(eds)
+            continue
+        if k == LEFT and not ed.stack and ed.i == 0:
+            cur = (cur - 1) % len(eds)
+            continue
+        if (k == DOWN or k == UP) and not ed.vert(k == UP):
+            cur = (cur + (c if k == DOWN else -c)) % len(eds)
+            continue
+        if k == OK or k == EXE:
+            vals = readboxes(names, [nat.lin(e.root) for e in eds])
+            if vals is None:
+                continue
+            casui.wait_release()
+            return vals
+        if casui.edit_key(eds[cur], k, shift, alpha):
+            shift = False
+            alpha = False
+
+def readboxes(names, texts):
+    import caslex
+    out = []
+    for i in range(len(names)):
+        s = texts[i].strip()
+        if not s:
+            out.append(None)
+            continue
+        if s == '?':
+            out.append('?')
+            continue
+        try:
+            t = caslex.parse(s)
+        except ValueError as e:
+            casui.flash(names[i] + ': ' + str(e))
+            return None
+        if t is None:
+            casui.flash(names[i] + ': cannot read that')
+            return None
+        out.append(t)
+    return out
+
+def _draw_boxes(tid, label, ask, eds, cur, shift, alpha):
+    clear_screen()
+    casui.status(TOPICS[tid][0], shift, alpha)
+    draw_string(8, TOP + 4, clip(label, 200, 'medium'), ACC, 'medium')
+    draw_string(W - 8 - text_w('? = find', 'medium'), TOP + 4, '? = find', GREY, 'medium')
+    names = ask[1]
+    cols = ask[2]
+    cw = (W - 8) // cols
+    y = TOP + 28
+    i = 0
+    while i < len(names):
+        h = 22
+        for j in range(cols):
+            if i + j >= len(names):
+                break
+            x = 6 + j * cw
+            nm = names[i + j]
+            nw = text_w(nm, 'medium')
+            draw_string(x, y + 3, nm, INK, 'medium')
+            hh = _field(x + nw + 6, y, cw - nw - 14, eds[i + j], i + j == cur)
+            if hh > h:
+                h = hh
+        i += cols
+        y += h + 6
+    if y + 18 <= BOT:
+        draw_string(8, y + 2, 'empty = not known.  EXE to work out', GREY, 'medium')
     show_screen()
 
 # ---- the answer page (mockups 7-10, D) ------------------------------------------------------

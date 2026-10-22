@@ -18,6 +18,7 @@ DEVICE_FILES = [
     # the redesign: home, topic screens, recogniser, actions, engines, settings
     "casold.py", "home.py", "topic.py", "recog.py", "acts.py", "cfg.py", "eng.py",
     "e_solve.py", "e_alg.py", "e_fn.py", "e_exp.py", "coord.py", "e_geo.py", "e_calc.py", "rgeo.py", "acts_geo.py", "acts_calc.py",
+    "acts_trig.py", "e_trig.py", "e_tsolve.py", "e_tri.py",
     "selftest.py", "selfcases.py",
 ]
 

@@ -111,6 +111,9 @@ def run(check):
     # Calculus: y = x^3 - 3x, Stationary points (tile 2); dy/dx = x y with a point
     case('calc stationary', 'calc', (32, 85, 31, 55, 41, 44, 83, 25, 85, 83, 41, EXE, 82),
          'Stationary points', ['maximum', 'minimum'])
+    # Trig: EXE with nothing typed offers the boxes; Arc and sector, r = 5,
+    # RIGHT to the angle, 1 (radians), EXE
+    case('trig sector boxes', 'trig', (EXE, 82, 72, RIGHT, 81, EXE), 'Arc and sector', ['arc=5', 'area=25/2'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

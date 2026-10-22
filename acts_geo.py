@@ -106,3 +106,4 @@ def g_graph(F):
     return []
 
 GEO = (g_points, g_three, g_pointline, g_twoline, g_circle, g_line, g_meet, g_param, g_graph)
+ACTS = GEO

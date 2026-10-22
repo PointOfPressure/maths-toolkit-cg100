@@ -369,14 +369,63 @@ C += [
     ('1 jun25 11a', 'calc', ['x^2*y+4y^3=8x'], 'Where dy/dx = 0', None, ['sqrt(2)']),
 ]
 
+# Trig (7357 papers; angle setting given where the answer depends on it)
+DEG = {'angle': 'deg'}
+C += [
+    ('1 jun18 12c', 'trig', ['30sec(x)^2+2cos(x)=7(sec(x)+1)'], 'Solve (degrees)', ['0', '360'],
+     ['cosx=-2:nosolutions', 'cosx=5/2:nosolutions', 'cosx=3:nosolutions', 'nosolutionsintheinterval']),
+    ('1 jun19 3', 'trig', [''], 'Arc and sector', ['4', '0.8', '', '?', '', ''], ['area=6.4'], {'angle': 'rad'}),
+    ('1 jun19 12b', 'trig', ['1/sin(x)=3/2'], 'Solve (degrees)', ['90', '180'], ['x=138']),
+    ('1 jun19 12b t', 'trig', ['sin(x)=2/3'], 'Other ratios', ['1'], ['tanx=-2sqrt(5)/5']),
+    ('1 jun22 12b', 'trig', ['1/(1-cos(x))=2-sqrt(2)'], 'Solve (radians)', ['0', '2pi'], ['x=3pi/4', 'x=5pi/4']),
+    ('1 jun22 15aiii', 'trig', ['sqrt(1/sin(x)^2-1)*sin(x)=cos(x)'], 'Identity?', None, ['notanidentity', '0<x<pi/2']),
+    ('1 jun23 10ai', 'trig', ['sin(x)=0.5'], 'Solve (degrees)', ['-360', '0'], ['x=-330', 'x=-210']),
+    ('1 jun23 10bii', 'trig', ['cos(180+asin(3/7))'], 'Exact value', None, ['~-2sqrt(10)/7'], DEG),
+    ('1 jun23 12b', 'trig', ['cos(x)-4sin(x)'], 'R form', ['2'], ['r=sqrt(17)', 'a=1.33'], {'angle': 'rad'}),
+    ('1 jun24 5', 'trig', ['sin(x)^2=1'], 'Solve (degrees)', ['0', '360'], ['x=90', 'x=270']),
+    ('1 jun24 15a', 'trig', ['sin(2x)/sin(x)+cos(2x)/cos(x)', '4cos(x)-1/cos(x)'], 'Identity?', None,
+     ['itisanidentity']),
+    ('1 jun24 15bii', 'trig', ['sin(2x)/sin(x)+cos(2x)/cos(x)=3'], 'Solve (degrees)', ['0', '360'],
+     ['x=104', 'x=256', 'x=360doesnotsatisfy']),
+    ('1 jun25 16bi', 'trig', ['sin(2pi/3-x)/sin(x)'], 'Expand', None, ['~sqrt(3)/(2tan(x))+1/2']),
+    ('1 jun25 16bii', 'trig', ['(sqrt(3)/tan(x)+1)/2=(sqrt(3)+1)/2'], 'Solve (radians)', ['0', '2pi/3'], ['x=pi/4']),
+    ('1 nov20 8b t', 'trig', ['3.87sin(2pi(x+101.75)/365)+11.7=14'], 'Solve (radians)', ['0', '500'],
+     ['x=300', 'x=409']),
+    ('1 nov21 8b', 'trig', ['9sin(x)^2+sin(2x)=8'], 'Solve (radians)', ['0', '2pi'],
+     ['x=1.11', 'x=1.82', 'x=4.25', 'x=4.96']),
+    ('1 nov21 8c', 'trig', ['9sin(2x-pi/4)^2+sin(4x-pi/2)=8'], 'Solve (radians)', ['0', 'pi/2'],
+     ['x=0.946', 'x=1.30']),
+    ('2 jun18 8a', 'trig', ['sqrt(3)sin(x)-3cos(x)'], 'R form', ['1'], ['r=2sqrt(3)', 'a=60'], DEG),
+    ('2 jun22 4', 'trig', [''], 'Triangle', ['6.1', '8.7', '', '38', '?', '', ''], ['b=61.4', 'b=119'], DEG),
+    ('2 jun23 8a', 'trig', ['1/(1-cos(x))+1/(1+cos(x))', '2/sin(x)^2'], 'Identity?', None, ['itisanidentity']),
+    ('2 jun23 8c', 'trig', ['1/tan(180-asin(1/sqrt(8)))'], 'Exact value', None, ['~-sqrt(7)'], DEG),
+    ('2 jun24 6', 'trig', ['sin(x)^2=2/3'], 'Solve (degrees)', ['90', '180'], ['x=125']),
+    ('2 jun24 20c', 'trig', [''], 'Triangle', ['12', '5', '13', '', '', '?', ''], ['c=90'], DEG),
+    ('2 jun25 5', 'trig', [''], 'Arc and sector', ['8', '1.4', '', '?', '', ''], ['area=44.8'], {'angle': 'rad'}),
+    ('2 jun25 8b', 'trig', ['(3/cos(x)+5tan(x))(5/cos(x)-3tan(x))-16tan(x)/cos(x)'], 'Simplify', None, ['=15']),
+    ('2 jun25 9dii', 'trig', [''], 'Arc and sector', ['10', '2*0.6435', '?', '', '', ''], ['arc=12.87'],
+     {'angle': 'rad'}),
+    ('2 nov21 9b', 'trig', ['cos(x)+sin(2x-pi/2)', '1+cos(x)-2cos(x)^2'], 'Identity?', None, ['itisanidentity']),
+    ('3 jun18 8a', 'trig', ['sin(2x)/(1+tan(x)^2)', '2sin(x)cos(x)^3'], 'Identity?', None, ['itisanidentity']),
+    ('3 jun24 5', 'trig', [''], 'Arc and sector', ['18', 'pi/6', '', '', '', '?'], ['~27pi-81'], {'angle': 'rad'}),
+    ('3 jun25 10a', 'trig', ['2sin(x)+5cos(x)'], 'R form', ['0'], ['r=sqrt(29)', 'a=68.2'], DEG),
+    ('3 jun25 10biii', 'trig', ['14.2-(2sin(x)+5cos(x))=15'], 'Solve (degrees)', ['0', '365'],
+     ['x=120', 'x=283']),
+    ('3 nov20 2', 'trig', ['8sin(x)+6cos(x)'], 'R form', ['0'], ['r=10']),
+    ('3 nov20 9a', 'trig', ['1/sin(2x)+1/tan(2x)', '1/tan(x)'], 'Identity?', None, ['itisanidentity']),
+    ('3 nov21 5ai', 'trig', [''], 'Arc and sector', ['5', '0.7', '', '?', '', ''], ['area=8.75'], {'angle': 'rad'}),
+    ('1 jun22 6b', 'trig', ['sin(4x)+sqrt(cos(x))'], 'Small angle approx', None, ['~1+4x-x^2/4']),
+    ('1 jun25 8', 'trig', ['(4+sin(5x)-3cos(2x))/(1+2tan(x))'], 'Small angle approx', None, ['~3x+1']),
+    ('1 nov21 15a', 'trig', ['sin(x)-sin(x)*cos(2x)'], 'Small angle approx', None, ['~2x^3']),
+    ('1 jun24 9a', 'trig', ['cos(4x)+2sin(3x)-tan(2x)'], 'Small angle approx', None, ['~1+4x-8x^2']),
+    ('1 jun23 4', 'trig', ['cos(2x)'], 'Small angle approx', None, ['~1-2x^2']),
+]
+
 # parts with calculator steps the new flow does not do yet (not counted as passes)
 NOT_YET = [
-    ('1 jun18 12c', 'trig', 'cubic in sec x on 0..360: Trig topic'),
     ('1 nov20 8b', 'alg', 'inequality f > g on a window 0..500: no window in Solve inequality yet'),
     ('1 nov21 9ci', 'exp', 'log-linear fit to a data list: needs data entry (Statistics)'),
     ('2 jun22 17', 'trig', 'sqrt of trig squares: Trig topic'),
-    ('2 jun24 6', 'trig', 'trig equation on an interval: Trig topic'),
-    ('1 jun25 16bi', 'trig', 'compound angle expansion: Trig topic'),
     ('1 jun22 15b', 'calc', 'integration by substitution with the steps (u = 2/sin x): not an action yet'),
     ('1 jun24 18a', 'calc', 'integration by substitution with the steps: not an action yet'),
     ('1 jun25 17a', 'calc', 'integration by substitution with the steps: not an action yet'),
@@ -452,11 +501,25 @@ def run_case(case):
     import recog
     import acts
     import topic
-    ref, tid, rows, label, ask, needles = case
-    if tid == 'geo':
-        F = recog.geo([r for r in rows if isinstance(r, tuple)], [r for r in rows if not isinstance(r, tuple)])
-    else:
-        F = recog.form(rows)
+    ref, tid, rows, label, ask, needles = case[:6]
+    import casui
+    keep = dict(casui.SET)
+    kdeg = casui.DEG
+    try:
+        if len(case) > 6:
+            casui.SET.update(case[6])
+            casui.DEG = casui.SET['angle'] == 'deg'
+        return _run_case(tid, rows, label, ask, needles)
+    finally:
+        casui.SET.clear()
+        casui.SET.update(keep)
+        casui.DEG = kdeg
+
+def _run_case(tid, rows, label, ask, needles):
+    import recog
+    import acts
+    import topic
+    F = recog.read(tid, rows)
     if F.err:
         return False, 'not read: ' + F.err
     offers = acts.offers(F, tid)
@@ -470,6 +533,8 @@ def run_case(case):
     if off[4]:
         if off[4][0] == 'choose':
             vals = [int(ask[0])]
+        elif off[4][0] == 'boxes':
+            vals = topic.readboxes(off[4][1], ask)
         else:
             vals = []
             for a in ask:

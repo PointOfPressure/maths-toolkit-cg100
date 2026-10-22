@@ -142,7 +142,53 @@ ANSWER = {'Gradient at a point': ['3', '4'], 'Tangent at a point': ['3', '4'],
           'Range on an interval': ['0', '3'], 'Transform': ['2', '1', '0', '0'],
           'Inequality': [0], 'From two points': ['1', '2', '3', '7', '']}
 
+# the stage 2 topics: inputs whose every offered action must run, and the
+# box answers (the triangle, the sector, AP and GP facts, vectors)
+SWEEP = [
+    ('trig', ['']), ('trig', ['2sin(x)^2+sin(x)-1=0']), ('trig', ['tan(2x-30)=1']),
+    ('trig', ['sin(x)=2/3']), ('trig', ['3sin(x)+4cos(x)']), ('trig', ['cos(x)^2-sin(x)']),
+    ('trig', ['sin(x+pi/6)']), ('trig', ['cos(pi/3)+sin(pi/4)']), ('trig', ['sin(2x)', '2sin(x)cos(x)']),
+    ('trig', ['sec(x)=2']), ('trig', ['3cos(2x)+5=0']),
+]
+BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', '1', '?', '', '', '']}
+SWEEP_TILES = [('trig', [''], ['Triangle', 'Arc and sector'])]
+
+def sweep(check):
+    import recog
+    import acts
+    import topic
+    import caslex
+    for tid, rows in SWEEP:
+        F = recog.read(tid, rows)
+        key = tid + ' <' + '; '.join(rows) + '>'
+        check('read ' + key, F.err is None, F.err)
+        offs = acts.offers(F, tid)
+        check('offers ' + key, offs != [], F.note)
+        for label, mod, fn, arg, ask in offs:
+            vals = None
+            if ask and ask[0] == 'choose':
+                vals = [0]
+            elif ask and ask[0] == 'boxes':
+                vals = topic.readboxes(ask[1], BOXANS[label])
+            elif ask:
+                n = sum([ln[1] for ln in ask])
+                vals = [caslex.parse(a) for a in ANSWER.get(label, ['1'] * n)[:n]]
+                if label[:5] == 'Solve' and n == 2:
+                    vals = [caslex.parse('0'), caslex.parse('360' if 'deg' in label else '2pi')]
+            lines = topic.engine(mod, fn, F, arg, vals)
+            bad = [ln[1] for ln in (lines or []) if isinstance(ln, tuple) and ln[0] == '!']
+            check('offered ' + label + ' ' + key + ' runs', not bad, bad)
+            boxed = [ln for ln in (lines or []) if isinstance(ln, tuple) and ln[0] == '=']
+            if label != 'Graph':
+                check('offered ' + label + ' ' + key + ' answers', boxed, (lines or [])[-3:])
+    for tid, rows, want in SWEEP_TILES:
+        got = [o[0] for o in acts.offers(recog.read(tid, rows), tid)][:len(want)]
+        check('tiles ' + tid + ' <' + rows[0] + '>', got == want, got)
+
 def run(check):
+    import plot
+    plot.run = lambda *a, **k: None
+    sweep(check)
     import recog
     import acts
     import topic

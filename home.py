@@ -12,7 +12,7 @@ MATHS = (
     ('Algebra', 't:alg'),
     ('Coord geometry', 'geo'),
     ('Sequences, series', 'o:D'),
-    ('Trig', 'o:E'),
+    ('Trig', 't:trig'),
     ('Exp and logs', 't:exp'),
     ('Calculus', 't:calc'),
     ('Numerical', 'o:I'),

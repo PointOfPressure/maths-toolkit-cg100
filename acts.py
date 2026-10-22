@@ -299,14 +299,10 @@ TOPIC = {'alg': ALG, 'exp': EXP}
 
 def offers(F, tid):
     # the other topics keep their actions in their own small modules
-    if tid == 'geo':
-        import acts_geo
-        fns = acts_geo.GEO
-    elif tid == 'calc':
-        import acts_calc
-        fns = acts_calc.CALC
-    else:
+    if tid in TOPIC:
         fns = TOPIC[tid]
+    else:
+        fns = __import__('acts_' + tid).ACTS
     got = []
     n = 0
     for fn in fns:

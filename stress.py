@@ -65,7 +65,9 @@ def main(mods):
     return bad
 
 # the redesign: odd things typed into a topic, every action that is offered
-TYPED = ['0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2', '2^x=-1',
+TYPED = ['sin(x)=2', 'tan(x)=0', 'sin(x)cos(x)=0', 'sin(x^2)=0.5', 'sin(x)+cos(2x)+tan(3x)=1',
+         'sec(x)=0', 'sin(x)=sin(x)', 'sin(x)^2+cos(x)^2', 'cos(x)=k', 'sin(2x)=cos(x)', 'tan(x)=1/0',
+         '0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2', '2^x=-1',
          'logb(1,x)=2', 'sqrt(-x)=3', 'abs(x)=-1', '1/(x-x)', 'x^2+y^2', 'k', 'x=x',
          'pi^x=e', '0^x=0', 'x^x=4', '(x-1)^-1', 'x^(1/3)=-2', '1e9x^2+1e-9', '2^x+2^(2x)',
          'ln(x)=ln(-x)', 'x+y+z=1', 'sin(x)^2+cos(x)^2', 'log(x)^2-3log(x)+2=0',
@@ -76,6 +78,18 @@ TYPED = ['0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2', '2^x=-1',
 PAIRS = [['x=1', 'x=2'], ['x+y=1', 'x+y=1'], ['x+y=1', 'x+y=2'], ['x^2+y^2=1', 'x^2+y^2=4'],
          ['0', '0'], ['x', 'y'], ['y=x', 'y=x^2'], ['e^x', 'ln(x)']]
 STOCK = ['2', '3', '1', '5', '']
+NEWT = ('trig',)     # the stage 2 topics, typed rows as the others
+BOXES = [
+    ('trig', 'Triangle', ['1', '2', '5', '', '', '', '']), ('trig', 'Triangle', ['', '', '', '30', '40', '50', '']),
+    ('trig', 'Triangle', ['3', '', '', '', '', '', '']), ('trig', 'Triangle', ['3', '4', '', '', '', '', '20']),
+    ('trig', 'Triangle', ['3', '4', '', '', '', '', '6']), ('trig', 'Triangle', ['2', '5', '', '30', '', '', '']),
+    ('trig', 'Triangle', ['5', '2', '', '30', '', '', '']), ('trig', 'Triangle', ['0', '-1', 'k', '', '', '', '']),
+    ('trig', 'Triangle', ['3', '', '', '100', '90', '', '']), ('trig', 'Triangle', ['?', '?', '?', '?', '?', '?', '?']),
+    ('trig', 'Arc and sector', ['', '', '', '', '', '']), ('trig', 'Arc and sector', ['5', '', '', '', '', '']),
+    ('trig', 'Arc and sector', ['5', '9', '', '', '', '']), ('trig', 'Arc and sector', ['', '', '', '10', '13', '']),
+    ('trig', 'Arc and sector', ['', '', '', '100', '10', '']), ('trig', 'Arc and sector', ['', '', '4', '6', '', '']),
+    ('trig', 'Arc and sector', ['k', '1', '', '', '', '']), ('trig', 'Arc and sector', ['2', '', '', '', '3', '?']),
+]
 
 def topics():
     import recog
@@ -90,12 +104,14 @@ def topics():
         F = recog.form(rows)
         if F.err:
             continue
-        for tid in ('alg', 'exp', 'calc'):
+        for tid in ('alg', 'exp', 'calc') + NEWT:
             for label, mod, fn, arg, ask in acts.offers(F, tid):
                 vals = None
                 if ask:
                     if ask[0] == 'choose':
                         vals = [1]
+                    elif ask[0] == 'boxes':
+                        continue
                     else:
                         n = sum([ln[1] for ln in ask])
                         vals = [None if not STOCK[i % 5] else caslex.parse(STOCK[i % 5])
@@ -107,6 +123,19 @@ def topics():
                         bad += 1
                         print('topic ' + tid + ' ' + label + ' <' + '; '.join(rows) + '>: ' + ln[1])
                         break
+    # box forms with impossible, missing and awkward values
+    for tid, label, texts in BOXES:
+        F = recog.read(tid, [''])
+        for o in acts.offers(F, tid):
+            if o[0] != label:
+                continue
+            count += 1
+            lines = topic.engine(o[1], o[2], F, o[3], topic.readboxes(o[4][1], texts))
+            for ln in lines or []:
+                if isinstance(ln, tuple) and ln[0] == '!' and ln[1].startswith('error'):
+                    bad += 1
+                    print('box ' + tid + ' ' + label + ' ' + repr(texts) + ': ' + ln[1])
+                    break
     # Coord geometry: the same points, vertical lines, circles that aren't
     GEO = [([('0', '0'), ('0', '0')], []), ([('1', '1'), ('1', '5')], []), ([('1', '1'), ('4', '1')], []),
            ([('0', '0'), ('1', '1'), ('2', '2')], []), ([], ['x^2+y^2=-4']), ([], ['x^2+y^2=0']),

@@ -31,6 +31,12 @@ while building; change any of them by saying so.
   the points, a row for a line or circle typed as written; DOWN from it
   adds a second row. EXE, the tiles, More and the answer page as in every
   topic.
+- **Fact boxes (Trig, and later Sequences and Vectors):** EXE with nothing
+  typed shows the box forms as tiles (Triangle, Arc and sector). A box form
+  is a grid of labelled boxes (mockup F): fill in what you know, `?` (from
+  MENU) for what you want, empty for neither. LEFT/RIGHT at the end of a box
+  and UP/DOWN move between boxes; EXE works it out. With no `?`, every
+  value not given is boxed.
 - **Calculus:** typed like Algebra: `y = f(x)` or an expression, `F(x, y) = 0`,
   two rows `x = f(t)` and `y = g(t)`, two curves, or `dy/dx = ...` (dy over
   dx with the fraction key, or typed in a line).
@@ -76,8 +82,8 @@ by its own name (pass2-aqa's check, widened for the extra settings).
 
 ## Topics on home
 
-Calculate, Algebra, Coord geometry, Exp and logs and Calculus are the new
-screens. Sequences and series, Trig, Numerical, Vectors, Statistics,
+Calculate, Algebra, Coord geometry, Exp and logs, Calculus and Trig are the
+new screens. Sequences and series, Numerical, Vectors, Statistics,
 Kinematics, Forces and the Further topics still open their old section menus.
 Graph and Notes are the old screens.
 
@@ -133,6 +139,7 @@ Each module's own size once loaded, in the order a session loads them:
 | eng (+ the action's engine: e_alg 25, e_solve 17, e_fn 21, e_exp 7) | 22 |
 | Coord: coord + rgeo + acts_geo + e_geo | 6 + 3 + 4 + 21 |
 | Calculus: acts_calc + e_calc | 3 + 22 |
+| Trig: acts_trig, then e_trig (expressions, identities) + e_tsolve (equations) or e_tri (boxes) | 5, then 14 + 15 or 12 |
 | casalg (fractions, logs in coefficients) | 32 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
 | casold (Calculate, CAS, old tools; only via All tools / Calculate) | 25 |
@@ -178,6 +185,34 @@ Each module's own size once loaded, in the order a session loads them:
 | Coord: first answer (perpendicular bisector, loads the CAS) | 4.9 s |
 | Calculus: stationary points, first / again | 7.6 s / 2.5 s |
 | self test, all 50 cases | about 4 min |
+
+## Trig choices
+
+- Two Solve actions, degrees and radians, the Angle setting's one first: the
+  unit of an equation can't be read from it. The interval may be left empty
+  (0 to 360, 0 to 2pi); its ends count as in, and a root on an end gets a
+  note to drop it if the interval is strict.
+- Equations are turned into a polynomial in one ratio of one angle A
+  (sec, cosec, cot as 1/cos ...; sin 2A and cos 2A by the double angle
+  formulas, cos 2A in whichever of sin or cos is there; sin^2 = 1 - cos^2;
+  a sin A + b cos A = 0 as tan; a sin^2 + b sin cos + c cos^2 = k over
+  cos^2; a sin A + b cos A = k by R sin(A + a)), solved with the Algebra
+  quadratic/cubic working, then every angle from the principal value.
+  Anything else is solved numerically (sign changes and touching roots on
+  720 steps), and the page says so. Roots where the equation is undefined
+  (sin x = 0 under sin 2x / sin x) are rejected with a line saying why.
+- Exact angles when they are standard (pi/4, 150), decimals otherwise.
+- Identity? checks numerically at nine values (plus exact simplification when
+  the CAS gets 0) and gives a counterexample when it fails; the proof is
+  still the student's. Simplify spots a constant (the 15 in 2 jun25 8b).
+- Small angle approximations replace sin A, tan A, cos A and keep terms to
+  x^2 (or to the first non-zero one, up to x^4), from the CAS's Maclaurin
+  coefficients, which agree with sin x ~ x, cos x ~ 1 - x^2/2 to that order.
+- Triangle boxes: angle A opposite side a; three values with a side, or
+  two sides and the area (both angles C when they work); SSA gives both
+  triangles when both work. Angles in the Angle setting's unit, the other
+  unit in grey. Arc and sector: any two of r, angle, arc, area, perimeter.
+- The old Trigonometry tools are not used as engines: mpure loads 226 KB.
 
 ## Coord geometry and Calculus choices
 

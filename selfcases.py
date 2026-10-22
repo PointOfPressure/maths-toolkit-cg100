@@ -171,11 +171,26 @@ def check(case):
     import acts
     import topic
     import caslex
-    ref, tid, rows, label, ask, needles = case
-    if tid == 'geo':
-        F = recog.geo([r for r in rows if isinstance(r, tuple)], [r for r in rows if not isinstance(r, tuple)])
-    else:
-        F = recog.form(rows)
+    ref, tid, rows, label, ask, needles = case[:6]
+    import casui
+    keep = dict(casui.SET)
+    kdeg = casui.DEG
+    try:
+        if len(case) > 6:
+            casui.SET.update(case[6])
+            casui.DEG = casui.SET['angle'] == 'deg'
+        return _check(tid, rows, label, ask, needles)
+    finally:
+        casui.SET.clear()
+        casui.SET.update(keep)
+        casui.DEG = kdeg
+
+def _check(tid, rows, label, ask, needles):
+    import recog
+    import acts
+    import topic
+    import caslex
+    F = recog.read(tid, rows)
     if F.err:
         return 'not read'
     off = None
@@ -185,7 +200,9 @@ def check(case):
     if off is None:
         return 'not offered'
     vals = None
-    if off[4]:
+    if off[4] and off[4][0] == 'boxes':
+        vals = topic.readboxes(off[4][1], ask)
+    elif off[4]:
         vals = []
         for a in ask:
             a = a.strip()

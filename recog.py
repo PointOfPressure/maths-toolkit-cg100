@@ -980,6 +980,22 @@ def eqtree(r):
         return ('-', ('v', r.name), r.f)
     return r.f
 
+BLANK = {'trig': 'nothing typed: triangle and sector boxes',
+         'seq': 'nothing typed: AP and GP boxes',
+         'vec': 'nothing typed: vector boxes'}
+
+def read(tid, rows):
+    # one topic's input -> Form: typed rows (Coord geometry: point pairs as
+    # tuples too); nothing typed in a topic with box forms is the 'blank' form
+    if tid == 'geo':
+        return geo([r for r in rows if isinstance(r, tuple)], [r for r in rows if not isinstance(r, tuple)])
+    if tid in BLANK and not [r for r in rows if r.strip()]:
+        F = Form()
+        F.kind = 'blank'
+        F.note = BLANK[tid]
+        return F
+    return form(rows)
+
 def geo(pts, eqs):
     # Coord geometry's reading lives in rgeo.py, loaded only for that topic
     import rgeo
