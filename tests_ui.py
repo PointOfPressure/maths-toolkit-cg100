@@ -114,6 +114,9 @@ def run(check):
     # Trig: EXE with nothing typed offers the boxes; Arc and sector, r = 5,
     # RIGHT to the angle, 1 (radians), EXE
     case('trig sector boxes', 'trig', (EXE, 82, 72, RIGHT, 81, EXE), 'Arc and sector', ['arc=5', 'area=25/2'])
+    # Sequences: EXE with nothing typed, AP facts, a = 3, RIGHT, d = 2,
+    # RIGHT, n = 5, EXE: u(n) and S(n)
+    case('seq AP boxes', 'seq', (EXE, 81, 83, RIGHT, 82, RIGHT, 72, EXE), 'AP facts', ['u(n)=11', 'S(n)=35'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

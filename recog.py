@@ -994,6 +994,9 @@ def read(tid, rows):
         F.kind = 'blank'
         F.note = BLANK[tid]
         return F
+    if tid == 'seq':
+        import rseq
+        return rseq.read(rows)
     return form(rows)
 
 def geo(pts, eqs):

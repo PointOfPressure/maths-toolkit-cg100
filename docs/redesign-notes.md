@@ -37,6 +37,11 @@ while building; change any of them by saying so.
   MENU) for what you want, empty for neither. LEFT/RIGHT at the end of a box
   and UP/DOWN move between boxes; EXE works it out. With no `?`, every
   value not given is boxed.
+- **Sequences and series:** typed like Algebra. A recurrence is
+  `u(n+1) = 3 - u(n)^2` or just `u = 3 - u^2` (u on both sides); u(1) is
+  asked by the action. A formula in n, r or k is a u(n) formula or the term
+  of a sum; `(a + bx)^n` a binomial expansion. Nothing typed: AP facts and
+  GP facts boxes.
 - **Calculus:** typed like Algebra: `y = f(x)` or an expression, `F(x, y) = 0`,
   two rows `x = f(t)` and `y = g(t)`, two curves, or `dy/dx = ...` (dy over
   dx with the fraction key, or typed in a line).
@@ -82,8 +87,8 @@ by its own name (pass2-aqa's check, widened for the extra settings).
 
 ## Topics on home
 
-Calculate, Algebra, Coord geometry, Exp and logs, Calculus and Trig are the
-new screens. Sequences and series, Numerical, Vectors, Statistics,
+Calculate, Algebra, Coord geometry, Exp and logs, Calculus, Trig and
+Sequences and series are the new screens. Numerical, Vectors, Statistics,
 Kinematics, Forces and the Further topics still open their old section menus.
 Graph and Notes are the old screens.
 
@@ -139,6 +144,7 @@ Each module's own size once loaded, in the order a session loads them:
 | eng (+ the action's engine: e_alg 25, e_solve 17, e_fn 21, e_exp 7) | 22 |
 | Coord: coord + rgeo + acts_geo + e_geo | 6 + 3 + 4 + 21 |
 | Calculus: acts_calc + e_calc | 3 + 22 |
+| Sequences: rseq + acts_seq, then e_seq or e_seqbox (+ e_solve, e_fn for unknowns) | 2 + 2, then 15 or 10 |
 | Trig: acts_trig, then e_trig (expressions, identities) + e_tsolve (equations) or e_tri (boxes) | 5, then 14 + 15 or 12 |
 | casalg (fractions, logs in coefficients) | 32 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
@@ -213,6 +219,23 @@ Each module's own size once loaded, in the order a session loads them:
   triangles when both work. Angles in the Angle setting's unit, the other
   unit in grey. Arc and sector: any two of r, angle, arc, area, perimeter.
 - The old Trigonometry tools are not used as engines: mpure loads 226 KB.
+
+## Sequences choices
+
+- A sum of terms that form an AP or GP uses the formula, so letters are fine
+  (sum of br + c, r = 10 to 100, is 5005b + 91c); other sums add the terms
+  (in pairs: a long chain of + would pass the calculator's call depth).
+  An empty "to" box is a sum to infinity (GP only).
+- Terms say what the sequence does: arithmetic (a, d), geometric (a, r),
+  periodic (period p), increasing/decreasing, settling to a value.
+- AP and GP boxes: each formula with one unknown left is solved by the
+  Algebra solver (its working), so n can come from S(n) or u(n); when n
+  isn't whole the page gives S(n) on both sides (n for S(n) > k).
+  Decimals typed: the answers are decimal unless short and exact
+  (374.88).
+- Binomial: whole n expands in the order typed ((2x - 3)^10 from 1024x^10,
+  as 3 nov21 4a); any other n takes the number term out first, with
+  where it is valid.
 
 ## Coord geometry and Calculus choices
 

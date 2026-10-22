@@ -65,9 +65,12 @@ def main(mods):
     return bad
 
 # the redesign: odd things typed into a topic, every action that is offered
-TYPED = ['sin(x)=2', 'tan(x)=0', 'sin(x)cos(x)=0', 'sin(x^2)=0.5', 'sin(x)+cos(2x)+tan(3x)=1',
-         'sec(x)=0', 'sin(x)=sin(x)', 'sin(x)^2+cos(x)^2', 'cos(x)=k', 'sin(2x)=cos(x)', 'tan(x)=1/0',
-         '0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2', '2^x=-1',
+# the stage 2 topics' own awkward inputs (run through those topics only)
+TYPED_NEW = ['u=u', 'u=1/u', 'u=u^2+n', 'u(n+1)=u(n)+1/0', '(1+x)^(1/0)', '(x+y)^3', '(1+x)^100',
+             '(2+x)^(-3/2)', 'n!', 'r^r', 'sin(x)=2', 'tan(x)=0', 'sin(x)cos(x)=0', 'sin(x^2)=0.5',
+             'sin(x)+cos(2x)+tan(3x)=1', 'sec(x)=0', 'sin(x)=sin(x)', 'sin(x)^2+cos(x)^2', 'cos(x)=k',
+             'sin(2x)=cos(x)', 'tan(x)=1/0']
+TYPED = ['0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2', '2^x=-1',
          'logb(1,x)=2', 'sqrt(-x)=3', 'abs(x)=-1', '1/(x-x)', 'x^2+y^2', 'k', 'x=x',
          'pi^x=e', '0^x=0', 'x^x=4', '(x-1)^-1', 'x^(1/3)=-2', '1e9x^2+1e-9', '2^x+2^(2x)',
          'ln(x)=ln(-x)', 'x+y+z=1', 'sin(x)^2+cos(x)^2', 'log(x)^2-3log(x)+2=0',
@@ -78,7 +81,7 @@ TYPED = ['sin(x)=2', 'tan(x)=0', 'sin(x)cos(x)=0', 'sin(x^2)=0.5', 'sin(x)+cos(2
 PAIRS = [['x=1', 'x=2'], ['x+y=1', 'x+y=1'], ['x+y=1', 'x+y=2'], ['x^2+y^2=1', 'x^2+y^2=4'],
          ['0', '0'], ['x', 'y'], ['y=x', 'y=x^2'], ['e^x', 'ln(x)']]
 STOCK = ['2', '3', '1', '5', '']
-NEWT = ('trig',)     # the stage 2 topics, typed rows as the others
+NEWT = ('trig', 'seq')     # the stage 2 topics, typed rows as the others
 BOXES = [
     ('trig', 'Triangle', ['1', '2', '5', '', '', '', '']), ('trig', 'Triangle', ['', '', '', '30', '40', '50', '']),
     ('trig', 'Triangle', ['3', '', '', '', '', '', '']), ('trig', 'Triangle', ['3', '4', '', '', '', '', '20']),
@@ -89,6 +92,12 @@ BOXES = [
     ('trig', 'Arc and sector', ['5', '9', '', '', '', '']), ('trig', 'Arc and sector', ['', '', '', '10', '13', '']),
     ('trig', 'Arc and sector', ['', '', '', '100', '10', '']), ('trig', 'Arc and sector', ['', '', '4', '6', '', '']),
     ('trig', 'Arc and sector', ['k', '1', '', '', '', '']), ('trig', 'Arc and sector', ['2', '', '', '', '3', '?']),
+    ('seq', 'AP facts', ['', '', '', '', '']), ('seq', 'AP facts', ['1', '0', '?', '', '10']),
+    ('seq', 'AP facts', ['1', '1', '0', '', '']), ('seq', 'AP facts', ['1', '2', '1.5', '', '']),
+    ('seq', 'AP facts', ['', '', '10', '5', '?']), ('seq', 'AP facts', ['k', '2', '5', '', '?']),
+    ('seq', 'GP facts', ['1', '1', '5', '', '?', '?']), ('seq', 'GP facts', ['0', '2', '', '', '', '?']),
+    ('seq', 'GP facts', ['2', '-3', '?', '', '1000', '']), ('seq', 'GP facts', ['?', '?', '?', '?', '?', '?']),
+    ('seq', 'GP facts', ['', '0.5', '', '', '', '10']), ('seq', 'GP facts', ['3', '', '4', '24', '', '?']),
 ]
 
 def topics():
@@ -100,11 +109,17 @@ def topics():
     plot.run = lambda *a, **k: None
     bad = 0
     count = 0
-    for rows in [[t] for t in TYPED] + PAIRS:
+    for rows in [[t] for t in TYPED + TYPED_NEW] + PAIRS:
         F = recog.form(rows)
         if F.err:
             continue
         for tid in ('alg', 'exp', 'calc') + NEWT:
+            if rows[0] in TYPED_NEW and tid not in NEWT:
+                continue
+            if tid in NEWT:
+                F = recog.read(tid, rows)
+                if F.err:
+                    continue
             for label, mod, fn, arg, ask in acts.offers(F, tid):
                 vals = None
                 if ask:

@@ -149,9 +149,15 @@ SWEEP = [
     ('trig', ['sin(x)=2/3']), ('trig', ['3sin(x)+4cos(x)']), ('trig', ['cos(x)^2-sin(x)']),
     ('trig', ['sin(x+pi/6)']), ('trig', ['cos(pi/3)+sin(pi/4)']), ('trig', ['sin(2x)', '2sin(x)cos(x)']),
     ('trig', ['sec(x)=2']), ('trig', ['3cos(2x)+5=0']),
+    ('seq', ['']), ('seq', ['u=2u+1']), ('seq', ['u(n+1)=u(n)/2+n']), ('seq', ['(1+2x)^5']),
+    ('seq', ['(1-x)^(-2)']), ('seq', ['(3+k*x)^4']), ('seq', ['5n-3']), ('seq', ['2^n']), ('seq', ['k*r^2']),
+    ('seq', ['a+4d=20', 'a+9d=35']),
 ]
-BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', '1', '?', '', '', '']}
-SWEEP_TILES = [('trig', [''], ['Triangle', 'Arc and sector'])]
+BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', '1', '?', '', '', ''],
+          'AP facts': ['3', '2', '10', '', '?'], 'GP facts': ['3', '1/2', '', '', '', '?']}
+SWEEP_TILES = [('trig', [''], ['Triangle', 'Arc and sector']), ('seq', [''], ['AP facts', 'GP facts']),
+               ('seq', ['u=3-u^2'], ['Terms', 'Sum of terms', 'Limit']),
+               ('seq', ['(1+2x)^7'], ['Expand', 'Coefficient of x^k'])]
 
 def sweep(check):
     import recog

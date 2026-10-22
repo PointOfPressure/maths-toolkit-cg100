@@ -421,6 +421,48 @@ C += [
     ('1 jun23 4', 'trig', ['cos(2x)'], 'Small angle approx', None, ['~1-2x^2']),
 ]
 
+# Sequences and series
+C += [
+    ('1 jun18 3', 'seq', ['sin(n*pi/2)'], 'Terms', ['1', '8'], ['periodic,period4']),
+    ('1 jun18 6a', 'seq', ['(4+x)^(-1/2)'], 'Expand', ['3'], ['~1/2-x/16+3x^2/256']),
+    ('1 jun19 8a', 'seq', ['r^3'], 'Sum (sigma)', ['0', '10'], ['sum=3025']),
+    ('1 jun22 2', 'seq', ['(-1)^n'], 'Terms', ['1', '4'], ['r=-1']),
+    ('1 jun22 6a', 'seq', ['(1-x/2)^(1/2)'], 'Expand', ['2'], ['~1-x/4']),
+    ('1 jun22 9c', 'seq', [''], 'AP facts', ['15', '11', '?', '', '100000'], ['s(133)=98553', 's(134)=100031']),
+    ('1 jun22 12ai', 'seq', [''], 'GP facts', ['1', '1/2', '', '', '', '?'], ['s(inf)=2']),
+    ('1 jun22 12aii', 'seq', ['(1/2)^n'], 'Sum (sigma)', ['1', ''], ['sum=1']),
+    ('1 jun23 1', 'seq', ['(2x-3)^7'], 'Coefficient of x^k', ['7'], ['coefficientofx^7=128']),
+    ('1 jun23 14bii', 'seq', [''], 'GP facts', ['sqrt(2)/4', 'sqrt(2)/2', '8', '', '?', ''],
+     ['~15(1+sqrt(2))/32']),
+    ('1 jun24 12a', 'seq', ['u=-6/u'], 'Terms', ['3', '4'], ['u(2)=-2', 'u(3)=3', 'u(4)=-2']),
+    ('1 jun24 12c', 'seq', ['u(n+1)=-6/u(n)'], 'Sum of terms', ['3', '101'], ['sumof101terms=53']),
+    ('1 jun25 2', 'seq', ['x(n+1)=-x(n)/4'], 'Limit', None, ['l=0', '<1']),
+    ('1 jun25 4a', 'seq', ['(1-8x)^(1/2)'], 'Expand', ['3'], ['|8x|<1|-8x|<1', '~1-4x-8x^2']),
+    ('1 jun25 6', 'seq', [''], 'AP facts', ['3', '-0.5', '250', '', '?'], ['s(n)=-14812.5']),
+    ('1 jun25 9a', 'seq', [''], 'GP facts', ['300', '0.2', '5', '', '?', ''], ['s(n)=374.88']),
+    ('1 nov20 1a', 'seq', ['(9+2x)^(1/2)'], 'Expand', ['3'], ['|2x/9|<1']),
+    ('1 nov20 7ai', 'seq', ['u=3-u^2'], 'Terms', ['2', '3'], ['u(3)=2', 'periodic,period2']),
+    ('1 nov20 7aii', 'seq', ['u=3-u^2'], 'Terms', ['2', '50'], ['u(50)=-1']),
+    ('1 nov20 10ai', 'seq', ['4r+1'], 'Sum (sigma)', ['5', '20'], ['firstterm21', '16terms']),
+    ('1 nov20 10bi', 'seq', ['b*r+c'], 'Sum (sigma)', ['10', '100'], ['~5005b+91c']),
+    ('1 nov21 6a', 'seq', ['a+8d=3', '21/2(2a+20d)=42'], 'Solve', None, ['a=7', 'd=-1/2']),
+    ('2 jun18 2', 'seq', ['(1+2x)^7'], 'Coefficient of x^k', ['2'], ['coefficientofx^2=84']),
+    ('2 jun19 9b', 'seq', ['(4-2x^2)^(1/2)'], 'Expand', ['2'], ['~2-x^2/2', '|x^2/2|<1|-x^2/2|<1']),
+    ('2 jun22 5a', 'seq', ['(2+5x)^4'], 'Expand', ['2'], ['~16+160x']),
+    ('2 jun23 5bii', 'seq', [''], 'AP facts', ['10', '4', '29', '', '?'], ['s(n)=1914']),
+    ('2 jun23 9a', 'seq', ['(1+x)^(-1/2)'], 'Expand', ['3'], ['~1-x/2+3x^2/8']),
+    ('2 jun24 7bi', 'seq', [''], 'GP facts', ['50.1', '1.002', '120', '', '?', ''], ['s(n)=6790']),
+    ('2 jun24 9ai', 'seq', ['(1+3x)^(-1)'], 'Expand', ['3'], ['~1-3x+9x^2']),
+    ('2 jun24 9aii', 'seq', ['(2-3x)^(-1)'], 'Expand', ['3'], ['~1/2+3x/4+9x^2/8']),
+    ('2 nov21 3', 'seq', ['u=-u'], 'Sum of terms', ['1', '95'], ['sumof95terms=1']),
+    ('3 jun18 9b', 'seq', [''], 'GP facts', ['1', '1/sqrt(2)', '', '', '', '?'], ['s(inf)=3.41']),
+    ('3 jun19 3', 'seq', ['2-0.9^(n-1)'], 'Terms', ['1', '5'], ['increasing']),
+    ('3 jun25 6a', 'seq', ['(2-3x)^5'], 'Expand', ['3'], ['~32-240x+720x^2']),
+    ('3 jun25 7', 'seq', ['a*r+5'], 'Sum (sigma)', ['1', '3'], ['~6a+15']),
+    ('3 nov21 4a', 'seq', ['(2x-3)^10'], 'Expand', ['3'], ['~1024x^10-15360x^9+103680x^8']),
+    ('3 nov21 7c', 'seq', [''], 'GP facts', ['30', '0.98', '15', '', '?', ''], ['s(n)=392']),
+]
+
 # parts with calculator steps the new flow does not do yet (not counted as passes)
 NOT_YET = [
     ('1 nov20 8b', 'alg', 'inequality f > g on a window 0..500: no window in Solve inequality yet'),
