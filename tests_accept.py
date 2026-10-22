@@ -513,6 +513,66 @@ C += [
     ('2 nov21 19b', 'vec', ['2i-7j', '2.24i+7.68j'], 'a + t b', ['4'], ['10.96', '23.72']),
 ]
 
+# Statistics (paper 3)
+C += [
+    ('3 jun18 15b', 'stat', ['b(6,0.15)'], 'P(X = r)', ['6'], ['1.1391e-5|0.000011391']),
+    ('3 jun18 15c', 'stat', ['b(6,0.15)'], 'P(X >= r)', ['2'], ['p(x>=2)=0.22352']),
+    ('3 jun18 15d', 'stat', ['b(6,0.15)'], 'Mean, var, sd', None, ['mean=0.9']),
+    ('3 jun18 16ai', 'stat', [''], 'From sums', ['120', '165.6', '261.8', ''], ['mean=1.38']),
+    ('3 jun18 16bi', 'stat', ['n(1.38,0.527^2)'], 'P(a < X < b)', ['0.5', '1.5'], ['=0.542']),
+    ('3 jun18 16d', 'stat', ['n(?,0.21^2)'], 'Find mu', ['1', '0.75', '0.1'], ['mu=0.481']),
+    ('3 jun18 17a', 'stat', ['b(10,0.5)'], 'Test for p', ['2', '7', '10'],
+     ['p(x>=7)=1-p(x<=6)=0.17188', 'x<=1orx>=9', 'donotrejecth0']),
+    ('3 jun18 17b', 'stat', ['b(20,0.5)'], 'Critical region', ['1', '10'], ['criticalregion:x>=14']),
+    ('3 jun18 18b', 'stat', ['n(66.5,21.2^2)'], 'Test for mean', ['0', '750', '65.4', '10'],
+     ['=-1.421', 'rejecth0']),
+    ('3 jun19 12a', 'stat', ['162,169,172,156,146,161,159,164,157,160'], 'Outliers', None, ['2sdoutliers:146']),
+    ('3 jun19 12b', 'stat', ['162,169,172,156,161,159,164,157,160'], 'Summary stats', None,
+     ['mean=162.22', 'sd=5.0'] ),
+    ('3 jun19 13bi', 'stat', ['b(30,0.2)'], 'P(X = r)', ['10'], ['p(x=10)=0.0355']),
+    ('3 jun19 13bii', 'stat', ['b(30,0.2)'], 'P(X >= r)', ['5'], ['p(x>=5)=0.745']),
+    ('3 jun19 15', 'stat', [''], 'PMCC test', ['0.567', '10', '5', '1'], ['0.5494', 'rejecth0']),
+    ('3 jun19 16b', 'stat', ['n(78.9,25^2)'], 'Test for mean', ['2', '918', '80.4', '5'],
+     ['=1.8179', 'donotrejecth0']),
+    ('3 jun19 17a', 'stat', [''], 'mu, sigma from two', ['30', '0.1', '32.5', '0.2'], ['mu=37.2', 'sigma=5.68']),
+    ('3 jun19 17bii', 'stat', ['n(37.3,5.70^2)'], 'P(X < x)', ['35'], ['p(x<35)=0.34']),
+    ('3 jun19 17c', 'stat', ['b(13,0.344)'], 'P(X <= r)', ['3'], ['p(x<=3)=0.29']),
+    ('3 jun22 14bii', 'stat', ['b(20,0.3)'], 'P(X <= r)', ['3'], ['p(x<=3)=0.10709']),
+    ('3 jun22 14biii', 'stat', ['b(20,0.3)'], 'P(X >= r)', ['10'], ['p(x>=10)=0.04796']),
+    ('3 jun22 16c', 'stat', [''], 'Two events', ['153/240', '45/240', '21/240', '', ''], ['notindependent']),
+    ('3 jun22 17', 'stat', ['n(34,4.5^2)'], 'Test for mean', ['1', '30', '36.2', '2.5'], ['=2.6778', 'rejecth0']),
+    ('3 jun22 18a', 'stat', ['n(1.78,0.23^2)'], 'P(a < X < b)', ['1.33', '2.22'], ['=0.947']),
+    ('3 jun22 18c', 'stat', [''], 'From sums', ['40', '69.2', '', '2.81'], ['mean=1.73', 'sd=0.26505']),
+    ('3 jun22 19', 'stat', ['b(35,0.42)'], 'Test for p', ['1', '18', '10'], ['=0.16', 'x>=19', 'donotrejecth0']),
+    ('3 jun23 12c', 'stat', ['b(32,0.4)'], 'P(X <= r)', ['16'], ['p(x<=16)=0.908']),
+    ('3 jun23 12e', 'stat', ['b(32,0.4)'], 'Mean, var, sd', None, ['mean=12.8']),
+    ('3 jun23 14b', 'stat', ['n(24500,5200^2)'], 'Test for mean', ['2', '24', '26730', '5'], ['=2.10', 'rejecth0']),
+    ('3 jun23 15a', 'stat', [''], 'Outlier fences', ['1167', '1393', '1570', ''], ['median+1.5iqr=1997.5']),
+    ('3 jun23 16ai', 'stat', ['n(6.5,0.73^2)'], 'P(X < x)', ['5.2'], ['p(x<5.2)=0.0374']),
+    ('3 jun23 16aii', 'stat', ['n(6.5,0.73^2)'], 'P(X > x)', ['7'], ['p(x>7)=0.24']),
+    ('3 jun23 16b', 'stat', [''], 'mu, sigma from two', ['5.9', '0.6', '6.1', '0.8'], ['mu=5.81', 'sigma=0.34']),
+    ('3 jun23 17', 'stat', ['b(25,0.7)'], 'Test for p', ['1', '21', '2.5'], ['=0.0904', 'donotrejecth0']),
+    ('3 jun24 12', 'stat', ['0,1,2,3,4,5,6,7', '1,4,18,16,5,37,2,1'], 'Frequency table', None, ['iqr=3']),
+    ('3 jun24 14a', 'stat', [''], 'From sums', ['350', '945000', '2607500000', ''], ['mean=2700']),
+    ('3 jun24 15e', 'stat', ['b(48,0.175)'], 'P(a <= X <= b)', ['9', '15'], ['=0.462']),
+    ('3 jun24 16', 'stat', [''], 'PMCC test', ['-0.45', '50', '2.5', '1'], ['0.2787', 'rejecth0']),
+    ('3 jun24 17e', 'stat', ['n(50,4^2)'], 'x from P(X < x)', ['0.05'], ['x=43.4']),
+    ('3 jun24 18b', 'stat', [''], 'Two events', ['0.39', '0.28', '0.21', '', ''], ['notindependent']),
+    ('3 jun24 19aii', 'stat', ['b(25,0.8)'], 'Critical region', ['2', '10'], ['x<=16orx>=24']),
+    ('3 jun25 15aiii', 'stat', ['b(25,0.2)'], 'P(X >= r)', ['9'], ['p(x>=9)=0.0468']),
+    ('3 jun25 17a', 'stat', ['2,4,3,1,4,5,2,3'], 'Summary stats', None, ['mean=3']),
+    ('3 jun25 18a', 'stat', ['n(5.7,1.2^2)'], 'x from P(X < x)', ['0.25'], ['x=4.8906']),
+    ('3 jun25 18b', 'stat', ['n(5.7,1.2^2)'], 'Test for mean', ['0', '160', '5.6', '5'], ['donotrejecth0']),
+    ('3 nov20 15a', 'stat', [''], 'Stratified sample', ['70', '4735,8565'], ['sample:25,45']),
+    ('3 nov20 16', 'stat', [''], 'PMCC test', ['0.379', '25', '1', '1'], ['0.4622', 'donotrejecth0']),
+    ('3 nov20 17c', 'stat', ['n(7,?)'], 'Find sigma', ['0', '5', '0.25'], ['sigma=2.965']),
+    ('3 nov20 18bi', 'stat', ['b(60,0.3)'], 'Critical region', ['0', '5'], ['x<=11']),
+    ('3 nov21 14c', 'stat', [''], 'Two events', ['0.3', '0.6', '0.1', '', ''], ['notindependent']),
+    ('3 nov21 15', 'stat', ['n(65,11.3^2)'], 'Test for mean', ['2', '100', '67.8', '2'], ['=2.4779', 'rejecth0']),
+    ('3 nov21 17d', 'stat', ['b(15,0.6)'], 'Test for p', ['1', '12', '5'], ['=0.0905', 'donotrejecth0']),
+    ('3 nov21 18bii', 'stat', [''], 'mu, sigma from two', ['346', '0.975', '336', '0.14'], ['mu=340', 'sigma=3.2']),
+]
+
 # parts with calculator steps the new flow does not do yet (not counted as passes)
 NOT_YET = [
     ('1 nov20 8b', 'alg', 'inequality f > g on a window 0..500: no window in Solve inequality yet'),
@@ -625,6 +685,8 @@ def _run_case(tid, rows, label, ask, needles):
     if off[4]:
         if off[4][0] == 'choose':
             vals = [int(ask[0])]
+        elif off[4][0] == 'choose+':
+            vals = [int(ask[0])] + [None if a.strip() in ('', '?') else caslex.parse(a) for a in ask[1:]]
         elif off[4][0] == 'boxes' and len(off[4]) > 3:
             vals = [a.strip() or None for a in ask]
         elif off[4][0] == 'boxes':

@@ -215,6 +215,8 @@ def _check(tid, rows, label, ask, needles):
     vals = None
     if off[4] and off[4][0] == 'choose':
         vals = [int(ask[0])]
+    elif off[4] and off[4][0] == 'choose+':
+        vals = [int(ask[0])] + [None if a.strip() in ('', '?') else caslex.parse(a) for a in ask[1:]]
     elif off[4] and off[4][0] == 'boxes' and len(off[4]) > 3:
         vals = [a.strip() or None for a in ask]
     elif off[4] and off[4][0] == 'boxes':

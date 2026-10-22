@@ -123,6 +123,10 @@ def run(check):
     # MENU, so the second row of two points: EXE on nothing, then the
     # size-and-direction boxes: 2, RIGHT, 0, EXE
     case('vec polar boxes', 'vec', (EXE, 82, 82, RIGHT, 91, EXE), 'From size, direction', ['2i'])
+    # Statistics (mockups B to D): b(20, 0.3) typed as ALPHA b ( 2 0 , 0 . 3 ),
+    # tile 3 P(X >= r), r = 4
+    case('stat binomial', 'stat', (32, 42, 55, 82, 91, 51, 91, 92, 83, 56, EXE, 83, 71, EXE), 'P(X >= r)',
+         ['P(X>=4)=0.89291'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

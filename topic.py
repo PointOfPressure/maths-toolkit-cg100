@@ -20,12 +20,13 @@ TOPICS = {
     'geo': ('Coord geometry', 'line or circle', 'C'),
     'calc': ('Calculus', 'y = x^3 - 3x  or  dy/dx = ...', 'GH'),
     'trig': ('Trig', '2sin^2 x = cos x   or EXE: triangle', 'E'),
+    'stat': ('Statistics', 'b(20, 0.3)  n(5, 2^2)  or data, 1, 2', 'KLMNO'),
     'vec': ('Vectors', '3i + 4j  or (3, 4); DOWN: a second', 'J'),
     'num': ('Numerical', 'x - 2sin x,  x = g(x)  or  y values', 'I'),
     'seq': ('Sequences, series', 'u = 3 - u^2,  (1 + 2x)^7   or EXE: AP', 'D'),
 }
 # topics where EXE with nothing typed offers their box forms (triangle, AP)
-BLANK = ('trig', 'seq', 'vec')
+BLANK = ('trig', 'seq', 'vec', 'stat')
 
 STATE = {}      # topic id -> {'rows': [...], 'sel': tile, 'key': text, 'F': form, 'offers': [...]}
 
@@ -414,6 +415,13 @@ def prompt(tid, st, label, ask):
         return None if i < 0 else [i]
     if ask[0] == 'boxes':
         return boxes(tid, st, label, ask)
+    if ask[0] == 'choose+':
+        # a choice (the tail of a test), then the boxes
+        i = casui.menu(label, ask[1])
+        if i < 0:
+            return None
+        rest = prompt(tid, st, label + ': ' + ask[1][i], ask[2])
+        return None if rest is None else [i] + rest
     eds = []
     for ln in ask:
         for j in range(ln[1]):

@@ -17,7 +17,7 @@ MATHS = (
     ('Calculus', 't:calc'),
     ('Numerical', 't:num'),
     ('Vectors', 't:vec'),
-    ('Statistics', 'o:KLMNO'),
+    ('Statistics', 't:stat'),
     ('Kinematics', 'o:PQ'),
     ('Forces', 'o:RS'),
 )

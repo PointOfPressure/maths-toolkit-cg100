@@ -71,7 +71,8 @@ TYPED_NEW = ['u=u', 'u=1/u', 'u=u^2+n', 'u(n+1)=u(n)+1/0', '(1+x)^(1/0)', '(1+x)
              'sin(x)+cos(2x)+tan(3x)=1', 'sec(x)=0', 'sin(x)=sin(x)', 'sin(x)^2+cos(x)^2', 'cos(x)=k',
              'sin(2x)=cos(x)', 'tan(x)=1/0', 'x=x', 'x=x+1', 'x=1/x', 'x=x^2', '1/(x-1)', 'x^2+1',
              '1, 2, 3', '1,,2', '1, x', 'sqrt(-1-x^2)', '0i+0j', '(0,0)', 'i', '(1,2,3,4)', 'i*j', '(x,y)',
-             'k', '(1/0, 2)']
+             'k', '(1/0, 2)', 'b(0,0.5)', 'b(5,1)', 'b(5,0)', 'b(1000,0.5)', 'b(2.5,0.3)', 'b(5,2)', 'n(0,0)',
+             'n(?,?)', 'n(1,1/0)', 'n(0,1)', '1', '5,5,5,5', '1,2', '1,2,3', 'x,2']
 TYPED = ['(x+y)^3', '0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2', '2^x=-1',
          'logb(1,x)=2', 'sqrt(-x)=3', 'abs(x)=-1', '1/(x-x)', 'x^2+y^2', 'k', 'x=x',
          'pi^x=e', '0^x=0', 'x^x=4', '(x-1)^-1', 'x^(1/3)=-2', '1e9x^2+1e-9', '2^x+2^(2x)',
@@ -83,7 +84,7 @@ TYPED = ['(x+y)^3', '0', '1/0', 'x/x', 'x^2=-1', 'ln(0)', 'x^20+1', 'e^(e^x)=2',
 PAIRS = [['x=1', 'x=2'], ['x+y=1', 'x+y=1'], ['x+y=1', 'x+y=2'], ['x^2+y^2=1', 'x^2+y^2=4'],
          ['0', '0'], ['x', 'y'], ['y=x', 'y=x^2'], ['e^x', 'ln(x)']]
 STOCK = ['2', '3', '1', '5', '']
-NEWT = ('trig', 'seq', 'num', 'vec')     # the stage 2 topics, typed rows as the others
+NEWT = ('trig', 'seq', 'num', 'vec', 'stat')     # the stage 2 topics, typed rows as the others
 BOXES = [
     ('trig', 'Triangle', ['1', '2', '5', '', '', '', '']), ('trig', 'Triangle', ['', '', '', '30', '40', '50', '']),
     ('trig', 'Triangle', ['3', '', '', '', '', '', '']), ('trig', 'Triangle', ['3', '4', '', '', '', '', '20']),
@@ -102,8 +103,18 @@ BOXES = [
     ('seq', 'GP facts', ['', '0.5', '', '', '', '10']), ('seq', 'GP facts', ['3', '', '4', '24', '', '?']),
     ('vec', 'From size, direction', ['', '']), ('vec', 'From size, direction', ['k', '30']),
     ('vec', 'From size, direction', ['0', '0']),
+    ('stat', 'From sums', ['0', '5', '3', '']), ('stat', 'From sums', ['5', '10', '1', '']),
+    ('stat', 'From sums', ['5', '10', '', '']), ('stat', 'PMCC test', ['2', '10', '5', '1']),
+    ('stat', 'PMCC test', ['0.5', '3', '5', '']), ('stat', 'PMCC test', ['0.5', '200', '0.1', '2']),
+    ('stat', 'PMCC test', ['0.5', '10', '5', '3']), ('stat', 'Two events', ['', '', '', '', '']),
+    ('stat', 'Two events', ['0.9', '0.9', '0.1', '', '']), ('stat', 'Two events', ['2', '0.5', '0.1', '', '']),
+    ('stat', 'Two events', ['0.5', '', '', '0.7', '0.4']), ('stat', 'mu, sigma from two', ['1', '0.5', '1', '0.5']),
+    ('stat', 'mu, sigma from two', ['1', '0.9', '2', '0.1']), ('stat', 'mu, sigma from two', ['1', '0', '2', '1']),
+    ('stat', 'Outlier fences', ['', '', '', '']), ('stat', 'Outlier fences', ['5', '', '3', '2']),
 ]
 RAWBOXES = [
+    ('stat', 'Stratified sample', ['', '']), ('stat', 'Stratified sample', ['10', '0,0']),
+    ('stat', 'Stratified sample', ['10', 'a,b']), ('stat', 'Stratified sample', ['10', '5']),
     ('vec', 'Quadrilateral ABCD', ['(0,0)', '(0,0)', '(0,0)', '(0,0)']),
     ('vec', 'Quadrilateral ABCD', ['(0,0)', '(1,1)', '', '(2,3)']),
     ('vec', 'Quadrilateral ABCD', ['(0,0)', '(2,0)', '(3,1)', '(1,1)']), ('vec', 'Quadrilateral ABCD', ['x', 'y', 'z', 'w']),
@@ -137,6 +148,8 @@ def topics():
                         vals = [1]
                     elif ask[0] == 'boxes':
                         continue
+                    elif ask[0] == 'choose+':
+                        vals = [2] + [caslex.parse(x) for x in ('3', '20', '5')[:len(ask[2])]]
                     else:
                         n = sum([ln[1] for ln in ask])
                         vals = [None if not STOCK[i % 5] else caslex.parse(STOCK[i % 5])

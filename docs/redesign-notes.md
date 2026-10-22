@@ -51,6 +51,12 @@ while building; change any of them by saying so.
   (a and b, or the position vectors of A and B). Nothing typed: the
   Quadrilateral ABCD boxes (each point as (x, y)) and size-and-direction
   boxes (angle anticlockwise from i, in the Angle setting).
+- **Statistics:** type `b(20, 0.3)` or `n(5.7, 1.2^2)` (`?` for an unknown
+  mu or sigma; `x~` in front is fine), a data list with commas, or two
+  lists on two rows (both readings offered: values and frequencies, or x
+  and y). A test first asks the tail (a menu), then its boxes. Nothing
+  typed: From sums, PMCC test, Two events, mu and sigma from two,
+  Stratified sample, Outlier fences.
 - **Calculus:** typed like Algebra: `y = f(x)` or an expression, `F(x, y) = 0`,
   two rows `x = f(t)` and `y = g(t)`, two curves, or `dy/dx = ...` (dy over
   dx with the fraction key, or typed in a line).
@@ -97,7 +103,8 @@ by its own name (pass2-aqa's check, widened for the extra settings).
 ## Topics on home
 
 Calculate, Algebra, Coord geometry, Exp and logs, Calculus, Trig,
-Sequences and series, Numerical and Vectors are the new screens. Statistics,
+Sequences and series, Numerical, Vectors and Statistics are the new
+screens.
 Kinematics, Forces and the Further topics still open their old section menus.
 Graph and Notes are the old screens.
 
@@ -156,6 +163,7 @@ Each module's own size once loaded, in the order a session loads them:
 | Sequences: rseq + acts_seq, then e_seq or e_seqbox (+ e_solve, e_fn for unknowns) | 2 + 2, then 15 or 10 |
 | Numerical: rnum + acts_num, then e_num | 2 + 1, then 9 |
 | Vectors: rvec + acts_vec, then e_vec | 4 + 2, then 11 |
+| Statistics: rstat + acts_stat, then e_stat or e_data (+ fmt; no CAS) | 3 + 4, then 13 or 14 |
 | Trig: acts_trig, then e_trig (expressions, identities) + e_tsolve (equations) or e_tri (boxes) | 5, then 14 + 15 or 12 |
 | casalg (fractions, logs in coefficients) | 32 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
@@ -281,6 +289,21 @@ Each module's own size once loaded, in the order a session loads them:
 - The quadrilateral names itself from parallel pairs and equal sides and
   diagonals (square, rectangle, rhombus, parallelogram, trapezium,
   isosceles trapezium, kite).
+
+## Statistics choices
+
+- No CAS: the engines use floats and fmt.py (sf, dec), so a Statistics
+  session with an answer page is about 210 KB (eng and caseng would add 85).
+- A significance level of 1 or more is a percentage, below 1 a proportion
+  (5 and 0.05 are both 5%).
+- Binomial tests give the probability of the observed value or more extreme,
+  the comparison, and the critical region with its actual significance; a
+  two-tail test compares with half the level in the tail the value is in.
+- PMCC critical values are worked out from the distribution of r under H0
+  (Simpson's rule), so any n works; for n = 4 to 30 they match the booklet
+  table to 4 d.p. (all 108 checked), and n = 50 at 2.5% gives 0.2787.
+- sd divides by n (the booklet's sigma); s with n - 1 is in grey.
+  Quartiles use the AQA position rule (as the old tools).
 
 ## Coord geometry and Calculus choices
 

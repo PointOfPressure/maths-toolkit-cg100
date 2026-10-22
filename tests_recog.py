@@ -155,17 +155,28 @@ SWEEP = [
     ('num', ['x^3+x-1']), ('num', ['x=cos(x)']), ('num', ['e^x=3x']), ('num', ['1, 2, 4, 8']),
     ('vec', ['']), ('vec', ['3i-4j']), ('vec', ['(1,2,2)']), ('vec', ['2i+j', '4i+2j']), ('vec', ['(1,0)', '(0,1)']),
     ('vec', ['(p,3)', '(1,2)']),
+    ('stat', ['']), ('stat', ['b(12,0.25)']), ('stat', ['n(10,2^2)']), ('stat', ['n(?,3^2)']), ('stat', ['n(5,?)']),
+    ('stat', ['3,1,4,1,5,9,2,6']), ('stat', ['1,2,3,4', '2,3,5,4']),
 ]
 BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', '1', '?', '', '', ''],
           'AP facts': ['3', '2', '10', '', '?'], 'GP facts': ['3', '1/2', '', '', '', '?'],
-          'Quadrilateral ABCD': ['(0,0)', '(4,0)', '(4,3)', '(0,3)'], 'From size, direction': ['2', '1']}
+          'Quadrilateral ABCD': ['(0,0)', '(4,0)', '(4,3)', '(0,3)'], 'From size, direction': ['2', '1'],
+          'From sums': ['10', '50', '300', ''], 'PMCC test': ['0.6', '12', '5', ''],
+          'Two events': ['0.5', '0.4', '0.2', '', ''], 'mu, sigma from two': ['10', '0.2', '14', '0.9'],
+          'Stratified sample': ['20', '30,50,20'], 'Outlier fences': ['3', '5', '8', '']}
+CHOOSEPLUS = {'Test for p': ['2', '5'], 'Critical region': ['5'], 'Test for mean': ['20', '11', '5'],
+              'Find mu': ['12', '0.3'], 'Find sigma': ['8', '0.2']}
+ANSWER['x from P(X < x)'] = ['0.3']
 ANSWER.update({'Sign change': ['2', '3', ''], 'Newton-Raphson': ['2', ''], 'Bisection': ['0', '1', ''],
                'Trapezium rule': ['0', '1', '4'], 'Iterate': ['0.5', '']})
 SWEEP_TILES = [('trig', [''], ['Triangle', 'Arc and sector']), ('seq', [''], ['AP facts', 'GP facts']),
                ('seq', ['u=3-u^2'], ['Terms', 'Sum of terms', 'Limit']),
                ('seq', ['(1+2x)^7'], ['Expand', 'Coefficient of x^k']),
                ('vec', [''], ['Quadrilateral ABCD', 'From size, direction']),
-               ('vec', ['(1,2)', '(3,4)'], ['AB and distance', 'Sum, difference', 'Parallel?'])]
+               ('vec', ['(1,2)', '(3,4)'], ['AB and distance', 'Sum, difference', 'Parallel?']),
+               ('stat', ['b(20,0.3)'], ['P(X = r)', 'P(X <= r)', 'P(X >= r)', 'P(a <= X <= b)', 'Mean, var, sd',
+                                       'Test for p']),
+               ('stat', ['2,3,5,7,8,9,11,14'], ['Summary stats', 'Quartiles, IQR', 'Outliers'])]
 
 def sweep(check):
     import recog
@@ -182,6 +193,8 @@ def sweep(check):
             vals = None
             if ask and ask[0] == 'choose':
                 vals = [0]
+            elif ask and ask[0] == 'choose+':
+                vals = [1] + [caslex.parse(a) for a in CHOOSEPLUS[label]]
             elif ask and ask[0] == 'boxes' and len(ask) > 3:
                 vals = BOXANS[label]
             elif ask and ask[0] == 'boxes':

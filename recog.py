@@ -982,7 +982,8 @@ def eqtree(r):
 
 BLANK = {'trig': 'nothing typed: triangle and sector boxes',
          'seq': 'nothing typed: AP and GP boxes',
-         'vec': 'nothing typed: vector boxes'}
+         'vec': 'nothing typed: vector boxes',
+         'stat': 'nothing typed: sums, tests and probability boxes'}
 
 def read(tid, rows):
     # one topic's input -> Form: typed rows (Coord geometry: point pairs as
@@ -1003,6 +1004,9 @@ def read(tid, rows):
     if tid == 'vec':
         import rvec
         return rvec.read(rows)
+    if tid == 'stat':
+        import rstat
+        return rstat.read(rows)
     return form(rows)
 
 def geo(pts, eqs):
