@@ -375,7 +375,7 @@ C += [
     ('1 jun18 12c', 'trig', ['30sec(x)^2+2cos(x)=7(sec(x)+1)'], 'Solve (degrees)', ['0', '360'],
      ['cosx=-2:nosolutions', 'cosx=5/2:nosolutions', 'cosx=3:nosolutions', 'nosolutionsintheinterval']),
     ('1 jun19 3', 'trig', [''], 'Arc and sector', ['4', '0.8', '', '?', '', ''], ['area=6.4'], {'angle': 'rad'}),
-    ('1 jun19 12b', 'trig', ['1/sin(x)=3/2'], 'Solve (degrees)', ['90', '180'], ['x=138']),
+    ('1 jun19 12b trig', 'trig', ['1/sin(x)=3/2'], 'Solve (degrees)', ['90', '180'], ['x=138']),
     ('1 jun19 12b t', 'trig', ['sin(x)=2/3'], 'Other ratios', ['1'], ['tanx=-2sqrt(5)/5']),
     ('1 jun22 12b', 'trig', ['1/(1-cos(x))=2-sqrt(2)'], 'Solve (radians)', ['0', '2pi'], ['x=3pi/4', 'x=5pi/4']),
     ('1 jun22 15aiii', 'trig', ['sqrt(1/sin(x)^2-1)*sin(x)=cos(x)'], 'Identity?', None, ['notanidentity', '0<x<pi/2']),
@@ -658,12 +658,12 @@ def _run_case(tid, rows, label, ask, needles):
     return True, ''
 
 def run(check):
-    # the calculator's self test runs a copy of 50 of these: still the same
+    # the calculator's self test runs a copy of 62 of these: still the same
     import selfcases
     byref = {}
     for c in C:
         byref[c[0]] = c
-    check('selfcases has 50 cases', len(selfcases.CASES) == 50, len(selfcases.CASES))
+    check('selfcases has 62 cases', len(selfcases.CASES) == 62, len(selfcases.CASES))
     for c in selfcases.CASES:
         check('selfcases ' + c[0] + ' matches tests_accept', byref.get(c[0]) == c, c)
     for case in C:

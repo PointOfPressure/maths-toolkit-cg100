@@ -1,4 +1,4 @@
-# The self test's cases and runner (selftest.py starts it). 50 past-paper
+# The self test's cases and runner (selftest.py starts it). 62 past-paper
 # parts from tests_accept.py, run through the new topic flow exactly as the
 # screens do (recognise, the action from the tiles, its engine) without
 # drawing the answers; each shows pass or fail and the free memory, then one
@@ -56,6 +56,19 @@ CASES = (
     ('3 nov20 8bii', 'exp', ['logb(3,3^n/2^(2n-5))'], 'Expand logs', None, ['~n-(2n-5)logb(3,2)']),
     ('3 nov21 6', 'alg', ['(10+5x-2sqrt(x)-x^(3/2))/(5-sqrt(x))'], 'Simplify', None, ['x+2']),
     ('1 jun18 2', 'exp', ['5^x'], 'Transform', ['5', '1', '0', '0'], ['~5^(x+1)']),
+    # stage 2: Trig, Sequences, Numerical, Vectors (each engine module once)
+    ('1 jun23 10ai', 'trig', ['sin(x)=0.5'], 'Solve (degrees)', ['-360', '0'], ['x=-330', 'x=-210']),
+    ('2 jun22 4', 'trig', [''], 'Triangle', ['6.1', '8.7', '', '38', '?', '', ''], ['b=61.4', 'b=119'], {'angle': 'deg'}),
+    ('3 jun25 10a', 'trig', ['2sin(x)+5cos(x)'], 'R form', ['0'], ['r=sqrt(29)', 'a=68.2'], {'angle': 'deg'}),
+    ('1 jun24 12c', 'seq', ['u(n+1)=-6/u(n)'], 'Sum of terms', ['3', '101'], ['sumof101terms=53']),
+    ('1 jun22 9c', 'seq', [''], 'AP facts', ['15', '11', '?', '', '100000'], ['s(133)=98553', 's(134)=100031']),
+    ('1 jun18 6a', 'seq', ['(4+x)^(-1/2)'], 'Expand', ['3'], ['~1/2-x/16+3x^2/256']),
+    ('1 jun18 8b', 'num', ['x-2sin(x)'], 'Newton-Raphson', ['pi', '2'], ['x(3)=1.913223']),
+    ('1 jun19 14aii', 'num', ['2x^3/(x^2+1)'], 'Trapezium rule', ['0', '4', '4'], ['area~13.36']),
+    ('1 nov21 7c', 'num', ['x=sqrt(x-1+3/x)'], 'Iterate', ['1.5', '3'], ['1.5811', '1.5743', '1.57477']),
+    ('2 jun18 14a', 'vec', ['(3,5,1)', '(-1,2,7)'], 'AB and distance', None, ['ab=-4i-3j+6k', '|ab|=sqrt(61)']),
+    ('2 jun23 18b', 'vec', ['-3i-sqrt(3)j', '-3i+sqrt(3)j'], 'Angle between', None, ['angle=60'], {'angle': 'deg'}),
+    ('2 nov21 12', 'vec', [''], 'From size, direction', ['6', '30'], ['3sqrt(3)i+3j'], {'angle': 'deg'}),
 )
 
 INK = (24, 28, 36)
@@ -67,7 +80,7 @@ ORANGE = (235, 130, 30)
 # The log rows exist before any case runs: on a full heap a row's text may not
 # fit (NOMEM is written instead), but writing a row and the summary never
 # needs memory the cases used up.
-ROWS = 56
+ROWS = 68
 TXT = [None] * ROWS
 COL = [GREY] * ROWS
 NLOG = [0]
