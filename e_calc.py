@@ -289,7 +289,7 @@ def stationary(F, arg, vals):
         elif c < -1e-9:
             kind = 'maximum'
         else:
-            kind = _sign_change(d1, v, val(r))
+            kind = _sign_change(d1, v, r, env)
         cs = eng.nice(caseng.subst(d2, v, r))
         lines.append(v + ' = ' + txt(r) + ':  d2' + y + '/d' + v + '2 = ' + txt(cs) +
                      (' > 0' if kind == 'minimum' and c is not None and c > 0 else
@@ -298,11 +298,24 @@ def stationary(F, arg, vals):
         lines.append(kind)
     return lines
 
-def _sign_change(d1, v, x):
-    # d2 = 0: the sign of dy/dx either side decides
+def _sign_change(d1, v, r, env):
+    # d2 = 0: the sign of dy/dx either side decides (letters at their
+    # sample values, as for d2)
+    x = val(r, env)
+    if x is None or isinstance(x, complex):
+        return 'stationary point'
     h = 1e-3 * (1 + abs(x))
-    a = val(d1, {v: x - h})
-    b = val(d1, {v: x + h})
+    e1 = {}
+    e2 = {}
+    for k in env:
+        e1[k] = env[k]
+        e2[k] = env[k]
+    e1[v] = x - h
+    e2[v] = x + h
+    a = val(d1, e1)
+    b = val(d1, e2)
+    if isinstance(a, complex) or isinstance(b, complex):
+        return 'stationary point'
     if a is None or b is None:
         return 'stationary point'
     if a < 0 < b:
