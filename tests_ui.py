@@ -127,6 +127,10 @@ def run(check):
     # tile 3 P(X >= r), r = 4
     case('stat binomial', 'stat', (32, 42, 55, 82, 91, 51, 91, 92, 83, 56, EXE, 83, 71, EXE), 'P(X >= r)',
          ['P(X>=4)=0.89291'])
+    # Kinematics (mockup F): EXE with nothing typed, SUVAT, s = ?, u = 3,
+    # v empty, a = 2, t = 4 (MENU ? is awkward by keys: no ?, so every
+    # missing value is boxed)
+    case('kin suvat', 'kin', (EXE, 81, RIGHT, 83, RIGHT, RIGHT, 82, RIGHT, 71, EXE), 'SUVAT', ['s=28', 'v=11'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

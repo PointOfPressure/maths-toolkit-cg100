@@ -18,7 +18,7 @@ MATHS = (
     ('Numerical', 't:num'),
     ('Vectors', 't:vec'),
     ('Statistics', 't:stat'),
-    ('Kinematics', 'o:PQ'),
+    ('Kinematics', 't:kin'),
     ('Forces', 'o:RS'),
 )
 FURTHER = (

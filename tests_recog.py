@@ -157,13 +157,17 @@ SWEEP = [
     ('vec', ['(p,3)', '(1,2)']),
     ('stat', ['']), ('stat', ['b(12,0.25)']), ('stat', ['n(10,2^2)']), ('stat', ['n(?,3^2)']), ('stat', ['n(5,?)']),
     ('stat', ['3,1,4,1,5,9,2,6']), ('stat', ['1,2,3,4', '2,3,5,4']),
+    ('kin', ['']), ('kin', ['v=3t^2-4t']), ('kin', ['s=t^3-6t']), ('kin', ['a=6t-2']), ('kin', ['v=k*t^2']),
+    ('kin', ['r=t^2i+(3t-1)j']), ('kin', ['v=2i+t*j']), ('kin', ['0,2,5', '0,4,-2']),
 ]
 BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', '1', '?', '', '', ''],
           'AP facts': ['3', '2', '10', '', '?'], 'GP facts': ['3', '1/2', '', '', '', '?'],
           'Quadrilateral ABCD': ['(0,0)', '(4,0)', '(4,3)', '(0,3)'], 'From size, direction': ['2', '1'],
           'From sums': ['10', '50', '300', ''], 'PMCC test': ['0.6', '12', '5', ''],
           'Two events': ['0.5', '0.4', '0.2', '', ''], 'mu, sigma from two': ['10', '0.2', '14', '0.9'],
-          'Stratified sample': ['20', '30,50,20'], 'Outlier fences': ['3', '5', '8', '']}
+          'Stratified sample': ['20', '30,50,20'], 'Outlier fences': ['3', '5', '8', ''],
+          'SUVAT': ['?', '2', '', '3', '4'], 'Projectile': ['20', '0.6', '', '', '', '']}
+ANSWER.update({'Distance': ['0', '3'], 'At time t': ['2'], 'Displacement': ['1', '0'], 'Velocity': ['0']})
 CHOOSEPLUS = {'Test for p': ['2', '5'], 'Critical region': ['5'], 'Test for mean': ['20', '11', '5'],
               'Find mu': ['12', '0.3'], 'Find sigma': ['8', '0.2']}
 ANSWER['x from P(X < x)'] = ['0.3']
@@ -176,7 +180,9 @@ SWEEP_TILES = [('trig', [''], ['Triangle', 'Arc and sector']), ('seq', [''], ['A
                ('vec', ['(1,2)', '(3,4)'], ['AB and distance', 'Sum, difference', 'Parallel?']),
                ('stat', ['b(20,0.3)'], ['P(X = r)', 'P(X <= r)', 'P(X >= r)', 'P(a <= X <= b)', 'Mean, var, sd',
                                        'Test for p']),
-               ('stat', ['2,3,5,7,8,9,11,14'], ['Summary stats', 'Quartiles, IQR', 'Outliers'])]
+               ('stat', ['2,3,5,7,8,9,11,14'], ['Summary stats', 'Quartiles, IQR', 'Outliers']),
+               ('kin', [''], ['SUVAT', 'Projectile']),
+               ('kin', ['v=3t^2-4t'], ['Acceleration', 'Displacement', 'When at rest', 'Distance'])]
 
 def sweep(check):
     import recog

@@ -23,6 +23,7 @@ DEVICE_FILES = [
     "rnum.py", "acts_num.py", "e_num.py",
     "rvec.py", "acts_vec.py", "e_vec.py",
     "rstat.py", "acts_stat.py", "e_stat.py", "e_data.py", "fmt.py",
+    "rkin.py", "acts_kin.py", "e_kin.py", "e_suvat.py",
     "selftest.py", "selftest2.py", "selfcases.py",
 ]
 

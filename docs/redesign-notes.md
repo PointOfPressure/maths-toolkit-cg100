@@ -57,6 +57,12 @@ while building; change any of them by saying so.
   and y). A test first asks the tail (a menu), then its boxes. Nothing
   typed: From sums, PMCC test, Two events, mu and sigma from two,
   Stratified sample, Outlier fences.
+- **Kinematics:** type `v = ...`, `s = ...` (or `x =`, `r =`) or `a = ...`
+  in t, numbers or vectors in i and j (mockup G); or two rows of times and
+  velocities read off a v-t graph. Nothing typed: SUVAT boxes (mockup F:
+  any three, `?` for what you want) and Projectile boxes (u, angle, height
+  above the landing level, g (9.8 when empty), time, range; `?` for u
+  finds it from the time or range).
 - **Calculus:** typed like Algebra: `y = f(x)` or an expression, `F(x, y) = 0`,
   two rows `x = f(t)` and `y = g(t)`, two curves, or `dy/dx = ...` (dy over
   dx with the fraction key, or typed in a line).
@@ -103,8 +109,8 @@ by its own name (pass2-aqa's check, widened for the extra settings).
 ## Topics on home
 
 Calculate, Algebra, Coord geometry, Exp and logs, Calculus, Trig,
-Sequences and series, Numerical, Vectors and Statistics are the new
-screens.
+Sequences and series, Numerical, Vectors, Statistics and Kinematics are
+the new screens.
 Kinematics, Forces and the Further topics still open their old section menus.
 Graph and Notes are the old screens.
 
@@ -164,6 +170,7 @@ Each module's own size once loaded, in the order a session loads them:
 | Numerical: rnum + acts_num, then e_num | 2 + 1, then 9 |
 | Vectors: rvec + acts_vec, then e_vec | 4 + 2, then 11 |
 | Statistics: rstat + acts_stat, then e_stat or e_data (+ fmt; no CAS) | 3 + 4, then 13 or 14 |
+| Kinematics: rkin + acts_kin, then e_suvat (boxes, v-t graph) or e_kin (+ e_calc, cascalc, e_solve) | 3 + 2, then 11 or 9 (+ 46 + 17) |
 | Trig: acts_trig, then e_trig (expressions, identities) + e_tsolve (equations) or e_tri (boxes) | 5, then 14 + 15 or 12 |
 | casalg (fractions, logs in coefficients) | 32 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
@@ -304,6 +311,18 @@ Each module's own size once loaded, in the order a session loads them:
   table to 4 d.p. (all 108 checked), and n = 50 at 2.5% gives 0.2787.
 - sd divides by n (the booklet's sigma); s with n - 1 is in grey.
   Quartiles use the AQA position rule (as the old tools).
+
+## Kinematics choices
+
+- SUVAT uses the equation without the value nobody asked for, solved by the
+  Algebra solver (so t from a quadratic shows its working); two roots: the
+  first t >= 0, or the positive speed, with the other in grey.
+- Integrating up asks for the value at t = 0 (empty is 0); letters are
+  kept (a = 3kt^2 - 2kt + 1 gives v = kt^3 - kt^2 + t + 1).
+- Distance splits where v = 0 inside the interval; a vector's speed and |a|
+  use sin^2 + cos^2 = 1 and roots of products (|a| = 2e^t, 2 jun22 17).
+- v-t graph: straight lines between the points; gradients, areas, running
+  displacement and the times it is back at the start (2 jun18 12b).
 
 ## Coord geometry and Calculus choices
 

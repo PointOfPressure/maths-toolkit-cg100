@@ -6,7 +6,17 @@ import recog
 from recog import Form
 
 def _z(x):
-    return x == ('n', 0) or recog.numv(x) == 0
+    # structurally zero (a letter times 0 is 0), or a number that is 0
+    k = x[0]
+    if k == 'n':
+        return x[1] == 0
+    if k == '*':
+        return _z(x[1]) or _z(x[2])
+    if k == '/' or k == 'neg':
+        return _z(x[1])
+    if k == '+' or k == '-':
+        return _z(x[1]) and _z(x[2])
+    return recog.numv(x) == 0
 
 def _tidy(x):
     import eng

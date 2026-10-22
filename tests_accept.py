@@ -573,11 +573,41 @@ C += [
     ('3 nov21 18bii', 'stat', [''], 'mu, sigma from two', ['346', '0.975', '336', '0.14'], ['mu=340', 'sigma=3.2']),
 ]
 
+# Kinematics (paper 2)
+C += [
+    ('2 jun18 10', 'kin', [''], 'SUVAT', ['', '0', '0.0128', '?', '1.8'], ['a=0.00711']),
+    ('2 jun18 12a', 'kin', ['0,4,6,11,12,13,16,20', '0,-2,2,2,0,-4,-4,0'], 'v-t graph', None, ['12to13:a=-4']),
+    ('2 jun18 12b', 'kin', ['0,4,6,11,12,13,16,20', '0,-2,2,2,0,-4,-4,0'], 'v-t graph', None,
+     ['backatthestartatt=8,14.25']),
+    ('2 jun18 15a', 'kin', ['a=0.138t^2'], 'Displacement', ['0', '0'], ['~0.0115t^4']),
+    ('2 jun18 16b', 'kin', [''], 'Projectile', ['25.65', '35', '10', '9.81', '', ''], ['timeofflight=3.57'], DEG),
+    ('2 jun18 17ci', 'kin', [''], 'SUVAT', ['?', '6', '0', '-0.88333', ''], ['s=20.4']),
+    ('2 jun19 13b', 'kin', [''], 'SUVAT', ['18', '0', '?', '9.8', ''], ['v=18.8']),
+    ('2 jun19 16b', 'kin', ['v=11.71-11.68e^(-0.9t)-0.03e^(0.3t)'], 'Displacement', ['0'],
+     ['~584e^(-0.9t)/45+11.71t-e^(0.3t)/10-1159/90']),
+    ('2 jun22 13b', 'kin', [''], 'Projectile', ['7', '60', '', '9.8', '', ''], ['greatestheight=1.875'], DEG),
+    ('2 jun22 19bi', 'kin', [''], 'SUVAT', ['?', '0', '', '1.2', '3.8'], ['s=8.664']),
+    ('2 jun23 14', 'kin', ['a=3k*t^2-2k*t+1'], 'Velocity', ['1'], ['~k*t^3-k*t^2+t+1']),
+    ('2 jun23 19bii', 'kin', [''], 'SUVAT', ['?', '0.5', '0', '-7/11', ''], ['s=0.196']),
+    ('2 jun23 20', 'kin', [''], 'Projectile', ['14', '60', '1.5', '9.8', '', ''], ['timeofflight=2.59',
+                                                                                   'range=18.1'], DEG),
+    ('2 jun24 19ai', 'kin', [''], 'Projectile', ['7', '90', '', '9.8', '', ''], ['greatestheight=2.5'], DEG),
+    ('2 jun24 19b', 'kin', [''], 'Projectile', ['7', '79', '', '9.8', '', ''], ['greatestheight=2.41'], DEG),
+    ('2 jun25 13a', 'kin', [''], 'SUVAT', ['225', '?', '30', '2', ''], ['u=0']),
+    ('2 jun25 14', 'kin', [''], 'SUVAT', ['-2.5', '25', '?', '-9.8', ''], ['sqrt(674)|25.96|26.0']),
+    ('2 jun25 19a', 'kin', ['r=2t^3i+(2t^2+q*t)j'], 'Velocity', None, ['6t^2i+(4t+q)j|6t^2i+(q+4t)j']),
+    ('2 nov20 14a', 'kin', ['r=(t^3-5t^2)i+(8t-t^2)j'], 'At time t', ['2'], ['v(2)=-8i+4j', 'speed=4sqrt(5)']),
+    ('2 nov20 14b', 'kin', ['r=(t^3-5t^2)i+(8t-t^2)j'], 'Acceleration', None, ['(6t-10)i-2j']),
+    ('2 nov20 15a', 'kin', ['20,40,60,80,100', '131,140,120,80,0'], 'v-t graph', None, ['displacement=8110']),
+    ('2 nov21 13', 'kin', [''], 'SUVAT', ['40', '13', '17', '?', ''], ['a=1.5|a=3/2']),
+    ('2 jun22 17', 'kin', ['r=e^t*cos(t)i+e^t*sin(t)j'], 'Acceleration', None, ['|a|=2e^t']),
+    ('2 nov21 14', 'kin', ['12,18,25,30,36', '5.8,5.2,6.2,6,3.8'], 'v-t graph', None, ['displacement=132.8']),
+]
+
 # parts with calculator steps the new flow does not do yet (not counted as passes)
 NOT_YET = [
     ('1 nov20 8b', 'alg', 'inequality f > g on a window 0..500: no window in Solve inequality yet'),
     ('1 nov21 9ci', 'exp', 'log-linear fit to a data list: needs data entry (Statistics)'),
-    ('2 jun22 17', 'trig', 'sqrt of trig squares: Trig topic'),
     ('1 jun22 15b', 'calc', 'integration by substitution with the steps (u = 2/sin x): not an action yet'),
     ('1 jun24 18a', 'calc', 'integration by substitution with the steps: not an action yet'),
     ('1 jun25 17a', 'calc', 'integration by substitution with the steps: not an action yet'),
