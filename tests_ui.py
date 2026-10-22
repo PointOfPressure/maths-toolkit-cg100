@@ -119,6 +119,10 @@ def run(check):
     case('seq AP boxes', 'seq', (EXE, 81, 83, RIGHT, 82, RIGHT, 72, EXE), 'AP facts', ['u(n)=11', 'S(n)=35'])
     # Numerical: x^2 - 2, EXE, Newton-Raphson (tile 3) from 1, 3 steps
     case('num newton', 'num', (41, 45, 85, 82, EXE, 83, 81, DOWN, 83, EXE), 'Newton-Raphson', ['x(4)=1.414216'])
+    # Vectors: ( 3 , 4 ) as typed is hard on keys; 3i + 4j needs i from
+    # MENU, so the second row of two points: EXE on nothing, then the
+    # size-and-direction boxes: 2, RIGHT, 0, EXE
+    case('vec polar boxes', 'vec', (EXE, 82, 82, RIGHT, 91, EXE), 'From size, direction', ['2i'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

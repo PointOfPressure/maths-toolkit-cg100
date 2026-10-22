@@ -495,6 +495,24 @@ C += [
     ('2 nov21 10b', 'num', ['sqrt(x)/(x-3)'], 'Sign change', ['1', '4', '3'], ['notaroot']),
 ]
 
+# Vectors
+C += [
+    ('1 jun22 8aii', 'vec', ['(0,5)', '(10,11)'], 'AB and distance', None, ['|ab|=2sqrt(34)']),
+    ('1 jun25 15d', 'vec', ['(1.709,1.709^2)', '(3,2.5)'], 'AB and distance', None, ['|ab|=1.36']),
+    ('2 jun18 14a', 'vec', ['(3,5,1)', '(-1,2,7)'], 'AB and distance', None, ['ab=-4i-3j+6k', '|ab|=sqrt(61)']),
+    ('2 jun19 15b', 'vec', ['(-210,530)', '(-340,-310)'], 'AB and distance', None, ['|ab|=850']),
+    ('2 jun22 16bii', 'vec', ['5i-6j', '3i-4j'], 'Parallel?', None, ['notparallel']),
+    ('2 jun23 18a', 'vec', ['3i+sqrt(3)j'], 'Magnitude, direction', None, ['|v|=2sqrt(3)']),
+    ('2 jun23 18b', 'vec', ['-3i-sqrt(3)j', '-3i+sqrt(3)j'], 'Angle between', None, ['angle=60'], DEG),
+    ('2 jun23 18c', 'vec', ['i', '-3i+sqrt(3)j'], 'a + t b', ['3'], ['-8i+3sqrt(3)j']),
+    ('2 jun24 20a', 'vec', ['3i+4j', '9i+12j'], 'Parallel?', None, ['parallel:b=3a']),
+    ('2 jun25 17ai', 'vec', ['(-3,5,1)', '(5,4,-2)'], 'AB and distance', None, ['ab=8i-j-3k', '|ab|=sqrt(74)']),
+    ('2 nov20 11', 'vec', ['(6,-3)', '(8,-5)'], 'Sum, difference', None, ['a-b=-2i+2j']),
+    ('2 nov21 12', 'vec', [''], 'From size, direction', ['6', '30'], ['3sqrt(3)i+3j'], DEG),
+    ('2 nov21 19aii', 'vec', ['0.8(2.8i+9.6j)'], 'Magnitude, direction', None, ['|v|=8']),
+    ('2 nov21 19b', 'vec', ['2i-7j', '2.24i+7.68j'], 'a + t b', ['4'], ['10.96', '23.72']),
+]
+
 # parts with calculator steps the new flow does not do yet (not counted as passes)
 NOT_YET = [
     ('1 nov20 8b', 'alg', 'inequality f > g on a window 0..500: no window in Solve inequality yet'),
@@ -607,6 +625,8 @@ def _run_case(tid, rows, label, ask, needles):
     if off[4]:
         if off[4][0] == 'choose':
             vals = [int(ask[0])]
+        elif off[4][0] == 'boxes' and len(off[4]) > 3:
+            vals = [a.strip() or None for a in ask]
         elif off[4][0] == 'boxes':
             vals = topic.readboxes(off[4][1], ask)
         else:

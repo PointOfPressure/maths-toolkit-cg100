@@ -200,7 +200,9 @@ def _check(tid, rows, label, ask, needles):
     if off is None:
         return 'not offered'
     vals = None
-    if off[4] and off[4][0] == 'boxes':
+    if off[4] and off[4][0] == 'boxes' and len(off[4]) > 3:
+        vals = [a.strip() or None for a in ask]
+    elif off[4] and off[4][0] == 'boxes':
         vals = topic.readboxes(off[4][1], ask)
     elif off[4]:
         vals = []

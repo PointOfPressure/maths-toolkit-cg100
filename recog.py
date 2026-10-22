@@ -1000,6 +1000,9 @@ def read(tid, rows):
     if tid == 'num':
         import rnum
         return rnum.read(rows)
+    if tid == 'vec':
+        import rvec
+        return rvec.read(rows)
     return form(rows)
 
 def geo(pts, eqs):

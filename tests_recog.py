@@ -153,14 +153,19 @@ SWEEP = [
     ('seq', ['(1-x)^(-2)']), ('seq', ['(3+k*x)^4']), ('seq', ['5n-3']), ('seq', ['2^n']), ('seq', ['k*r^2']),
     ('seq', ['a+4d=20', 'a+9d=35']),
     ('num', ['x^3+x-1']), ('num', ['x=cos(x)']), ('num', ['e^x=3x']), ('num', ['1, 2, 4, 8']),
+    ('vec', ['']), ('vec', ['3i-4j']), ('vec', ['(1,2,2)']), ('vec', ['2i+j', '4i+2j']), ('vec', ['(1,0)', '(0,1)']),
+    ('vec', ['(p,3)', '(1,2)']),
 ]
 BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', '1', '?', '', '', ''],
-          'AP facts': ['3', '2', '10', '', '?'], 'GP facts': ['3', '1/2', '', '', '', '?']}
+          'AP facts': ['3', '2', '10', '', '?'], 'GP facts': ['3', '1/2', '', '', '', '?'],
+          'Quadrilateral ABCD': ['(0,0)', '(4,0)', '(4,3)', '(0,3)'], 'From size, direction': ['2', '1']}
 ANSWER.update({'Sign change': ['2', '3', ''], 'Newton-Raphson': ['2', ''], 'Bisection': ['0', '1', ''],
                'Trapezium rule': ['0', '1', '4'], 'Iterate': ['0.5', '']})
 SWEEP_TILES = [('trig', [''], ['Triangle', 'Arc and sector']), ('seq', [''], ['AP facts', 'GP facts']),
                ('seq', ['u=3-u^2'], ['Terms', 'Sum of terms', 'Limit']),
-               ('seq', ['(1+2x)^7'], ['Expand', 'Coefficient of x^k'])]
+               ('seq', ['(1+2x)^7'], ['Expand', 'Coefficient of x^k']),
+               ('vec', [''], ['Quadrilateral ABCD', 'From size, direction']),
+               ('vec', ['(1,2)', '(3,4)'], ['AB and distance', 'Sum, difference', 'Parallel?'])]
 
 def sweep(check):
     import recog
@@ -177,6 +182,8 @@ def sweep(check):
             vals = None
             if ask and ask[0] == 'choose':
                 vals = [0]
+            elif ask and ask[0] == 'boxes' and len(ask) > 3:
+                vals = BOXANS[label]
             elif ask and ask[0] == 'boxes':
                 vals = topic.readboxes(ask[1], BOXANS[label])
             elif ask:

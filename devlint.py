@@ -21,6 +21,7 @@ DEVICE_FILES = [
     "acts_trig.py", "e_trig.py", "e_tsolve.py", "e_tri.py",
     "rseq.py", "acts_seq.py", "e_seq.py", "e_seqbox.py",
     "rnum.py", "acts_num.py", "e_num.py",
+    "rvec.py", "acts_vec.py", "e_vec.py",
     "selftest.py", "selfcases.py",
 ]
 

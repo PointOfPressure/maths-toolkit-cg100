@@ -46,6 +46,11 @@ while building; change any of them by saying so.
   x = g(x) (x on both sides: iteration), or y values with commas between
   (the trapezium rule asks for h). The start value is x(1); iterates are
   x(2), x(3), ...
+- **Vectors:** a row is a vector, `3i + 4j - k` (i from MENU or the
+  keypad's i) or in brackets `(3, 4)`, `(3, 4, -1)`; DOWN adds a second
+  (a and b, or the position vectors of A and B). Nothing typed: the
+  Quadrilateral ABCD boxes (each point as (x, y)) and size-and-direction
+  boxes (angle anticlockwise from i, in the Angle setting).
 - **Calculus:** typed like Algebra: `y = f(x)` or an expression, `F(x, y) = 0`,
   two rows `x = f(t)` and `y = g(t)`, two curves, or `dy/dx = ...` (dy over
   dx with the fraction key, or typed in a line).
@@ -92,7 +97,7 @@ by its own name (pass2-aqa's check, widened for the extra settings).
 ## Topics on home
 
 Calculate, Algebra, Coord geometry, Exp and logs, Calculus, Trig,
-Sequences and series and Numerical are the new screens. Vectors, Statistics,
+Sequences and series, Numerical and Vectors are the new screens. Statistics,
 Kinematics, Forces and the Further topics still open their old section menus.
 Graph and Notes are the old screens.
 
@@ -150,6 +155,7 @@ Each module's own size once loaded, in the order a session loads them:
 | Calculus: acts_calc + e_calc | 3 + 22 |
 | Sequences: rseq + acts_seq, then e_seq or e_seqbox (+ e_solve, e_fn for unknowns) | 2 + 2, then 15 or 10 |
 | Numerical: rnum + acts_num, then e_num | 2 + 1, then 9 |
+| Vectors: rvec + acts_vec, then e_vec | 4 + 2, then 11 |
 | Trig: acts_trig, then e_trig (expressions, identities) + e_tsolve (equations) or e_tri (boxes) | 5, then 14 + 15 or 12 |
 | casalg (fractions, logs in coefficients) | 32 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
@@ -252,6 +258,15 @@ Each module's own size once loaded, in the order a session loads them:
   (converges to, staircase or cobweb, or diverges); the trapezium rule says
   over or under from the sign of f'' on the interval.
 - Trig here is in radians whatever the Angle setting.
+
+## Vectors choices
+
+- The angle between two vectors is worked by the cosine rule on |a|, |b|
+  and |a - b| (7357 has no scalar product); it isn't offered with letters.
+- Parallel: b = k a with the same k for every component, else not.
+- The quadrilateral names itself from parallel pairs and equal sides and
+  diagonals (square, rectangle, rhombus, parallelogram, trapezium,
+  isosceles trapezium, kite).
 
 ## Coord geometry and Calculus choices
 

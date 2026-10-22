@@ -20,6 +20,7 @@ TOPICS = {
     'geo': ('Coord geometry', 'line or circle', 'C'),
     'calc': ('Calculus', 'y = x^3 - 3x  or  dy/dx = ...', 'GH'),
     'trig': ('Trig', '2sin^2 x = cos x   or EXE: triangle', 'E'),
+    'vec': ('Vectors', '3i + 4j  or (3, 4); DOWN: a second', 'J'),
     'num': ('Numerical', 'x - 2sin x,  x = g(x)  or  y values', 'I'),
     'seq': ('Sequences, series', 'u = 3 - u^2,  (1 + 2x)^7   or EXE: AP', 'D'),
 }
@@ -574,7 +575,12 @@ def boxes(tid, st, label, ask):
             cur = (cur + (c if k == DOWN else -c)) % len(eds)
             continue
         if k == OK or k == EXE:
-            vals = readboxes(names, [nat.lin(e.root) for e in eds])
+            ts = [nat.lin(e.root) for e in eds]
+            if len(ask) > 3:
+                # the engine reads the boxes itself (points as (x, y))
+                casui.wait_release()
+                return [t.strip() or None for t in ts]
+            vals = readboxes(names, ts)
             if vals is None:
                 continue
             casui.wait_release()
