@@ -117,6 +117,8 @@ def run(check):
     # Sequences: EXE with nothing typed, AP facts, a = 3, RIGHT, d = 2,
     # RIGHT, n = 5, EXE: u(n) and S(n)
     case('seq AP boxes', 'seq', (EXE, 81, 83, RIGHT, 82, RIGHT, 72, EXE), 'AP facts', ['u(n)=11', 'S(n)=35'])
+    # Numerical: x^2 - 2, EXE, Newton-Raphson (tile 3) from 1, 3 steps
+    case('num newton', 'num', (41, 45, 85, 82, EXE, 83, 81, DOWN, 83, EXE), 'Newton-Raphson', ['x(4)=1.414216'])
     # an error stays on the editing screen, no answer
     got = _drive('alg', (41, 84, 31, 55, 31, 55, EXE, EXE))
     check('ui error: no action runs', got == [], got)

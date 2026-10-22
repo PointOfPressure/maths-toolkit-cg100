@@ -42,6 +42,10 @@ while building; change any of them by saying so.
   asked by the action. A formula in n, r or k is a u(n) formula or the term
   of a sum; `(a + bx)^n` a binomial expansion. Nothing typed: AP facts and
   GP facts boxes.
+- **Numerical:** typed like Algebra: f(x), an equation (moved to one side),
+  x = g(x) (x on both sides: iteration), or y values with commas between
+  (the trapezium rule asks for h). The start value is x(1); iterates are
+  x(2), x(3), ...
 - **Calculus:** typed like Algebra: `y = f(x)` or an expression, `F(x, y) = 0`,
   two rows `x = f(t)` and `y = g(t)`, two curves, or `dy/dx = ...` (dy over
   dx with the fraction key, or typed in a line).
@@ -87,8 +91,8 @@ by its own name (pass2-aqa's check, widened for the extra settings).
 
 ## Topics on home
 
-Calculate, Algebra, Coord geometry, Exp and logs, Calculus, Trig and
-Sequences and series are the new screens. Numerical, Vectors, Statistics,
+Calculate, Algebra, Coord geometry, Exp and logs, Calculus, Trig,
+Sequences and series and Numerical are the new screens. Vectors, Statistics,
 Kinematics, Forces and the Further topics still open their old section menus.
 Graph and Notes are the old screens.
 
@@ -145,6 +149,7 @@ Each module's own size once loaded, in the order a session loads them:
 | Coord: coord + rgeo + acts_geo + e_geo | 6 + 3 + 4 + 21 |
 | Calculus: acts_calc + e_calc | 3 + 22 |
 | Sequences: rseq + acts_seq, then e_seq or e_seqbox (+ e_solve, e_fn for unknowns) | 2 + 2, then 15 or 10 |
+| Numerical: rnum + acts_num, then e_num | 2 + 1, then 9 |
 | Trig: acts_trig, then e_trig (expressions, identities) + e_tsolve (equations) or e_tri (boxes) | 5, then 14 + 15 or 12 |
 | casalg (fractions, logs in coefficients) | 32 |
 | cassolve + cascalc (letters in factorising, inequalities, domain, range, CAS fallback) | 21 + 23 |
@@ -236,6 +241,17 @@ Each module's own size once loaded, in the order a session loads them:
 - Binomial: whole n expands in the order typed ((2x - 3)^10 from 1024x^10,
   as 3 nov21 4a); any other n takes the number term out first, with
   where it is valid.
+
+## Numerical choices
+
+- Working values to 7 s.f. (as the mark schemes quote them); the box shows
+  them too, and FORMAT gives the Decimals setting.
+- Sign change also checks f is continuous between the ends (400 samples):
+  1/x on -1 to 1 changes sign but is not a root, and the page says so.
+- Newton-Raphson and iteration say where they go when carried on
+  (converges to, staircase or cobweb, or diverges); the trapezium rule says
+  over or under from the sign of f'' on the interval.
+- Trig here is in radians whatever the Angle setting.
 
 ## Coord geometry and Calculus choices
 

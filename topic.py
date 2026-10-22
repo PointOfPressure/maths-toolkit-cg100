@@ -20,6 +20,7 @@ TOPICS = {
     'geo': ('Coord geometry', 'line or circle', 'C'),
     'calc': ('Calculus', 'y = x^3 - 3x  or  dy/dx = ...', 'GH'),
     'trig': ('Trig', '2sin^2 x = cos x   or EXE: triangle', 'E'),
+    'num': ('Numerical', 'x - 2sin x,  x = g(x)  or  y values', 'I'),
     'seq': ('Sequences, series', 'u = 3 - u^2,  (1 + 2x)^7   or EXE: AP', 'D'),
 }
 # topics where EXE with nothing typed offers their box forms (triangle, AP)

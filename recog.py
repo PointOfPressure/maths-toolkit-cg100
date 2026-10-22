@@ -997,6 +997,9 @@ def read(tid, rows):
     if tid == 'seq':
         import rseq
         return rseq.read(rows)
+    if tid == 'num':
+        import rnum
+        return rnum.read(rows)
     return form(rows)
 
 def geo(pts, eqs):

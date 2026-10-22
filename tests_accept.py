@@ -463,6 +463,38 @@ C += [
     ('3 nov21 7c', 'seq', [''], 'GP facts', ['30', '0.98', '15', '', '?', ''], ['s(n)=392']),
 ]
 
+# Numerical methods
+C += [
+    ('1 jun18 8b', 'num', ['x-2sin(x)'], 'Newton-Raphson', ['pi', '2'], ['x(3)=1.913223']),
+    ('1 jun18 11aii', 'num', ['x=(60x^2+162000/x)^(1/3)'], 'Iterate', ['38', '3'],
+     ['x(2)=44.96345', 'x(3)=49.98742', 'x(4)=53.50407']),
+    ('1 jun18 11b n', 'num', ['10+100(x/30)^3-50(x/30)^4=4.5*1.063^x'], 'Sign change', ['49', '50', '10'],
+     ['arootbetween49and49.1']),
+    ('1 jun19 7b', 'num', ['1/x-sec(2x)'], 'Sign change', ['0.4', '0.6', ''], ['f(0.4)=1.064', 'f(0.6)=-1.09',
+                                                                               'arootbetween0.4and0.6']),
+    ('1 jun19 7di', 'num', ['x=acos(x)/2'], 'Iterate', ['0.4', '3'], ['0.5796', '0.47625', '0.5372']),
+    ('1 jun19 14aii', 'num', ['2x^3/(x^2+1)'], 'Trapezium rule', ['0', '4', '4'], ['area~13.36']),
+    ('1 jun22 10b', 'num', ['x-sin(2x)'], 'Sign change', ['pi/5', '2pi/5', ''], ['-0.3227', '0.66885']),
+    ('1 jun22 10ci', 'num', ['x-sin(2x)'], 'Newton-Raphson', ['pi/5', '2'], ['1.041']),
+    ('1 jun22 14a', 'num', ['(2x-8)ln(x)'], 'Trapezium rule', ['1', '4', '4'], ['-5.28']),
+    ('1 jun23 5a', 'num', ['5/(e^x-1)'], 'Trapezium rule', ['1', '4', '5'], ['2.331']),
+    ('1 jun23 13c', 'num', ['x-cos(x)'], 'Newton-Raphson', ['0', '3'], ['0.7391']),
+    ('1 jun24 14a', 'num', ['x^3-e^(6-2x)'], 'Sign change', ['0', '4', ''], ['-403.4', '63.86']),
+    ('1 jun24 14ci', 'num', ['x=3-1.5ln(x)'], 'Iterate', ['4', '3'], ['0.9205', '3.124', '1.291']),
+    ('1 jun24 16', 'num', ['1.2, 1.5, 1.9, 2.4, 3.0'], 'Trapezium rule', ['0.5'], ['area~3.95']),
+    ('1 jun25 15c', 'num', ['2x^3-4x-3'], 'Newton-Raphson', ['3', '3'], ['2.22', '1.8288', '1.709']),
+    ('1 nov20 2', 'num', ['1/x'], 'Sign change', ['-1', '1', '4'], ['notaroot']),
+    ('1 nov20 11a', 'num', ['ln(8-x)'], 'Trapezium rule', ['1', '6', '1'], ['area~6.5976']),
+    ('1 nov20 11b', 'num', ['ln(8-x)'], 'Trapezium rule', ['1', '6', '5'], ['area~7.205']),
+    ('1 nov20 14a', 'num', ['3^x*sqrt(x)-1'], 'Sign change', ['0', '1', ''], ['f(0)=-1', 'f(1)=2']),
+    ('1 nov20 14bii', 'num', ['3^x*sqrt(x)-1'], 'Newton-Raphson', ['1', '2'], ['0.58297', '0.42465']),
+    ('1 nov21 7a', 'num', ['x^3-x^2+x-3'], 'Sign change', ['1.5', '1.6', ''], ['-0.375', '0.136']),
+    ('1 nov21 7c', 'num', ['x=sqrt(x-1+3/x)'], 'Iterate', ['1.5', '3'], ['1.5811', '1.5743', '1.57477']),
+    ('1 nov21 7d', 'num', ['x^3-x^2+x-3=0'], 'Sign change', ['1.574', '1.575', ''], ['arootbetween1.574and1.575']),
+    ('2 jun25 6aii', 'num', ['e^(x/2)/(x-3)'], 'Trapezium rule', ['4', '8', '5'], ['30.02']),
+    ('2 nov21 10b', 'num', ['sqrt(x)/(x-3)'], 'Sign change', ['1', '4', '3'], ['notaroot']),
+]
+
 # parts with calculator steps the new flow does not do yet (not counted as passes)
 NOT_YET = [
     ('1 nov20 8b', 'alg', 'inequality f > g on a window 0..500: no window in Solve inequality yet'),

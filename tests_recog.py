@@ -152,9 +152,12 @@ SWEEP = [
     ('seq', ['']), ('seq', ['u=2u+1']), ('seq', ['u(n+1)=u(n)/2+n']), ('seq', ['(1+2x)^5']),
     ('seq', ['(1-x)^(-2)']), ('seq', ['(3+k*x)^4']), ('seq', ['5n-3']), ('seq', ['2^n']), ('seq', ['k*r^2']),
     ('seq', ['a+4d=20', 'a+9d=35']),
+    ('num', ['x^3+x-1']), ('num', ['x=cos(x)']), ('num', ['e^x=3x']), ('num', ['1, 2, 4, 8']),
 ]
 BOXANS = {'Triangle': ['3', '4', '5', '', '', '?', ''], 'Arc and sector': ['3', '1', '?', '', '', ''],
           'AP facts': ['3', '2', '10', '', '?'], 'GP facts': ['3', '1/2', '', '', '', '?']}
+ANSWER.update({'Sign change': ['2', '3', ''], 'Newton-Raphson': ['2', ''], 'Bisection': ['0', '1', ''],
+               'Trapezium rule': ['0', '1', '4'], 'Iterate': ['0.5', '']})
 SWEEP_TILES = [('trig', [''], ['Triangle', 'Arc and sector']), ('seq', [''], ['AP facts', 'GP facts']),
                ('seq', ['u=3-u^2'], ['Terms', 'Sum of terms', 'Limit']),
                ('seq', ['(1+2x)^7'], ['Expand', 'Coefficient of x^k'])]
@@ -178,7 +181,11 @@ def sweep(check):
                 vals = topic.readboxes(ask[1], BOXANS[label])
             elif ask:
                 n = sum([ln[1] for ln in ask])
-                vals = [caslex.parse(a) for a in ANSWER.get(label, ['1'] * n)[:n]]
+                vals = [caslex.parse(a) if a else None for a in ANSWER.get(label, ['1'] * n)[:n]]
+                if label == 'Trapezium rule' and n == 1:
+                    vals = [caslex.parse('0.5')]
+                if label == 'Sign change' and 'cos' in rows[0]:
+                    vals = [caslex.parse('0'), caslex.parse('1'), None]
                 if label[:5] == 'Solve' and n == 2:
                     vals = [caslex.parse('0'), caslex.parse('360' if 'deg' in label else '2pi')]
             lines = topic.engine(mod, fn, F, arg, vals)
